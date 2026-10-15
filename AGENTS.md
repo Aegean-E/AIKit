@@ -71,16 +71,17 @@
 
 ### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
 - **Concept**: Complex, long-running agent workflows must actively counteract attentional drift, context exhaustion, and compaction amnesia through externalized working memory, living plan SSOT hygiene, disciplined AST-first retrieval, and persistent disk-anchored state.
-- **Invariant**: Disk-backed working memory (`.agents/task_ledger.json`); living plan SSOT; AST-first slice retrieval; deterministic compaction resumption sequence.
+- **Invariant**: Disk-backed working memory (`.agents/task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first slice retrieval; bounded rolling ledger.
 - **Rules**:
-  1. **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines).
-  2. **Deterministic Compaction Resumption Sequence**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
+  1. **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines). Maintain a bounded rolling ledger window via `scripts/disruption_recovery.py` to prevent working memory bloat.
+  2. **Compaction Resumption & Anti-Repetition Invariant**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
      - *Step 1 (Ledger Audit)*: Inspect `.agents/task_ledger.json` for `active_task`, `active_phase` (1..5), and completed checkpoints.
      - *Step 2 (Working Tree Audit)*: Inspect `git status` and `git log -n 1` to establish factual physical ground truth.
-     - *Step 3 (Monotonic Resumption)*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps.
+     - *Step 3 (Monotonic Resumption & Anti-Repetition)*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps. Disk state is authoritative over truncated dialogue history; once a choice is recorded in an ADR or ledger, it is finalized and must never be re-prompted.
   3. **AST-First & Slice-Capped Retrieval**: When exploring code, consult AST symbol catalogs (`knowledge/codebase_map.md`) or targeted symbol greps before opening raw files. When reading source code, use targeted line slices (`StartLine`/`EndLine` <100 lines) focused on the relevant symbol, preventing context window exhaustion.
-  4. **Immediate ADR Persistence (Negative Constraint Guard)**: Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
-  5. **Continuous Attentional Re-Anchoring**: At the beginning of each execution turn, re-anchor to the Pre-flight/Post-flight lifecycle checklist and active phase invariants rather than drifting on conversational inertia.
+  4. **Two-Tier Memory Partitioning & Immediate ADR Persistence**: Maintain strict separation between (1) mutable in-flight execution scratchpads (`.agents/task_ledger.json`) and (2) permanent immutable architectural records (`knowledge/decisions.md`). Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
+  5. **Terse Tool Invocation & Attentional Re-Anchoring**: When executing CLI commands, prefer bounded, summary-oriented flags (`git status --short`, `git log -n 1 --oneline`, `git diff --stat`, test runner `-q`). Never dump unbounded mega-logs or full file diffs into conversational turns. At the beginning of each turn, re-anchor to the Pre-flight/Post-flight checklist and active phase invariants.
+
 
 
 ---

@@ -79,10 +79,41 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
         return {"version": 1, "active_task": None, "checkpoints": []}
 
 
-def save_ledger(ledger: Dict[str, Any], ledger_file: Optional[Path] = None) -> None:
-    """Save the task ledger atomically to disk."""
+DEFAULT_MAX_CHECKPOINTS = 20
+
+
+def prune_checkpoints(
+    checkpoints: List[Dict[str, Any]],
+    active_task_id: Optional[str] = None,
+    max_history: int = DEFAULT_MAX_CHECKPOINTS,
+) -> List[Dict[str, Any]]:
+    """Prune checkpoints to maintain a bounded rolling memory window (PRINCIPLE-004)."""
+    if len(checkpoints) <= max_history:
+        return checkpoints
+
+    active_cps = [c for c in checkpoints if active_task_id and c.get("task_id") == active_task_id]
+    inactive_cps = [c for c in checkpoints if not active_task_id or c.get("task_id") != active_task_id]
+
+    keep_inactive = max(5, max_history - len(active_cps))
+    pruned_inactive = inactive_cps[-keep_inactive:]
+    combined = active_cps + pruned_inactive
+    return sorted(combined, key=lambda x: x.get("timestamp", 0))
+
+
+def save_ledger(
+    ledger: Dict[str, Any],
+    ledger_file: Optional[Path] = None,
+    max_history: int = DEFAULT_MAX_CHECKPOINTS,
+) -> None:
+    """Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004)."""
     path = ledger_file or LEDGER_PATH
+    active_id = ledger.get("active_task", {}).get("task_id") if ledger.get("active_task") else None
+    if "checkpoints" in ledger:
+        ledger["checkpoints"] = prune_checkpoints(
+            ledger["checkpoints"], active_task_id=active_id, max_history=max_history
+        )
     atomic_write_json(path, ledger)
+
 
 
 PHASE_MAPPING = {

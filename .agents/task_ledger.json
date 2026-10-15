@@ -1,12 +1,12 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-004-upgrade",
+    "task_id": "principle-004-second-pass",
     "last_phase": "Phase 3: Implementation",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792091629.5139563,
-    "completed_at": 1792091753.6656468
+    "updated_at": 1792091857.094187,
+    "completed_at": 1792092058.4995577
   },
   "checkpoints": [
     {
@@ -65,6 +65,25 @@
       "status": "completed",
       "timestamp": 1792091753.6656494,
       "timestamp_str": "2026-10-15 22:15:53"
+    },
+    {
+      "task_id": "principle-004-second-pass",
+      "phase": "Phase 3: Implementation",
+      "phase_num": 3,
+      "description": "Fortifying Principle 4 with bounded ledger window, anti-repetition invariant, and two-tier memory",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792091857.094187,
+      "timestamp_str": "2026-10-15 22:17:37"
+    },
+    {
+      "task_id": "principle-004-second-pass",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-004-second-pass' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792092058.4995596,
+      "timestamp_str": "2026-10-15 22:20:58"
     }
   ]
 }

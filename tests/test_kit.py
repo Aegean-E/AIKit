@@ -23,6 +23,7 @@ from scripts.disruption_recovery import (
     atomic_write_json,
     record_checkpoint,
     mark_task_completed,
+    prune_checkpoints,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -97,14 +98,15 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("ast syntax gate", p3["invariant"].lower())
 
     def test_principle_004_compaction_resilience_capsule(self):
-        # Enforces PRINCIPLE-004: verified invariant capsule with task_ledger, living plan SSOT, AST-first retrieval
+        # Enforces PRINCIPLE-004: verified invariant capsule with task_ledger, living plan SSOT, anti-repetition
         principles = parse_principles(AGENTS_MD)
         p4 = next((p for p in principles if p["id"] == "PRINCIPLE-004"), None)
         self.assertIsNotNone(p4)
         self.assertIn("task_ledger.json", p4["invariant"].lower())
         self.assertIn("living plan ssot", p4["invariant"].lower())
+        self.assertIn("anti-repetition", p4["invariant"].lower())
         self.assertIn("ast-first", p4["invariant"].lower())
-        self.assertIn("compaction resumption", p4["invariant"].lower())
+        self.assertIn("bounded rolling ledger", p4["invariant"].lower())
 
 
 
@@ -127,6 +129,36 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertTrue(self.ledger_file.exists())
         loaded = load_ledger(self.ledger_file)
         self.assertEqual(loaded["active_task"]["task_id"], "test_feature")
+
+    def test_bounded_rolling_ledger_pruning(self):
+        # Enforces PRINCIPLE-004: bounded rolling ledger window prevents working memory bloat
+        checkpoints = []
+        for i in range(35):
+            checkpoints.append({
+                "task_id": "old_task" if i < 25 else "active_task",
+                "phase": f"step_{i}",
+                "phase_num": 3,
+                "timestamp": 1000 + i,
+            })
+        
+        pruned = prune_checkpoints(checkpoints, active_task_id="active_task", max_history=15)
+        self.assertLessEqual(len(pruned), 15)
+        # All 10 active task checkpoints must be preserved
+        active_saved = [c for c in pruned if c["task_id"] == "active_task"]
+        self.assertEqual(len(active_saved), 10)
+        # Inactive checkpoints should be pruned to remaining budget
+        inactive_saved = [c for c in pruned if c["task_id"] == "old_task"]
+        self.assertEqual(len(inactive_saved), 5)
+
+        # Test full save_ledger with auto-pruning
+        ledger_data = {
+            "version": 1,
+            "active_task": {"task_id": "active_task"},
+            "checkpoints": checkpoints,
+        }
+        save_ledger(ledger_data, ledger_file=self.ledger_file, max_history=15)
+        loaded = load_ledger(self.ledger_file)
+        self.assertLessEqual(len(loaded["checkpoints"]), 15)
 
     def test_self_healing_quarantine_corrupted_json(self):
         # Corrupt file with non-JSON text (simulating sudden power loss)

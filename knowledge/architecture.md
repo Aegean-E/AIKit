@@ -60,9 +60,11 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ## 🧠 Attentional Drift Prevention & State Externalization
 - **Disk-Anchored Memory & Living Plan SSOT**: In-flight state, task checkpoints, and architectural rationale are externalized immediately to `.agents/task_ledger.json` and `knowledge/decisions.md`, eliminating dependence on volatile conversational context. Multi-step plans are updated in-place on disk rather than reprinting bloat into conversation history (**PRINCIPLE-004**).
-- **Deterministic Compaction Resumption**: Upon conversation compaction or cold restart, agents execute a 3-step audit (Ledger `active_phase` check $\rightarrow$ Working tree check $\rightarrow$ Monotonic resumption) without re-asking resolved questions.
+- **Bounded Rolling Ledger Window**: `scripts/disruption_recovery.py` auto-prunes historical checkpoints to maintain a bounded rolling memory window (active task + recent history), preventing the ledger itself from becoming a context bloat trap.
+- **Compaction Resumption & Anti-Repetition Invariant**: Upon compaction or cold restart, agents execute a 3-step audit (Ledger `active_phase` check $\rightarrow$ Working tree check $\rightarrow$ Monotonic resumption). Disk state is authoritative over truncated dialogue history; once a choice is recorded, the agent never re-prompts the user to re-decide.
 - **AST-First & Slice-Capped Retrieval**: Code examination prioritizes AST symbol maps (`knowledge/codebase_map.md`) and slice views (<100 lines) to preserve token budgets and prevent premature context compaction.
-- **Immediate ADR Register**: Negative constraints and architectural invariants are committed immediately to `knowledge/decisions.md` to prevent constraint decay across long sessions.
+- **Two-Tier Memory Partitioning & Immediate ADR Register**: Strict separation between mutable in-flight scratchpads (`task_ledger.json`) and permanent immutable architectural records (`knowledge/decisions.md`). Negative constraints and architectural invariants are committed immediately to prevent constraint decay across long sessions.
+- **Terse Tool Invocation**: Commands use bounded, summary-oriented flags (`git status -s`, `--oneline`, `--stat`, test runner `-q`) to prevent terminal logs from flooding the LLM context.
 
 ---
 
