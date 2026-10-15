@@ -67,10 +67,13 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ## 🪙 Token Economics & Prompt Architecture
 - **Bounded Prompt Ceilings**: Outbound LLM payloads and tool arguments enforce strict character/token caps (<4,000 tokens / <16,000 chars) to prevent context exhaustion and attention degradation (**PRINCIPLE-012**).
+- **Prompt Cache Prefix Alignment**: Partition prompt payloads into a deterministic frozen prefix (system rules, invariant schemas $\ge 1,024$ tokens) and a volatile dynamic tail, guaranteeing $\ge 80\%$ provider prompt cache hits across multi-turn interactions.
 - **AST-Filtered Context Slices**: Raw multi-file dumps are banned; prompts inject targeted AST symbol digests (`knowledge/codebase_map.md`) and concise code slices (<100 lines).
+- **Bounded Tool Outputs & Diff Slicing (Anti-Mega-Log)**: Unified diffs are strictly scoped to $\le 3$ lines of surrounding context; test runners default to quiet modes; grep/search outputs are capped at $\le 50$ matches to protect conversational context.
+- **Terse Schema Generation & Output Frugality**: Autonomous workflows enforce compact typed schemas over verbose prose; conversational updates stay under 15 lines without polite echoing.
 - **Compact Relative-Path Serialization**: All persistent ledgers, prompt payloads, and tool arguments serialize repository-relative paths rather than redundant absolute paths (~70% token savings).
-- **Adaptive Rate Pacing & Jittered Backoff**: Batch LLM pipelines track token usage against TPM/RPM quotas and employ full-jitter exponential backoff for resilient rate-limit recovery.
-- **Anti-Code-Bloat Standard Library Leverage**: Expressive standard-library abstractions eliminate ceremonial boilerplate, keeping codebases compact and easy for AI agents to reason over.
+- **Runaway Circuit Breakers & Rate Pacing**: Batch LLM pipelines pace token consumption against TPM/RPM limits with jittered backoff; autonomous agent loops enforce hard token/step ceilings with fail-safe ledger checkpointing.
+- **Lean Syntactic Density (Anti-Code-Bloat)**: Code written by AI assistants leverages stdlib primitives and flat architectures, minimizing the total codebase token footprint for all downstream AI assistants.
 
 ---
 

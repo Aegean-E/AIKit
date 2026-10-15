@@ -415,3 +415,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Maximizes model attention by eliminating context dilution; reduces token expenditure by ~70% on paths and payloads; prevents HTTP 429 rate-limit deadlocks; keeps codebases lean and maintainable.
   - *Trade-offs*: None; pure discipline in token budgeting and lean stdlib design.
+
+### ADR-027: Prompt Cache Prefix Alignment, Bounded Tool Outputs, Circuit Breakers, and Syntactic Density (PRINCIPLE-012 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Frontier LLM inference models (Claude, Gemini, OpenAI) support prompt caching (prefix caching) that cuts input token costs by 80–90% and reduces latency by 5–10x. However, injecting volatile timestamps, random session IDs, or shifting ledger states into prompt headers constantly thrashes the cache.
+  2. Multi-turn agent executions frequently append raw tool outputs (massive git diffs, verbose build outputs, un-sifted grep searches), dumping thousands of irrelevant tokens directly into the context window and precipitating attention degradation ("lost-in-the-middle").
+  3. Output tokens cost 3–5x more than input tokens; free-form conversational echoing and verbose thought preambles slow execution and inflate billing.
+  4. Autonomous subagent execution loops without strict spend ceilings risk entering runaway retry death spirals, exhausting context and consuming excessive API quotas.
+  5. Generating overly ceremonial boilerplate code (e.g., enterprise abstract factories, superfluous wrappers) creates a permanent token penalty on all future AI agents reading the codebase.
+- **Decision**:
+  1. Enforce **Prompt Cache Prefix Alignment (Cache-Friendly Invariant)**: Structurally partition prompt payloads into a deterministic frozen prefix (system instructions, rules, schemas $\ge 1,024$ tokens) and a volatile dynamic tail. Guarantee $\ge 80\%$ prompt cache hit rates across multi-turn sessions.
+  2. Enforce **Tool Output Frugality & Bounded Diff Slicing (Anti-Mega-Log Invariant)**: Scope unified diffs strictly to changed hunks with $\le 3$ lines of surrounding context; default test and build runners to quiet/summary modes; cap search/grep results to $\le 50$ matches.
+  3. Enforce **Output Token Frugality & Terse Schema Generation**: Require models to produce compact typed data schemas (JSON Schema / dataclasses) in automated orchestration; cap conversational status reports to $\le 15$ lines without polite echoing.
+  4. Enforce **Token Budget Ceilings & Runaway Circuit Breakers (Anti-Death-Spiral Invariant)**: Autonomous agent loops and background tasks must define hard token and step ceilings ($K$ turns); budget breaches trip a circuit breaker, checkpoint state to `.agents/task_ledger.json`, and pause cleanly for human input.
+  5. Enforce **Lean Syntactic Density & Anti-Premature-Abstraction**: Code produced by AI assistants must prioritize high syntactic density and standard-library leverage (`dataclasses`, `pathlib`, `itertools`), avoiding ceremonial enterprise bloat to keep the codebase token footprint permanently lean for downstream AI reasoning.
+- **Consequences**:
+  - *Positive*: Maximizes provider prompt cache hit rates ($\ge 80\%$), drastically reducing API costs and latency; shields conversational context from tool output pollution; provides financial guardrails against runaway agent loops; keeps codebase token footprints minimal.
+  - *Trade-offs*: None; pure discipline in prompt structuring, tool output filtering, and idiomatic coding.

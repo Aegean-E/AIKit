@@ -29,7 +29,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
 | **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, subprocess timeouts, batch coalescing, and lazy imports. |
 | **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Pure-stdlib clone-and-run, auto-init, mode transparency, cross-platform parity, and exit semantics. |
-| **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Bounded prompt ceilings (<4k tokens), relative-path serialization, rate-pacing, and lean code. |
+| **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Prompt cache alignment (>=80% hits), bounded diffs, terse generation, circuit breakers, and lean code. |
 
 ### 🛡️ Phase 4: Operational Verification & Resilience
 | ID | Title | Summary |
@@ -193,13 +193,15 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Health Diagnostics & Self-Demonstrating Fixtures**: Provide diagnostic checks (`--audit` / `--doctor`) and embedded minimal demo fixtures (`--demo`) for instant 10-second verification.
 
 ### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
-- **Problem**: Unbounded payload dumps, conversational prompt fluff, repetitive absolute path serialization, unhandled 429 rate-limit crashes, and ceremonial boilerplate exhaust context windows and inflate LLM costs.
+- **Problem**: Unbounded payload dumps, prompt cache thrashing, tool output explosions, conversational output bloat, runaway spending loops, and ceremonial code boilerplate exhaust context windows and inflate LLM costs.
 - **Guideline**:
-  - **Bounded Prompt Ceilings & AST Digests**: Enforce explicit payload caps (<4,000 tokens / <16,000 chars); utilize AST symbol catalogs (`knowledge/codebase_map.md`) and slice-capped views rather than raw file dumps.
-  - **Information-Dense Prompt Architecture**: Maximize signal-to-token ratio by eliminating conversational filler; replace multi-page few-shot examples with schema-enforced contracts (JSON Schema / dataclasses).
+  - **Bounded Prompt Ceilings & AST Slicing**: Enforce explicit payload caps (<4,000 tokens / <16,000 chars); utilize AST symbol catalogs (`knowledge/codebase_map.md`) and slice-capped views rather than raw file dumps.
+  - **Prompt Cache Alignment & Prefix Invariance**: Partition prompts into a deterministic frozen prefix (instructions/schemas $\ge 1,024$ tokens) and volatile tail; guarantee $\ge 80\%$ cache hit rates across multi-turn sessions.
+  - **Tool Output Frugality & Bounded Diff Slicing**: Bound tool outputs in context; scope unified diffs to $\le 3$ lines of context; default test runners to quiet modes; cap grep matches ($\le 50$).
+  - **Terse Schema Generation & Output Frugality**: Return compact typed schemas (JSON Schema / dataclasses); keep conversational updates under 15 lines without polite echoing or redundant code restatements.
   - **Compact Relative-Path Serialization**: Transmit concise repository-relative paths and dense key schemas (~70% token savings) across all prompt payloads, tool arguments, and ledgers.
-  - **Adaptive Rate Pacing & Jittered Backoff**: Proactively pace batch requests against TPM/RPM limits and implement full-jitter exponential backoff for resilient recovery from rate limits.
-  - **High-Leverage Stdlib Leverage (Anti-Code-Bloat)**: Maximize expressive leverage per line using Python standard-library primitives; prohibit ceremonial boilerplate and redundant wrapper abstractions.
+  - **Token-Aware Rate Pacing & Runaway Circuit Breakers**: Pace batch requests against TPM/RPM limits with jittered backoff; enforce hard token/step ceilings on autonomous loops to prevent runaway spending death spirals.
+  - **Lean Syntactic Density & Anti-Premature-Abstraction**: Maximize expressive leverage per line using Python standard-library primitives; prohibit ceremonial boilerplate and redundant wrapper abstractions.
 
 ### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
 - **Problem**: Sudden power cuts, electrical outages, process crashes, or battery failures mid-operation can corrupt state files, sever logs, or leave batches in an unrecoverable, untracked state.

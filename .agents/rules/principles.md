@@ -30,7 +30,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 11. **PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)**:
    - Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes; remediation triad. [GUIDELINES.md](../../GUIDELINES.md#principle-011)
 12. **PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)**:
-   - Bounded prompt ceilings (<4k tokens); relative-path serialization (~70% savings); schema-first contracts; TPM rate-pacing with jittered backoff; anti-code-bloat stdlib leverage. [GUIDELINES.md](../../GUIDELINES.md#principle-012)
+   - Prompt cache prefix alignment (>=80% cache hits); bounded tool outputs & unified diffs; terse schema generation; token budget circuit breakers; lean syntactic density. [GUIDELINES.md](../../GUIDELINES.md#principle-012)
 13. **PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)**:
    - Fail-safe atomic writes (temp buffer -> `flush()` -> `os.fsync()` -> `os.replace()`); WAL for batch ops; isolate `*.corrupt_*`. [GUIDELINES.md](../../GUIDELINES.md#principle-013)
 14. **PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)**:
