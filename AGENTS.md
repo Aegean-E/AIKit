@@ -122,8 +122,8 @@
 ---
 
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
-- **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively neutralizes concrete *blast-radius risks*, strictly enforces *quality non-diminution*, and preserves assessment memory across interruptions.
-- **Invariant**: Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, clean reversibility) before non-trivial edits.
+- **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively neutralizes concrete *blast-radius risks*, bounds execution within an anti-gold-plating *scope ceiling*, strictly enforces *quality non-diminution*, and preserves assessment memory across interruptions.
+- **Invariant**: Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, clean reversibility) before non-trivial edits.
 - **Rules**:
   1. **Adaptive Lifecycle Trigger (Track C Gate)**: The full 4-quadrant impact assessment is mandatory for **Track C (Engineering/Feature/Refactor)** tasks before mutating code or schemas. For Track B (Trivial/Doc), scale to a micro-sanity check (zero syntax/link breakage). Track A (Query/Exploration) bypasses this gate.
   2. **The 4 Blast-Radius Dimensions**: When evaluating *"How could this harm the project?"*, the AI must explicitly assess:
@@ -131,11 +131,12 @@
      - *Dependency Infiltration*: Accidental introduction of undeclared third-party packages, external runtime binaries, or version mismatches (`PRINCIPLE-003`).
      - *Concurrency & Thread Safety*: Synchronous blocking I/O, event-loop starvation, thread deadlocks, or UI freezing (`PRINCIPLE-010`).
      - *State Mutation & Schema Drift*: Modifying file formats or storage schemas without backward compatibility, migrations, or atomicity (`PRINCIPLE-013`).
-  3. **Anti-Satisficing & Quality Non-Diminution (Zero Lazy Code)**:
+  3. **Anti-Satisficing, Type Preservation & Zero Lazy Code**:
      - Principles, token frugality, or checklists must **never** be used as an excuse to deliver substandard, stubbed, or crippled implementations.
-     - *Forbidden Shortcuts*: Never leave `# TODO`, `// implement later`, `pass`, or mock placeholders in production code paths. Never silently swallow exceptions (`except Exception: pass`). Never weaken, skip, or delete unit test assertions to force tests to pass (`PRINCIPLE-014`). Never demote polished UI to bare wireframes.
-  4. **Reversibility & Recoil Preparedness**: Before starting non-trivial mutations, verify a clean working baseline (`git status`). Ensure every modification has an atomic rollback path if Phase 4 verification or Phase 15 dogfooding encounters an unresolvable failure.
-  5. **Persistent Assessment Memory**: Record the pre-flight rationale, risks, and mitigation either in the task scratchpad or directly in the task ledger via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc <desc> --why <why> --risks <risks> --mitigation <mitigation>` so intent survives conversation compaction and disruption recovery.
+     - *Forbidden Shortcuts*: Never leave `# TODO`, `// implement later`, `pass`, or mock placeholders in production code paths. Never silently swallow exceptions (`except Exception: pass`). Never weaken, skip, or delete unit test assertions to force tests to pass (`PRINCIPLE-014`). Never demote polished UI to bare wireframes. Never evade type safety by casting variables to `Any` or disabling linters with `# type: ignore` to bypass compiler errors.
+  4. **Scope Ceiling (Anti-Gold-Plating Invariant)**: Modifications must remain strictly bounded to the evaluated user goal and its direct blast-radius mitigations. Never introduce speculative abstractions, unrequested architectural overhauls, or unsolicited feature expansions beyond the evaluated scope.
+  5. **Reversibility, Recoil Preparedness & Principle 8 Bridge**: Before starting non-trivial mutations, verify a clean working baseline (`git status`) with an atomic rollback path if verification gates fail. The defensive mitigations identified in this gate directly define the hierarchical micro-milestones decomposed in `PRINCIPLE-008`.
+  6. **Persistent Assessment Memory & Conversational Conciseness**: Keep chat articulation ultra-terse (<6 lines: 1 compact bullet per quadrant). Record the full pre-flight impact assessment in the task ledger via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc <desc> --why <why> --benefits <benefits> --risks <risks> --mitigation <mitigation>` so intent and rationale survive conversation compaction and disruption recovery.
 
 ---
 

@@ -20,7 +20,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 |---|---|---|
 | **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation (<20k chars), material surface sync, executable command parity, and whole-tree drift shield. |
 | **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and CLI ledger recovery. |
-| **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight Track C checklist evaluating why, benefits, 4 blast-radius risks, and anti-satisficing. |
+| **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight Track C checklist evaluating why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing. |
 | **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem Decomposition | Hierarchical decomposition of complex problems and datasets into bounded sub-tasks. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
@@ -135,7 +135,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Explicit Staging & Transient Buffer Hygiene**: When committing micro-milestones, explicitly stage only the files modified for that specific sub-task (never execute blind `git add .`). Orphaned temporary buffers (`*.tmp_*`) left behind by interrupted writes must be purged via `scripts/disruption_recovery.py --clean` to maintain clean workspace hygiene.
 
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
-- **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs.
+- **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs. Conversely, uncontrolled scope creep results in speculative over-engineering.
 - **Guideline**:
   - Before mutating code or schemas on Track C tasks, execute a structured pre-flight impact assessment:
     - **Why required**: Understand root cause, user goal, or architectural gap.
@@ -145,9 +145,10 @@ The principles are strictly ordered according to the **5 Chronological Execution
       - *Dependencies*: Zero undeclared external packages or non-standard tools.
       - *Concurrency*: Non-blocking async execution, no event-loop starvation or thread deadlocks.
       - *State*: Backward-compatible storage schemas and atomic mutations.
-    - **Anti-Satisficing (Quality Non-Diminution)**: Strictly forbids `# TODO` stubs, silent exception swallowing (`except Exception: pass`), weakened test assertions, or aesthetic degradation. Checklists must elevate standards, never justify degraded code.
-    - **Reversibility**: Verify clean working baseline before starting and maintain clear rollback paths.
-    - **Ledger Persistence**: Persist rationale via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc "..." --why "..." --risks "..." --mitigation "..."` to preserve pre-flight context across compactions.
+    - **Anti-Satisficing & Type Preservation**: Strictly forbids `# TODO` stubs, silent exception swallowing (`except Exception: pass`), weakened test assertions, aesthetic degradation, or casting to `Any` / `# type: ignore` to bypass type safety.
+    - **Scope Ceiling (Anti-Gold-Plating)**: Keep modifications strictly bounded to the evaluated user goal and direct mitigations; never add speculative unrequested frameworks or features.
+    - **Reversibility & Principle 8 Bridge**: Verify clean working baseline before starting with an atomic rollback path. Mitigations directly define the hierarchical micro-milestones decomposed in Principle 8.
+    - **Ledger Persistence & Conversational Conciseness**: Keep chat output <6 lines. Persist full rationale via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc "..." --why "..." --benefits "..." --risks "..." --mitigation "..."` to preserve pre-flight context across compactions.
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
 - **Problem**: Monolithic or flat batch processing fails when dealing with deep hierarchies, thousands of items, or complex taxonomies.

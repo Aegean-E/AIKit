@@ -124,7 +124,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation (<20k chars); material surface sync; executable command parity; whole-tree drift shield. |
 | **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; disruption CLI (`scripts/disruption_recovery.py`); explicit micro-staging. |
-| **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Track C gate evaluating: Why required? Expected benefits? 4 blast-radius risks, and anti-satisficing quality. |
+| **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Track C gate: why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing quality. |
 | **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
@@ -165,7 +165,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```
 3. **Recording In-Flight Checkpoints & Impact Rationale**: During multi-step implementations, record milestones cleanly (including optional pre-flight impact assessment):
    ```bash
-   python scripts/disruption_recovery.py --checkpoint "task_name" --phase "planning" --desc "description" --why "why" --risks "risks" --mitigation "mitigation"
+   python scripts/disruption_recovery.py --checkpoint "task_name" --phase "planning" --desc "description" --why "why" --benefits "benefits" --risks "risks" --mitigation "mitigation"
    ```
 4. **Marking Completion**: When a task finishes successfully:
    ```bash

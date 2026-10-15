@@ -156,13 +156,14 @@ def record_checkpoint(
     ledger_file: Optional[Path] = None,
     phase_num: Optional[int] = None,
     why: Optional[str] = None,
+    benefits: Optional[str] = None,
     risks: Optional[str] = None,
     mitigation: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).
     Tracks active_phase to allow instant phase-accurate resumption after conversation compaction.
-    Optionally persists pre-flight impact assessment metadata (why, risks, mitigation).
+    Optionally persists pre-flight 4-quadrant impact assessment metadata (why, benefits, risks, mitigation).
     """
     resolved_phase = resolve_phase_num(phase, phase_num)
     ledger = load_ledger(ledger_file)
@@ -177,10 +178,12 @@ def record_checkpoint(
         "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
     }
 
-    if why or risks or mitigation:
+    if why or benefits or risks or mitigation:
         impact = {}
         if why:
             impact["why"] = why
+        if benefits:
+            impact["benefits"] = benefits
         if risks:
             impact["risks"] = risks
         if mitigation:
@@ -194,7 +197,7 @@ def record_checkpoint(
         "status": status,
         "updated_at": checkpoint_entry["timestamp"],
     }
-    if why or risks or mitigation:
+    if why or benefits or risks or mitigation:
         ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
 
     ledger.setdefault("checkpoints", []).append(checkpoint_entry)
@@ -382,6 +385,8 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         lines.append("🎯 Pre-Flight Impact Assessment (PRINCIPLE-007):")
         if impact.get("why"):
             lines.append(f"   • Why: {impact['why']}")
+        if impact.get("benefits"):
+            lines.append(f"   • Benefits: {impact['benefits']}")
         if impact.get("risks"):
             lines.append(f"   • Risks: {impact['risks']}")
         if impact.get("mitigation"):
@@ -438,6 +443,8 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
         lines.append("🎯 Pre-Flight Impact Assessment (PRINCIPLE-007):")
         if impact.get("why"):
             lines.append(f"   • Why: {impact['why']}")
+        if impact.get("benefits"):
+            lines.append(f"   • Benefits: {impact['benefits']}")
         if impact.get("risks"):
             lines.append(f"   • Risks: {impact['risks']}")
         if impact.get("mitigation"):
@@ -486,6 +493,16 @@ if __name__ == "__main__":
             if len(sys.argv) > widx + 1 and not sys.argv[widx + 1].startswith("--"):
                 why = sys.argv[widx + 1]
 
+        benefits = None
+        if "--benefits" in sys.argv:
+            bidx = sys.argv.index("--benefits")
+            if len(sys.argv) > bidx + 1 and not sys.argv[bidx + 1].startswith("--"):
+                benefits = sys.argv[bidx + 1]
+        elif "--benefit" in sys.argv:
+            bidx = sys.argv.index("--benefit")
+            if len(sys.argv) > bidx + 1 and not sys.argv[bidx + 1].startswith("--"):
+                benefits = sys.argv[bidx + 1]
+
         risks = None
         if "--risks" in sys.argv:
             ridx = sys.argv.index("--risks")
@@ -504,6 +521,7 @@ if __name__ == "__main__":
             phase_num=phase_num,
             description=desc,
             why=why,
+            benefits=benefits,
             risks=risks,
             mitigation=mitigation,
         )

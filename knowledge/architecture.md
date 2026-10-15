@@ -120,7 +120,8 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
   2. *Dependency Infiltration*: Zero undeclared external packages or non-standard tools.
   3. *Concurrency & Thread Safety*: Non-blocking asynchronous execution without event-loop starvation or thread deadlocks.
   4. *State Mutation & Schema Drift*: Backward-compatible storage schemas and fail-safe atomic mutations.
-- **Anti-Satisficing (Quality Non-Diminution)**: Mechanically prohibits classic LLM shortcuts: no `# TODO` stubs, no silent exception swallowing (`except Exception: pass`), no weakened or deleted test assertions, and no demoted UI designs.
-- **Clean Baseline & Reversibility**: Workflows must start from a clean baseline (`git status`) and maintain atomic recoil paths if Phase 4 or Phase 15 verification gates fail.
-- **Persistent Ledger Memory**: Checkpoint flags (`--why`, `--risks`, `--mitigation`) embed the pre-flight assessment directly into `.agents/task_ledger.json`, preserving intent and rationale across compactions and disruptions.
+- **Anti-Satisficing & Type Preservation**: Mechanically prohibits classic LLM shortcuts: no `# TODO` stubs, no silent exception swallowing (`except Exception: pass`), no weakened or deleted test assertions, no demoted UI designs, and no evading type safety via `Any` casting or `# type: ignore` suppressions.
+- **Scope Ceiling (Anti-Gold-Plating)**: Modifications must remain strictly bounded to the evaluated user goal and direct mitigations; never introduce speculative unrequested frameworks or unsolicited refactoring.
+- **Clean Baseline, Reversibility & Principle 8 Bridge**: Workflows start from a clean baseline (`git status`) with defined atomic rollback paths. Defensive mitigations directly formulate the hierarchical sub-tasks decomposed in `PRINCIPLE-008`.
+- **Persistent Ledger Memory & Conversational Conciseness**: Checkpoint flags (`--why`, `--benefits`, `--risks`, `--mitigation`) embed the complete 4-quadrant assessment directly into `.agents/task_ledger.json`, preserving intent and rationale across compactions while keeping conversational chat ultra-terse (<6 lines).
 

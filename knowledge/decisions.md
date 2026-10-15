@@ -225,3 +225,23 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Eliminates impulsive LLM coding; provides a concrete 4-point blast-radius checklist; permanently bans LLM shortcuts; preserves pre-flight architectural intent across compactions and disruptions.
   - *Trade-offs*: Adds optional arguments to checkpointing CLI; remains 100% standard library and backward-compatible.
 
+### ADR-017: Scope Ceiling, Type Preservation, 4-Quadrant CLI Symmetry, and Principle 8 Bridge (PRINCIPLE-007 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. While anti-satisficing protects against under-engineering, LLMs frequently fail by over-engineering (speculative architectural rewrites, unsolicited scope creep, and gold-plating).
+  2. Bypassing type safety by casting to `Any` or disabling type checkers via `# type: ignore` is a frequent subtle satisficing shortcut that damages type contracts.
+  3. The CLI in `scripts/disruption_recovery.py` previously supported `--why`, `--risks`, and `--mitigation`, omitting `--benefits`, creating an asymmetry against the 4-quadrant model.
+  4. Conversational output risked ballooning into multi-paragraph essays explaining impact assessments on every task.
+  5. Mitigations identified in Principle 7 lacked an explicit bridge to the sub-tasks decomposed in Principle 8.
+- **Decision**:
+  1. Codify the **Scope Ceiling (Anti-Gold-Plating Invariant)** in Principle 7, restricting changes strictly to the evaluated user goal and direct blast-radius mitigations.
+  2. Codify the **Type Preservation Invariant**, explicitly banning `Any` casts and `# type: ignore` suppressions used to bypass type checks.
+  3. Complete full 4-quadrant symmetry in `scripts/disruption_recovery.py` by adding `benefits: Optional[str] = None` and `--benefits` / `--benefit` to `record_checkpoint()` and reporting.
+  4. Formulate the **Conversational Conciseness Contract** (<6 lines total in chat) to preserve prompt focus and screen real estate while persisting full depth in the disk ledger.
+  5. Formally bridge Principle 7 to Principle 8: defensive mitigations directly formulate the hierarchical micro-milestones decomposed in `PRINCIPLE-008`.
+- **Consequences**:
+  - *Positive*: Perfect balance between preventing laziness and preventing over-engineering; complete 4-quadrant metadata preservation; preserved type safety; ultra-concise chat interactions.
+  - *Trade-offs*: None; stdlib-only.
+
+

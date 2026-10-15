@@ -20,7 +20,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 6. **PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)**:
    - Incremental atomic micro-commits; pre-flight disruption audit; disruption recovery CLI & ledger (scripts/disruption_recovery.py); explicit micro-staging. [GUIDELINES.md](../../GUIDELINES.md#principle-006)
 7. **PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)**:
-   - Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, clean reversibility) before non-trivial edits. [GUIDELINES.md](../../GUIDELINES.md#principle-007)
+   - Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, clean reversibility) before non-trivial edits. [GUIDELINES.md](../../GUIDELINES.md#principle-007)
 8. **PRINCIPLE-008: Hierarchical Problem & Task Decomposition**:
    - Hierarchical decomposition (Root -> Domain -> Sub-task -> Atomic); bounded context; recursive validation with base-case limits. [GUIDELINES.md](../../GUIDELINES.md#principle-008)
 9. **PRINCIPLE-009: Modularity & Pluggable Architecture**:
