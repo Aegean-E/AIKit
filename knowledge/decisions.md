@@ -563,3 +563,21 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates knowledge drift; preserves complete architectural history; guarantees 100% working document links; keeps agent context usage lean and slice-targeted.
   - *Trade-offs*: None; pure documentation and governance hygiene.
+
+### ADR-035: Codebase Map Freshness Gate, SSOT Schema Partitioning, and Polyglot Architecture (PRINCIPLE-016 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Agents frequently edit code and pass unit tests but forget to execute `scripts/update_knowledge_base.py`, leaving `knowledge/codebase_map.md` stale and desynchronized.
+  2. Copy-pasting schema definitions into multiple documentation files (`architecture.md`, `services.md`, `data_models.md`) causes cross-document synchronization drift when schemas change.
+  3. Schemas in `data_models.md` that lack explicit version numbers or migration transformer references risk breaking legacy user state upon deserialization.
+  4. Adopter repositories in non-Python languages need clear structural guidance on implementing knowledge bases.
+- **Decision**:
+  1. Enforce **Deterministic Codebase Map Freshness Gate**: Unit tests in `tests/test_kit.py` must assert that the on-disk `knowledge/codebase_map.md` bit-for-bit matches `generate_codebase_map()`, mechanically preventing un-synchronized symbol maps from being committed.
+  2. Enforce **Modular SSOT Schema Partitioning**: Prohibit duplicating schemas across files; `data_models.md` is the sole Single Source of Truth for schemas and DTOs, cross-referenced via hyperlinks.
+  3. Enforce **Versioned Schema Specifications & Migration Rules**: All persistent schemas in `data_models.md` must declare `schema_version`, nullability defaults, and backward-compatible migration transformers.
+  4. Enforce **Universal Polyglot Knowledge Architecture**: The 7-document layout is standard across all software ecosystems (TypeScript, Go, Rust, Python).
+- **Consequences**:
+  - *Positive*: Mechanically prevents stale codebase maps via automated tests; eliminates contradictory documentation through SSOT partitioning; guarantees backward-compatible schema evolutions.
+  - *Trade-offs*: Requires running `scripts/update_knowledge_base.py` whenever source code changes to satisfy test assertions.
+

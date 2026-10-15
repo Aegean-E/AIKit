@@ -38,6 +38,7 @@ from scripts.update_knowledge_base import (
     generate_codebase_map,
     update_and_validate,
     validate_knowledge_links,
+    check_codebase_map_freshness,
     CORE_DOCS,
     KNOWLEDGE_DIR,
 )
@@ -537,12 +538,44 @@ class TestKnowledgeBase(unittest.TestCase):
             self.assertTrue(path.exists(), f"Core knowledge base doc missing: {doc}")
 
     def test_update_and_validate_runs(self):
-        # Run update and validate without exception
-        update_and_validate()
-        codebase_map = KNOWLEDGE_DIR / "codebase_map.md"
-        self.assertTrue(codebase_map.exists())
-        content = codebase_map.read_text(encoding="utf-8")
-        self.assertIn("Codebase Metrics", content)
+        # Run update and validate hermetically in a mock knowledge directory (PRINCIPLE-014, PRINCIPLE-016)
+        temp_k_dir = Path(tempfile.mkdtemp(prefix="test_k_dir_"))
+        try:
+            for doc in CORE_DOCS:
+                doc_path = temp_k_dir / doc
+                if doc == "INDEX.md":
+                    doc_path.write_text("# Index\n[Architecture](architecture.md)\n", encoding="utf-8")
+                else:
+                    doc_path.write_text(f"# {doc}\n", encoding="utf-8")
+            update_and_validate(knowledge_dir=temp_k_dir, strict=True)
+            codebase_map = temp_k_dir / "codebase_map.md"
+            self.assertTrue(codebase_map.exists())
+            content = codebase_map.read_text(encoding="utf-8")
+            self.assertIn("Codebase Metrics", content)
+        finally:
+            shutil.rmtree(temp_k_dir, ignore_errors=True)
+
+    def test_codebase_map_freshness_gate(self):
+        # Enforces PRINCIPLE-016: codebase_map.md must be 100% synchronized with physical codebase AST
+        self.assertTrue(
+            check_codebase_map_freshness(strict=True),
+            "knowledge/codebase_map.md must be fresh and match current AST"
+        )
+
+    def test_codebase_map_freshness_stale_detection(self):
+        # Negative path (PRINCIPLE-014): verify that stale codebase_map is detected and rejected
+        temp_k_dir = Path(tempfile.mkdtemp(prefix="test_freshness_"))
+        try:
+            stale_map = temp_k_dir / "codebase_map.md"
+            stale_map.write_text("# Stale Codebase Map\nNo metrics here.\n", encoding="utf-8")
+            # In lenient mode, returns False
+            self.assertFalse(check_codebase_map_freshness(knowledge_dir=temp_k_dir, strict=False))
+            # In strict mode, raises ValueError
+            with self.assertRaises(ValueError) as ctx:
+                check_codebase_map_freshness(knowledge_dir=temp_k_dir, strict=True)
+            self.assertIn("[PRINCIPLE-016 CODEBASE MAP STALE]", str(ctx.exception))
+        finally:
+            shutil.rmtree(temp_k_dir, ignore_errors=True)
 
     def test_ast_symbol_extraction(self):
         # Extract from sync_principles.py

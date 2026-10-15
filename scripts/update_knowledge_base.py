@@ -217,23 +217,52 @@ def validate_knowledge_links(knowledge_dir: Path) -> List[str]:
     return broken
 
 
-def update_and_validate(strict: bool = True):
-    KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+def check_codebase_map_freshness(knowledge_dir: Optional[Path] = None, strict: bool = True) -> bool:
+    """
+    Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).
+    Returns True if fresh. If stale and strict=True, raises ValueError. If stale and strict=False, returns False.
+    """
+    k_dir = knowledge_dir or KNOWLEDGE_DIR
+    map_path = k_dir / "codebase_map.md"
+    if not map_path.exists():
+        if strict:
+            raise ValueError(f"[PRINCIPLE-016 CODEBASE MAP MISSING] {map_path} does not exist.")
+        return False
+
+    current_content = map_path.read_text(encoding="utf-8").replace("\r\n", "\n").strip()
+    generated_content = generate_codebase_map(strict=strict).replace("\r\n", "\n").strip()
+    is_fresh = (current_content == generated_content)
+    if not is_fresh and strict:
+        raise ValueError(
+            "[PRINCIPLE-016 CODEBASE MAP STALE] knowledge/codebase_map.md is out of sync with AST. "
+            "Run 'python scripts/update_knowledge_base.py' to synchronize."
+        )
+    return is_fresh
+
+
+def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = True):
+    k_dir = knowledge_dir or KNOWLEDGE_DIR
+    k_dir.mkdir(parents=True, exist_ok=True)
+    map_path = k_dir / "codebase_map.md"
 
     # 1. Update codebase_map.md atomically (fsync + replace) with strict AST verification (PRINCIPLE-003)
     map_content = generate_codebase_map(strict=strict)
-    tmp_map = CODEBASE_MAP_PATH.with_suffix(f".tmp_{os.getpid()}")
+    tmp_map = map_path.with_suffix(f".tmp_{os.getpid()}")
     with open(tmp_map, "w", encoding="utf-8") as f:
         f.write(map_content)
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp_map, CODEBASE_MAP_PATH)
-    print(f"[UPDATED] {CODEBASE_MAP_PATH.relative_to(ROOT_DIR)}")
+    os.replace(tmp_map, map_path)
+    try:
+        rel_str = str(map_path.relative_to(ROOT_DIR))
+    except ValueError:
+        rel_str = str(map_path)
+    print(f"[UPDATED] {rel_str}")
 
     # 2. Validate all core knowledge base docs exist
     missing = []
     for doc in CORE_DOCS:
-        p = KNOWLEDGE_DIR / doc
+        p = k_dir / doc
         if not p.exists():
             missing.append(doc)
 
@@ -243,20 +272,33 @@ def update_and_validate(strict: bool = True):
             raise ValueError(f"[PRINCIPLE-016 KNOWLEDGE BASE GAP] {msg}")
         print(f"[WARN] {msg}")
     else:
-        print(f"[OK] Verified {len(CORE_DOCS)} knowledge base documents in knowledge/")
+        print(f"[OK] Verified {len(CORE_DOCS)} knowledge base documents in {k_dir.name}/")
 
     # 3. Validate link integrity in knowledge/INDEX.md (PRINCIPLE-016)
-    broken_links = validate_knowledge_links(KNOWLEDGE_DIR)
+    broken_links = validate_knowledge_links(k_dir)
     if broken_links:
-        msg = f"Broken relative links in knowledge/INDEX.md: {', '.join(broken_links)}"
+        msg = f"Broken relative links in {k_dir.name}/INDEX.md: {', '.join(broken_links)}"
         if strict:
             raise ValueError(f"[PRINCIPLE-016 LINK INTEGRITY FAILURE] {msg}")
         print(f"[WARN] {msg}")
     else:
-        print("[OK] Verified link integrity in knowledge/INDEX.md")
+        print(f"[OK] Verified link integrity in {k_dir.name}/INDEX.md")
 
 
 if __name__ == "__main__":
+    if "--check" in sys.argv:
+        try:
+            fresh = check_codebase_map_freshness(strict=False)
+            if fresh:
+                print("[OK] knowledge/codebase_map.md is fresh and synchronized with AST.")
+                sys.exit(0)
+            else:
+                print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
+                sys.exit(1)
+        except Exception as e:
+            print(f"[FAIL] Error checking codebase map freshness: {e}")
+            sys.exit(1)
+
     is_lenient = "--lenient" in sys.argv
     update_and_validate(strict=not is_lenient)
 

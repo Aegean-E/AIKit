@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `28`
-- **Total Source Lines**: `1784`
+- **Total Functions / Methods**: `29`
+- **Total Source Lines**: `1859`
 
 ---
 
@@ -59,21 +59,22 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `262` lines (`9196` bytes)
+**Size**: `304` lines (`10990` bytes)
 
 **Functions:**
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
-- `def update_and_validate(strict)`
+- `def check_codebase_map_freshness(knowledge_dir, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
+- `def update_and_validate(knowledge_dir, strict)`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `606` lines (`30320` bytes)
+**Size**: `639` lines (`32130` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -112,6 +113,8 @@
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
+  - Method `.test_codebase_map_freshness_gate()`
+  - Method `.test_codebase_map_freshness_stale_detection()`
   - Method `.test_ast_symbol_extraction()`
   - Method `.test_ast_strict_mode_fails_on_syntax_error()`
   - Method `.test_link_integrity_shield()`

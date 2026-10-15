@@ -145,7 +145,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🚀 Phase 5: Living Synchronization & Delivery
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Modular `knowledge/` sync; atomic code-doc pairing; append-only ADRs; AST gating; link shield. |
+| **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Modular `knowledge/` sync; atomic code-doc pairing; append-only ADRs; AST freshness gate; link shield. |
 | **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Principles evolve; `scripts/sync_principles.py` automatically synchronizes all AI rules across every IDE format. |
 | **PRINCIPLE-018** | Automatic Git Workflow | AI automatically stages, commits ([Conventional Commits](https://www.conventionalcommits.org/)), and pushes verified code changes upon task completion. |
 
