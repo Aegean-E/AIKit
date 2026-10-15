@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-015-pass1",
+    "task_id": "principle-015-pass2",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792097760.3157175,
+    "updated_at": 1792097990.1152456,
     "impact_assessment": {
-      "why": "Prevent zombie dev servers, port conflicts, display server crashes, superficial help-only dogfooding, and workspace pollution",
-      "benefits": "Guarantee that built software runs in real operational environments without crashing or leaking background daemons",
+      "why": "Prevent interactive stdin deadlocks, Windows zombie process leaks, browser white-screen illusions, and database pollution",
+      "benefits": "Guarantee zero hangs, leak-free process lifecycles across Windows/POSIX, true web hydration verification, and pristine database isolation",
       "risks": "Context budget creep across IDE rule files",
-      "mitigation": "Keep invariant capsule dense (<230 chars) and concise rule descriptions"
+      "mitigation": "Keep invariant capsule dense (<260 chars) and concise rule descriptions"
     },
-    "completed_at": 1792097914.8939693
+    "completed_at": 1792098144.1475642
   },
   "checkpoints": [
-    {
-      "task_id": "principle-010-pass2",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Pre-flight checkpoint for Principle 10 Pass 2 fortification",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792095312.0620112,
-      "timestamp_str": "2026-10-15 23:15:12",
-      "impact_assessment": {
-        "why": "Fortify Principle 10 with subprocess timeout gates, measurement-driven concurrency, write-coalescing batch I/O, daemon ring-buffer bounds, and startup latency limits",
-        "benefits": "Prevents zombie process deadlocks, multithreading thrash, fsync disk bottlenecks, daemon memory creep, and CLI import lag",
-        "risks": "Prompt token budget creep, doc drift",
-        "mitigation": "Sync budget audit, update knowledge base, 100% unit test pass"
-      }
-    },
-    {
-      "task_id": "principle-010-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-010-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792095440.9706817,
-      "timestamp_str": "2026-10-15 23:17:20"
-    },
     {
       "task_id": "principle-011-pass1",
       "phase": "2",
@@ -264,6 +239,31 @@
       "status": "completed",
       "timestamp": 1792097914.8939712,
       "timestamp_str": "2026-10-15 23:58:34"
+    },
+    {
+      "task_id": "principle-015-pass2",
+      "phase": "2",
+      "phase_num": 1,
+      "description": "Fortify Principle 15 Pass 2 with platform-portable process tree teardown, non-interactive stdin parity, web DOM mount hydration assertions, and ephemeral database state isolation",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792097990.1152456,
+      "timestamp_str": "2026-10-15 23:59:50",
+      "impact_assessment": {
+        "why": "Prevent interactive stdin deadlocks, Windows zombie process leaks, browser white-screen illusions, and database pollution",
+        "benefits": "Guarantee zero hangs, leak-free process lifecycles across Windows/POSIX, true web hydration verification, and pristine database isolation",
+        "risks": "Context budget creep across IDE rule files",
+        "mitigation": "Keep invariant capsule dense (<260 chars) and concise rule descriptions"
+      }
+    },
+    {
+      "task_id": "principle-015-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-015-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792098144.1475663,
+      "timestamp_str": "2026-10-16 00:02:24"
     }
   ]
 }

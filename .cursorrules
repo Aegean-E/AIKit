@@ -33,7 +33,7 @@ Deterministic Grep Anchor: Query='### PRINCIPLE-XXX:' in GUIDELINES.md.
 14. PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
    - 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); RAII fixture reversion (zero state leakage); anti-tautological observable contracts; hostile & negative path coverage. [GUIDELINES.md#principle-014]
 15. PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
-   - Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM check / API probe); supervised RAII process teardown; ephemeral safety jail (zero host mutation); golden path + chaos fault injection; terse log reporting (<15 lines). [GUIDELINES.md#principle-015]
+   - Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM mount / API probe); portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines). [GUIDELINES.md#principle-015]
 16. PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
    - Canonical `knowledge/` sync; auto-update architecture/decisions/codebase map on change; `scripts/update_knowledge_base.py`. [GUIDELINES.md#principle-016]
 17. PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)

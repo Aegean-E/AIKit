@@ -528,3 +528,20 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Guarantees that built applications function end-to-end in real environments; eliminates background zombie processes and port collisions; protects user files with strict sandboxing; prevents superficial verification cheating.
   - *Trade-offs*: None; pure operational engineering discipline.
+
+### ADR-033: Platform-Portable Process Teardown, Stdin Parity, and Web Hydration Assertions (PRINCIPLE-015 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Interactive CLI prompts block indefinitely in subshells waiting for human keystrokes, deadlocking autonomous agents.
+  2. Background process trees on Windows spawned via shell commands survive parent process termination, leaving zombie node/python processes holding network ports and locks.
+  3. Web applications can return HTTP 200 on the initial HTML shell while client-side React/Vue rendering crashes with a white screen due to unhandled bundling or runtime exceptions.
+  4. Dogfooding database operations directly against workspace storage pollutes the repository and creates collision errors in subsequent runs.
+- **Decision**:
+  1. Enforce **Non-Interactive Stdin Parity & EOF Safety**: Interactive CLI commands must support non-interactive bypass flags (`--yes`/`--headless`) and gracefully handle closed `stdin` streams (`< /dev/null`) without deadlocks or unhandled exceptions.
+  2. Enforce **Platform-Portable Process Tree Teardown**: Dogfood supervisors must recursively terminate child processes across Windows (`taskkill /F /T /PID`) and POSIX (`os.killpg(pid, signal.SIGKILL)`), guaranteeing zero leaked background daemons.
+  3. Enforce **Web DOM Mount & Client-Side Hydration Assertions**: Web app dogfooding must assert rendered children in the root container (`#root`/`#app`) and zero browser console errors (`console.error`), beyond bare HTTP 200 status codes.
+  4. Enforce **Hermetic Ephemeral State & Storage Sandboxing**: Operational tests must use in-memory databases (`sqlite:///:memory:`) or ephemeral databases in `SANDBOX_ROOT`, wiped upon teardown with bit-for-bit clean `git status`.
+- **Consequences**:
+  - *Positive*: Eliminates interactive prompt deadlocks; prevents orphaned background workers across all operating systems; catches client-side white screens; protects workspace databases from state pollution.
+  - *Trade-offs*: None; robust cross-platform execution.

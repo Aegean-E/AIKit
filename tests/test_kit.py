@@ -153,15 +153,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("hostile & negative path coverage", p14["invariant"].lower())
 
     def test_principle_015_operational_dogfooding_capsule(self):
-        # Enforces PRINCIPLE-015: verified invariant capsule with domain-specific dogfooding, supervised RAII process teardown, safety jail, golden path + chaos fault injection, and terse log reporting
+        # Enforces PRINCIPLE-015: verified invariant capsule with domain-specific dogfooding, portable process tree teardown, safety jail, non-interactive stdin parity, golden path + chaos perturbation, and terse reporting
         principles = parse_principles(AGENTS_MD)
         p15 = next((p for p in principles if p["id"] == "PRINCIPLE-015"), None)
         self.assertIsNotNone(p15)
         self.assertIn("domain-specific interactive dogfooding", p15["invariant"].lower())
-        self.assertIn("supervised raii process teardown", p15["invariant"].lower())
+        self.assertIn("portable raii process tree teardown", p15["invariant"].lower())
         self.assertIn("ephemeral safety jail", p15["invariant"].lower())
-        self.assertIn("golden path + chaos fault injection", p15["invariant"].lower())
-        self.assertIn("terse log reporting", p15["invariant"].lower())
+        self.assertIn("non-interactive stdin parity", p15["invariant"].lower())
+        self.assertIn("golden path + chaos perturbation", p15["invariant"].lower())
+        self.assertIn("terse reporting", p15["invariant"].lower())
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,

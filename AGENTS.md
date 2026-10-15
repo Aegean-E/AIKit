@@ -251,19 +251,19 @@
 ---
 
 ### PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
-- **Concept**: Synthetic headless unit tests in idealized vacuums fail to detect real-world interaction bugs. The AI assistant must interactively execute and operate what it builds across domain surfaces (UI event loops, CLI subshells, web dev servers, or backend APIs) coupled with chaos fuzzing, supervised process lifecycles, and zero-blast-radius sandboxing.
-- **Invariant**: Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM check / API probe); supervised RAII process teardown; ephemeral safety jail (zero host mutation); golden path + chaos fault injection; terse log reporting (<15 lines).
+- **Concept**: Synthetic headless unit tests in idealized vacuums fail to detect real-world interaction bugs. The AI assistant must interactively execute and operate what it builds across domain surfaces (UI event loops, CLI subshells, web dev servers, or backend APIs) coupled with chaos fuzzing, platform-portable process supervision, non-interactive stdin parity, and zero-blast-radius sandboxing.
+- **Invariant**: Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM mount / API probe); portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines).
 - **Rules**:
   1. **Domain-Specific Interactive Dogfooding & Headless Parity**:
      - *Desktop GUI*: Spawns the live window in-process or via virtual display buffers (`xvfb`/offscreen), pumps the event loop, exercises buttons and tabs, stress-tests window destruction, and mechanically traps unhandled callback exceptions with bounded timeouts ($T \le 10\text{s}$).
-     - *Web Apps*: Launches local dev server on ephemeral ports, uses browser/headless tools to interact with DOM elements, verifies forms and routing, and asserts zero console errors (`console.error`).
-     - *CLI Applications*: Executes the binary in subshells with real arguments, pipes stdin/stdout, tests interrupt signals (SIGINT), and verifies deterministic exit codes and error formatting.
+     - *Web Apps*: Boots local dev server on ephemeral ports, interacts with DOM via headless browser tools, asserts client-side root container DOM hydration (rendered child elements in `#root`/`#app`), and verifies zero console errors (`console.error`).
+     - *CLI Applications*: Executes the binary in subshells with real arguments, pipes stdin/stdout, tests interrupt signals (SIGINT), asserts non-interactive flag parity (`--yes`/`--headless`), and verifies deterministic exit codes and clean error formatting.
      - *Backend APIs*: Boots the service, executes real HTTP requests with test clients, and asserts status codes, response schemas, and bounded latency ($<500\text{ms}$).
-  2. **Supervised Process Tree Lifecycles (RAII Process Cleanup)**: All background daemons, web servers, or subshell processes spawned during dogfooding must run within managed supervisors or RAII context managers that guarantee recursive child process termination (`SIGTERM` followed by `SIGKILL`) on exit or assertion failure, preventing port collisions (`EADDRINUSE`) and zombie background processes.
-  3. **Dual-Track Dogfooding (Golden Path + Hostile Chaos Injection)**: Testing `--help` alone is strictly prohibited. Every dogfood run must execute: (1) a complete end-to-end golden path exercising creation, modification, and retrieval, and (2) at least one hostile perturbation (e.g. simulated SIGINT interrupt, invalid payload, malformed JSON stream, or concurrent requests) to verify clean error recovery without unhandled stack traces.
-  4. **Strict Ephemeral Safety Jail & Blast-Radius Containment**: Dogfooding must NEVER touch host user directories (Desktop, Documents, personal folders, or system files). All operational file modifications must execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`). Runners must mechanically assert that no files outside `SANDBOX_ROOT` were altered, and that `git status --porcelain` in the workspace remains clean.
-  5. **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled exceptions or Python tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown codes.
-  6. **Realistic Live Budgeting & Sanity Guardrails**: When dogfooding against live external providers or models, exercise bounded real-world workflows rather than artificial micro-stubs, enforcing strict rate-limit and token budget guardrails against runaway loops.
+  2. **Platform-Portable Process Tree Teardown (RAII Cleanup)**: All background daemons, web servers, or subshell processes spawned during dogfooding must run within managed supervisors or RAII context managers that guarantee recursive child process termination across both Windows (`taskkill /F /T /PID`) and POSIX (`os.killpg(pid, signal.SIGKILL)`) on exit or assertion failure, preventing port collisions (`EADDRINUSE`) and zombie background processes.
+  3. **Non-Interactive Stdin Parity & EOF Safety**: Interactive prompts must never hang in subshells. All interactive commands must provide non-interactive bypass flags (`--yes`, `--non-interactive`, `--batch`). Commands must handle closed standard input (`< /dev/null`) gracefully without hanging or unhandled `EOFError` exceptions.
+  4. **Hermetic Ephemeral State & Storage Sandboxing**: All operational state modifications, runtime databases (`sqlite:///:memory:` or ephemeral file DB), and temporary caches must execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`). Dogfooding must NEVER touch host user directories (Desktop, Documents, personal folders). Runners must assert zero file alterations outside `SANDBOX_ROOT` and bit-for-bit clean `git status --porcelain`.
+  5. **Dual-Track Dogfooding (Golden Path + Hostile Chaos Perturbation)**: Testing `--help` alone is strictly prohibited. Every dogfood run must execute: (1) a complete end-to-end golden path exercising creation, modification, and retrieval, and (2) at least one hostile perturbation (simulated SIGINT interrupt, invalid payload, malformed JSON stream, or concurrent requests) to verify clean error recovery without unhandled stack traces.
+  6. **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown codes.
   7. **Terse Context Reporting & Pre-Ship Gate**: Dogfood console output must remain concise status dashboards (<15 lines), with verbose logs and stack traces diverted to `.agents/dogfood_last_run.log`. Interactive dogfooding must pass with 100% success alongside unit tests before staging changes.
 
 ---
@@ -332,7 +332,7 @@
 - [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
-- [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with supervised RAII process teardown, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
+- [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with portable RAII process teardown, non-interactive stdin parity, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-016**)?
 
 ### 🛬 Post-Flight Checklist (Run Before Completion)
@@ -350,7 +350,7 @@
 - [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
 - [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
 - [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution and RAII fixture reversion** (**PRINCIPLE-014**)?
-- [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with supervised process cleanup (**PRINCIPLE-015**)?
+- [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with portable process cleanup and stdin parity (**PRINCIPLE-015**)?
 - [ ] Has the **AI knowledge base in `knowledge/` been updated and verified** (**PRINCIPLE-016**)?
 - [ ] Have all **AI guideline files been automatically synchronized** if principles changed (**PRINCIPLE-017**)?
 - [ ] Has an **automatic commit** been created with a conventional commit message and pushed (**PRINCIPLE-018**)?
