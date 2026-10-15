@@ -110,34 +110,64 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("bounded rolling ledger", p4["invariant"].lower())
 
     def test_principle_005_cold_start_capsule(self):
-        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, material surface sync, command parity, tree-drift shield
+        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, token ceiling, command parity, whole-tree drift shield
         principles = parse_principles(AGENTS_MD)
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
         self.assertIn("self-describing repo", p5["invariant"].lower())
         self.assertIn("30s cold-start orientation", p5["invariant"].lower())
+        self.assertIn("<20k chars", p5["invariant"].lower())
         self.assertIn("material surface readme sync", p5["invariant"].lower())
         self.assertIn("executable command parity", p5["invariant"].lower())
-        self.assertIn("tree-drift shield", p5["invariant"].lower())
+        self.assertIn("whole-tree drift shield", p5["invariant"].lower())
 
     def test_readme_cold_start_orientation_and_script_parity(self):
-        # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command, and valid script paths
+        # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
+        # cold-start token ceiling (<20,000 chars), and valid paths for every file listed in the directory tree.
         readme_path = ROOT_DIR / "README.md"
         self.assertTrue(readme_path.exists(), "README.md missing from repository root")
         readme_content = readme_path.read_text(encoding="utf-8")
         
-        # 1. Orientation block & prerequisites
+        # 1. Cold-Start Token Ceiling (<20,000 characters)
+        MAX_README_CHARS = 20000
+        self.assertLessEqual(
+            len(readme_content),
+            MAX_README_CHARS,
+            f"README.md exceeds 20,000 char cold-start budget: {len(readme_content)} chars"
+        )
+
+        # 2. Orientation block & prerequisites
         self.assertIn("30-Second Cold-Start Quick Reference", readme_content, "Missing 30s quick reference in README.md")
         self.assertIn("Python 3.10+", readme_content, "Missing Python runtime prerequisite in README.md")
         self.assertIn("python -m unittest discover tests", readme_content, "Missing canonical test command in README.md")
         
-        # 2. Executable script reference parity (Tree-drift shield)
-        import re
-        script_refs = set(re.findall(r"scripts/[\w\-]+\.py", readme_content))
-        self.assertGreaterEqual(len(script_refs), 3, "README.md should reference core scripts")
-        for ref in script_refs:
-            script_path = ROOT_DIR / ref
-            self.assertTrue(script_path.exists(), f"Phantom script reference in README.md: {ref}")
+        # 3. Whole-Tree Drift Shield: Every file listed in `What's Inside` must physically exist on disk
+        expected_paths = [
+            "README.md",
+            "AGENTS.md",
+            "GUIDELINES.md",
+            "GEMINI.md",
+            "CLAUDE.md",
+            ".cursorrules",
+            ".github/copilot-instructions.md",
+            ".agents/rules/principles.md",
+            ".agents/task_ledger.json",
+            "scripts/sync_principles.py",
+            "scripts/disruption_recovery.py",
+            "scripts/update_knowledge_base.py",
+            "tests/test_kit.py",
+            "knowledge/INDEX.md",
+            "knowledge/architecture.md",
+            "knowledge/services.md",
+            "knowledge/data_models.md",
+            "knowledge/state_and_ui.md",
+            "knowledge/decisions.md",
+            "knowledge/codebase_map.md",
+        ]
+        for rel in expected_paths:
+            basename = Path(rel).name
+            self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
+            self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
 
 
 class TestDisruptionRecovery(unittest.TestCase):

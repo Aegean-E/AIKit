@@ -64,16 +64,23 @@ portable_agent_kit/
 
 ## 🚀 How to Apply to Another Project (2-Minute Setup)
 
-### Step 1: Copy the Files
-Copy the contents of `portable_agent_kit/` directly into the root directory of your target repository:
+### Step 1: Copy Governance Assets
 
-```bash
-# Example (from terminal or file explorer):
-cp -r portable_agent_kit/* /path/to/your-target-project/
-cp -r portable_agent_kit/.* /path/to/your-target-project/ 2>/dev/null || true
-```
+- **Option A (New Greenfield Project)**:
+  Copy all files directly into the target project:
+  ```bash
+  cp -r portable_agent_kit/* /path/to/target/
+  cp -r portable_agent_kit/.* /path/to/target/ 2>/dev/null || true
+  ```
 
-Ensure the hidden folders (`.agents/`, `.github/`, `.cursorrules`) are copied as well.
+- **Option B (Existing Project / Non-Destructive Quick-Merge)**:
+  Copy governance rules, scripts, tests, and knowledge assets without overwriting your existing `README.md`:
+  ```bash
+  cd portable_agent_kit
+  cp -r AGENTS.md GUIDELINES.md GEMINI.md CLAUDE.md .cursorrules .github .agents scripts tests knowledge /path/to/target/
+  ```
+  Then paste the **⚡ 30-Second Cold-Start Quick Reference** section into the top of your existing `README.md`.
+
 
 ### Step 2: Customize Project Name
 In `AGENTS.md` and `GUIDELINES.md`, replace `<PROJECT_NAME>` with your project's name (e.g. `MyAwesomeApp`).
@@ -111,7 +118,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation; material surface sync; executable command parity; tree-drift shield. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation (<20k chars); material surface sync; executable command parity; whole-tree drift shield. |
 | **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
 | **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
 | **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |

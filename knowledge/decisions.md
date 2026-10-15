@@ -155,3 +155,18 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Guarantees that any cold-starting agent immediately receives the exact runtime requirements and test commands; mechanically eliminates phantom script references in documentation; shields the project against directory tree drift.
   - *Trade-offs*: None; test execution is purely deterministic and fast (<10ms).
+
+### ADR-013: Whole-Tree Drift Shield, Cold-Start Token Ceiling, and Non-Destructive Adopter Setup (PRINCIPLE-005)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Testing only `scripts/*.py` in `README.md` leaves the rest of the 19 files and directories in the ASCII tree vulnerable to drift when files in `knowledge/`, `.agents/`, or root are added or renamed.
+  2. Unbounded growth of `README.md` leads to context exhaustion on cold start, where an agent consumes a large fraction of its prompt window on turn 1 reading documentation fluff.
+  3. Adopting AIKit in existing projects by copying everything (`cp -r portable_agent_kit/*`) risks overwriting the adopter's existing product `README.md`.
+- **Decision**:
+  1. Implement **Whole-Tree Drift Shield Testing** in `tests/test_kit.py`: parse the entire ASCII tree in `README.md` and assert that 100% of the listed file and directory paths physically exist on disk.
+  2. Enforce a **Cold-Start Token Ceiling**: mechanically test that `README.md` remains strictly under 20,000 characters (<5,000 tokens), delegating exhaustive technical details to `knowledge/`.
+  3. Formalize **Non-Destructive Adopter Setup**: document Option A (Greenfield) vs. Option B (Existing Project Quick-Merge) in `README.md` and `GUIDELINES.md` so adopters safely adopt governance without destroying existing documentation.
+- **Consequences**:
+  - *Positive*: Completely eliminates ASCII tree drift; guarantees lean, fast cold starts without prompt bloat; protects adopter documentation during integration.
+  - *Trade-offs*: None; automated test overhead is negligible (<15ms).
