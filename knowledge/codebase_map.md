@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `16`
+- **Total Classes**: `17`
 - **Total Functions / Methods**: `71`
-- **Total Source Lines**: `4617`
+- **Total Source Lines**: `4688`
 
 ---
 
@@ -104,7 +104,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `430` lines (`17752` bytes)
+**Size**: `436` lines (`18089` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -188,7 +188,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1292` lines (`65039` bytes)
+**Size**: `1357` lines (`68589` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -210,6 +210,11 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestTier1ContextBudget` - *PRINCIPLE-001 R6/R9. Always-injected rules cost context on every turn in every IDE, so the*
+  - Method `.test_every_target_is_within_the_token_target()`
+  - Method `.test_token_overage_blocks_rather_than_warns()`
+  - Method `.test_grep_anchor_contract_survives_in_every_target()`
+  - Method `.test_capsules_retain_their_mechanisms_after_condensation()`
 - `class TestSecretHygieneScanner` - *PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner*
   - Method `.test_detects_known_credential_shapes()`
   - Method `.test_does_not_flag_indirection_or_placeholders()`

@@ -194,9 +194,8 @@ def generate_gemini_content(principles: List[Dict], domain_rules: str = "") -> s
     ]
     for i, p in enumerate(principles, 1):
         summary = p.get("invariant") or p.get("concept")
-        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary} {anchor}")
+        lines.append(f"   - {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
@@ -216,9 +215,8 @@ def generate_agents_rule_content(principles: List[Dict], domain_rules: str = "")
     ]
     for i, p in enumerate(principles, 1):
         summary = p.get("invariant") or p.get("concept")
-        anchor = f"[GUIDELINES.md](../../GUIDELINES.md#{p['id'].lower()})"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary} {anchor}")
+        lines.append(f"   - {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
@@ -236,9 +234,8 @@ def generate_claude_content(principles: List[Dict], domain_rules: str = "") -> s
     ]
     for i, p in enumerate(principles, 1):
         summary = p.get("invariant") or p.get("concept")
-        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary} {anchor}")
+        lines.append(f"   - {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
@@ -255,9 +252,8 @@ def generate_cursorrules_content(principles: List[Dict], domain_rules: str = "")
     ]
     for i, p in enumerate(principles, 1):
         summary = p.get("invariant") or p.get("concept")
-        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. {p['id']}: {p['title']}")
-        lines.append(f"   - {summary} {anchor}")
+        lines.append(f"   - {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
@@ -274,9 +270,8 @@ def generate_copilot_content(principles: List[Dict], domain_rules: str = "") -> 
     ]
     for i, p in enumerate(principles, 1):
         summary = p.get("invariant") or p.get("concept")
-        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary} {anchor}")
+        lines.append(f"   - {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
@@ -336,12 +331,23 @@ def sync_all(
         elif char_len >= WARN_TARGET_CHARS:
             print(f"[BUDGET WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) >= {WARN_TARGET_CHARS} (90% capacity)")
         elif est_tokens > TARGET_TOKEN_BUDGET:
-            print(f"[TOKEN WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {TARGET_TOKEN_BUDGET}-token Tier 1 target")
+            # Enforced, not advisory. PRINCIPLE-001 R9 requires that adding a principle be paid
+            # for by condensing existing capsules, so overage must block rather than warn: an
+            # advisory warning is exactly how this target came to be silently breached.
+            budget_violations += 1
+            print(f"[TOKEN EXCEEDED] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {TARGET_TOKEN_BUDGET}-token Tier 1 target")
         else:
             print(f"[BUDGET PASS] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
 
     if budget_violations > 0:
-        sys.stderr.write(f"\n[ERROR] {budget_violations} target file(s) exceed prompt context budget! (PRINCIPLE-001)\n")
+        sys.stderr.write(
+            f"\n[ERROR] {budget_violations} target file(s) exceed the Tier 1 context budget "
+            f"(PRINCIPLE-001).\n"
+            f"Why: always-injected rules consume context on every turn in every IDE.\n"
+            f"Fix: condense invariant capsules (narrative only - never mechanisms, numbers or "
+            f"tool names) until every target is under {TARGET_TOKEN_BUDGET} tokens / "
+            f"{MAX_TARGET_CHARS} chars.\n"
+        )
         if exit_on_mismatch:
             sys.exit(1)
         return budget_violations

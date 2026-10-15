@@ -127,6 +127,26 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Tier 1 Context Budget (Enforced Surface)
+Always-injected IDE rules cost context on every turn, so the budget is a gate, not advice.
+See [ADR-046](decisions.md).
+
+| Ceiling | Value | Enforcement |
+|---|---|---|
+| Hard character cap | 8,000 chars | `[BUDGET EXCEEDED]` blocks sync |
+| 90% early warning | 7,200 chars | `[BUDGET WARN]` advisory |
+| Tier 1 token target | 1,500 est. tokens | `[TOKEN EXCEEDED]` blocks sync |
+
+- **Structural paydown, not semantic**: budget is reclaimed by deleting duplication, never by
+  compressing mechanisms. **PRINCIPLE-001** R2 forbids compressing hard constraints, so capsules
+  are the worst lever. Removing the per-line `[GUIDELINES.md#principle-0XX]` anchors - redundant
+  against the grep contract stated once per header, and prone to silent slug rot - reclaimed
+  29-51 chars x 19 lines per target at zero information loss.
+- **Flat overhead on expansion**: a simulated 20th principle lands ~20 tokens under the gate, so
+  the next addition requires another paydown. That is **PRINCIPLE-001** R9 working as intended.
+- **Navigation contract**: with per-line anchors gone, Tier 2 retrieval relies on the
+  deterministic grep anchor `### PRINCIPLE-XXX:`; a test asserts it survives in all five targets.
+
 ### Invariant Reachability Shield (Implemented Surface)
 `scripts/check_reachability.py` enforces **PRINCIPLE-014** Rule 7. See [ADR-044](decisions.md).
 

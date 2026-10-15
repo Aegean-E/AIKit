@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+import scripts.sync_principles as sync_principles_module
 from scripts.sync_principles import (
     parse_principles,
     sync_all,
@@ -28,6 +29,7 @@ from scripts.sync_principles import (
     AGENTS_MD,
     GUIDELINES_MD,
     README_MD,
+    TARGET_TOKEN_BUDGET,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -392,6 +394,69 @@ class TestPrincipleSync(unittest.TestCase):
             basename = Path(rel).name
             self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+
+
+class TestTier1ContextBudget(unittest.TestCase):
+    """
+    PRINCIPLE-001 R6/R9. Always-injected rules cost context on every turn in every IDE, so the
+    token target must be enforced rather than advisory - an advisory warning is exactly how it
+    came to be silently breached while reporting BUDGET PASS.
+    """
+
+    TARGETS = (
+        ROOT_DIR / "GEMINI.md",
+        ROOT_DIR / ".agents" / "rules" / "principles.md",
+        ROOT_DIR / "CLAUDE.md",
+        ROOT_DIR / ".cursorrules",
+        ROOT_DIR / ".github" / "copilot-instructions.md",
+    )
+
+    def test_every_target_is_within_the_token_target(self):
+        for target in self.TARGETS:
+            with self.subTest(target=target.name):
+                chars = len(target.read_text(encoding="utf-8"))
+                est_tokens = chars // 4
+                self.assertLessEqual(
+                    est_tokens, TARGET_TOKEN_BUDGET,
+                    f"{target.name} is {chars} chars (~{est_tokens} tokens), over the "
+                    f"{TARGET_TOKEN_BUDGET}-token Tier 1 target. PRINCIPLE-001 R9: condense "
+                    f"existing capsules to pay for any expansion.",
+                )
+
+    def test_token_overage_blocks_rather_than_warns(self):
+        # Red-green pin: tighten the target so the current corpus becomes an overage and assert
+        # the gate returns non-zero. Previously this path only printed a warning and passed.
+        original = sync_principles_module.TARGET_TOKEN_BUDGET
+        self.addCleanup(setattr, sync_principles_module, "TARGET_TOKEN_BUDGET", original)
+        sync_principles_module.TARGET_TOKEN_BUDGET = 1
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            result = sync_all(check_only=True, exit_on_mismatch=False)
+        self.assertGreater(result, 0, "token overage did not block the gate")
+        self.assertIn("TOKEN EXCEEDED", buffer.getvalue())
+        self.assertIn("Fix: condense invariant capsules", buffer.getvalue(),
+                      "budget failure lacks a remediation step (PRINCIPLE-011 R6)")
+
+    def test_grep_anchor_contract_survives_in_every_target(self):
+        # Per-principle markdown anchors were removed to pay down the budget; the deterministic
+        # grep contract (PRINCIPLE-001 R5) is what replaces them and must be present in each.
+        for target in self.TARGETS:
+            with self.subTest(target=target.name):
+                content = target.read_text(encoding="utf-8")
+                self.assertIn("### PRINCIPLE-XXX:", content,
+                              f"{target.name} lost the deterministic grep anchor contract")
+                self.assertIn("GUIDELINES.md", content,
+                              f"{target.name} no longer points at Tier 2 knowledge")
+
+    def test_capsules_retain_their_mechanisms_after_condensation(self):
+        # PRINCIPLE-001 R2: compression targets narrative, never hard mechanical constraints.
+        content = (ROOT_DIR / ".agents" / "rules" / "principles.md").read_text(encoding="utf-8")
+        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<1s",
+                          "scripts/sync_principles.py", "task_ledger.json",
+                          "advisory locking", "exit"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, content,
+                              f"condensation stripped the mechanism '{mechanism}'")
 
 
 class TestSecretHygieneScanner(unittest.TestCase):

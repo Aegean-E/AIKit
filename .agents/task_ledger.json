@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-roadmap-m4-secrets",
+    "task_id": "principle-roadmap-m5-budget",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792103598.6561198,
+    "updated_at": 1792103979.6730714,
     "impact_assessment": {
-      "why": "Only 3 incidental mentions of secrets across all 18 principles; .gitignore has no .env/key/pem entries; and the git-tracked task_ledger.json persists 4 agent-authored free-text fields, so an agent writing a credential into --why commits it to history permanently",
-      "benefits": "Closes the highest-damage AI-agent failure mode with a mechanical pre-commit scanner; protects the kit's own P007 workflow from being a leak path",
-      "risks": "Entropy-based detection produces false positives that erode trust; a new principle costs Tier 1 budget already over target; over-blocking could break the delivery triad",
-      "mitigation": "Pattern-first detection with known credential prefixes plus bounded entropy; explicit allowlist and inline pragma; condense an existing capsule to pay for the new one per P001 R9"
+      "why": "P019 pushed 4 of 5 targets past the stated 1500-token Tier 1 target (principles.md 1656); P001 R9 requires expansion be paid for by condensing, and the target has been silently breached since before this session",
+      "benefits": "Restores the stated invariant to truth, reclaims injected context on every turn for every IDE, and converts a warning into an enforced gate so the breach cannot recur silently",
+      "risks": "Over-compression could strip the hard mechanical constraints P001 R2 explicitly protects, degrading routine-task accuracy - the exact anti-satisficing failure the principle forbids",
+      "mitigation": "Compress only narrative connectives and duplicated phrasing, never mechanisms or numbers; capsule tests assert the required mechanical terms survive; promote the token check from warning to hard failure once under target"
     },
-    "completed_at": 1792103951.122127
+    "completed_at": 1792104180.875504
   },
   "checkpoints": [
-    {
-      "task_id": "principle-016-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-016-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792098538.105701,
-      "timestamp_str": "2026-10-16 00:08:58"
-    },
-    {
-      "task_id": "principle-016-pass2",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 16 Pass 2 with deterministic codebase map freshness gate, SSOT schema partitioning, versioned data models, and polyglot architecture",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792098633.6558428,
-      "timestamp_str": "2026-10-16 00:10:33",
-      "impact_assessment": {
-        "why": "Prevent forgotten codebase map updates, schema duplication drift, legacy data breakage, and multi-language confusion",
-        "benefits": "Guarantee that codebase_map.md is mechanically verified against physical AST, schemas maintain single-source-of-truth integrity, and AIKit remains polyglot-ready",
-        "risks": "Context budget creep across IDE rule files",
-        "mitigation": "Keep invariant capsule dense and concise rule descriptions"
-      }
-    },
     {
       "task_id": "principle-016-pass2",
       "phase": "completed",
@@ -257,6 +232,31 @@
       "status": "completed",
       "timestamp": 1792103951.1221285,
       "timestamp_str": "2026-10-16 01:39:11"
+    },
+    {
+      "task_id": "principle-roadmap-m5-budget",
+      "phase": "2",
+      "phase_num": 2,
+      "description": "Milestone 5/5: condense invariant capsules to bring all Tier 1 targets back under the 1500-token target, and enforce it",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792103979.6730714,
+      "timestamp_str": "2026-10-16 01:39:39",
+      "impact_assessment": {
+        "why": "P019 pushed 4 of 5 targets past the stated 1500-token Tier 1 target (principles.md 1656); P001 R9 requires expansion be paid for by condensing, and the target has been silently breached since before this session",
+        "benefits": "Restores the stated invariant to truth, reclaims injected context on every turn for every IDE, and converts a warning into an enforced gate so the breach cannot recur silently",
+        "risks": "Over-compression could strip the hard mechanical constraints P001 R2 explicitly protects, degrading routine-task accuracy - the exact anti-satisficing failure the principle forbids",
+        "mitigation": "Compress only narrative connectives and duplicated phrasing, never mechanisms or numbers; capsule tests assert the required mechanical terms survive; promote the token check from warning to hard failure once under target"
+      }
+    },
+    {
+      "task_id": "principle-roadmap-m5-budget",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-roadmap-m5-budget' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792104180.8755097,
+      "timestamp_str": "2026-10-16 01:43:00"
     }
   ]
 }
