@@ -35,7 +35,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-013](#principle-013-crash-resilience-state-atomicity--power-loss-recovery-fail-safe-operations)** | Crash Resilience & Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate (<1s), test sanctity, RAII fixture reversion, anti-tautology, and negative paths. |
+| **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate (<1s unit, <5s integration), test sanctity, RAII fixture reversion, anti-tautology, and negative paths. |
 | **[PRINCIPLE-015](#principle-015-universal-operational-dogfooding--chaos-verification-the-ai-must-use-what-it-builds)** | Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding, portable process teardown, stdin parity, and chaos injection. |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
@@ -179,7 +179,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Subprocess Timeout Gate**: Declare explicit timeouts on all `subprocess.run` calls (`timeout=30`) and bound parallel execution ($K \le \text{cpu\_count}$) to prevent zombie hangs and PID exhaustion.
   - **Deterministic Resource Reclamation & Ring Buffers (RAII)**: Manage file handles, sockets, and subprocesses via context managers (`with`); use bounded ring buffers (`deque(maxlen=N)`) in daemons and monitors to guarantee $O(1)$ memory.
   - **Batch I/O Coalescing & Cold Startup Budget**: Coalesce high-frequency disk writes in memory before atomic commit to prevent `fsync` thrashing; keep CLI entrypoint startup under 100ms with lazy module loading.
-  - **Sub-Second Test Gate**: Keep the full automated unit test suite running in under 1 second (<1s) by testing in memory or isolated temp fixtures without artificial delays.
+  - **Sub-Second Unit Gate & Budgeted Integration Tier**: Keep the unit tier (`tests/test_kit.py`) under 1 second by testing in memory or isolated temp fixtures without artificial delays; budget process-spawning tests (`tests/test_integration.py`) separately under 5 seconds with an explicit timeout per spawn.
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
 - **Problem**: Setup friction, missing env crashes (`KeyError`), un-scaffolded directory errors, silent mock deception, shell-specific command failures, interactive console deadlocks, and cryptic tracebacks break user onboarding and automated AI execution.
@@ -220,7 +220,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 - **Guideline**:
   - **Test-Backed Changes & Regression Shield**: Every code mutation, schema change, or bug fix must include dedicated unit tests in `tests/`; untested production logic is strictly prohibited.
   - **Test Sanctity Invariant (Anti-Regression Masking)**: Test assertions represent immutable contractual truth; fixing regressions by weakening, skipping (`@unittest.skip`), or deleting assertions is forbidden.
-  - **Hermetic Isolation & Zero Flakiness (<1s Gate)**: All unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), avoid real network calls, pin random seeds (`random.seed(42)`), and prohibit `time.sleep()` in favor of mock clocks or deterministic ticks.
+  - **Two-Tier Test Budget & Zero Flakiness (<1s Unit Gate)**: Partition tests into a unit tier (`tests/test_kit.py`, $T_{\text{unit}} < 1\text{s}$, no process spawns and no wall-clock sleeps — enforced structurally rather than by a flaky timing assertion) and an integration tier (`tests/test_integration.py`, <5s, explicit timeout per spawn) for contracts that can only be proven by spawning a process. Both run under the one canonical command. All tests avoid real network calls, pin random seeds (`random.seed(42)`), and prohibit `time.sleep()` in favor of mock clocks or deterministic ticks. A fast total is never a licence to under-test concurrency or CLI surfaces.
   - **Pristine Working Tree & RAII Fixture Reversion**: File I/O tests must execute strictly within ephemeral sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global state (`os.environ`, `sys.argv`, singletons) must guarantee bit-for-bit restoration via `addCleanup()`; running tests leaves `git status` bit-for-bit clean.
   - **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, return values, and state transitions; avoid over-mocking domain logic into meaningless echo tests.
   - **Red-Green Defect Pinning & Negative Path Coverage**: Reproduce bugs with failing tests first (Red) before fixing (Green); prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme values, expected exceptions, and diagnostic messages).

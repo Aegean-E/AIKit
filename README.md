@@ -20,7 +20,9 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ### 🛠️ Core Operational Command Matrix
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
-| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (<1s runtime) |
+| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~1.2s) |
+| **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
+| **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | Context budget gate (<8,000 chars / <1,500 tokens) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
@@ -61,7 +63,8 @@ portable_agent_kit/
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   └── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 ├── tests/
-│   └── test_kit.py                     <- Automated regression shield (sync, atomicity & dogfooding)
+│   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
+│   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
 └── knowledge/
     ├── INDEX.md                        <- Knowledge base table of contents & architecture map
     ├── architecture.md                 <- High-level system architecture and component boundaries
@@ -147,7 +150,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Core Concept |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience & State Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate (<1s); test sanctity; RAII fixture reversion; anti-tautology; negative paths. |
+| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate (<1s unit tier, <5s integration tier); test sanctity; RAII fixture reversion; anti-tautology; negative paths. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; portable process teardown; stdin parity; chaos perturbation. |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery

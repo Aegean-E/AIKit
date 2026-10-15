@@ -10,10 +10,8 @@ import os
 import sys
 import json
 import shutil
-import subprocess
 import tempfile
 import unittest
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # Add project root to path
@@ -43,6 +41,11 @@ from scripts.disruption_recovery import (
     reset_active_task,
     clean_dangling_temp_files,
     file_lock,
+    locked_ledger,
+    resolve_active_phase,
+    classify_git_status,
+    UNMERGED_CODES,
+    fsync_dir,
     check_disk_headroom,
     migrate_ledger_schema,
     validate_conventional_commit,
@@ -352,6 +355,7 @@ class TestPrincipleSync(unittest.TestCase):
             "scripts/disruption_recovery.py",
             "scripts/update_knowledge_base.py",
             "tests/test_kit.py",
+            "tests/test_integration.py",
             "knowledge/INDEX.md",
             "knowledge/architecture.md",
             "knowledge/services.md",
@@ -444,8 +448,10 @@ class TestDisruptionRecovery(unittest.TestCase):
         test_file = self.test_dir / "state.json"
         with file_lock(test_file, timeout_seconds=1.0) as acquired1:
             self.assertTrue(acquired1)
-            # Nested attempt on same file with zero timeout should fail acquisition
-            with file_lock(test_file, timeout_seconds=0.1) as acquired2:
+            # Nested attempt on same file must fail acquisition within its bounded timeout.
+            # The timeout is kept short deliberately: the contract under test is refusal, and a
+            # longer wall-clock wait only inflates the sub-second suite gate (PRINCIPLE-014 R3).
+            with file_lock(test_file, timeout_seconds=0.03) as acquired2:
                 self.assertFalse(acquired2)
         # Once released, lock should be immediately re-acquirable
         with file_lock(test_file, timeout_seconds=1.0) as acquired3:
@@ -696,28 +702,6 @@ class TestDisruptionRecovery(unittest.TestCase):
             valid, reason = validate_conventional_commit(msg)
             self.assertFalse(valid, f"Expected '{msg}' to be invalid")
 
-    def test_commit_validator_cli(self):
-        # Enforces PRINCIPLE-018: CLI flag --validate-commit returns 0 on valid and 1 on invalid
-        import subprocess
-        # Valid
-        res_ok = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--validate-commit", "feat(cli): add valid flag"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(res_ok.returncode, 0)
-        self.assertIn("[OK]", res_ok.stdout)
-
-        # Invalid
-        res_bad = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--validate-commit", "invalid commit"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(res_bad.returncode, 1)
-        self.assertIn("[INVALID]", res_bad.stderr)
-
-
 
 class TestKnowledgeBase(unittest.TestCase):
     """Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016)."""
@@ -806,97 +790,211 @@ class TestKnowledgeBase(unittest.TestCase):
 
 
 
-class TestOperationalDogfooding(unittest.TestCase):
+class TestConcurrencyAndResumptionCorrectness(unittest.TestCase):
     """
-    Dual-Track CLI Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).
-    Executes every entrypoint as a real subshell binary from an ephemeral sandbox cwd with
-    stdin closed, asserting the CLI contract and zero host mutation. The subshell matrix runs
-    once in a bounded thread pool (PRINCIPLE-010 R3) to hold the sub-second suite gate.
+    Red-green defect pins for four invariants that reported green while broken in production
+    (PRINCIPLE-014 R6). Each test reproduces a proven failure, not a restatement of the code.
     """
 
-    SCRIPTS = ("sync_principles.py", "disruption_recovery.py", "update_knowledge_base.py")
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix="test_concurrency_"))
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.ledger = self.dir / ".agents" / "task_ledger.json"
 
-    @staticmethod
-    def _porcelain():
-        """Return the working-tree state, or None when git is unavailable."""
-        try:
-            res = subprocess.run(
-                ["git", "status", "--porcelain"],
-                capture_output=True, text=True, cwd=str(ROOT_DIR), timeout=10,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-        return res.stdout if res.returncode == 0 else None
+    def test_locked_ledger_serializes_read_modify_write(self):
+        # The mutation must be visible on disk after the context exits, and the lock released.
+        with locked_ledger(self.ledger) as ledger:
+            ledger["checkpoints"].append({"task_id": "x", "timestamp": 1.0})
+        self.assertEqual(len(load_ledger(self.ledger)["checkpoints"]), 1)
+        lock = self.ledger.with_suffix(self.ledger.suffix + ".lock")
+        self.assertFalse(lock.exists(), "advisory lock leaked after the context closed")
 
-    @classmethod
-    def setUpClass(cls):
-        cls.sandbox = Path(tempfile.mkdtemp(prefix="dogfood_jail_"))
-        cls.addClassCleanup(shutil.rmtree, cls.sandbox, ignore_errors=True)
+    def test_locked_ledger_surfaces_contention_instead_of_writing_unprotected(self):
+        # PRINCIPLE-013 R3 + PRINCIPLE-011 R6: contention must raise an actionable error rather
+        # than silently proceeding without the lock.
+        self.ledger.parent.mkdir(parents=True, exist_ok=True)
+        with file_lock(self.ledger, timeout_seconds=1.0) as held:
+            self.assertTrue(held)
+            with self.assertRaises(TimeoutError) as ctx:
+                with locked_ledger(self.ledger, timeout_seconds=0.05):
+                    pass
+        message = str(ctx.exception)
+        self.assertIn("LOCK CONTENTION", message)
+        self.assertIn("Fix:", message, "contention error lacks a remediation step")
 
-        def invoke(job):
-            script, flag = job
-            return job, subprocess.run(
-                [sys.executable, str(ROOT_DIR / "scripts" / script), flag],
-                capture_output=True, text=True, cwd=str(cls.sandbox),
-                stdin=subprocess.DEVNULL, timeout=10,
-            )
+    def test_resume_reports_the_phase_actually_recorded(self):
+        # PRINCIPLE-002 R4 / PRINCIPLE-004 R2: readers looked for a 'last_phase_num' key that was
+        # never written, so every resumption reported Phase 2 and could send agents backwards.
+        for recorded, label in ((3, "implementation"), (4, "verification"), (5, "delivery")):
+            with self.subTest(phase=recorded):
+                # Record through the real write path, then read the phase back off disk.
+                led = self.dir / f"p{recorded}" / "task_ledger.json"
+                record_checkpoint("t", label, "interrupted", phase_num=recorded, ledger_file=led)
+                active = load_ledger(led)["active_task"]
+                self.assertEqual(active["active_phase"], recorded)
 
-        # Track 1 (golden path): --help. Track 2 (hostile chaos): a malformed flag.
-        jobs = [(s, f) for f in ("--help", "--not-a-real-flag") for s in cls.SCRIPTS]
-        cls.tree_before = cls._porcelain()
-        with ThreadPoolExecutor(max_workers=min(len(jobs), (os.cpu_count() or 2))) as pool:
-            cls.results = dict(pool.map(invoke, jobs))
-        cls.tree_after = cls._porcelain()
-
-    def _assert_no_host_mutation(self, context):
-        if self.tree_before is None or self.tree_after is None:
-            self.skipTest("git unavailable; blast-radius assertion requires a git worktree")
-        self.assertEqual(
-            self.tree_before, self.tree_after,
-            f"PRINCIPLE-015 violation: {context} mutated the working tree",
-        )
-
-    def test_ephemeral_sandbox_isolation(self):
-        # Blast-radius guard: the jail must be ephemeral and never the repo or a host user dir
-        self.assertTrue(self.sandbox.exists())
-        resolved = self.sandbox.resolve()
-        self.assertNotEqual(resolved, ROOT_DIR.resolve())
-        self.assertNotIn(
-            str(ROOT_DIR.resolve()), str(resolved),
-            f"Sandbox {resolved} must live outside the repository tree",
-        )
-
-    def test_golden_path_help_contract(self):
-        # PRINCIPLE-011 R5/R6 + PRINCIPLE-015 R1: --help on every entrypoint exits 0 and
-        # prints a usage block to stdout with clean stderr.
-        for script in self.SCRIPTS:
-            with self.subTest(script=script):
-                res = self.results[(script, "--help")]
-                self.assertEqual(res.returncode, 0, f"{script} --help must exit 0, got {res.returncode}")
-                self.assertEqual(res.stderr, "", f"{script} --help wrote to stderr: {res.stderr!r}")
-                self.assertIn("Usage:", res.stdout, f"{script} --help printed no usage block")
-                self.assertIn("--help", res.stdout, f"{script} --help did not document --help")
-                self.assertNotIn("Traceback", res.stdout + res.stderr)
-
-    def test_chaos_unknown_flag_rejected_with_remediation_triad(self):
-        # PRINCIPLE-015 R5 hostile perturbation: a malformed flag must abort with exit 2 and the
-        # What/Why/Fix triad rather than silently performing the default action.
-        for script in self.SCRIPTS:
-            with self.subTest(script=script):
-                res = self.results[(script, "--not-a-real-flag")]
-                self.assertEqual(
-                    res.returncode, 2,
-                    f"{script} must exit 2 on CLI misuse, got {res.returncode}",
+                report = format_resume_report({"interrupted_task": active})
+                self.assertIn(
+                    f"Phase {recorded} ({label})", report,
+                    f"resume report lost the recorded phase {recorded}",
                 )
-                self.assertIn("[INVALID USAGE]", res.stderr, f"{script} misuse lacks a What clause")
-                self.assertIn("Why:", res.stderr, f"{script} misuse lacks a Why clause")
-                self.assertIn("Fix:", res.stderr, f"{script} misuse lacks a Fix clause")
-                self.assertNotIn("Traceback", res.stderr)
+                self.assertNotIn("Phase 2 (verification)", report)
 
-    def test_dogfood_matrix_leaves_zero_blast_radius(self):
-        # PRINCIPLE-015 R4 + PRINCIPLE-014 R4: the whole subshell matrix (golden + chaos)
-        # must leave the working tree bit-for-bit unchanged.
-        self._assert_no_host_mutation("the golden-path + chaos CLI matrix")
+    def test_resume_never_recommends_an_earlier_phase(self):
+        # PRINCIPLE-002 R1 monotonicity: resumption must not travel backwards through the lifecycle.
+        for recorded in (1, 2, 3, 4, 5):
+            with self.subTest(phase=recorded):
+                active = {"task_id": "t", "active_phase": recorded, "status": "in_progress"}
+                self.assertGreaterEqual(resolve_active_phase(active), recorded)
+
+    def test_resolve_active_phase_honours_legacy_and_label_fallbacks(self):
+        # Ledgers written before the fix, and ledgers with only a textual phase, stay recoverable.
+        self.assertEqual(resolve_active_phase({"last_phase_num": 4}), 4)
+        self.assertEqual(resolve_active_phase({"last_phase": "verification"}), 4)
+        self.assertEqual(resolve_active_phase({"active_phase": 99, "last_phase": "delivery"}), 5)
+        self.assertEqual(resolve_active_phase(None), 1)
+        self.assertEqual(resolve_active_phase({}), 1)
+
+    def test_fsync_dir_is_safe_and_platform_portable(self):
+        # PRINCIPLE-013 R1 durability barrier; PRINCIPLE-003 R4 platform parity.
+        self.assertTrue(fsync_dir(self.dir))
+        self.assertTrue(fsync_dir(self.dir / "does-not-exist") or sys.platform != "win32")
+
+    def test_ledger_paths_accept_strings_without_raw_tracebacks(self):
+        # PRINCIPLE-011 R6: a str path previously raised a raw AttributeError from deep inside.
+        led = self.dir / "str_path" / "task_ledger.json"
+        led.parent.mkdir(parents=True, exist_ok=True)
+        record_checkpoint("s", "phase 1", "string path", ledger_file=str(led))
+        self.assertEqual(len(load_ledger(str(led))["checkpoints"]), 1)
+
+
+class TestPorcelainClassification(unittest.TestCase):
+    """
+    Exhaustive table-driven coverage of `git status --porcelain` v1 classification
+    (PRINCIPLE-006 R2, PRINCIPLE-014 R6). Pure function, no process spawns.
+    """
+
+    # (porcelain XY code, expected bucket) across every state git actually emits.
+    CASES = (
+        (" M", "modified"), ("M ", "modified"), ("MM", "modified"), ("AM", "modified"),
+        ("A ", "modified"), (" D", "modified"), ("D ", "modified"), ("R ", "modified"),
+        ("RM", "modified"), ("C ", "modified"), ("MD", "modified"), ("T ", "modified"),
+        (" T", "modified"), ("AD", "modified"),
+        ("??", "untracked"),
+        ("UU", "conflicted"), ("AA", "conflicted"), ("DD", "conflicted"),
+        ("AU", "conflicted"), ("UA", "conflicted"), ("DU", "conflicted"),
+        ("UD", "conflicted"),
+    )
+
+    def test_every_porcelain_state_is_classified(self):
+        for code, bucket in self.CASES:
+            with self.subTest(code=code, expected=bucket):
+                out = classify_git_status(f"{code} path/to/file.txt")
+                self.assertEqual(
+                    len(out[bucket]), 1,
+                    f"porcelain state {code!r} was not classified as {bucket}; got {out}",
+                )
+                for other in ("modified", "untracked", "conflicted"):
+                    if other != bucket:
+                        self.assertEqual(out[other], [], f"{code!r} leaked into {other}")
+
+    def test_no_real_state_is_silently_dropped(self):
+        # The original defect: states absent from a whitelist vanished entirely.
+        lines = "\n".join(f"{code} f{i}.txt" for i, (code, _) in enumerate(self.CASES))
+        out = classify_git_status(lines)
+        total = len(out["modified"]) + len(out["untracked"]) + len(out["conflicted"])
+        self.assertEqual(
+            total, len(self.CASES),
+            f"{len(self.CASES) - total} porcelain state(s) silently dropped",
+        )
+
+    def test_conflict_states_carry_their_code_for_diagnostics(self):
+        out = classify_git_status("UU merged.txt")
+        self.assertEqual(out["conflicted"], ["UU merged.txt"])
+
+    def test_ignored_and_blank_lines_are_skipped(self):
+        out = classify_git_status("!! build/\n\n   \nM  real.txt")
+        self.assertEqual(out["modified"], ["real.txt"])
+        self.assertEqual(out["untracked"], [])
+        self.assertEqual(out["conflicted"], [])
+
+    def test_empty_output_is_clean(self):
+        self.assertEqual(
+            classify_git_status(""), {"modified": [], "untracked": [], "conflicted": []}
+        )
+
+    def test_paths_with_spaces_survive_classification(self):
+        out = classify_git_status("?? my new file.txt")
+        self.assertEqual(out["untracked"], ["my new file.txt"])
+
+
+class TestAstSignatureFidelity(unittest.TestCase):
+    """
+    The symbol catalog is what agents consult before verifying call-sites (PRINCIPLE-004 R3), so
+    omissions and partial signatures are anti-hallucination failures (PRINCIPLE-003 R1).
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix="test_ast_"))
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+
+    def _probe(self, source):
+        path = self.dir / "probe.py"
+        path.write_text(source, encoding="utf-8")
+        return extract_python_symbols(path, strict=True)
+
+    def test_async_functions_and_methods_are_catalogued(self):
+        info = self._probe(
+            '"""M."""\n'
+            "async def fetch(url):\n    return url\n\n"
+            "def plain(a):\n    return a\n\n"
+            "class S:\n"
+            "    async def run(self, payload):\n        return payload\n"
+            "    def stop(self):\n        return None\n"
+        )
+        names = {f["name"]: f for f in info["functions"]}
+        self.assertIn("fetch", names, "async def was omitted from the symbol catalog")
+        self.assertTrue(names["fetch"]["is_async"])
+        self.assertFalse(names["plain"]["is_async"])
+
+        methods = {m["name"]: m for m in info["classes"][0]["methods"]}
+        self.assertIn("run", methods, "async method was omitted from the symbol catalog")
+        self.assertTrue(methods["run"]["is_async"])
+        self.assertFalse(methods["stop"]["is_async"])
+
+    def test_full_signature_includes_varargs_kwonly_and_posonly(self):
+        info = self._probe(
+            '"""M."""\n'
+            "def f(a, *args, kwonly, other=1, **kwargs):\n    return a\n\n"
+            "def g(a, b, /, c):\n    return a\n\n"
+            "def h(a, *, only_kw):\n    return a\n"
+        )
+        sigs = {fn["name"]: fn["args"] for fn in info["functions"]}
+        self.assertEqual(sigs["f"], ["a", "*args", "kwonly", "other", "**kwargs"])
+        self.assertEqual(sigs["g"], ["a", "b", "/", "c"])
+        self.assertEqual(sigs["h"], ["a", "*", "only_kw"])
+
+    def test_self_and_cls_are_dropped_from_method_signatures_only(self):
+        info = self._probe(
+            '"""M."""\n'
+            "class S:\n"
+            "    def m(self, a):\n        return a\n"
+            "    @classmethod\n    def c(cls, b):\n        return b\n"
+            "    @staticmethod\n    def s(x):\n        return x\n"
+        )
+        methods = {m["name"]: m["args"] for m in info["classes"][0]["methods"]}
+        self.assertEqual(methods["m"], ["a"])
+        self.assertEqual(methods["c"], ["b"])
+        self.assertEqual(methods["s"], ["x"], "staticmethod first arg must be preserved")
+
+    def test_generated_map_renders_async_keyword(self):
+        # The rendered artifact, not just the extractor, must expose awaitability.
+        (self.dir / "mod.py").write_text(
+            '"""M."""\nasync def pull(src):\n    return src\n', encoding="utf-8"
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            rendered = generate_codebase_map(root=self.dir, strict=True)
+        self.assertIn("async def pull(src)", rendered)
 
 
 if __name__ == "__main__":

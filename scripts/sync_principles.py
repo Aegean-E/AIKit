@@ -25,6 +25,28 @@ TARGET_TOKEN_BUDGET = 1500  # Tier 1 token target (PRINCIPLE-001); ~4 chars/toke
 MAX_DOMAIN_CHARS = 1200  # ~300 tokens for Tier 1B domain rules (PRINCIPLE-001 Rule 4)
 
 
+def fsync_dir(dir_path: Path) -> None:
+    """Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).
+
+    No-op on win32, which exposes no directory handle to sync. Kept local to preserve this
+    script's standalone clone-and-run execution (PRINCIPLE-011) with zero cross-script imports.
+    """
+    if sys.platform == "win32":
+        return
+    fd = None
+    try:
+        fd = os.open(str(dir_path), os.O_RDONLY)
+        os.fsync(fd)
+    except OSError as e:
+        sys.stderr.write(f"[WARN] Could not fsync directory {dir_path}: {e}\n")
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
 def load_tier_1b_domain_rules(domain_path: Optional[Path] = None) -> str:
     """Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017)."""
     path = domain_path or DOMAIN_RULES_PATH
@@ -345,6 +367,7 @@ def sync_all(
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp_target, target_path)
+            fsync_dir(target_path.parent)
             print(f"[UPDATED]: {target_path.relative_to(ROOT_DIR)}")
 
     if check_only and mismatches > 0:

@@ -34,7 +34,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 13. **PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)**:
    - Resilient atomic writes (flush + fsync + retry replace); advisory locking; shadow backups (.bak); schema migration; signal-drain flush; read-only fallback. [GUIDELINES.md](../../GUIDELINES.md#principle-013)
 14. **PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)**:
-   - 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); RAII fixture reversion (zero state leakage); anti-tautological observable contracts; hostile & negative path coverage. [GUIDELINES.md](../../GUIDELINES.md#principle-014)
+   - 100% test pass gate (<1s unit tier, <5s integration tier); test sanctity invariant (anti-weakening); RAII fixture reversion (zero state leakage); anti-tautological observable contracts; hostile & negative path coverage. [GUIDELINES.md](../../GUIDELINES.md#principle-014)
 15. **PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)**:
    - Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM mount / API probe); portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines). [GUIDELINES.md](../../GUIDELINES.md#principle-015)
 16. **PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization**:

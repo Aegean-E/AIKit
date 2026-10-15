@@ -45,6 +45,8 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
     Uses an atomic lockfile with PID and timestamp; automatically breaks stale locks older than 30s.
     """
     lock_file = lock_path.with_suffix(lock_path.suffix + ".lock")
+    # The lock may be taken before the state file's directory exists (first run / fresh adopter)
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
     start_time = time.time()
     acquired = False
 
@@ -60,7 +62,19 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
             try:
                 mtime = lock_file.stat().st_mtime
                 if time.time() - mtime > 30.0:
-                    lock_file.unlink(missing_ok=True)
+                    # Steal the stale lock via an atomic rename so that two processes racing to
+                    # break the same lock cannot both declare themselves the winner.
+                    claim = lock_file.with_suffix(lock_file.suffix + f".steal_{os.getpid()}")
+                    try:
+                        os.replace(lock_file, claim)
+                    except OSError:
+                        time.sleep(poll_interval)
+                        continue
+                    # Exactly one racer wins the rename; the winner clears its claim and retries.
+                    try:
+                        claim.unlink(missing_ok=True)
+                    except OSError:
+                        pass
                     continue
             except OSError:
                 pass
@@ -72,6 +86,66 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
         if acquired:
             try:
                 lock_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+LOCK_TIMEOUT_SECONDS = 3.0
+
+
+@contextlib.contextmanager
+def locked_ledger(ledger_file: Optional[Path] = None, timeout_seconds: float = LOCK_TIMEOUT_SECONDS):
+    """
+    Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).
+
+    Yields the loaded ledger; the caller mutates it in place and the ledger is saved on clean
+    exit, all while holding the advisory lock. Without this, parallel subagents interleave
+    load/save cycles and silently erase each other's checkpoints (lost-update race).
+
+    Contention is surfaced, never swallowed: if the lock cannot be acquired within the bounded
+    timeout the mutation is abandoned with a diagnostic rather than written unprotected.
+    """
+    path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
+    with file_lock(path, timeout_seconds=timeout_seconds) as acquired:
+        if not acquired:
+            raise TimeoutError(
+                f"[PRINCIPLE-013 LOCK CONTENTION] Could not acquire advisory lock on "
+                f"{path.name} within {timeout_seconds}s. "
+                f"Why: another agent or process is mid-write on the ledger. "
+                f"Fix: retry shortly, or remove a stale '{path.name}.lock' if no process is active."
+            )
+        ledger = load_ledger(path)
+        yield ledger
+        save_ledger(ledger, path, _locked=True)
+
+
+def fsync_dir(dir_path: Path) -> bool:
+    """
+    Flush a directory entry so a completed `os.replace` survives power loss (PRINCIPLE-013 R1).
+
+    Fsyncing the file alone is not enough on POSIX journalling filesystems (ext4 `data=ordered`,
+    XFS): the data is durable but the *rename* may still sit in an unflushed directory entry, so
+    a crash can revert the file to its previous contents. Windows exposes no directory handle to
+    sync and `os.replace` is already metadata-atomic there, so this is a no-op on win32.
+
+    Returns True when the directory was synced or syncing is not applicable.
+    """
+    if sys.platform == "win32":
+        return True
+    fd = None
+    try:
+        fd = os.open(str(dir_path), os.O_RDONLY)
+        os.fsync(fd)
+        return True
+    except OSError as e:
+        # Some filesystems (network mounts, overlayfs) refuse directory fsync; the replace has
+        # already happened, so degrade with a diagnostic rather than failing the write.
+        sys.stderr.write(f"[WARN] Could not fsync directory {dir_path} for durability: {e}\n")
+        return False
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
             except OSError:
                 pass
 
@@ -147,6 +221,9 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_head
                 if attempt == max_retries - 1:
                     raise
                 time.sleep(0.02 * (2 ** attempt))
+
+        # Durability barrier: make the rename itself survive a power cut (PRINCIPLE-013 R1)
+        fsync_dir(file_path.parent)
     except Exception:
         if tmp_path.exists():
             try:
@@ -161,7 +238,7 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
     Safely load the task ledger with startup self-healing (PRINCIPLE-013).
     Quarantines corrupted files from power outages, restores from shadow backup, and migrates schema.
     """
-    path = ledger_file or LEDGER_PATH
+    path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
     if not path.exists():
         return {"version": 1, "active_task": None, "checkpoints": []}
 
@@ -218,15 +295,30 @@ def save_ledger(
     ledger: Dict[str, Any],
     ledger_file: Optional[Path] = None,
     max_history: int = DEFAULT_MAX_CHECKPOINTS,
+    _locked: bool = False,
 ) -> None:
-    """Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004)."""
-    path = ledger_file or LEDGER_PATH
+    """
+    Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).
+
+    Acquires the advisory lock unless the caller already holds it (`_locked=True`, set by
+    `locked_ledger`), since the lock is not reentrant.
+    """
+    path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
     active_id = ledger.get("active_task", {}).get("task_id") if ledger.get("active_task") else None
     if "checkpoints" in ledger:
         ledger["checkpoints"] = prune_checkpoints(
             ledger["checkpoints"], active_task_id=active_id, max_history=max_history
         )
-    atomic_write_json(path, ledger)
+    if _locked:
+        atomic_write_json(path, ledger)
+        return
+    with file_lock(path, timeout_seconds=LOCK_TIMEOUT_SECONDS) as acquired:
+        if not acquired:
+            sys.stderr.write(
+                f"[WARN] Writing {path.name} without the advisory lock after "
+                f"{LOCK_TIMEOUT_SECONDS}s of contention (PRINCIPLE-013 Rule 3).\n"
+            )
+        atomic_write_json(path, ledger)
 
 
 
@@ -261,6 +353,66 @@ def resolve_phase_num(phase: str, explicit_num: Optional[int] = None) -> int:
     return 1
 
 
+# git-status(1) unmerged (conflict) codes. Closed set: 'AA' and 'DD' contain no 'U'.
+UNMERGED_CODES = frozenset({"DD", "AU", "UD", "UA", "DU", "AA", "UU"})
+
+
+def classify_git_status(porcelain_output: str) -> Dict[str, List[str]]:
+    """
+    Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).
+
+    Pure domain logic, kept free of subprocess I/O so every porcelain state can be verified
+    deterministically. Porcelain v1 emits a two-character XY code (X = index, Y = worktree). A
+    closed whitelist of codes silently dropped 10 of 16 real states - every merge-conflict state
+    among them - which made the mandatory cold-start audit report a conflicted tree as clean.
+
+    Classification is therefore exhaustive by construction:
+      '??' -> untracked, '!!' -> ignored (skipped), one of git's 7 unmerged codes -> unresolved
+      conflict, any other non-blank code -> surviving uncommitted work.
+
+    The unmerged set is closed and taken from git-status(1); note that 'AA' (both added) and
+    'DD' (both deleted) are conflicts despite containing no 'U', so a 'U'-substring test is not
+    sufficient. The modified bucket stays open-ended so future codes can never vanish.
+    """
+    result: Dict[str, List[str]] = {"modified": [], "untracked": [], "conflicted": []}
+    for raw_line in porcelain_output.splitlines():
+        if not raw_line or len(raw_line) < 4:
+            continue
+        xy = raw_line[:2]
+        file_rel = raw_line[3:].strip()
+        if xy == "??":
+            result["untracked"].append(file_rel)
+        elif xy == "!!":
+            continue
+        elif xy in UNMERGED_CODES:
+            result["conflicted"].append(f"{xy} {file_rel}")
+        elif xy.strip():
+            result["modified"].append(file_rel)
+    return result
+
+
+def resolve_active_phase(active_task: Optional[Dict[str, Any]], default: int = 1) -> int:
+    """
+    Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).
+
+    `record_checkpoint` persists the phase under `active_phase`. Readers previously looked for a
+    `last_phase_num` key that was never written, so every resumption silently defaulted to a
+    fixed phase and could send an agent *backwards* through the monotonic lifecycle. The legacy
+    key is still honoured for ledgers written before this fix, and the textual phase label is the
+    last resort so a phase is always recoverable.
+    """
+    if not active_task:
+        return default
+    for key in ("active_phase", "last_phase_num", "phase_num"):
+        value = active_task.get(key)
+        if isinstance(value, int) and 1 <= value <= 5:
+            return value
+    label = active_task.get("last_phase") or active_task.get("phase")
+    if isinstance(label, str) and label.strip():
+        return resolve_phase_num(label)
+    return default
+
+
 def record_checkpoint(
     task_id: str,
     phase: str,
@@ -280,7 +432,6 @@ def record_checkpoint(
     Optionally persists pre-flight 4-quadrant impact assessment metadata (why, benefits, risks, mitigation).
     """
     resolved_phase = resolve_phase_num(phase, phase_num)
-    ledger = load_ledger(ledger_file)
     checkpoint_entry = {
         "task_id": task_id,
         "phase": phase,
@@ -304,65 +455,64 @@ def record_checkpoint(
             impact["mitigation"] = mitigation
         checkpoint_entry["impact_assessment"] = impact
 
-    ledger["active_task"] = {
-        "task_id": task_id,
-        "last_phase": phase,
-        "active_phase": resolved_phase,
-        "status": status,
-        "updated_at": checkpoint_entry["timestamp"],
-    }
-    if why or benefits or risks or mitigation:
-        ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
+    # Locked read-modify-write: parallel subagents must not interleave here (PRINCIPLE-013 R3)
+    with locked_ledger(ledger_file) as ledger:
+        ledger["active_task"] = {
+            "task_id": task_id,
+            "last_phase": phase,
+            "active_phase": resolved_phase,
+            "status": status,
+            "updated_at": checkpoint_entry["timestamp"],
+        }
+        if why or benefits or risks or mitigation:
+            ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
 
-    ledger.setdefault("checkpoints", []).append(checkpoint_entry)
-    save_ledger(ledger, ledger_file)
+        ledger.setdefault("checkpoints", []).append(checkpoint_entry)
     return checkpoint_entry
 
 
 def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> None:
-    """Mark the active task as successfully completed in the ledger."""
-    ledger = load_ledger(ledger_file)
-    if ledger.get("active_task", {}).get("task_id") == task_id:
-        ledger["active_task"]["status"] = "completed"
-        ledger["active_task"]["active_phase"] = 5
-        ledger["active_task"]["completed_at"] = time.time()
+    """Mark the active task as successfully completed in the ledger (locked, PRINCIPLE-013 R3)."""
+    with locked_ledger(ledger_file) as ledger:
+        if ledger.get("active_task", {}).get("task_id") == task_id:
+            ledger["active_task"]["status"] = "completed"
+            ledger["active_task"]["active_phase"] = 5
+            ledger["active_task"]["completed_at"] = time.time()
 
-    # Also record completion checkpoint
-    ledger.setdefault("checkpoints", []).append({
-        "task_id": task_id,
-        "phase": "completed",
-        "phase_num": 5,
-        "description": f"Task '{task_id}' completed successfully.",
-        "status": "completed",
-        "timestamp": time.time(),
-        "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-    })
-    save_ledger(ledger, ledger_file)
+        # Also record completion checkpoint
+        ledger.setdefault("checkpoints", []).append({
+            "task_id": task_id,
+            "phase": "completed",
+            "phase_num": 5,
+            "description": f"Task '{task_id}' completed successfully.",
+            "status": "completed",
+            "timestamp": time.time(),
+            "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        })
 
 
 def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """Abandon or reset the active in-progress task in the ledger (PRINCIPLE-006)."""
-    ledger = load_ledger(ledger_file)
-    active = ledger.get("active_task")
-    if not active or active.get("status") != "in_progress":
-        return None
+    """Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006)."""
+    with locked_ledger(ledger_file) as ledger:
+        active = ledger.get("active_task")
+        if not active or active.get("status") != "in_progress":
+            return None
 
-    task_id = active.get("task_id", "unknown")
-    active["status"] = "abandoned"
-    active["abandoned_reason"] = reason
-    active["abandoned_at"] = time.time()
+        task_id = active.get("task_id", "unknown")
+        active["status"] = "abandoned"
+        active["abandoned_reason"] = reason
+        active["abandoned_at"] = time.time()
 
-    ledger.setdefault("checkpoints", []).append({
-        "task_id": task_id,
-        "phase": "abandoned",
-        "phase_num": active.get("last_phase_num", 1),
-        "description": f"Task '{task_id}' abandoned: {reason}",
-        "status": "abandoned",
-        "timestamp": time.time(),
-        "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-    })
-    ledger["active_task"] = None
-    save_ledger(ledger, ledger_file)
+        ledger.setdefault("checkpoints", []).append({
+            "task_id": task_id,
+            "phase": "abandoned",
+            "phase_num": resolve_active_phase(active),
+            "description": f"Task '{task_id}' abandoned: {reason}",
+            "status": "abandoned",
+            "timestamp": time.time(),
+            "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        })
+        ledger["active_task"] = None
     return active
 
 
@@ -393,8 +543,10 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
     audit: Dict[str, Any] = {
         "workspace": str(ws),
         "has_uncommitted_changes": False,
+        "has_conflicts": False,
         "modified_files": [],
         "untracked_files": [],
+        "conflicted_files": [],
         "interrupted_task": None,
         "last_checkpoint": None,
         "clean_shutdown": True,
@@ -413,16 +565,14 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
             timeout=5,
         )
         if proc.returncode == 0:
-            for raw_line in proc.stdout.splitlines():
-                if not raw_line or len(raw_line) < 4:
-                    continue
-                status_code = raw_line[:2].strip()
-                file_rel = raw_line[3:].strip()
-                if status_code in ("M", "A", "D", "R", "MM", "AM"):
-                    audit["modified_files"].append(file_rel)
-                elif status_code == "??":
-                    audit["untracked_files"].append(file_rel)
-            audit["has_uncommitted_changes"] = bool(audit["modified_files"] or audit["untracked_files"])
+            classified = classify_git_status(proc.stdout)
+            audit["modified_files"] = classified["modified"]
+            audit["untracked_files"] = classified["untracked"]
+            audit["conflicted_files"] = classified["conflicted"]
+            audit["has_conflicts"] = bool(audit["conflicted_files"])
+            audit["has_uncommitted_changes"] = bool(
+                audit["modified_files"] or audit["untracked_files"] or audit["conflicted_files"]
+            )
         else:
             audit["git_missing"] = True
             audit["git_error"] = proc.stderr.strip() or f"git exit code {proc.returncode}"
@@ -473,10 +623,18 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         "============================================================",
     ]
 
-    if audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files") and not audit.get("git_missing"):
+    if audit.get("has_conflicts"):
+        lines.append("🔴 Status: UNRESOLVED MERGE CONFLICTS - resolve before any edit or commit!")
+    elif audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files") and not audit.get("git_missing"):
         lines.append("🟢 Status: Clean state. No interrupted tasks or uncommitted drift detected.")
     else:
         lines.append("🟡 Status: Potential disruption / in-flight state detected!")
+
+    if audit.get("conflicted_files"):
+        lines.append(f"⛔ Conflicted Files ({len(audit['conflicted_files'])}) - interrupted merge/rebase:")
+        for f in audit["conflicted_files"]:
+            lines.append(f"   • {f}")
+        lines.append("   Fix: resolve, then 'git add <file>' — or abort via 'git merge --abort' / 'git rebase --abort'")
 
     if audit.get("git_missing"):
         lines.append("⚠️  Git Inactive: Not a git repository (run 'git init' to enable full tracking)")
@@ -537,16 +695,25 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
         "⚡ DISRUPTION RESUMPTION GUIDANCE (PRINCIPLE-006)",
         "============================================================",
     ]
+    if audit.get("conflicted_files"):
+        lines.append(f"⛔ BLOCKED: {len(audit['conflicted_files'])} unresolved conflict(s) must be resolved first:")
+        for f in audit["conflicted_files"]:
+            lines.append(f"   • {f}")
+        lines.append("   Fix: resolve and 'git add <file>', or 'git merge --abort' / 'git rebase --abort'")
+
     interrupted = audit.get("interrupted_task")
     if not interrupted:
-        lines.append("🟢 No interrupted task detected. Ready for a new task.")
+        if not audit.get("conflicted_files"):
+            lines.append("🟢 No interrupted task detected. Ready for a new task.")
         lines.append("============================================================")
         return "\n".join(lines)
 
     task_id = interrupted.get("task_id", "unknown")
     phase = interrupted.get("last_phase", "unknown")
-    phase_num = interrupted.get("last_phase_num", 2)
-    next_phase_num = min(5, phase_num if audit.get("has_uncommitted_changes") else phase_num + 1)
+    phase_num = resolve_active_phase(interrupted, default=2)
+    # Monotonic resumption (PRINCIPLE-002 R1): never recommend an earlier phase than the one
+    # actually reached. Surviving uncommitted work means the phase is still in flight.
+    next_phase_num = max(phase_num, min(5, phase_num if audit.get("has_uncommitted_changes") else phase_num + 1))
     
     lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
     lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")

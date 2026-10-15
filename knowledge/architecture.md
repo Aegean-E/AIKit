@@ -127,6 +127,51 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Two-Tier Test Budget (Implemented Surface)
+Tests are partitioned by whether they must spawn a process, with both tiers running under the one
+canonical command (`python -m unittest discover tests`). See [ADR-040](decisions.md).
+
+| Tier | Module | Budget | Contents |
+|---|---|---|---|
+| Unit | `tests/test_kit.py` | **<1s** (strict) | Pure in-process logic: parsing, classification, ledger atomicity, AST fidelity |
+| Integration | `tests/test_integration.py` | <5s, timeout per spawn | Multi-process concurrency races, real-binary CLI contracts, real `git` grounding, dogfood matrix |
+
+The unit gate is enforced **structurally**, not by a timing assertion: `TestTierBudgetDiscipline`
+fails if `test_kit.py` references `subprocess`, `Popen`, `os.system` or `time.sleep`, which is what
+keeps it sub-second by construction. A wall-clock assertion on a 1s budget would be flaky on a
+loaded machine, and **PRINCIPLE-014** R3 classifies flaky tests as blocking defects. The companion
+check asserts every spawn in the integration tier declares an explicit timeout (**PRINCIPLE-010** R3).
+
+### Ledger Concurrency & Durability (Implemented Surface)
+- **Locked Read-Modify-Write**: `locked_ledger()` holds the advisory lock across the whole
+  load → mutate → save cycle. All three mutators (`record_checkpoint`, `mark_task_completed`,
+  `reset_active_task`) route through it. Previously the lock had zero call sites and parallel
+  subagents silently erased each other's checkpoints (**PRINCIPLE-013** R3).
+- **Fail-Loud Contention**: lock acquisition failure raises `TimeoutError` carrying the
+  What → Why → Fix triad rather than degrading to an unprotected write.
+- **Atomic Stale-Lock Steal**: an expired (>30s) lock is broken by `os.replace` rename, so exactly
+  one racer can win; a plain `unlink` let two processes both declare themselves the holder.
+- **Directory Durability Barrier**: `fsync_dir()` follows every `os.replace`. Fsyncing the file
+  alone leaves the *rename* in an unflushed directory entry on POSIX journalling filesystems, so a
+  power cut could revert a file that was reported as durably written. No-op on win32.
+- **Phase-Accurate Resumption**: `resolve_active_phase()` reads the `active_phase` key that writers
+  actually produce, with legacy-key and textual-label fallbacks, and resumption never recommends an
+  earlier phase than the one reached (**PRINCIPLE-002** R1).
+
+### Git Status Classification (Implemented Surface)
+`classify_git_status()` is pure domain logic, separated from the audit's subprocess I/O so every
+porcelain state is deterministically testable. Classification is exhaustive by construction:
+
+| Code | Bucket |
+|---|---|
+| `??` | untracked |
+| `!!` | ignored (skipped) |
+| `DD` `AU` `UD` `UA` `DU` `AA` `UU` | **conflicted** (git's closed unmerged set) |
+| any other non-blank XY | modified |
+
+The `modified` bucket is the open-ended default precisely so no future git code can be dropped. Note
+that `AA` and `DD` are conflicts despite containing no `U`, so a `"U" in xy` test is insufficient.
+
 ### Universal CLI Contract (Implemented Surface)
 Every entrypoint in `scripts/` implements one uniform contract, enforced mechanically by the
 `TestOperationalDogfooding` matrix (see [ADR-039](decisions.md)):

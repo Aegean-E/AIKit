@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-audit-cli-contract-parity",
+    "task_id": "principle-audit-pass2-correctness",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792100496.9356778,
+    "updated_at": 1792101180.523438,
     "impact_assessment": {
-      "why": "2 of 3 entrypoints lack --help (update_knowledge_base.py --help silently WRITES codebase_map.md), unknown flags exit 0 with wrong action, P015 dogfood test is tautological, P001 token target unenforced",
-      "benefits": "Eliminates silent wrong-action class of agent error; brings all 3 CLIs under 100ms help budget; converts P015 from unenforced prose to mechanical gate",
-      "risks": "Strict flag rejection could break existing invocation patterns; porcelain-delta assertion could become environment-dependent",
-      "mitigation": "Whitelist every currently-documented flag; assert porcelain DELTA not absolute cleanliness; keep help short-circuit before all heavy imports/IO"
+      "why": "Deep per-principle audit proved 4 load-bearing invariants are green in tests but broken in production: P013 R3 lock has zero call sites (5/6 concurrent checkpoints lost), P006 audit reports UU merge conflicts as clean, P002/P004 resume always reports Phase 2, P016 map omits all async defs and truncates signatures",
+      "benefits": "Closes the silent-data-loss and false-clean classes of defect; makes the symbol catalog trustworthy for call-site verification; restores monotonic phase resumption",
+      "risks": "Lock wiring could deadlock or slow the sub-second suite; porcelain rewrite could misclassify states; richer signatures churn codebase_map.md",
+      "mitigation": "Bounded lock timeout with fail-loud on contention; whitelist-free porcelain rule validated against all 16 real states; regenerate map and assert freshness gate"
     },
-    "completed_at": 1792100901.3045404
+    "completed_at": 1792102218.754111
   },
   "checkpoints": [
-    {
-      "task_id": "principle-014-pass1",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 14 Pass 1: Test sanctity invariant, hermetic isolation (<1s gate), pristine working tree, self-explaining diagnostics, and hostile boundary testing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792097216.6374407,
-      "timestamp_str": "2026-10-15 23:46:56",
-      "impact_assessment": {
-        "why": "Prevent test assertion weakening, flaky sleep-dependent tests, working tree pollution, uninformative errors, and untested edge cases",
-        "benefits": "Guaranteed contract preservation, sub-second deterministic feedback, zero leftover test files, 1-turn bug localization, and hardened boundary resilience",
-        "risks": "Breaking intentional API redesigns",
-        "mitigation": "Require explicit user authorization for breaking test contract modifications"
-      }
-    },
-    {
-      "task_id": "principle-014-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-014-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792097423.3082972,
-      "timestamp_str": "2026-10-15 23:50:23"
-    },
     {
       "task_id": "principle-014-pass2",
       "phase": "2",
@@ -264,6 +239,31 @@
       "status": "completed",
       "timestamp": 1792100901.304542,
       "timestamp_str": "2026-10-16 00:48:21"
+    },
+    {
+      "task_id": "principle-audit-pass2-correctness",
+      "phase": "2",
+      "phase_num": 2,
+      "description": "Fix 4 proven defects: unused advisory lock (lost updates), porcelain blindness to merge conflicts, broken phase resumption, AST catalog missing async+signatures",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792101180.523438,
+      "timestamp_str": "2026-10-16 00:53:00",
+      "impact_assessment": {
+        "why": "Deep per-principle audit proved 4 load-bearing invariants are green in tests but broken in production: P013 R3 lock has zero call sites (5/6 concurrent checkpoints lost), P006 audit reports UU merge conflicts as clean, P002/P004 resume always reports Phase 2, P016 map omits all async defs and truncates signatures",
+        "benefits": "Closes the silent-data-loss and false-clean classes of defect; makes the symbol catalog trustworthy for call-site verification; restores monotonic phase resumption",
+        "risks": "Lock wiring could deadlock or slow the sub-second suite; porcelain rewrite could misclassify states; richer signatures churn codebase_map.md",
+        "mitigation": "Bounded lock timeout with fail-loud on contention; whitelist-free porcelain rule validated against all 16 real states; regenerate map and assert freshness gate"
+      }
+    },
+    {
+      "task_id": "principle-audit-pass2-correctness",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-audit-pass2-correctness' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792102218.7541125,
+      "timestamp_str": "2026-10-16 01:10:18"
     }
   ]
 }

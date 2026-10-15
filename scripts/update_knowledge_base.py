@@ -43,6 +43,69 @@ IGNORE_DIRS = {
 }
 
 
+FUNCTION_NODES = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def fsync_dir(dir_path: Path) -> None:
+    """Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).
+
+    No-op on win32, which exposes no directory handle to sync. Kept local to preserve this
+    script's standalone clone-and-run execution (PRINCIPLE-011) with zero cross-script imports.
+    """
+    if sys.platform == "win32":
+        return
+    fd = None
+    try:
+        fd = os.open(str(dir_path), os.O_RDONLY)
+        os.fsync(fd)
+    except OSError as e:
+        sys.stderr.write(f"[WARN] Could not fsync directory {dir_path}: {e}\n")
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
+def render_signature(node: Any, drop_self: bool = False) -> List[str]:
+    """
+    Render a complete call signature from an AST function node (PRINCIPLE-003, PRINCIPLE-016).
+
+    The catalog is what agents consult before verifying call-sites, so a partial signature is
+    an anti-hallucination failure: reading only `args.args` silently omitted `*args`, `**kwargs`,
+    and every keyword-only parameter, so `f(a, *, b)` was catalogued as `f(a)`. Positional-only
+    parameters are marked with a trailing `/` and keyword-only ones follow a bare `*`, matching
+    Python's own signature syntax.
+    """
+    spec = node.args
+    parts: List[str] = []
+
+    posonly = [a.arg for a in getattr(spec, "posonlyargs", [])]
+    positional = [a.arg for a in spec.args]
+    if drop_self:
+        if posonly and posonly[0] in ("self", "cls"):
+            posonly = posonly[1:]
+        elif positional and positional[0] in ("self", "cls"):
+            positional = positional[1:]
+
+    parts.extend(posonly)
+    if posonly:
+        parts.append("/")
+    parts.extend(positional)
+
+    if spec.vararg:
+        parts.append(f"*{spec.vararg.arg}")
+    elif spec.kwonlyargs:
+        parts.append("*")
+    parts.extend(a.arg for a in spec.kwonlyargs)
+
+    if spec.kwarg:
+        parts.append(f"**{spec.kwarg.arg}")
+
+    return parts
+
+
 def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, Any]:
     """Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003)."""
     try:
@@ -62,11 +125,11 @@ def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, A
             class_doc = ast.get_docstring(node)
             methods = []
             for item in node.body:
-                if isinstance(item, ast.FunctionDef):
-                    args = [arg.arg for arg in item.args.args if arg.arg != "self"]
+                if isinstance(item, FUNCTION_NODES):
                     methods.append({
                         "name": item.name,
-                        "args": args,
+                        "args": render_signature(item, drop_self=True),
+                        "is_async": isinstance(item, ast.AsyncFunctionDef),
                         "docstring": ast.get_docstring(item)
                     })
             classes.append({
@@ -74,11 +137,11 @@ def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, A
                 "docstring": class_doc,
                 "methods": methods
             })
-        elif isinstance(node, ast.FunctionDef):
-            args = [arg.arg for arg in node.args.args]
+        elif isinstance(node, FUNCTION_NODES):
             functions.append({
                 "name": node.name,
-                "args": args,
+                "args": render_signature(node),
+                "is_async": isinstance(node, ast.AsyncFunctionDef),
                 "docstring": ast.get_docstring(node)
             })
 
@@ -181,7 +244,8 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
                 for m in c.get("methods", []):
                     args_str = ", ".join(m["args"])
                     m_doc = f" - *{m['docstring'].strip().split(chr(10))[0]}*" if m.get("docstring") else ""
-                    lines.append(f"  - Method `.{m['name']}({args_str})`{m_doc}")
+                    m_kind = "async def " if m.get("is_async") else ""
+                    lines.append(f"  - Method `{m_kind}.{m['name']}({args_str})`{m_doc}")
             lines.append("")
 
         functions = info.get("functions", [])
@@ -190,7 +254,8 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
             for f in functions:
                 args_str = ", ".join(f["args"])
                 f_doc = f" - *{f['docstring'].strip().split(chr(10))[0]}*" if f.get("docstring") else ""
-                lines.append(f"- `def {f['name']}({args_str})`{f_doc}")
+                f_kind = "async def" if f.get("is_async") else "def"
+                lines.append(f"- `{f_kind} {f['name']}({args_str})`{f_doc}")
             lines.append("")
 
         lines.append("---")
@@ -253,6 +318,7 @@ def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = Tru
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp_map, map_path)
+    fsync_dir(map_path.parent)
     try:
         rel_str = str(map_path.relative_to(ROOT_DIR))
     except ValueError:
