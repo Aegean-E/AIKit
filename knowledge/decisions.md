@@ -378,3 +378,21 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: True one-click usability; zero cold-start crashes; safe headless execution for AI agents; crystal-clear actionable error messages.
   - *Trade-offs*: None; pure standard library practices.
 
+### ADR-025: Explicit Mode Transparency, Zero-Prompt Auto-Init, Polyglot Shell Parity, and Deterministic Exit Codes (PRINCIPLE-011 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. While ADR-024 established graceful fallbacks, silent mock execution created a "phantom success" anti-pattern where users or calling agents assumed real mutations occurred when in fact simulated operations ran.
+  2. First-run interactive configuration wizards asking multiple terminal questions caused automated AI subagent runs to deadlock.
+  3. Commands and documentation frequently broke across platforms due to POSIX-specific shell syntax (`export`, `./run.sh`) or hardcoded path separators.
+  4. Non-standard or ambiguous exit codes prevented parent processes and subagents from reliably determining execution outcomes.
+  5. The absence of built-in sample fixtures created an external data dependency barrier that delayed first-run verification.
+- **Decision**:
+  1. Enforce **Explicit Mode Transparency (Anti-Phantom-Success Invariant)**: Prominently signpost all mock, dry-run, or fallback modes (`[INFO] OFFLINE MOCK MODE`). Mutating operations requiring real credentials must fail-fast with clean diagnostic exits.
+  2. Enforce **Zero-Prompt Autonomous Initialization**: First-run routines select sensible, secure defaults automatically without prompting console questions; interactive wizards must be strictly opt-in (`--interactive` or `-i`).
+  3. Enforce **Cross-Platform Polyglot Command & Path Parity**: Use portable standard-library invocations (`python -m <module>` or `sys.executable`) and `pathlib.Path` across Windows, macOS, and Linux without shell-specific assumptions.
+  4. Enforce **Deterministic Exit Code Contract**: Strictly adhere to standard POSIX-compliant exit semantics (`0` clean success, `1` operational failure, `2` CLI argument misuse or invalid syntax).
+  5. Enforce **Built-in Self-Demonstrating Fixtures**: Systems must embed minimal self-demonstrating fixtures or demo commands (`--demo`) enabling verified execution in under 10 seconds without external data dependencies.
+- **Consequences**:
+  - *Positive*: Eliminates deceptive silent mock successes; prevents interactive console deadlocks; ensures identical cross-platform behavior; standardizes exit codes for robust machine orchestration; achieves 10-second verification.
+  - *Trade-offs*: None; pure standard library practices.

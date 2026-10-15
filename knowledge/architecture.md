@@ -56,10 +56,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ## 🚀 Zero-Friction Usability & Onboarding Architecture
 - **Pure-Stdlib Baseline**: Core application entrypoints and automated tests run on language standard-library primitives alone immediately upon `git clone` (**PRINCIPLE-011**).
-- **Self-Bootstrapping Workspace**: Required directories (`.agents/`, `data/`, `logs/`) and default configuration files are automatically scaffolded on first boot.
-- **Zero-Crash Config Protocol**: Environment variables and settings are queried safely via `os.getenv()` with dry-run/mock fallbacks, preventing unhandled `KeyError` crashes.
-- **Non-Interactive & Headless Parity**: Automated runs in AI subagent shells default to non-interactive execution (`--yes` / `--batch`), preventing stdin deadlocks.
-- **Actionable Remediation Triad**: Error states provide clear failure summaries, root causes, and copy-pasteable remediation commands rather than unhandled tracebacks.
+- **Self-Bootstrapping Workspace & Zero-Prompt Auto-Init**: Required directories (`.agents/`, `data/`, `logs/`) and default configurations are automatically scaffolded on first launch without prompting console questions.
+- **Zero-Crash Config & Explicit Mode Transparency**: Environment variables are queried safely via `os.getenv()`; fallback modes are explicitly signposted (`[INFO] OFFLINE MOCK MODE`) and mutating operations fail-fast on missing credentials.
+- **Cross-Platform Polyglot Parity**: Quickstart commands use portable standard-library invocations (`python -m <module>`) and `pathlib.Path` abstractions across Windows, macOS, and Linux without shell-specific hurdles.
+- **Non-Interactive Parity & Deterministic Exit Codes**: Automated execution defaults to non-interactive mode (`not sys.stdin.isatty()`) with `--yes` / `--batch` flags, strictly respecting standard exit codes (`0` clean success, `1` operational failure, `2` syntax misuse).
+- **Actionable Remediation Triad**: Error states provide clear failure summaries, root causes, and copy-pasteable remediation commands rather than raw tracebacks.
+- **Health Diagnostics & Embedded Demo Fixtures**: Self-diagnosing checks (`--audit` / `--doctor`) and minimal built-in sample fixtures deliver instant 10-second verification.
 
 ---
 

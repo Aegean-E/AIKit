@@ -28,7 +28,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 |---|---|---|
 | **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
 | **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, subprocess timeouts, batch coalescing, and lazy imports. |
-| **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Pure-stdlib clone-and-run, self-bootstrapping workspace, zero-crash config, and actionable errors. |
+| **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Pure-stdlib clone-and-run, auto-init, mode transparency, cross-platform parity, and exit semantics. |
 | **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Concise code, strict token budgets, compact payloads, and rate-limit safeguards. |
 
 ### 🛡️ Phase 4: Operational Verification & Resilience
@@ -182,14 +182,15 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Sub-Second Test Gate**: Keep the full automated unit test suite running in under 1 second (<1s) by testing in memory or isolated temp fixtures without artificial delays.
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
-- **Problem**: Cumbersome setup requirements, missing environment variable crashes (`KeyError`), un-scaffolded directory errors, interactive stdin deadlocks, and cryptic stack traces prevent immediate adoption and break automated AI runs.
+- **Problem**: Setup friction, missing env crashes (`KeyError`), un-scaffolded directory errors, silent mock deception, shell-specific command failures, interactive console deadlocks, and cryptic tracebacks break user onboarding and automated AI execution.
 - **Guideline**:
-  - **Pure-Stdlib Clone-and-Run**: Ensure the core application and test suite execute immediately after `git clone` using stdlib primitives alone; external packages are strictly optional plugins.
-  - **Self-Bootstrapping Workspace**: Automatically create required directories (`.agents/`, `data/`, `logs/`) and default configuration files on first launch if absent.
-  - **Zero-Crash Config Protocol**: Access environment variables safely via `os.getenv()` with dry-run/mock fallbacks; exit cleanly with actionable advice if a required credential is missing.
-  - **Non-Interactive & Headless Parity**: Default to non-interactive mode when running in automated shells (`not sys.stdin.isatty()`); provide `--yes` / `--batch` flags and never hang on stdin.
+  - **Pure-Stdlib Clone-and-Run**: Ensure core CLI entrypoints and test suites execute immediately upon `git clone` using standard-library primitives alone; external packages must be strictly optional plugins.
+  - **Self-Bootstrapping Workspace & Zero-Prompt Auto-Init**: Automatically scaffold directories (`.agents/`, `data/`, `logs/`) and default configuration files on first launch without prompting console questions.
+  - **Zero-Crash Config & Explicit Mode Transparency**: Safely query environment variables via `os.getenv()`; prominently signpost mock/dry-run states (`[INFO] OFFLINE MOCK MODE`) and fail-fast on mutating operations requiring credentials.
+  - **Cross-Platform Polyglot Command & Path Parity**: Use portable standard-library invocations (`python -m <module>`) and `pathlib.Path` across Windows, macOS, and Linux without shell-specific assumptions.
+  - **Non-Interactive Parity & Deterministic Exit Codes**: Default to non-interactive execution when `not sys.stdin.isatty()`; provide `--yes` / `--batch` flags and adhere strictly to POSIX exit semantics (`0` success, `1` error, `2` misuse).
   - **Actionable Remediation Triad**: Format user-facing errors into What $\rightarrow$ Why $\rightarrow$ Exact command to resolve; avoid raw, unhandled tracebacks.
-  - **Idempotent Health Diagnostics**: Provide an explicit diagnostic command (`--audit` / `--doctor`) to verify environment readiness, permissions, and tool health.
+  - **Health Diagnostics & Self-Demonstrating Fixtures**: Provide diagnostic checks (`--audit` / `--doctor`) and embedded minimal demo fixtures (`--demo`) for instant 10-second verification.
 
 ### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
 - **Problem**: Careless token usage exhausts context windows, triggers rate-limit (TPM) failures, increases latency, and bloats costs. Overly verbose code impedes maintainability.

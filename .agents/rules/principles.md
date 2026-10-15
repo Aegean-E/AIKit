@@ -28,7 +28,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 10. **PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)**:
    - Algorithmic stream efficiency ($O(1)$ memory); non-blocking event-loop hygiene; bounded subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms startup); sub-second test gate (<1s). [GUIDELINES.md](../../GUIDELINES.md#principle-010)
 11. **PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)**:
-   - Pure-stdlib clone-and-run baseline; self-bootstrapping workspace; zero-crash config fallbacks; non-interactive headless parity; actionable remediation triad. [GUIDELINES.md](../../GUIDELINES.md#principle-011)
+   - Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes; remediation triad. [GUIDELINES.md](../../GUIDELINES.md#principle-011)
 12. **PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)**:
    - Concise code; strict token budgets; compact JSON schemas/relative paths; exponential backoff rate-limit guards. [GUIDELINES.md](../../GUIDELINES.md#principle-012)
 13. **PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)**:
