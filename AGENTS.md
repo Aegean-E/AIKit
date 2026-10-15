@@ -224,14 +224,16 @@
 ## 🛡️ Phase 4: Operational Verification & Resilience
 
 ### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
-- **Concept**: The application must remain fail-safe and self-healing against abrupt disruptions—such as sudden power outages, battery exhaustion, OS crashes, or external process termination. User data, application settings, and state transaction logs must never be left in a corrupted, half-written, or unrecoverable state due to unexpected power loss.
-- **Invariant**: Fail-safe atomic writes (temp buffer -> `flush()` -> `os.fsync()` -> `os.replace()`); WAL for batch ops; isolate `*.corrupt_*`.
+- **Concept**: The application, agent frameworks, and persistent data layers must remain fail-safe and self-healing against abrupt disruptions—such as sudden power outages, battery exhaustion, OS crashes, process termination, or concurrent process contention. User data, application settings, and state transaction logs must never be left corrupted, half-written, or in split-brain states due to power loss or locking collisions.
+- **Invariant**: Resilient atomic writes (flush + fsync + retry replace); inter-process advisory locking; dual-slot shadow backups (.bak); WAL journaling; orphan buffer purge.
 - **Rules**:
-  1. **Atomic State & Configuration Persistence**: All persistent JSON state, configuration, and cache files must be written via atomic temporary files with buffer flushing (`flush` + `os.fsync`) followed by atomic replacement (`os.replace`). Direct in-place truncation writes that risk 0-byte files on power cut are strictly prohibited.
-  2. **Incremental Transaction Journaling (WAL)**: Batch modifications must record operations incrementally into persistent storage as each operation safely completes, guaranteeing that an interrupted batch leaves an accurate, reversible trail up to the exact moment of failure.
-  3. **Startup Self-Healing & Crash Tolerance**: On startup, if any persistent state file is detected to be damaged or malformed from an unclean shutdown, the application must automatically isolate the corrupted artifact (`*.corrupt_*`), recover from backup or safe defaults, and report the event cleanly rather than crashing.
-  4. **Non-Destructive File Guarantees**: Move/delete operations must prioritize data retention over speed. Critical paths must verify target presence before source unlinking, and existing destination files must never be overwritten on collision.
-  5. **Continuous Recovery Verification**: Automated tests must validate crash recovery behaviors, ensuring corrupted JSON, partial transactions, and unclean shutdowns are handled gracefully without application panic.
+  1. **Atomic State Persistence & Lock-Contention Retry Loop**: All persistent JSON state, configuration, and cache files must be written via atomic temporary buffers with explicit flushing (`flush` + `os.fsync`) followed by atomic replacement (`os.replace`). On Windows and network filesystems where concurrent readers (antivirus, indexers, watchers) hold shared locks, `os.replace` must execute a bounded retry loop ($3 \le \text{retries} \le 5$ with exponential backoff) rather than failing abruptly with `WinError 32 / PermissionError`. Direct in-place truncation writes that risk 0-byte corruption are strictly prohibited.
+  2. **Inter-Process Advisory Locking (Anti-Race Invariant)**: In environments with concurrent subagents, CLI processes, or background threads, persistent read-modify-write state operations must acquire an advisory file lock (`path.with_suffix('.lock')`) with bounded timeout ($2\text{s}$–$5\text{s}$) and automatic stale-lock expiration (>30s), preventing interleaved writes and silent progress erasure.
+  3. **Dual-Slot Shadow Snapshots & Resilient Rollback (`.bak` Fallback)**: Before replacing existing persistent state, systems must rotate the verified existing file into a shadow backup (`file.json.bak`). On launch, if the primary file is detected to be corrupted or truncated from an unclean shutdown, the self-healing routine must quarantine the corrupted artifact (`*.corrupt_*`), attempt automatic recovery from the shadow backup (`.bak`), and only fall back to empty defaults if no intact backup exists.
+  4. **Incremental Transaction Journaling (WAL) & Multi-File Staging**: Batch operations must journal progress incrementally (Write-Ahead Logging) as each operation succeeds. Multi-file refactors or synchronizations (e.g. IDE rule updates) must stage all modified target buffers completely in temporary storage and validate syntax before executing rapid sequential atomic replacements, preventing partial split-brain states.
+  5. **Orphaned Buffer Sanitation & Ephemeral Workspace Hygiene**: Startup self-healing and disruption audits (`scripts/disruption_recovery.py --clean`) must actively sweep and purge abandoned temporary buffers (`*.tmp_*`) left behind by interrupted writes from dead processes, maintaining zero disk garbage.
+  6. **Non-Destructive File Guarantees**: Move/delete operations must prioritize data retention over speed. Critical paths must verify target presence before source unlinking, and existing destination files must never be overwritten on collision without explicit authorization.
+  7. **Continuous Recovery Verification**: Automated test suites must systematically validate crash recovery behaviors—including corrupted JSON quarantine, shadow backup restoration, advisory lock concurrency, and orphan buffer purging—without application panic.
 
 ---
 
@@ -327,7 +329,7 @@
 - [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
-- [ ] **Crash Resilience & Atomicity Plan**: Are file writes, settings, and transaction logs protected against power-loss corruption (**PRINCIPLE-013**)?
+- [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic with lock retries, shadow backups (.bak), and advisory locks (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned unit tests to validate this change and prevent regressions (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with zero-blast-radius ephemeral sandboxing for real execution (**PRINCIPLE-015**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-016**)?
@@ -345,7 +347,7 @@
 - [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and fast (<1s tests)** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
 - [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
-- [ ] Are all state changes and logs **crash-resilient and written atomically** (**PRINCIPLE-013**)?
+- [ ] Are all state changes **crash-resilient, atomically written with lock retries, and shadow-backed** (**PRINCIPLE-013**)?
 - [ ] Have all **automated unit tests passed with 100% success** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed jail (**PRINCIPLE-015**)?
 - [ ] Has the **AI knowledge base in `knowledge/` been updated and verified** (**PRINCIPLE-016**)?

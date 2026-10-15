@@ -8,6 +8,8 @@ __pycache__/
 # Disruption recovery quarantine artifacts
 *.corrupt_*
 *.tmp*
+*.bak
+*.lock
 
 # Virtual environments
 venv/

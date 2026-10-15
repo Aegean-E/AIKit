@@ -29,7 +29,7 @@ Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.
 12. **PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)**:
    - Prompt cache prefix alignment (>=80% cache hits); bounded tool outputs & unified diffs; terse schema generation; token budget circuit breakers; lean syntactic density. [GUIDELINES.md#principle-012]
 13. **PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)**:
-   - Fail-safe atomic writes (temp buffer -> `flush()` -> `os.fsync()` -> `os.replace()`); WAL for batch ops; isolate `*.corrupt_*`. [GUIDELINES.md#principle-013]
+   - Resilient atomic writes (flush + fsync + retry replace); inter-process advisory locking; dual-slot shadow backups (.bak); WAL journaling; orphan buffer purge. [GUIDELINES.md#principle-013]
 14. **PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)**:
    - 100% test pass gate (`python -m unittest discover tests`); fast deterministic isolated unit tests before staging/committing. [GUIDELINES.md#principle-014]
 15. **PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)**:

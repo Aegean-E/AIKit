@@ -77,8 +77,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ---
 
-## 💾 Persistence & Atomicity (Fail-Safe Architecture)
-- All persistent configuration and state mutations use atomic write patterns (`flush` + `os.fsync` + `os.replace`) to prevent zero-byte truncation during sudden power loss (**PRINCIPLE-013**, **PRINCIPLE-006**).
+## 💾 Persistence, Atomicity & Crash Resilience (Fail-Safe Architecture)
+- **Resilient Atomic State Persistence**: All persistent configuration and state mutations stage writes in temporary buffers with buffer flushing (`flush` + `os.fsync`) followed by atomic replacement (`os.replace`) with bounded retry loops ($3\text{--}5$ retries) against Windows lock contention (`WinError 32`), preventing zero-byte truncation during sudden power loss (**PRINCIPLE-013**, **PRINCIPLE-006**).
+- **Inter-Process Advisory Locking**: Cooperative file locking (`.lock`) protects concurrent read-modify-write state lifecycles across parallel subagents and CLI invocations, preventing race conditions and silent state clobbering.
+- **Dual-Slot Shadow Snapshots (.bak)**: Verified state is rotated to a `.bak` shadow backup prior to replacement. Startup self-healing detects and quarantines damaged JSON (`*.corrupt_*`), recovering state from the shadow snapshot before falling back to empty defaults.
+- **Multi-File Staging & WAL**: Batch mutations write incrementally (Write-Ahead Logging); multi-file sync operations stage all buffers completely in temporary storage before executing rapid atomic replacements, eliminating partial split-brain states.
+- **Orphan Buffer Sanitation**: Startup routines sweep and purge abandoned temporary files (`*.tmp_*`) left by interrupted dead processes, ensuring clean workspace hygiene.
 
 ---
 

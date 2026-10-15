@@ -10,6 +10,8 @@ import os
 import sys
 import json
 import time
+import shutil
+import contextlib
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
@@ -36,8 +38,46 @@ def get_ledger_path(custom_dir: Optional[Path] = None) -> Path:
     return target_dir / "task_ledger.json"
 
 
-def atomic_write_json(file_path: Path, data: Any) -> None:
-    """Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-013)."""
+@contextlib.contextmanager
+def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: float = 0.05):
+    """
+    Cross-platform cooperative advisory lock (PRINCIPLE-013).
+    Uses an atomic lockfile with PID and timestamp; automatically breaks stale locks older than 30s.
+    """
+    lock_file = lock_path.with_suffix(lock_path.suffix + ".lock")
+    start_time = time.time()
+    acquired = False
+
+    while time.time() - start_time < timeout_seconds:
+        try:
+            fd = os.open(str(lock_file), os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(f"{os.getpid()}:{int(time.time())}\n")
+                f.flush()
+            acquired = True
+            break
+        except FileExistsError:
+            try:
+                mtime = lock_file.stat().st_mtime
+                if time.time() - mtime > 30.0:
+                    lock_file.unlink(missing_ok=True)
+                    continue
+            except OSError:
+                pass
+            time.sleep(poll_interval)
+
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            try:
+                lock_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5) -> None:
+    """Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013)."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = file_path.with_suffix(file_path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
     try:
@@ -45,7 +85,24 @@ def atomic_write_json(file_path: Path, data: Any) -> None:
             json.dump(data, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, file_path)
+
+        # Rotate existing valid file to shadow backup (.bak) prior to replacement
+        if file_path.exists():
+            bak_path = file_path.with_suffix(file_path.suffix + ".bak")
+            try:
+                shutil.copy2(file_path, bak_path)
+            except OSError:
+                pass
+
+        # Windows lock-contention retry loop on os.replace
+        for attempt in range(max_retries):
+            try:
+                os.replace(tmp_path, file_path)
+                break
+            except (PermissionError, OSError):
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(0.02 * (2 ** attempt))
     except Exception:
         if tmp_path.exists():
             try:
@@ -76,6 +133,18 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
             sys.stderr.write(f"[WARN] Corrupted task ledger quarantined to {corrupt_name}: {e}\n")
         except OSError:
             pass
+
+        # Attempt recovery from shadow backup (.bak) before falling back to empty state
+        bak_path = path.with_suffix(path.suffix + ".bak")
+        if bak_path.exists():
+            try:
+                with open(bak_path, "r", encoding="utf-8") as f_bak:
+                    recovered = json.load(f_bak)
+                    sys.stderr.write(f"[INFO] Recovered task ledger from shadow backup {bak_path.name}\n")
+                    return recovered
+            except Exception:
+                pass
+
         return {"version": 1, "active_task": None, "checkpoints": []}
 
 

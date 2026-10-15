@@ -434,3 +434,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Maximizes provider prompt cache hit rates ($\ge 80\%$), drastically reducing API costs and latency; shields conversational context from tool output pollution; provides financial guardrails against runaway agent loops; keeps codebase token footprints minimal.
   - *Trade-offs*: None; pure discipline in prompt structuring, tool output filtering, and idiomatic coding.
+
+### ADR-028: Cross-Platform Atomic Replace Retries, Advisory Locking, Dual-Slot Shadow Backups, and Multi-File Staging (PRINCIPLE-013 Pass 1)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. On Windows systems and virtualized filesystems, `os.replace` frequently encounters transient lock contention (`PermissionError: [WinError 32]`) when background file watchers, virus scanners, or IDE indexers momentarily access the target file.
+  2. Parallel autonomous subagents or concurrent CLI invocations mutating persistent state (such as `task_ledger.json`) risk last-write-wins collisions and silent progress clobbering without concurrency controls.
+  3. While quarantining corrupted JSON files prevented runtime crashes, falling back immediately to an empty dictionary discarded task history and completed checkpoint memory.
+  4. Interrupted atomic writes abandoned orphaned temporary files (`*.tmp_*`) across the repository, littering git status and cluttering workspace hygiene.
+  5. Multi-file synchronization operations (e.g., updating multiple IDE rule targets) could be severed midway, resulting in partial split-brain discrepancies.
+- **Decision**:
+  1. Enforce **Lock-Contention Retry Loops on Atomic Replace**: Wrap `os.replace` in a bounded retry loop ($3 \le \text{retries} \le 5$ with exponential backoff) to withstand transient Windows/AV lock contention without failing.
+  2. Enforce **Inter-Process Advisory Locking (Anti-Race Invariant)**: Require cooperative advisory file locks (`path.with_suffix('.lock')`) with bounded timeouts ($2\text{s}$–$5\text{s}$) and automatic stale-lock expiration (>30s) around read-modify-write state lifecycles.
+  3. Enforce **Dual-Slot Shadow Snapshots & Resilient Rollback (`.bak` Fallback)**: Rotate the verified existing file into a shadow backup (`.bak`) before replacement; on launch, corrupted artifacts (`*.corrupt_*`) are quarantined and state is recovered from `.bak` before defaulting to empty state.
+  4. Enforce **Multi-File Staging & Transactional Coherence**: Complex multi-file synchronizations must stage all target buffers completely in temporary files and validate syntax prior to executing rapid sequential atomic replacements.
+  5. Enforce **Orphaned Buffer Sanitation**: Startup routines and disruption audits sweep and purge abandoned temporary files (`*.tmp_*`) left by interrupted dead processes.
+- **Consequences**:
+  - *Positive*: Eliminates Windows atomic replace crashes; prevents multi-agent write clobbering; preserves task memory through shadow backup recovery; keeps the repository free of temporary file garbage; guarantees all-or-nothing consistency across multi-file syncs.
+  - *Trade-offs*: None; pure standard library implementation (`shutil`, `contextlib`, `os`).

@@ -29,6 +29,7 @@ from scripts.disruption_recovery import (
     format_resume_report,
     reset_active_task,
     clean_dangling_temp_files,
+    file_lock,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -243,6 +244,33 @@ class TestDisruptionRecovery(unittest.TestCase):
         # Corrupt file should be quarantined
         corrupt_files = list(self.test_dir.glob("task_ledger.json.corrupt_*"))
         self.assertEqual(len(corrupt_files), 1, "Corrupted file was not quarantined")
+
+    def test_self_healing_recovery_from_shadow_backup(self):
+        # Enforces PRINCIPLE-013: self-healing restores from .bak shadow backup on corruption
+        initial_data = {"version": 1, "active_task": {"task_id": "initial_task"}, "checkpoints": []}
+        atomic_write_json(self.ledger_file, initial_data)
+        # Write second time so .bak captures the initial state
+        second_data = {"version": 1, "active_task": {"task_id": "updated_task"}, "checkpoints": []}
+        atomic_write_json(self.ledger_file, second_data)
+        bak_file = self.ledger_file.with_suffix(self.ledger_file.suffix + ".bak")
+        self.assertTrue(bak_file.exists(), "Shadow backup (.bak) was not created")
+
+        # Corrupt the primary ledger file
+        self.ledger_file.write_text("{ broken power cut...", encoding="utf-8")
+        recovered = load_ledger(self.ledger_file)
+        self.assertEqual(recovered["active_task"]["task_id"], "initial_task")
+
+    def test_advisory_file_lock(self):
+        # Enforces PRINCIPLE-013: advisory file locking prevents concurrent write races
+        test_file = self.test_dir / "state.json"
+        with file_lock(test_file, timeout_seconds=1.0) as acquired1:
+            self.assertTrue(acquired1)
+            # Nested attempt on same file with zero timeout should fail acquisition
+            with file_lock(test_file, timeout_seconds=0.1) as acquired2:
+                self.assertFalse(acquired2)
+        # Once released, lock should be immediately re-acquirable
+        with file_lock(test_file, timeout_seconds=1.0) as acquired3:
+            self.assertTrue(acquired3)
 
     def test_record_checkpoint_and_complete(self):
         record_checkpoint(

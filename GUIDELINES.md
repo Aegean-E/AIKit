@@ -34,7 +34,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### 🛡️ Phase 4: Operational Verification & Resilience
 | ID | Title | Summary |
 |---|---|---|
-| **[PRINCIPLE-013](#principle-013-crash-resilience-state-atomicity--power-loss-recovery-fail-safe-operations)** | Crash Resilience & Atomicity | Fail-safe atomic writes (fsync + replace) and incremental WAL for sudden power cuts. |
+| **[PRINCIPLE-013](#principle-013-crash-resilience-state-atomicity--power-loss-recovery-fail-safe-operations)** | Crash Resilience & Atomicity | Resilient atomic writes (flush + fsync + retry replace), shadow backups (.bak), and advisory locking. |
 | **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate and continuous test coverage before staging and committing. |
 | **[PRINCIPLE-015](#principle-015-universal-operational-dogfooding--chaos-verification-the-ai-must-use-what-it-builds)** | Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding, zero-blast-radius sandboxing, and chaos resilience. |
 
@@ -204,11 +204,13 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Lean Syntactic Density & Anti-Premature-Abstraction**: Maximize expressive leverage per line using Python standard-library primitives; prohibit ceremonial boilerplate and redundant wrapper abstractions.
 
 ### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
-- **Problem**: Sudden power cuts, electrical outages, process crashes, or battery failures mid-operation can corrupt state files, sever logs, or leave batches in an unrecoverable, untracked state.
+- **Problem**: Sudden power cuts, electrical outages, process crashes, Windows lock contention (`WinError 32`), multi-agent race conditions, or battery failures mid-operation can corrupt state files, sever logs, or leave batches in an unrecoverable, untracked state.
 - **Guideline**:
-  - **Atomic File Operations**: All critical JSON configurations and logs must use atomic temporary staging (`.tmp`) with buffer flushing (`flush` + `os.fsync`) followed by atomic filesystem replacement (`os.replace`). Direct in-place overwrites are prohibited.
-  - **Write-Ahead Logging (WAL)**: Progress across batch operations must be journaled incrementally as each operation succeeds, guaranteeing that an unexpected power cut leaves a complete record up to the instant of failure.
-  - **Startup Self-Healing**: On launch, corrupted or truncated state files caused by sudden crashes must be quarantined gracefully (`*.corrupt_*`), with the app restoring safe defaults or backups without crashing.
+  - **Atomic File Operations & Lock Retries**: All critical JSON configurations and logs must use atomic temporary staging (`.tmp`) with buffer flushing (`flush` + `os.fsync`) and bounded retry loops on `os.replace` to survive Windows lock contention from scanners and watchers. Direct in-place overwrites are prohibited.
+  - **Inter-Process Advisory Locking**: Enforce cooperative advisory file locking (`.lock`) on concurrent read-modify-write state paths with bounded timeouts to prevent parallel subagents from clobbering state.
+  - **Dual-Slot Shadow Snapshots (.bak)**: Rotate prior verified state to `.bak` before replacements; on startup detection of corrupted files, quarantine `*.corrupt_*` and restore from shadow backup before falling back to empty state.
+  - **Write-Ahead Logging (WAL) & Multi-File Staging**: Journal progress incrementally during batch operations; stage multi-file updates completely before sequential atomic replacement to prevent split-brain states.
+  - **Orphaned Buffer Sanitation**: Startup self-healing sweeps and purges stale temporary buffers (`*.tmp_*`) left by interrupted dead processes, ensuring clean workspace hygiene.
   - **Non-Destructive Operations**: Never overwrite colliding target files; guarantee data persistence until destination operations are verified on disk.
 
 ### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
