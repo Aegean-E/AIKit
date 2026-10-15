@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `5`
-- **Total Classes**: `11`
+- **Total Classes**: `12`
 - **Total Functions / Methods**: `43`
-- **Total Source Lines**: `3098`
+- **Total Source Lines**: `3164`
 
 ---
 
@@ -118,7 +118,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1001` lines (`50866` bytes)
+**Size**: `1067` lines (`54168` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -140,6 +140,14 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*
+  - Method `.setUpClass()`
+  - Method `.test_workflow_exists()`
+  - Method `.test_workflow_runs_every_declared_gate()`
+  - Method `.test_workflow_commands_match_documented_commands()`
+  - Method `.test_workflow_covers_posix_and_windows()`
+  - Method `.test_workflow_is_bounded_and_least_privileged()`
+  - Method `.test_workflow_asserts_pristine_tree()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
   - Method `.tearDown()`

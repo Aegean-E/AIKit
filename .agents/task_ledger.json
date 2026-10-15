@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-audit-pass2-correctness",
+    "task_id": "principle-roadmap-m1-ci",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792101180.523438,
+    "updated_at": 1792102547.367677,
     "impact_assessment": {
-      "why": "Deep per-principle audit proved 4 load-bearing invariants are green in tests but broken in production: P013 R3 lock has zero call sites (5/6 concurrent checkpoints lost), P006 audit reports UU merge conflicts as clean, P002/P004 resume always reports Phase 2, P016 map omits all async defs and truncates signatures",
-      "benefits": "Closes the silent-data-loss and false-clean classes of defect; makes the symbol catalog trustworthy for call-site verification; restores monotonic phase resumption",
-      "risks": "Lock wiring could deadlock or slow the sub-second suite; porcelain rewrite could misclassify states; richer signatures churn codebase_map.md",
-      "mitigation": "Bounded lock timeout with fail-loud on contention; whitelist-free porcelain rule validated against all 16 real states; regenerate map and assert freshness gate"
+      "why": "Every gate in the repo (100% tests, rule freshness, AST map freshness, P018 delivery triad) exists purely as agent discipline; .github/ has no workflow, so nothing enforces them on push for any contributor or future agent",
+      "benefits": "Mechanically enforces P014/P016/P017/P018 outside the agent machine; a POSIX matrix leg finally exercises the fsync_dir POSIX branch and P003 R4 platform-parity claims that have never run off Windows",
+      "risks": "CI cannot be validated locally; line-ending or path assumptions could fail on ubuntu; action version drift",
+      "mitigation": "Pin major action versions; keep commands identical to documented canonical ones; add a parity test asserting CI runs the documented gates so docs and CI cannot drift"
     },
-    "completed_at": 1792102218.754111
+    "completed_at": 1792102657.98678
   },
   "checkpoints": [
-    {
-      "task_id": "principle-014-pass2",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 14 Pass 2 with RAII fixture reversion, anti-tautological observable contracts, red-green defect pinning, and negative path coverage",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792097503.0112581,
-      "timestamp_str": "2026-10-15 23:51:43",
-      "impact_assessment": {
-        "why": "Prevent order-dependent test pollution, tautological mock echoes, and unverified bug fixes",
-        "benefits": "Guarantee zero test flakiness, true behavioral verification, and robust error path regression shield",
-        "risks": "Context budget creep across IDE rule files",
-        "mitigation": "Keep invariant capsule dense (<170 chars) and concise rule descriptions"
-      }
-    },
-    {
-      "task_id": "principle-014-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-014-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792097669.2002203,
-      "timestamp_str": "2026-10-15 23:54:29"
-    },
     {
       "task_id": "principle-015-pass1",
       "phase": "2",
@@ -264,6 +239,31 @@
       "status": "completed",
       "timestamp": 1792102218.7541125,
       "timestamp_str": "2026-10-16 01:10:18"
+    },
+    {
+      "task_id": "principle-roadmap-m1-ci",
+      "phase": "2",
+      "phase_num": 2,
+      "description": "Milestone 1/5: CI workflow enforcing both test tiers and both freshness gates across OS/Python matrix",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792102547.367677,
+      "timestamp_str": "2026-10-16 01:15:47",
+      "impact_assessment": {
+        "why": "Every gate in the repo (100% tests, rule freshness, AST map freshness, P018 delivery triad) exists purely as agent discipline; .github/ has no workflow, so nothing enforces them on push for any contributor or future agent",
+        "benefits": "Mechanically enforces P014/P016/P017/P018 outside the agent machine; a POSIX matrix leg finally exercises the fsync_dir POSIX branch and P003 R4 platform-parity claims that have never run off Windows",
+        "risks": "CI cannot be validated locally; line-ending or path assumptions could fail on ubuntu; action version drift",
+        "mitigation": "Pin major action versions; keep commands identical to documented canonical ones; add a parity test asserting CI runs the documented gates so docs and CI cannot drift"
+      }
+    },
+    {
+      "task_id": "principle-roadmap-m1-ci",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-roadmap-m1-ci' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792102657.9867811,
+      "timestamp_str": "2026-10-16 01:17:37"
     }
   ]
 }

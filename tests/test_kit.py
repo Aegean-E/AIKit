@@ -349,6 +349,7 @@ class TestPrincipleSync(unittest.TestCase):
             "CLAUDE.md",
             ".cursorrules",
             ".github/copilot-instructions.md",
+            ".github/workflows/ci.yml",
             ".agents/rules/principles.md",
             ".agents/task_ledger.json",
             "scripts/sync_principles.py",
@@ -368,6 +369,71 @@ class TestPrincipleSync(unittest.TestCase):
             basename = Path(rel).name
             self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+
+
+class TestContinuousVerificationGate(unittest.TestCase):
+    """
+    The CI workflow must enforce the same gates the principles declare, using the same
+    canonical commands the README documents (PRINCIPLE-005 R3, PRINCIPLE-018 R3). Without
+    this shield, CI and the docs drift and the gates become decorative.
+    """
+
+    WORKFLOW = ROOT_DIR / ".github" / "workflows" / "ci.yml"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow_text = cls.WORKFLOW.read_text(encoding="utf-8") if cls.WORKFLOW.exists() else ""
+
+    def test_workflow_exists(self):
+        self.assertTrue(
+            self.WORKFLOW.exists(),
+            "No CI workflow: every verification gate would run only on an agent's machine",
+        )
+
+    def test_workflow_runs_every_declared_gate(self):
+        required = {
+            "unit tier gate (PRINCIPLE-014)": "python -m unittest tests.test_kit",
+            "integration tier (PRINCIPLE-015)": "python -m unittest tests.test_integration",
+            "canonical suite (README)": "python -m unittest discover tests",
+            "rule freshness (PRINCIPLE-017 R3)": "python scripts/sync_principles.py --check",
+            "AST map freshness (PRINCIPLE-016 R4)": "python scripts/update_knowledge_base.py --check",
+        }
+        for label, command in required.items():
+            with self.subTest(gate=label):
+                self.assertIn(
+                    command, self.workflow_text,
+                    f"CI does not run the {label} gate via '{command}'",
+                )
+
+    def test_workflow_commands_match_documented_commands(self):
+        # Executable command parity: anything CI runs must also be documented in README.md.
+        readme = (ROOT_DIR / "README.md").read_text(encoding="utf-8")
+        for command in (
+            "python -m unittest discover tests",
+            "python -m unittest tests.test_kit",
+            "python -m unittest tests.test_integration",
+            "python scripts/sync_principles.py --check",
+            "python scripts/update_knowledge_base.py --check",
+        ):
+            with self.subTest(command=command):
+                self.assertIn(command, readme, f"CI runs '{command}' but README.md never documents it")
+
+    def test_workflow_covers_posix_and_windows(self):
+        # PRINCIPLE-003 R4 / PRINCIPLE-011 R4: platform parity is only a claim until a POSIX
+        # runner actually executes the paths this Windows-developed repo cannot exercise.
+        for runner in ("ubuntu-latest", "windows-latest"):
+            with self.subTest(runner=runner):
+                self.assertIn(runner, self.workflow_text, f"CI matrix omits {runner}")
+
+    def test_workflow_is_bounded_and_least_privileged(self):
+        # PRINCIPLE-010 R3: bounded execution. No unbounded CI job.
+        self.assertIn("timeout-minutes:", self.workflow_text, "CI job declares no timeout")
+        self.assertIn("contents: read", self.workflow_text, "CI does not drop to read-only permissions")
+
+    def test_workflow_asserts_pristine_tree(self):
+        # PRINCIPLE-014 R4: running the suite must leave the tree bit-for-bit clean.
+        self.assertIn("git status --porcelain", self.workflow_text,
+                      "CI never verifies the suite left the working tree clean")
 
 
 class TestDisruptionRecovery(unittest.TestCase):

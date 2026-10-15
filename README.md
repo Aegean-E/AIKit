@@ -24,7 +24,9 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | Context budget gate (<8,000 chars / <1,500 tokens) |
+| **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
+| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Disruption recovery guidance & surviving files |
 | **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
@@ -52,7 +54,9 @@ portable_agent_kit/
 ├── CLAUDE.md                           <- Anthropic Claude Code configuration
 ├── .cursorrules                        <- Cursor IDE instructions
 ├── .github/
-│   └── copilot-instructions.md         <- GitHub Copilot instructions
+│   ├── copilot-instructions.md         <- GitHub Copilot instructions
+│   └── workflows/
+│       └── ci.yml                      <- Continuous verification gate (both tiers + freshness)
 ├── .agents/
 │   ├── rules/
 │   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
