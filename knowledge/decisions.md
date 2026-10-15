@@ -703,3 +703,21 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Gates are now enforced off the agent's machine for every contributor. The parity shield immediately earned its place: it failed on first run because `README.md` documented `sync_principles.py` and `update_knowledge_base.py` but never their `--check` forms, which are exactly the commands the `PRINCIPLE-018` R3 triad depends on; both are now documented.
   - *Trade-offs*: Workflow validity cannot be fully verified locally (no PyYAML in a stdlib-only environment); validation was limited to a structural tab/indent check plus a local rehearsal of the embedded bash contract block. The first push is therefore the real test of the workflow itself. Six matrix legs cost CI minutes, justified by platform-parity claims that were previously unverified.
   - *Deferred*: No release/publish automation, and no branch protection requiring the workflow — enabling that is a repository setting, not a file.
+
+### ADR-042: CI Is Correct but Blocked at the Account Level (Private-Repo Actions Unavailable)
+- **Date**: 2026-10-16
+- **Status**: Accepted (blocked on an external account setting)
+- **Context**:
+  1. The workflow added in ADR-041 failed on first push. The first failure was a genuine defect: an unquoted YAML plain scalar containing `": "` rejected the file outright (now pinned by a regression test).
+  2. After that fix the YAML parses cleanly under PyYAML (10 steps, 1 job), yet runs still ended in `startup_failure` at 0s with `total_count: 0` jobs and no check-runs or annotations.
+  3. A binary experiment settled it: a deliberately minimal workflow (`smoke.yml`, one `ubuntu-latest` job running a single `echo`) **also** ended in `startup_failure`. The cause is therefore not the workflow schema.
+  4. Repository state: `private: true`, owner type `User`, `actions.permissions.enabled: true`, workflow registered and `state: active`. Billing could not be inspected - the REST billing endpoint requires the `user` OAuth scope, and widening the CLI's auth scopes is an account-level change that is not AIKit's to make unilaterally.
+- **Decision**:
+  1. Keep `.github/workflows/ci.yml`. It is validated as far as it can be locally (PyYAML parse, structural checks, and a local rehearsal of its embedded bash contract block) and will execute unchanged as soon as Actions can start on this repository.
+  2. Delete the diagnostic `smoke.yml`; it served its single purpose.
+  3. Trim the matrix from 6 legs to 4 (`ubuntu-latest`, `windows-latest` x `3.10`, `3.13`). `macos-latest` bills at a 10x minute multiplier and adds little over ubuntu for POSIX parity, which is an unjustifiable standing cost on a private repository.
+  4. Record the blocker here rather than silently leaving a red badge: the most likely cause is GitHub Actions minutes or a spending limit for **private**-repository usage on this account. Resolution lives in account settings (Billing -> Plans and usage -> Actions spending limit), or by making the repository public, which removes minute billing entirely.
+- **Consequences**:
+  - *Positive*: The gate exists, is drift-shielded by `TestContinuousVerificationGate`, and is one account setting away from enforcing every invariant off the agent's machine. The YAML defect it surfaced is permanently pinned.
+  - *Trade-offs*: Until Actions can start, the gates remain agent-discipline only - exactly the weakness ADR-041 set out to remove. The repository therefore still depends on the agent running the delivery triad by hand.
+  - *Deferred*: Branch protection requiring the CI check is a repository setting, not a file, and cannot be added from the working tree.

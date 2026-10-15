@@ -32,7 +32,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macos-latest omitted deliberately: it bills at a 10x minute multiplier and adds
+        # little over ubuntu for POSIX parity. Windows bills at 2x and is kept, since it is
+        # the development platform whose assumptions most need checking elsewhere.
+        os: [ubuntu-latest, windows-latest]
         python-version: ['3.10', '3.13']
 
     steps:
