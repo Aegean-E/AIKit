@@ -76,9 +76,53 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
                 pass
 
 
-def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5) -> None:
+def check_disk_headroom(target_dir: Path, min_mb: float = 10.0) -> bool:
+    """Check whether sufficient disk headroom exists before writing (PRINCIPLE-013)."""
+    try:
+        usage = shutil.disk_usage(str(target_dir.resolve()))
+        free_mb = usage.free / (1024 * 1024)
+        if free_mb < min_mb:
+            sys.stderr.write(f"[WARN] Low disk space: {free_mb:.1f}MB remaining (minimum {min_mb}MB required)\n")
+            return False
+        return True
+    except Exception:
+        return True
+
+
+def migrate_ledger_schema(data: Any) -> Dict[str, Any]:
+    """
+    Ensure recovered or loaded ledger conforms to current schema specification (PRINCIPLE-013).
+    Performs forward-compatible, idempotent schema upgrades.
+    """
+    if not isinstance(data, dict):
+        return {"version": 1, "active_task": None, "checkpoints": []}
+
+    # Ensure mandatory fields
+    if "version" not in data:
+        data["version"] = 1
+    if "active_task" not in data:
+        data["active_task"] = None
+    if "checkpoints" not in data or not isinstance(data["checkpoints"], list):
+        data["checkpoints"] = []
+
+    # In-place normalization of active_task
+    if isinstance(data.get("active_task"), dict):
+        at = data["active_task"]
+        if "status" not in at:
+            at["status"] = "in_progress"
+        if "active_phase" not in at:
+            at["active_phase"] = 1
+
+    return data
+
+
+def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_headroom_mb: float = 10.0) -> None:
     """Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013)."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
+    if not check_disk_headroom(file_path.parent, min_mb=min_headroom_mb):
+        sys.stderr.write(f"[WARN] Insufficient storage headroom for atomic write: {file_path.name}\n")
+        raise OSError(28, "No space left on device (ENOSPC headroom guard)")
+
     tmp_path = file_path.with_suffix(file_path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
     try:
         with open(tmp_path, "w", encoding="utf-8") as f:
@@ -115,7 +159,7 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5) -> None:
 def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
     """
     Safely load the task ledger with startup self-healing (PRINCIPLE-013).
-    Quarantines corrupted files from power outages and restores safe empty state.
+    Quarantines corrupted files from power outages, restores from shadow backup, and migrates schema.
     """
     path = ledger_file or LEDGER_PATH
     if not path.exists():
@@ -123,7 +167,8 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            return migrate_ledger_schema(data)
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
         # Quarantine corrupted artifact
         corrupt_name = f"{path.name}.corrupt_{int(time.time())}"
@@ -141,7 +186,7 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
                 with open(bak_path, "r", encoding="utf-8") as f_bak:
                     recovered = json.load(f_bak)
                     sys.stderr.write(f"[INFO] Recovered task ledger from shadow backup {bak_path.name}\n")
-                    return recovered
+                    return migrate_ledger_schema(recovered)
             except Exception:
                 pass
 

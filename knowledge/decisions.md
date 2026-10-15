@@ -453,3 +453,21 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates Windows atomic replace crashes; prevents multi-agent write clobbering; preserves task memory through shadow backup recovery; keeps the repository free of temporary file garbage; guarantees all-or-nothing consistency across multi-file syncs.
   - *Trade-offs*: None; pure standard library implementation (`shutil`, `contextlib`, `os`).
+
+### ADR-029: Storage Headroom Guards (ENOSPC), Forward Schema Migrations, Signal Drains, and Chaos Verification (PRINCIPLE-013 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Low disk space or high-volume write bursts can cause writes to fail mid-stream with `OSError: [Errno 28] No space left on device` (`ENOSPC`), potentially leaving files truncated or corrupted.
+  2. Over time, schemas evolve; restoring an older `.bak` shadow snapshot from prior versions could crash modern deserializers if required fields or structures differ.
+  3. Abrupt process aborts via `Ctrl+C` (`SIGINT`) or IDE termination (`SIGTERM`) risk dropping in-flight working memory that was not yet flushed to the persistent ledger.
+  4. Running on read-only container volumes or permissions-restricted directories could crash tools on startup rather than gracefully operating in degraded ephemeral memory mode.
+  5. Crash resilience mechanisms require continuous automated verification under hostile fault conditions (0-byte truncation, severed streams) to prevent silent regressions.
+- **Decision**:
+  1. Enforce **Storage Headroom Pre-Check (ENOSPC Resilience)**: Inspect storage via `shutil.disk_usage` ($\ge 10\text{MB}$) before initiating atomic writes; halt cleanly with actionable diagnostic if space is exhausted.
+  2. Enforce **Forward-Compatible Schema Migration**: State loaders must apply idempotent schema migration transforms (`migrate_ledger_schema`) to legacy or restored snapshots to ensure all required fields exist.
+  3. Enforce **Signal-Aware Memory Drain & Read-Only Fallback**: Intercept termination signals (`SIGINT`/`SIGTERM`) to flush memory state and release lockfiles before exiting; degrade gracefully to ephemeral in-memory state on read-only filesystems.
+  4. Enforce **Continuous Power-Loss Fault-Injection Verification**: Automated tests must inject 0-byte truncations, corrupted JSON streams, and concurrent lock contention to verify 100% deterministic self-healing.
+- **Consequences**:
+  - *Positive*: Protects systems against storage exhaustion panics; ensures recovered snapshots never crash modern code; guarantees clean in-flight memory persistence during user aborts; proves crash resilience through continuous automated fault injection.
+  - *Trade-offs*: None; pure standard library practices.

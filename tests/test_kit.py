@@ -30,6 +30,8 @@ from scripts.disruption_recovery import (
     reset_active_task,
     clean_dangling_temp_files,
     file_lock,
+    check_disk_headroom,
+    migrate_ledger_schema,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -271,6 +273,39 @@ class TestDisruptionRecovery(unittest.TestCase):
         # Once released, lock should be immediately re-acquirable
         with file_lock(test_file, timeout_seconds=1.0) as acquired3:
             self.assertTrue(acquired3)
+
+    def test_disk_headroom_check(self):
+        # Enforces PRINCIPLE-013: storage headroom sanity guard prevents ENOSPC crashes
+        # Normal directory should have >0.001 MB
+        self.assertTrue(check_disk_headroom(self.test_dir, min_mb=0.001))
+        # Impossibly high requirement should return False gracefully
+        self.assertFalse(check_disk_headroom(self.test_dir, min_mb=10_000_000_000.0))
+
+    def test_schema_migration_backward_compatibility(self):
+        # Enforces PRINCIPLE-013: state schemas are forward-compatible and auto-migrated
+        # Legacy/partial schema with missing fields
+        legacy_data = {"checkpoints": [{"task_id": "t1", "phase": "plan"}]}
+        migrated = migrate_ledger_schema(legacy_data)
+        self.assertEqual(migrated["version"], 1)
+        self.assertIsNone(migrated["active_task"])
+        self.assertEqual(len(migrated["checkpoints"]), 1)
+
+        # Legacy data where active_task lacks status or active_phase
+        legacy_with_task = {"active_task": {"task_id": "legacy_task"}}
+        migrated_task = migrate_ledger_schema(legacy_with_task)
+        self.assertEqual(migrated_task["active_task"]["status"], "in_progress")
+        self.assertEqual(migrated_task["active_task"]["active_phase"], 1)
+
+    def test_zero_byte_power_loss_truncation_quarantine(self):
+        # Enforces PRINCIPLE-013: 0-byte file from sudden power outage is quarantined cleanly
+        self.ledger_file.write_bytes(b"")  # 0-byte file
+        self.assertEqual(self.ledger_file.stat().st_size, 0)
+        loaded = load_ledger(self.ledger_file)
+        self.assertEqual(loaded["version"], 1)
+        self.assertIsNone(loaded["active_task"])
+        # 0-byte corrupted file should be quarantined
+        corrupt_files = list(self.test_dir.glob("task_ledger.json.corrupt_*"))
+        self.assertTrue(len(corrupt_files) >= 1)
 
     def test_record_checkpoint_and_complete(self):
         record_checkpoint(

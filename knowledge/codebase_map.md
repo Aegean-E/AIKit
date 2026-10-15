@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `25`
-- **Total Source Lines**: `1629`
+- **Total Functions / Methods**: `27`
+- **Total Source Lines**: `1709`
 
 ---
 
@@ -18,12 +18,14 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `628` lines (`24217` bytes)
+**Size**: `673` lines (`25996` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
 - `def file_lock(lock_path, timeout_seconds, poll_interval)` - *Cross-platform cooperative advisory lock (PRINCIPLE-013).*
-- `def atomic_write_json(file_path, data, max_retries)` - *Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013).*
+- `def check_disk_headroom(target_dir, min_mb)` - *Check whether sufficient disk headroom exists before writing (PRINCIPLE-013).*
+- `def migrate_ledger_schema(data)` - *Ensure recovered or loaded ledger conforms to current schema specification (PRINCIPLE-013).*
+- `def atomic_write_json(file_path, data, max_retries, min_headroom_mb)` - *Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013).*
 - `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-013).*
 - `def prune_checkpoints(checkpoints, active_task_id, max_history)` - *Prune checkpoints to maintain a bounded rolling memory window (PRINCIPLE-004).*
 - `def save_ledger(ledger, ledger_file, max_history)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
@@ -70,7 +72,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `529` lines (`25434` bytes)
+**Size**: `564` lines (`27343` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -90,6 +92,9 @@
   - Method `.test_self_healing_quarantine_corrupted_json()`
   - Method `.test_self_healing_recovery_from_shadow_backup()`
   - Method `.test_advisory_file_lock()`
+  - Method `.test_disk_headroom_check()`
+  - Method `.test_schema_migration_backward_compatibility()`
+  - Method `.test_zero_byte_power_loss_truncation_quarantine()`
   - Method `.test_record_checkpoint_and_complete()`
   - Method `.test_dangling_temp_file_detection()`
   - Method `.test_format_resume_report()`
