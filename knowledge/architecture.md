@@ -48,8 +48,11 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 ---
 
 ## 🔍 Epistemic Grounding & Anti-Hallucination Invariant
-- **Read-Before-Write Protocol**: All code changes, internal references, and type signatures are verified against real disk files and AST symbols prior to execution (**PRINCIPLE-003**).
-- **AST Gating**: Automated AST parsing via `scripts/update_knowledge_base.py` guarantees symbol parity and catches hallucinated imports or signatures.
+- **Atomic Pre-Mutation Slice Freshness**: All code changes, internal references, and type signatures are verified against real disk files and AST symbols immediately prior to write operations, preventing line-drift and stale-offset edit failures (**PRINCIPLE-003**).
+- **Manifest-Backed Dependency Grounding**: Introducing external packages, imports, or CLI tools requires prior verification against project dependency manifests (`pyproject.toml`, `requirements.txt`, `package.json`, etc.) or the language standard library. Zero-dependency environments prohibit third-party imports.
+- **Bi-Directional Contract Parity**: Cross-layer changes (e.g. backend models vs frontend consumers, database schemas vs repository types) require verifying both sides against the canonical contract before edits.
+- **Dual-Track Ambiguity Protocol**: Safe, deterministic, non-destructive fallbacks with logging for runtime data ambiguity; mandatory stop-and-escalate to the user for architectural or business intent ambiguity.
+- **AST & Syntax Gating**: Automated AST parsing and syntax checking via `scripts/update_knowledge_base.py`, compilers, and linters guarantee symbol parity and catch hallucinated imports or signatures prior to test execution.
 
 ---
 

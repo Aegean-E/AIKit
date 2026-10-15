@@ -12,7 +12,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 2. **PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)**:
    - Monotonic 5-phase lifecycle execution gate (Phase 4 test pass required before Phase 5 delivery); adaptive task pathing (Query/Doc/Eng); immunity to late-stage user priming. [GUIDELINES.md](../../GUIDELINES.md#principle-002)
 3. **PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)**:
-   - Read-before-write invariant (`view_file`/`grep_search` symbol check before write); zero assumption on ambiguity; deterministic AST test gating. [GUIDELINES.md](../../GUIDELINES.md#principle-003)
+   - Read-before-write target slice freshness; manifest-backed dependency check; bi-directional contract parity; dual-track ambiguity protocol; deterministic AST syntax gate. [GUIDELINES.md](../../GUIDELINES.md#principle-003)
 4. **PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)**:
    - Externalized working memory (`.agents/task_ledger.json`); continuous checklist re-anchoring; cold-start self-orientation via `git status` + `git log -n 1`. [GUIDELINES.md](../../GUIDELINES.md#principle-004)
 5. **PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)**:

@@ -73,6 +73,7 @@ class TestPrincipleSync(unittest.TestCase):
             content = target.read_text(encoding="utf-8")
             self.assertIn("PRINCIPLE-001", content, f"PRINCIPLE-001 missing from {target.name}")
             self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
+            self.assertIn("PRINCIPLE-003", content, f"PRINCIPLE-003 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
             self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
             self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
@@ -82,6 +83,16 @@ class TestPrincipleSync(unittest.TestCase):
                 MAX_ALLOWED_CHARS,
                 f"Governance bloat detected in {target.name}: {len(content)} chars > {MAX_ALLOWED_CHARS}"
             )
+
+    def test_principle_003_anti_hallucination_capsule(self):
+        # Enforces PRINCIPLE-003: verified invariant capsule with slice freshness and manifest-backed dependencies
+        principles = parse_principles(AGENTS_MD)
+        p3 = next((p for p in principles if p["id"] == "PRINCIPLE-003"), None)
+        self.assertIsNotNone(p3)
+        self.assertIn("slice freshness", p3["invariant"].lower())
+        self.assertIn("manifest-backed", p3["invariant"].lower())
+        self.assertIn("ambiguity", p3["invariant"].lower())
+
 
 
 
