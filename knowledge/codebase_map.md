@@ -6,14 +6,30 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `6`
-- **Total Classes**: `14`
-- **Total Functions / Methods**: `53`
-- **Total Source Lines**: `3793`
+- **Total Python Modules**: `7`
+- **Total Classes**: `15`
+- **Total Functions / Methods**: `60`
+- **Total Source Lines**: `4163`
 
 ---
 
 ## 📦 Modules & Exported Symbols
+
+### [`scripts/check_reachability.py`](scripts/check_reachability.py)
+> *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
+
+**Size**: `270` lines (`10789` bytes)
+
+**Functions:**
+- `def production_modules()` - *Production source files whose reachability is audited (excludes this checker itself).*
+- `def collect_definitions(files)` - *Map every top-level function name to the module that defines it.*
+- `def collect_references(files)` - *Every name referenced in production code, however it is reached.*
+- `def find_unreachable(files)` - *Functions defined in production code with no production reference and no allowlist entry.*
+- `def collect_state_keys(files)` - *Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals or*
+- `def find_phantom_keys(files)` - *State keys read by production code that no production code ever writes.*
+- `def run_check(verbose)` - *Audit reachability and key round-trips, reporting tersely (PRINCIPLE-012 Rule 4).*
+
+---
 
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
@@ -49,7 +65,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `451` lines (`19486` bytes)
+**Size**: `456` lines (`19849` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -152,7 +168,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1098` lines (`55813` bytes)
+**Size**: `1193` lines (`59585` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -174,6 +190,14 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestInvariantReachabilityShield` - *PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These*
+  - Method `.setUp()`
+  - Method `._write(name, source)`
+  - Method `.test_detects_capability_with_zero_production_call_sites()`
+  - Method `.test_detects_state_key_read_with_no_producer()`
+  - Method `.test_key_with_a_producer_is_not_flagged()`
+  - Method `.test_this_repository_passes_the_shield()`
+  - Method `.test_allowlist_entries_still_exist()`
 - `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*
   - Method `.setUpClass()`
   - Method `.test_workflow_exists()`

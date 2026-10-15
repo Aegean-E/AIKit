@@ -38,6 +38,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 LEDGER_CLI = ROOT_DIR / "scripts" / "disruption_recovery.py"
 SYNC_CLI = ROOT_DIR / "scripts" / "sync_principles.py"
 KB_CLI = ROOT_DIR / "scripts" / "update_knowledge_base.py"
+REACH_CLI = ROOT_DIR / "scripts" / "check_reachability.py"
 LOG_PATH = ROOT_DIR / ".agents" / "dogfood_last_run.log"
 
 PROC_TIMEOUT = 10  # PRINCIPLE-010 R3: no unbounded subprocess
@@ -296,16 +297,20 @@ def track_readonly_gates(jail: Path, log: List[str]) -> Tuple[bool, str]:
     unrelated working directory and still report truthfully (PRINCIPLE-017 R3, PRINCIPLE-016 R4).
     """
     failures = []
-    for name, script in (("sync", SYNC_CLI), ("kb", KB_CLI)):
-        code, out, err = run_cli(script, ["--check"], jail)
+    # check_reachability.py has no write mode at all, so it takes no --check flag; passing one
+    # would be (correctly) rejected as misuse. Each gate gets the args it actually declares.
+    gates = (("sync", SYNC_CLI, ["--check"]), ("kb", KB_CLI, ["--check"]), ("reach", REACH_CLI, []))
+    for name, script, args in gates:
+        code, out, err = run_cli(script, args, jail)
+        label = f"{name} {' '.join(args)}".strip()
         log.append(f"[gate:{name}] rc={code} out={out.strip()[-160:]}")
         if code != 0:
-            failures.append(f"{name} --check failed (rc={code})")
+            failures.append(f"{label} failed (rc={code})")
         if "Traceback" in err:
-            failures.append(f"{name} --check produced a traceback")
+            failures.append(f"{label} produced a traceback")
     if failures:
         return False, "; ".join(failures)
-    return True, "rule sync and AST map gates both clean and read-only"
+    return True, "rule sync, AST map and reachability gates all clean"
 
 
 def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
@@ -316,7 +321,7 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     budget_ms = 400  # generous vs the 100ms target: this measures full interpreter start
     failures = []
     slowest = 0.0
-    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI):
+    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI):
         start = time.perf_counter()
         code, out, err = run_cli(script, ["--help"], jail)
         elapsed = (time.perf_counter() - start) * 1000

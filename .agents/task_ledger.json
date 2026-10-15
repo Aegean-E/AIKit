@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-roadmap-m1-ci",
+    "task_id": "principle-roadmap-m3-reachability",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792102547.367677,
+    "updated_at": 1792103339.7690794,
     "impact_assessment": {
-      "why": "Every gate in the repo (100% tests, rule freshness, AST map freshness, P018 delivery triad) exists purely as agent discipline; .github/ has no workflow, so nothing enforces them on push for any contributor or future agent",
-      "benefits": "Mechanically enforces P014/P016/P017/P018 outside the agent machine; a POSIX matrix leg finally exercises the fsync_dir POSIX branch and P003 R4 platform-parity claims that have never run off Windows",
-      "risks": "CI cannot be validated locally; line-ending or path assumptions could fail on ubuntu; action version drift",
-      "mitigation": "Pin major action versions; keep commands identical to documented canonical ones; add a parity test asserting CI runs the documented gates so docs and CI cannot drift"
+      "why": "The green-test-broken-production class recurred 5 times across audits (unused lock, phantom last_phase_num key, porcelain whitelist gap, async omission, tautological dogfood test); no principle covers declared-but-unwired capabilities",
+      "benefits": "Mechanical regression shield for the single highest-frequency defect class in the repo, at zero Tier 1 token cost since it folds into an existing principle rather than adding P019",
+      "risks": "False positives on intentionally-exported library API could create noise and erode trust in the gate",
+      "mitigation": "Allowlist for deliberately public API; checker reports only prod-unreachable symbols; test asserts the checker is clean rather than asserting a symbol list"
     },
-    "completed_at": 1792102657.98678
+    "completed_at": 1792103573.9679976
   },
   "checkpoints": [
-    {
-      "task_id": "principle-015-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-015-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792097914.8939712,
-      "timestamp_str": "2026-10-15 23:58:34"
-    },
-    {
-      "task_id": "principle-015-pass2",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 15 Pass 2 with platform-portable process tree teardown, non-interactive stdin parity, web DOM mount hydration assertions, and ephemeral database state isolation",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792097990.1152456,
-      "timestamp_str": "2026-10-15 23:59:50",
-      "impact_assessment": {
-        "why": "Prevent interactive stdin deadlocks, Windows zombie process leaks, browser white-screen illusions, and database pollution",
-        "benefits": "Guarantee zero hangs, leak-free process lifecycles across Windows/POSIX, true web hydration verification, and pristine database isolation",
-        "risks": "Context budget creep across IDE rule files",
-        "mitigation": "Keep invariant capsule dense (<260 chars) and concise rule descriptions"
-      }
-    },
     {
       "task_id": "principle-015-pass2",
       "phase": "completed",
@@ -257,6 +232,31 @@
       "status": "completed",
       "timestamp": 1792103316.2020974,
       "timestamp_str": "2026-10-16 01:28:36"
+    },
+    {
+      "task_id": "principle-roadmap-m3-reachability",
+      "phase": "2",
+      "phase_num": 2,
+      "description": "Milestone 3/5: add P014 R7 invariant reachability shield with AST checker, instead of a new principle",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792103339.7690794,
+      "timestamp_str": "2026-10-16 01:28:59",
+      "impact_assessment": {
+        "why": "The green-test-broken-production class recurred 5 times across audits (unused lock, phantom last_phase_num key, porcelain whitelist gap, async omission, tautological dogfood test); no principle covers declared-but-unwired capabilities",
+        "benefits": "Mechanical regression shield for the single highest-frequency defect class in the repo, at zero Tier 1 token cost since it folds into an existing principle rather than adding P019",
+        "risks": "False positives on intentionally-exported library API could create noise and erode trust in the gate",
+        "mitigation": "Allowlist for deliberately public API; checker reports only prod-unreachable symbols; test asserts the checker is clean rather than asserting a symbol list"
+      }
+    },
+    {
+      "task_id": "principle-roadmap-m3-reachability",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-roadmap-m3-reachability' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792103573.9679985,
+      "timestamp_str": "2026-10-16 01:32:53"
     }
   ]
 }

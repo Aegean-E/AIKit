@@ -51,6 +51,13 @@ from scripts.disruption_recovery import (
     migrate_ledger_schema,
     validate_conventional_commit,
 )
+from scripts.check_reachability import (
+    find_unreachable,
+    find_phantom_keys,
+    collect_definitions,
+    production_modules,
+    PUBLIC_API_ALLOWLIST,
+)
 from scripts.update_knowledge_base import (
     extract_python_symbols,
     generate_codebase_map,
@@ -357,6 +364,7 @@ class TestPrincipleSync(unittest.TestCase):
             "scripts/disruption_recovery.py",
             "scripts/update_knowledge_base.py",
             "scripts/dogfood.py",
+            "scripts/check_reachability.py",
             "tests/test_kit.py",
             "tests/test_integration.py",
             "knowledge/INDEX.md",
@@ -371,6 +379,93 @@ class TestPrincipleSync(unittest.TestCase):
             basename = Path(rel).name
             self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+
+
+class TestInvariantReachabilityShield(unittest.TestCase):
+    """
+    PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These
+    tests reconstruct the two real defects the shield was written for, so the shield itself
+    cannot rot into a checker that only ever reports OK.
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix="test_reach_"))
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+
+    def _write(self, name, source):
+        (self.dir / name).write_text(source, encoding="utf-8")
+        return sorted(self.dir.glob("*.py"))
+
+    def test_detects_capability_with_zero_production_call_sites(self):
+        # Reconstruction of the real defect: file_lock() was defined, exported and unit-tested
+        # with no production caller, so parallel agents erased each other's checkpoints.
+        files = self._write("mod_a.py", '''"""Ledger."""
+import contextlib
+import sys
+
+@contextlib.contextmanager
+def my_advisory_lock(path):
+    """Defined, exported and unit-tested - but wired into nothing."""
+    yield True
+
+def do_work(task):
+    return {"task": task}
+
+if __name__ == "__main__":
+    do_work(sys.argv[1])
+''')
+        unreachable = [name for name, _ in find_unreachable(files)]
+        self.assertIn(
+            "my_advisory_lock", unreachable,
+            "shield failed to detect a tested-but-unwired safety mechanism",
+        )
+        self.assertNotIn("do_work", unreachable, "shield flagged a referenced function")
+
+    def test_detects_state_key_read_with_no_producer(self):
+        # Reconstruction of the real defect: format_resume_report() read 'last_phase_num',
+        # which no writer ever produced, so every resumption returned a default phase.
+        files = self._write("mod_b.py", '''"""Reports."""
+def build(active):
+    return active.get("last_phase_num", 2)
+''')
+        phantom = [key for key, _ in find_phantom_keys(files)]
+        self.assertIn(
+            "last_phase_num", phantom,
+            "shield failed to detect a reader keyed to a field nothing writes",
+        )
+
+    def test_key_with_a_producer_is_not_flagged(self):
+        files = self._write("mod_c.py", '''"""Round trip."""
+def write(v):
+    return {"active_phase": v}
+
+def read(d):
+    return d.get("active_phase", 1)
+''')
+        phantom = [key for key, _ in find_phantom_keys(files)]
+        self.assertNotIn("active_phase", phantom, "shield flagged a key that round-trips")
+
+    def test_this_repository_passes_the_shield(self):
+        # The live invariant: AIKit's own production modules must stay reachable.
+        files = production_modules()
+        self.assertGreaterEqual(len(files), 4, "no production modules discovered")
+        unreachable = find_unreachable(files)
+        self.assertEqual(
+            unreachable, [],
+            f"Unwired capabilities in scripts/: {unreachable}. Wire them into the path they "
+            f"protect, delete them, or allowlist them as deliberate public API.",
+        )
+        phantom = find_phantom_keys(files)
+        self.assertEqual(phantom, [], f"State keys read with no producer: {phantom}")
+
+    def test_allowlist_entries_still_exist(self):
+        # An allowlist that outlives its symbols silently stops shielding anything.
+        defined = set(collect_definitions(production_modules()))
+        stale = sorted(name for name in PUBLIC_API_ALLOWLIST if name not in defined)
+        self.assertEqual(
+            stale, [],
+            f"PUBLIC_API_ALLOWLIST names symbols that no longer exist: {stale}",
+        )
 
 
 class TestContinuousVerificationGate(unittest.TestCase):

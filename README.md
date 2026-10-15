@@ -33,6 +33,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
+| **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <100ms, writing nothing |
 
@@ -69,7 +70,8 @@ portable_agent_kit/
 │   ├── sync_principles.py              <- Auto-sync engine (syncs all IDE files from AGENTS.md)
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
-│   └── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
+│   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
+│   └── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
 │   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding

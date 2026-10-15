@@ -127,6 +127,26 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Invariant Reachability Shield (Implemented Surface)
+`scripts/check_reachability.py` enforces **PRINCIPLE-014** Rule 7. See [ADR-044](decisions.md).
+
+| Audit | Catches |
+|---|---|
+| Call-site reachability | a capability defined, exported and unit-tested but wired into nothing |
+| Key round-trip integrity | a reader keyed to a persisted field that no writer produces |
+
+- **Why it exists**: "green test, broken production" was the highest-frequency defect class found
+  in this repository - the unused `file_lock()` lost 5 of 7 concurrent checkpoints, and the
+  phantom `last_phase_num` key made every resumption report a default phase. Both passed CI.
+- **Broad reference collection**: `ast.Name` loads, attributes and `ImportFrom` all count as
+  references, because a function stored in a dispatch tuple or passed as a callback is genuinely
+  reachable. Under-counting would produce false alarms and erode trust in the gate.
+- **Curated allowlist**: `PUBLIC_API_ALLOWLIST` names symbols that are deliberately public API
+  rather than internally called; a test asserts no entry outlives its symbol.
+- **Zero Tier 1 cost**: implemented as a *rule* under an existing principle, not as
+  PRINCIPLE-019, because only invariant capsules are injected into IDE targets. Measured:
+  `principles.md` unchanged at ~1,559 tokens.
+
 ### Operational Dogfood Runner (Implemented Surface)
 `scripts/dogfood.py` makes **PRINCIPLE-015** executable. See [ADR-043](decisions.md).
 
