@@ -1,12 +1,12 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-003-upgrade",
+    "task_id": "principle-003-second-pass",
     "last_phase": "Phase 3: Implementation",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792090757.8928883,
-    "completed_at": 1792090923.0772655
+    "updated_at": 1792091030.7473993,
+    "completed_at": 1792091314.3959842
   },
   "checkpoints": [
     {
@@ -27,6 +27,25 @@
       "status": "completed",
       "timestamp": 1792090923.077267,
       "timestamp_str": "2026-10-15 22:02:03"
+    },
+    {
+      "task_id": "principle-003-second-pass",
+      "phase": "Phase 3: Implementation",
+      "phase_num": 3,
+      "description": "Fortifying strict AST validation in tooling, platform parity, and call-site completeness",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792091030.7473993,
+      "timestamp_str": "2026-10-15 22:03:50"
+    },
+    {
+      "task_id": "principle-003-second-pass",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-003-second-pass' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792091314.3959856,
+      "timestamp_str": "2026-10-15 22:08:34"
     }
   ]
 }

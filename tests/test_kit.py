@@ -26,6 +26,7 @@ from scripts.disruption_recovery import (
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
+    generate_codebase_map,
     update_and_validate,
     CORE_DOCS,
     KNOWLEDGE_DIR,
@@ -85,13 +86,14 @@ class TestPrincipleSync(unittest.TestCase):
             )
 
     def test_principle_003_anti_hallucination_capsule(self):
-        # Enforces PRINCIPLE-003: verified invariant capsule with slice freshness and manifest-backed dependencies
+        # Enforces PRINCIPLE-003: verified invariant capsule with slice freshness, call-sites, and platform parity
         principles = parse_principles(AGENTS_MD)
         p3 = next((p for p in principles if p["id"] == "PRINCIPLE-003"), None)
         self.assertIsNotNone(p3)
         self.assertIn("slice freshness", p3["invariant"].lower())
-        self.assertIn("manifest-backed", p3["invariant"].lower())
-        self.assertIn("ambiguity", p3["invariant"].lower())
+        self.assertIn("call-site", p3["invariant"].lower())
+        self.assertIn("platform parity", p3["invariant"].lower())
+        self.assertIn("ast syntax gate", p3["invariant"].lower())
 
 
 
@@ -173,6 +175,28 @@ class TestKnowledgeBase(unittest.TestCase):
         func_names = [f["name"] for f in symbols["functions"]]
         self.assertIn("parse_principles", func_names)
         self.assertIn("sync_all", func_names)
+
+    def test_ast_strict_mode_fails_on_syntax_error(self):
+        # Enforces PRINCIPLE-003: mechanical AST gate catches syntax errors
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_ast_"))
+        try:
+            bad_file = temp_dir / "broken.py"
+            bad_file.write_text("def broken_syntax(\n", encoding="utf-8")
+
+            # In strict mode, extract_python_symbols must raise ValueError
+            with self.assertRaises(ValueError):
+                extract_python_symbols(bad_file, strict=True)
+
+            # In lenient mode, extract_python_symbols returns error dict without crashing
+            lenient = extract_python_symbols(bad_file, strict=False)
+            self.assertIn("error", lenient)
+
+            # generate_codebase_map in strict mode must halt with AST gate failure
+            with self.assertRaises(ValueError) as ctx:
+                generate_codebase_map(root=temp_dir, strict=True)
+            self.assertIn("[PRINCIPLE-003 AST GATE FAILURE]", str(ctx.exception))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 

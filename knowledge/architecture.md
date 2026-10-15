@@ -49,10 +49,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ## 🔍 Epistemic Grounding & Anti-Hallucination Invariant
 - **Atomic Pre-Mutation Slice Freshness**: All code changes, internal references, and type signatures are verified against real disk files and AST symbols immediately prior to write operations, preventing line-drift and stale-offset edit failures (**PRINCIPLE-003**).
+- **Call-Site & Reference Completeness**: Before altering signatures or deleting symbols, all call-sites across the codebase are identified to prevent orphan references and ghost duplicates.
 - **Manifest-Backed Dependency Grounding**: Introducing external packages, imports, or CLI tools requires prior verification against project dependency manifests (`pyproject.toml`, `requirements.txt`, `package.json`, etc.) or the language standard library. Zero-dependency environments prohibit third-party imports.
+- **Platform & Runtime Parity**: Code and execution scripts adhere strictly to the active operating system and shell environment (`sys.platform`), utilizing cross-platform stdlib abstractions (`pathlib.Path`, `sys.executable`) without assuming Unix-only shell builtins.
 - **Bi-Directional Contract Parity**: Cross-layer changes (e.g. backend models vs frontend consumers, database schemas vs repository types) require verifying both sides against the canonical contract before edits.
-- **Dual-Track Ambiguity Protocol**: Safe, deterministic, non-destructive fallbacks with logging for runtime data ambiguity; mandatory stop-and-escalate to the user for architectural or business intent ambiguity.
-- **AST & Syntax Gating**: Automated AST parsing and syntax checking via `scripts/update_knowledge_base.py`, compilers, and linters guarantee symbol parity and catch hallucinated imports or signatures prior to test execution.
+- **Epistemic Triad & Dual-Track Ambiguity**: Agents pass the 3-point check (Symbol, Dependency, Platform) before Phase 3 coding. Safe, deterministic fallbacks apply to data ambiguity; mandatory stop-and-escalate applies to architectural/intent ambiguity.
+- **Strict AST Mechanical Gating**: `scripts/update_knowledge_base.py` strictly parses all Python sources with `ast.parse` and fails immediately with non-zero exit on any syntax error, preventing syntactically invalid code from advancing to Phase 4.
 
 ---
 

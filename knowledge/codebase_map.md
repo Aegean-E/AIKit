@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `20`
-- **Total Source Lines**: `952`
+- **Total Source Lines**: `988`
 
 ---
 
@@ -52,20 +52,20 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `217` lines (`7035` bytes)
+**Size**: `229` lines (`7784` bytes)
 
 **Functions:**
-- `def extract_python_symbols(file_path)` - *Parse a python file with AST and extract docstrings, classes, and functions.*
+- `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
-- `def generate_codebase_map()` - *Generate the markdown content for knowledge/codebase_map.md.*
-- `def update_and_validate()`
+- `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
+- `def update_and_validate(strict)`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `200` lines (`8613` bytes)
+**Size**: `224` lines (`9786` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -83,6 +83,7 @@
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
   - Method `.test_ast_symbol_extraction()`
+  - Method `.test_ast_strict_mode_fails_on_syntax_error()`
 - `class TestOperationalDogfooding` - *Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).*
   - Method `.setUp()`
   - Method `.tearDown()`

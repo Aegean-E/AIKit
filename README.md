@@ -83,7 +83,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,500 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
 | **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate (Phase 4 test pass required before Phase 5); adaptive task pathing (Query/Doc/Eng); late-stage priming immunity. |
-| **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness read-before-write; manifest-backed dependencies; bi-directional contract parity; dual-track ambiguity protocol. |
+| **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness & call-site check; manifest dependency grounding; platform parity; strict AST gate. |
 | **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Context anchor protocol; externalized working memory on disk; slice viewing to protect context window. |
 
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning

@@ -12,7 +12,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 |---|---|---|
 | **[PRINCIPLE-001](#principle-001-progressive-rule-disclosure--governance-frugality-zero-instruction-bloat)** | Progressive Disclosure & Lean Rules | Two-tier rule disclosure, strict prompt token budget (<1,500 tokens), and zero instruction bloat. |
 | **[PRINCIPLE-002](#principle-002-lifecycle-aligned-instruction-ordering--attentional-priming-cognitive-flow-invariant)** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate, remediation recoil, adaptive pathing, and late-stage priming immunity. |
-| **[PRINCIPLE-003](#principle-003-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Slice freshness read-before-write, manifest-backed dependencies, contract parity, and dual-track ambiguity protocol. |
+| **[PRINCIPLE-003](#principle-003-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Slice freshness & call-site check, manifest dependencies, platform parity, and strict AST gate. |
 | **[PRINCIPLE-004](#principle-004-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Context anchor protocol, continuous checklist re-anchoring, and ledger self-orientation. |
 
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
@@ -86,15 +86,18 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Continuous Sequence Audit**: Auto-sync tooling and automated test suites mechanically parse Phase headers and guarantee that principles maintain strictly monotonic lifecycle phase progression.
 
 ### PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)
-- **Problem**: AI coding models frequently hallucinate non-existent module imports, obsolete function signatures, phantom file paths, or arbitrary data schemas when guessing without empirical verification. Furthermore, multi-turn editing suffers from stale line-drift failures, phantom dependencies breaking lean builds, and cross-layer contract mismatches between producers and consumers.
+- **Problem**: AI coding models frequently hallucinate non-existent module imports, obsolete function signatures, phantom file paths, or arbitrary data schemas when guessing without empirical verification. Furthermore, multi-turn editing suffers from stale line-drift failures, orphaned call-sites during refactoring, cross-platform OS incompatibilities, and cross-layer contract mismatches.
 - **Guideline**:
   - **Read-Before-Write & Target Slice Freshness**: Never edit a file, call an internal function, or instantiate a class without first reading or grepping its definition and signature from the local codebase. When performing multi-turn or multi-file edits, re-verify the target slice immediately prior to mutation to eliminate line-drift and stale-offset edit failures.
+  - **Call-Site & Reference Completeness**: Before modifying signatures, renaming, or deleting any function, class, or configuration key, grep for all call-sites and references across the codebase to ensure complete refactoring with zero orphaned symbols or duplicate ghost implementations.
   - **Manifest-Backed Dependency Grounding**: Never introduce a third-party package, module import, or external CLI tool without first verifying that it is declared in the project's dependency manifest (`pyproject.toml`, `requirements.txt`, `package.json`, `Cargo.toml`) or is part of the language standard library. In zero-dependency repositories (such as AIKit), external imports are strictly prohibited.
+  - **Platform & Runtime Parity**: Never assume OS-specific shell builtins, path separators, or binary aliases (`python3` vs `py`, `bash` vs `powershell`) without checking the active runtime (`sys.platform`). Use portable standard-library APIs (`pathlib.Path`, `subprocess.run([sys.executable, ...])`) and shell-agnostic commands.
   - **Bi-Directional Contract Parity**: When modifying data schemas, API contracts, or serialization models, the AI must verify both producer and consumer interfaces across system boundaries before proposing code changes.
-  - **Dual-Track Ambiguity Protocol**:
+  - **Dual-Track Ambiguity Protocol & Epistemic Triad**:
+    - *Epistemic Triad Gate*: Before starting Phase 3 implementation, pass the 3-point check: (1) Symbol Reality (verified exact definition & call-sites), (2) Dependency Reality (declared in manifest or stdlib), and (3) Platform Reality (valid for active OS/shell).
     - *Data/Runtime Ambiguity*: Apply safe, deterministic, non-destructive fallbacks with explicit warning logs.
     - *Architectural/Intent Ambiguity*: Never guess business logic or execute destructive actions under ambiguity. Halt forward progression and escalate to the user with structured, concise options.
-  - **Automated AST & Syntax Gating**: Rely on deterministic verification tools (`scripts/update_knowledge_base.py`, AST parsers, compiler dry-runs, and unit tests) to mechanically validate syntax and symbol integrity before advancing to Phase 4 verification.
+  - **Strict AST & Syntax Gating**: Rely on deterministic verification tools (`scripts/update_knowledge_base.py`, AST parsers, compiler dry-runs, and unit tests) to mechanically validate syntax and symbol integrity. `scripts/update_knowledge_base.py` enforces strict AST validation and halts on any syntax error before advancing to Phase 4.
 
 ### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
 - **Problem**: In long-running pair programming sessions, large contexts induce "attentional drift" (the AI forgetting rules, skipping checklists, or losing constraints) and conversation compaction discards transient conversational context, causing amnesia.

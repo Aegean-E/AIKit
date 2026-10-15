@@ -11,7 +11,7 @@ import ast
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 KNOWLEDGE_DIR = ROOT_DIR / "knowledge"
@@ -42,12 +42,14 @@ IGNORE_DIRS = {
 }
 
 
-def extract_python_symbols(file_path: Path) -> Dict[str, Any]:
-    """Parse a python file with AST and extract docstrings, classes, and functions."""
+def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, Any]:
+    """Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003)."""
     try:
         content = file_path.read_text(encoding="utf-8")
         tree = ast.parse(content, filename=str(file_path))
     except Exception as e:
+        if strict:
+            raise ValueError(f"[PRINCIPLE-003 AST FAILURE] Syntax error in {file_path}: {e}") from e
         return {"error": str(e), "classes": [], "functions": [], "docstring": None}
 
     module_docstring = ast.get_docstring(tree)
@@ -101,8 +103,9 @@ def find_python_files(root: Path) -> List[Path]:
     return sorted(py_files)
 
 
-def generate_codebase_map() -> str:
-    """Generate the markdown content for knowledge/codebase_map.md."""
+def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> str:
+    """Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003)."""
+    target_root = root or ROOT_DIR
     lines = [
         "# Codebase Map & Symbol Catalog 🗺️",
         "",
@@ -113,18 +116,20 @@ def generate_codebase_map() -> str:
         ""
     ]
 
-    files_to_scan = find_python_files(ROOT_DIR)
+    files_to_scan = find_python_files(target_root)
 
     total_classes = 0
     total_functions = 0
     total_lines = 0
 
     modules_data = []
+    syntax_errors = []
 
     for file_path in files_to_scan:
-        rel_path = file_path.relative_to(ROOT_DIR)
-        info = extract_python_symbols(file_path)
-        if "error" in info and not info.get("classes") and not info.get("functions"):
+        rel_path = file_path.relative_to(target_root)
+        info = extract_python_symbols(file_path, strict=False)
+        if "error" in info:
+            syntax_errors.append((rel_path, info["error"]))
             continue
 
         c_count = len(info.get("classes", []))
@@ -136,6 +141,12 @@ def generate_codebase_map() -> str:
         total_lines += l_count
 
         modules_data.append((rel_path, info))
+
+    if syntax_errors and strict:
+        err_msg = "\n".join([f"  • {p}: {err}" for p, err in syntax_errors])
+        raise ValueError(
+            f"[PRINCIPLE-003 AST GATE FAILURE] Found {len(syntax_errors)} invalid Python file(s) with syntax errors:\n{err_msg}"
+        )
 
     lines.append(f"## 📊 Codebase Metrics")
     lines.append(f"- **Total Python Modules**: `{len(modules_data)}`")
@@ -187,11 +198,11 @@ def generate_codebase_map() -> str:
     return "\n".join(lines)
 
 
-def update_and_validate():
+def update_and_validate(strict: bool = True):
     KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 1. Update codebase_map.md atomically (fsync + replace)
-    map_content = generate_codebase_map()
+    # 1. Update codebase_map.md atomically (fsync + replace) with strict AST verification (PRINCIPLE-003)
+    map_content = generate_codebase_map(strict=strict)
     tmp_map = CODEBASE_MAP_PATH.with_suffix(f".tmp_{os.getpid()}")
     with open(tmp_map, "w", encoding="utf-8") as f:
         f.write(map_content)
@@ -214,4 +225,5 @@ def update_and_validate():
 
 
 if __name__ == "__main__":
-    update_and_validate()
+    is_lenient = "--lenient" in sys.argv
+    update_and_validate(strict=not is_lenient)
