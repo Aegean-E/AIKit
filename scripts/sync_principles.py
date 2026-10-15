@@ -3,7 +3,8 @@
 Principles Auto-Sync Tool (PRINCIPLE-017)
 Ensures all AI assistant guideline documents remain in 100% synchronization
 with the master specification in AGENTS.md, enforces principle schema completeness,
-validates triad consistency across documentation, and injects optional Tier 1B domain rules.
+prevents duplicate principle IDs, validates exact title parity across documentation,
+and injects optional Tier 1B domain rules.
 """
 
 import os
@@ -19,6 +20,7 @@ README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 
 MAX_TARGET_CHARS = 8000  # ~1,500-2,000 tokens per target file (PRINCIPLE-001)
+WARN_TARGET_CHARS = 7200  # 90% of MAX_TARGET_CHARS (early warning threshold)
 MAX_DOMAIN_CHARS = 1200  # ~300 tokens for Tier 1B domain rules (PRINCIPLE-001 Rule 4)
 
 
@@ -50,7 +52,7 @@ def append_domain_rules(lines: List[str], domain_rules: str):
 
 
 def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
-    """Parse AGENTS.md, enforce strict schema validation, and verify monotonic lifecycle progression."""
+    """Parse AGENTS.md, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression."""
     content = agents_file.read_text(encoding="utf-8")
     phase_pattern = r"##\s*([^\n]*Phase\s*(\d+)[:\s]*([^\n]*))"
     phase_matches = list(re.finditer(phase_pattern, content))
@@ -58,6 +60,8 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
     pattern = r"### (PRINCIPLE-\d+):\s*([^\n]+)"
     matches = list(re.finditer(pattern, content))
     principles = []
+    seen_pids = set()
+
     for i, match in enumerate(matches):
         pid = match.group(1).strip()
         title = match.group(2).strip()
@@ -70,6 +74,9 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
         rules_match = re.search(r"- \*\*Rules\*\*:\s*\n\s*1\.", block)
 
         if strict:
+            if pid in seen_pids:
+                raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] Duplicate principle ID detected: {pid}")
+            seen_pids.add(pid)
             if not title:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} has an empty title.")
             if not concept_match or not concept_match.group(1).strip():
@@ -78,6 +85,8 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Invariant**:' capsule.")
             if not rules_match:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Rules**:' section with numbered rules.")
+        else:
+            seen_pids.add(pid)
 
         concept = concept_match.group(1).strip() if concept_match else ""
         invariant = invariant_match.group(1).strip() if invariant_match else concept
@@ -127,7 +136,7 @@ def validate_triad_consistency(
     guidelines_file: Path = GUIDELINES_MD,
     readme_file: Path = README_MD,
 ) -> List[str]:
-    """Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md (PRINCIPLE-017)."""
+    """Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md with matching titles (PRINCIPLE-017)."""
     errors = []
     if not guidelines_file.exists():
         errors.append(f"GUIDELINES.md missing at {guidelines_file}")
@@ -135,8 +144,9 @@ def validate_triad_consistency(
         g_content = guidelines_file.read_text(encoding="utf-8")
         for p in principles:
             pid = p["id"]
-            if f"### {pid}:" not in g_content and f"### {pid} " not in g_content and f"**[{pid}]" not in g_content:
-                errors.append(f"{pid} missing from GUIDELINES.md")
+            expected_header = f"### {pid}: {p['title']}"
+            if expected_header not in g_content:
+                errors.append(f"{pid} heading in GUIDELINES.md does not match AGENTS.md ('{expected_header}')")
 
     if not readme_file.exists():
         errors.append(f"README.md missing at {readme_file}")
@@ -297,12 +307,13 @@ def sync_all(
     for target_path, expected_content in targets.items():
         char_len = len(expected_content)
         est_tokens = char_len // 4
-        status = "PASS" if char_len <= MAX_TARGET_CHARS else "EXCEEDED"
-        if status == "EXCEEDED":
+        if char_len > MAX_TARGET_CHARS:
             budget_violations += 1
-            print(f"[BUDGET {status}] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {MAX_TARGET_CHARS} cap")
+            print(f"[BUDGET EXCEEDED] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {MAX_TARGET_CHARS} cap")
+        elif char_len >= WARN_TARGET_CHARS:
+            print(f"[BUDGET WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) >= {WARN_TARGET_CHARS} (90% capacity)")
         else:
-            print(f"[BUDGET {status}] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
+            print(f"[BUDGET PASS] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
 
     if budget_violations > 0:
         sys.stderr.write(f"\n[ERROR] {budget_violations} target file(s) exceed prompt context budget! (PRINCIPLE-001)\n")
@@ -342,6 +353,33 @@ def sync_all(
     return mismatches
 
 
+def print_help():
+    """Print command line usage for sync_principles.py."""
+    print("""AIKit Principles Auto-Sync Tool (PRINCIPLE-017)
+
+Usage:
+  py scripts/sync_principles.py [OPTIONS]
+
+Options:
+  --check          Verify that all guideline targets are fresh without modifying files (exits 1 on drift)
+  --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
+  -h, --help       Show this help message and exit
+""")
+
+
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print_help()
+        sys.exit(0)
+
     check_mode = "--check" in sys.argv
-    sync_all(check_only=check_mode, exit_on_mismatch=True)
+    custom_domain = None
+    if "--domain" in sys.argv:
+        try:
+            idx = sys.argv.index("--domain")
+            custom_domain = Path(sys.argv[idx + 1])
+        except (IndexError, ValueError):
+            sys.stderr.write("Error: --domain requires a file path argument.\n")
+            sys.exit(1)
+
+    sync_all(check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)

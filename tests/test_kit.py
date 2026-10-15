@@ -23,6 +23,8 @@ from scripts.sync_principles import (
     load_tier_1b_domain_rules,
     append_domain_rules,
     AGENTS_MD,
+    GUIDELINES_MD,
+    README_MD,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -207,13 +209,23 @@ class TestPrincipleSync(unittest.TestCase):
         )
 
     def test_triad_consistency_gate(self):
-        # Enforces PRINCIPLE-017: AGENTS.md, GUIDELINES.md, and README.md must have 100% principle parity
+        # Enforces PRINCIPLE-017: AGENTS.md, GUIDELINES.md, and README.md must have 100% principle and title parity
         principles = parse_principles(AGENTS_MD)
         errors = validate_triad_consistency(principles)
         self.assertEqual(errors, [], f"Triad documentation drift detected: {errors}")
 
+        # Negative path: verify that mismatched heading title in GUIDELINES.md is caught
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_triad_drift_"))
+        try:
+            bad_guidelines = temp_dir / "GUIDELINES.md"
+            bad_guidelines.write_text("### PRINCIPLE-001: Wrong Mismatched Title\n", encoding="utf-8")
+            drift_errors = validate_triad_consistency(principles[:1], guidelines_file=bad_guidelines, readme_file=README_MD)
+            self.assertTrue(any("does not match AGENTS.md" in e for e in drift_errors))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
     def test_principle_schema_strictness(self):
-        # Enforces PRINCIPLE-017: principles with missing schema components must raise ValueError
+        # Enforces PRINCIPLE-017: principles with missing schema components or duplicate IDs must raise ValueError
         temp_dir = Path(tempfile.mkdtemp(prefix="test_schema_"))
         try:
             # Missing concept
@@ -236,6 +248,17 @@ class TestPrincipleSync(unittest.TestCase):
             with self.assertRaises(ValueError) as ctx:
                 parse_principles(bad_doc, strict=True)
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
+
+            # Duplicate principle ID
+            bad_doc = temp_dir / "bad4.md"
+            bad_doc.write_text(
+                "### PRINCIPLE-001: First\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R1\n\n"
+                "### PRINCIPLE-001: Duplicate\n- **Concept**: C\n- **Invariant**: D\n- **Rules**:\n  1. R2\n",
+                encoding="utf-8"
+            )
+            with self.assertRaises(ValueError) as ctx:
+                parse_principles(bad_doc, strict=True)
+            self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION] Duplicate principle ID detected: PRINCIPLE-001", str(ctx.exception))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -263,6 +286,27 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("[PRINCIPLE-001 BUDGET EXCEEDED]", str(ctx.exception))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_domain_rules_template_validity(self):
+        # Enforces PRINCIPLE-001 & PRINCIPLE-017: domain.md.template must exist and stay strictly within token budget
+        template_path = ROOT_DIR / ".agents" / "rules" / "domain.md.template"
+        self.assertTrue(template_path.exists(), "domain.md.template is missing in .agents/rules/")
+        content = template_path.read_text(encoding="utf-8")
+        self.assertLessEqual(len(content), 1200, f"domain.md.template exceeds 1,200 chars ({len(content)} chars)")
+        self.assertIn("Stack & Runtime Constraints", content)
+        self.assertIn("Domain Architectural Invariants", content)
+
+    def test_cli_help_is_safe_and_non_mutating(self):
+        # Enforces PRINCIPLE-017: running with --help or -h prints help and does not mutate files
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "sync_principles.py"), "--help"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("AIKit Principles Auto-Sync Tool", result.stdout)
+        self.assertIn("--check", result.stdout)
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,

@@ -254,11 +254,11 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
 - **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats; missing schemas dilute rule precision; and un-injected domain rules force adopters to manually maintain multiple files.
 - **Guideline**:
-  - **Canonical Schema & Strict Validation**: Every principle must follow the strict 4-section schema: `### PRINCIPLE-XXX: [Title]`, `- **Concept**:`, `- **Invariant**:`, and `- **Rules**:` with numbered testable constraints. `scripts/sync_principles.py` validates schema completeness and halts on missing sections.
+  - **Canonical Schema, Unique IDs & Strict Validation**: Every principle must follow the strict 4-section schema: `### PRINCIPLE-XXX: [Title]`, `- **Concept**:`, `- **Invariant**:`, and `- **Rules**:` with numbered testable constraints. Duplicate principle IDs are strictly rejected by `scripts/sync_principles.py`.
   - **Mandatory Cross-IDE Auto-Sync**: Modifying or adding any principle must automatically update all AI guideline targets (`AGENTS.md`, `GUIDELINES.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`, and `README.md`) via atomic writes (`fsync` + `os.replace`).
   - **Deterministic Freshness Test Gate**: Automated unit tests in `tests/test_kit.py` mechanically assert that all on-disk IDE targets are 100% in sync with `AGENTS.md` before changes can be shipped.
-  - **Triad Documentation Consistency Shield**: Programmatically validates that principle IDs and titles match across `AGENTS.md`, `GUIDELINES.md`, and `README.md`.
-  - **Tier 1B Domain Rules Extension**: Adopter projects can define custom domain rules in `.agents/rules/domain.md` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath universal principles in all generated targets.
+  - **Triad Documentation Consistency & Exact Title Parity**: Programmatically validates that principle IDs and exact heading titles match across `AGENTS.md`, `GUIDELINES.md`, and `README.md`.
+  - **Tier 1B Domain Rules Blueprint**: Adopter projects define custom domain rules in `.agents/rules/domain.md` from `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath universal principles in all generated targets.
 
 ### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
 - **Problem**: Uncommitted work leads to lost progress, uncoordinated branches, and accidental regressions.

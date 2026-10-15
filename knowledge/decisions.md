@@ -599,4 +599,24 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Mechanically shields all IDE environments from rule drift; guarantees principle schema completeness; enables zero-friction domain customization for adopter repositories.
   - *Trade-offs*: Modifications to `AGENTS.md` require running `scripts/sync_principles.py` before test assertions pass.
 
+### ADR-037: Exact Heading Title Parity, Duplicate Principle ID Shield, and Domain Blueprint (PRINCIPLE-017 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Triad consistency verified principle ID presence, but did not enforce exact heading title parity (`### {p['id']}: {p['title']}`) between `AGENTS.md` and `GUIDELINES.md`, permitting subtle title drift.
+  2. `parse_principles()` lacked duplicate ID detection, meaning duplicate principle blocks would pollute generated prompt files.
+  3. `scripts/sync_principles.py` lacked CLI argument handling, executing file modifications even when called with `--help` or `-h`.
+  4. Adopters had no template or schema blueprint for `.agents/rules/domain.md`, causing ambiguity during onboarding.
+  5. Context budget checks lacked early warning thresholds before hitting the hard 8,000-character ceiling.
+- **Decision**:
+  1. Enforce **Exact Heading Title Parity**: `validate_triad_consistency()` verifies that `### {p['id']}: {p['title']}` in `AGENTS.md` matches `GUIDELINES.md` exactly.
+  2. Enforce **Duplicate Principle ID Shield**: `parse_principles()` tracks seen IDs and immediately rejects duplicates.
+  3. Enforce **Safe CLI Help & Options Handling**: `scripts/sync_principles.py` cleanly handles `--help` / `-h` (exiting 0 without writing files) and supports `--domain <path>`.
+  4. Provide **Canonical Domain Rules Template**: Distribute `.agents/rules/domain.md.template` with structured stack, architectural, and linter guidance bounded to 1,200 chars.
+  5. Enforce **Proactive 90% Budget Warning**: Emit `[BUDGET WARN]` when any target exceeds 7,200 chars (>90% of budget).
+- **Consequences**:
+  - *Positive*: Guarantees exact title consistency across human and agent documentation; protects against accidental duplicate rules; provides zero-friction onboarding template for adopter projects.
+  - *Trade-offs*: Title edits in `AGENTS.md` require updating `GUIDELINES.md` simultaneously.
+
+
 

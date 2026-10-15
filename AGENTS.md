@@ -285,14 +285,14 @@
 
 ### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
 - **Concept**: Principles can and will be added as the project evolves. Whenever any principle is added, updated, or revised, all AI guideline documents across the repository must be automatically synchronized to maintain absolute consistency.
-- **Invariant**: Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap); schema compliance; freshness test gate; Tier 1B domain rules injection.
+- **Invariant**: Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap, >7,200 char warning); schema compliance; freshness test gate; Tier 1B domain rules injection.
 - **Rules**:
-  1. **Canonical Schema & Strict Validation**: Every principle must follow the strict 4-section schema: (1) `### PRINCIPLE-XXX: [Title]`, (2) `- **Concept**:`, (3) `- **Invariant**:`, and (4) `- **Rules**:` with numbered testable constraints. `scripts/sync_principles.py` strictly parses and rejects incomplete schemas before sync.
+  1. **Canonical Schema, Unique IDs & Strict Validation**: Every principle must follow the strict 4-section schema: (1) `### PRINCIPLE-XXX: [Title]`, (2) `- **Concept**:`, (3) `- **Invariant**:`, and (4) `- **Rules**:` with numbered testable constraints. Duplicate principle IDs are strictly prohibited. `scripts/sync_principles.py` validates schema completeness and halts on missing sections or duplicate IDs.
   2. **Automated Cross-IDE Target Synchronization**: Whenever principles change, `scripts/sync_principles.py` automatically regenerates all IDE guideline targets (`GEMINI.md`, `.agents/rules/principles.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`) using atomic writes (`fsync` + `os.replace`).
   3. **Deterministic Auto-Sync Freshness Gate**: Unit tests in `tests/test_kit.py` must assert that all on-disk IDE targets are 100% synchronized with `AGENTS.md` (`sync_all(check_only=True) == 0`). Committing stale or desynchronized rule files is strictly prohibited.
-  4. **Triad Documentation Consistency Shield**: `scripts/sync_principles.py` mechanically validates that all principle IDs and titles in `AGENTS.md` exist and match within the documentation triad (`AGENTS.md`, `GUIDELINES.md`, and `README.md`).
+  4. **Triad Documentation Consistency & Exact Title Parity**: `scripts/sync_principles.py` mechanically validates that all principle IDs and exact heading titles in `AGENTS.md` exist and match within the documentation triad (`AGENTS.md`, `GUIDELINES.md`, and `README.md`).
   5. **Dynamic Lifecycle Phase Alignment**: Principle parsing dynamically tracks lifecycle phases (Phases 1 through 5), enforcing monotonic non-decreasing order ($Phase_i \ge Phase_{i-1}$) without rigid hardcoded range limits, supporting future principle evolution.
-  6. **Tier 1B Domain Invariants Injection Slot**: Adopter projects can define custom domain rules in `.agents/rules/domain.md` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all generated IDE targets beneath the 18 universal principles without manual editing.
+  6. **Tier 1B Domain Invariants Injection & Blueprint**: Adopter projects can define custom domain rules in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all generated IDE targets beneath the 18 universal principles without manual editing.
 
 ---
 

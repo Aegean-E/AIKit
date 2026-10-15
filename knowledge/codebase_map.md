@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `32`
-- **Total Source Lines**: `2049`
+- **Total Functions / Methods**: `33`
+- **Total Source Lines**: `2131`
 
 ---
 
@@ -43,19 +43,20 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `347` lines (`14533` bytes)
+**Size**: `385` lines (`15970` bytes)
 
 **Functions:**
 - `def load_tier_1b_domain_rules(domain_path)` - *Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017).*
 - `def append_domain_rules(lines, domain_rules)` - *Helper to append Tier 1B domain rules to prompt targets.*
-- `def parse_principles(agents_file, strict)` - *Parse AGENTS.md, enforce strict schema validation, and verify monotonic lifecycle progression.*
-- `def validate_triad_consistency(principles, guidelines_file, readme_file)` - *Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md (PRINCIPLE-017).*
+- `def parse_principles(agents_file, strict)` - *Parse AGENTS.md, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
+- `def validate_triad_consistency(principles, guidelines_file, readme_file)` - *Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md with matching titles (PRINCIPLE-017).*
 - `def generate_gemini_content(principles, domain_rules)`
 - `def generate_agents_rule_content(principles, domain_rules)`
 - `def generate_claude_content(principles, domain_rules)`
 - `def generate_cursorrules_content(principles, domain_rules)`
 - `def generate_copilot_content(principles, domain_rules)`
 - `def sync_all(check_only, exit_on_mismatch, domain_path, guidelines_file, readme_file)` - *Synchronize master specification from AGENTS.md across all IDE prompt targets.*
+- `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
 
@@ -77,7 +78,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `725` lines (`36478` bytes)
+**Size**: `769` lines (`38960` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -96,6 +97,8 @@
   - Method `.test_triad_consistency_gate()`
   - Method `.test_principle_schema_strictness()`
   - Method `.test_tier_1b_domain_rules_injection()`
+  - Method `.test_domain_rules_template_validity()`
+  - Method `.test_cli_help_is_safe_and_non_mutating()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`

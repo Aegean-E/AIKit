@@ -46,7 +46,8 @@ portable_agent_kit/
 │   └── copilot-instructions.md         <- GitHub Copilot instructions
 ├── .agents/
 │   ├── rules/
-│   │   └── principles.md               <- Antigravity / Agent IDE workspace rules
+│   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
+│   │   └── domain.md.template          <- Template for project domain rules (Tier 1B)
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── scripts/
 │   ├── sync_principles.py              <- Auto-sync engine (syncs all IDE files from AGENTS.md)
