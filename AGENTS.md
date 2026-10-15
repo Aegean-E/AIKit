@@ -141,18 +141,21 @@
 ---
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-- **Concept**: Complex systems, deep directory hierarchies, and non-trivial engineering tasks must be partitioned hierarchically rather than processed via monolithic single-pass operations or flat-batch prompting. Planning proceeds top-down from root goals to atomic leaf units, while execution proceeds bottom-up from foundations to consumers, with each leaf milestone independently verified.
-- **Invariant**: Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; independent leaf verifiability; milestone index contract ($N/M$).
+- **Concept**: Complex systems, deep directory hierarchies, and non-trivial engineering tasks must be partitioned hierarchically rather than processed via monolithic single-pass operations or micro-task over-fragmentation. Planning proceeds top-down from root goals to atomic leaf units within a bounded milestone horizon, while execution proceeds bottom-up from foundations to consumers, with each leaf milestone independently verified.
+- **Invariant**: Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; bounded milestones ($2 \le M \le 6$); independent leaf verifiability ($N/M$).
 - **Rules**:
   1. **Dual-Pillar Framework**:
      - *Pillar A (Engineering Task Workflow)*: Decompose non-trivial features into structured tiers: Root Goal $\rightarrow$ Functional Domains (Model / Service / Presentation / Test) $\rightarrow$ Atomic Leaf Units.
-     - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep trees, AST structures, or large datasets into bounded sub-graphs with strict base-case recursion limits (max depth $D \le 3$, max fan-out batch $K \le 50$).
+     - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep trees, AST structures, or large datasets into bounded sub-graphs with strict recursion limits (max depth $D \le 3$, max fan-out batch $K \le 50$) and deterministic base-case summary aggregation.
   2. **Top-Down Decomposition, Bottom-Up Execution**:
      - *Planning (Top-Down)*: Deconstruct high-level user requirements downward into contracts, dependencies, and interfaces.
      - *Implementation (Bottom-Up)*: Implement upward from foundational primitives and data models first, domain service logic second, presentation/CLI interfaces third, and end-to-end integration tests last. This guarantees every referenced class, method, and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
-  3. **Milestone Indexing Contract**: Hierarchical decomposition directly defines the bounded micro-milestone sequence ($N=1..M$) recorded in `.agents/task_ledger.json` and committed incrementally via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
-  4. **Independent Leaf Verifiability**: Every decomposed atomic unit must be independently testable and syntactically valid. Never leave the working tree in a broken, non-compiling intermediate state between sub-tasks.
-  5. **State & Context Propagation**: Child steps must receive explicit scoped context from parent contracts and return structured, verified artifacts back to the parent task plan.
+  3. **Bounded Milestone Horizon & Indexing Contract**:
+     - Decomposed plans must avoid both monolithic mega-diffs and micro-task proliferation. Target a bounded milestone horizon ($2 \le M \le 6$ cohesive milestones). If $M > 6$, decompose into multiple distinct user features.
+     - The leaf sequence directly defines the milestone indices ($N=1..M$) recorded in `.agents/task_ledger.json` and committed via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
+  4. **Single-Domain Leaf Atomicity & Independent Verifiability**: Every leaf unit must focus on a single architectural domain (e.g. model + unit test), be independently testable, and compile cleanly without leaving the repository in a broken intermediate state.
+  5. **Dynamic Re-Decomposition on Discovery**: When in-flight execution uncovers an unanticipated blocker, dependency gap, or schema conflict, pause forward progression, update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks, adjust $M'$, and resume monotonically without discarding completed milestones.
+  6. **State & Context Propagation**: Child sub-agent or recursive tasks must receive scoped context from parent contracts and return structured, verified artifacts back to the parent task ledger.
 
 ---
 

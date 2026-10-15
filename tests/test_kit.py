@@ -391,6 +391,41 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertEqual(len(ledger["checkpoints"]), 3)
         self.assertIn("[milestone 3/3]", ledger["checkpoints"][-1]["description"])
 
+    def test_dynamic_re_decomposition_on_discovery(self):
+        # Enforces PRINCIPLE-008: dynamic re-planning on discovery adjusts milestone horizon M -> M'
+        record_checkpoint(
+            task_id="auth_migration",
+            phase="implementation",
+            phase_num=3,
+            description="[milestone 1/2] Data schema created",
+            ledger_file=self.ledger_file,
+        )
+        # Discovery occurs: an unforeseen token refresh retry layer is needed
+        record_checkpoint(
+            task_id="auth_migration",
+            phase="planning",
+            phase_num=2,
+            description="[re-plan] Discovery: Added token refresh retry, adjusted horizon to 3 milestones",
+            ledger_file=self.ledger_file,
+        )
+        record_checkpoint(
+            task_id="auth_migration",
+            phase="implementation",
+            phase_num=3,
+            description="[milestone 2/3] Added token refresh retry layer",
+            ledger_file=self.ledger_file,
+        )
+        record_checkpoint(
+            task_id="auth_migration",
+            phase="implementation",
+            phase_num=3,
+            description="[milestone 3/3] Integrated auth service and verified",
+            ledger_file=self.ledger_file,
+        )
+        ledger = load_ledger(self.ledger_file)
+        self.assertEqual(len(ledger["checkpoints"]), 4)
+        self.assertIn("[milestone 3/3]", ledger["checkpoints"][-1]["description"])
+
 
 
 class TestKnowledgeBase(unittest.TestCase):

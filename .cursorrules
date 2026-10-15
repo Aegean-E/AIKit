@@ -19,7 +19,7 @@ Deterministic Grep Anchor: Query='### PRINCIPLE-XXX:' in GUIDELINES.md.
 7. PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
    - Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, clean reversibility) before non-trivial edits. [GUIDELINES.md#principle-007]
 8. PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-   - Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; independent leaf verifiability; milestone index contract ($N/M$). [GUIDELINES.md#principle-008]
+   - Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; bounded milestones ($2 \le M \le 6$); independent leaf verifiability ($N/M$). [GUIDELINES.md#principle-008]
 9. PRINCIPLE-009: Modularity & Pluggable Architecture
    - Single responsibility; abstract provider/service interfaces; decoupled presentation and business logic. [GUIDELINES.md#principle-009]
 10. PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)

@@ -125,7 +125,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation (<20k chars); material surface sync; executable command parity; whole-tree drift shield. |
 | **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; disruption CLI (`scripts/disruption_recovery.py`); explicit micro-staging. |
 | **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Track C gate: why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing quality. |
-| **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Dual-pillar decomposition: top-down plan, bottom-up execution, milestone indexing ($N/M$), and leaf verifiability. |
+| **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Dual-pillar decomposition: top-down plan, bottom-up execution, bounded milestones ($2 \le M \le 6$), and leaf verifiability. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
 | Principle | Title | Core Concept |

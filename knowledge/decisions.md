@@ -261,5 +261,23 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Eliminates monolithic execution bias; guarantees clean runnable intermediate states; prevents ghost imports; harmonizes planning with conventional micro-commits.
   - *Trade-offs*: None; conceptual and behavioral alignment.
 
+### ADR-019: Bounded Milestone Horizon, Dynamic Re-Decomposition, and Single-Domain Leaf Atomicity (PRINCIPLE-008 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Guarding only against monolithic bias risks driving LLMs into the opposite trap: micro-task over-fragmentation ($M > 10$ with 1-line commits), generating massive token churn and commit noise.
+  2. Unanticipated discoveries during mid-execution (upstream bugs, dependency limits, schema conflicts) frequently cause agents to either blindly push ahead with broken assumptions or wipe out the entire plan.
+  3. Decomposed leaf milestones previously lacked a domain-scoping rule, risking diffuse edits across unrelated subsystems in a single commit.
+  4. Recursive data traversal in Pillar B lacked a deterministic fallback when hitting the depth ceiling ($D_{\max}=3$).
+- **Decision**:
+  1. Codify the **Bounded Milestone Horizon**: Target $2 \le M \le 6$ cohesive milestones for standard Track C tasks. If $M > 6$, decompose into multiple distinct user features.
+  2. Codify the **Dynamic Re-Decomposition Protocol**: When unanticipated blockers or gaps emerge, agents pause forward progression, refine sub-tasks in `.agents/task_ledger.json`, adjust $M'$, and resume monotonically without discarding completed progress.
+  3. Enforce **Single-Domain Leaf Atomicity**: Each leaf unit must focus on a single architectural domain or interface boundary, enabling clean micro-staging.
+  4. Specify **Base-Case Summary Aggregation**: When tree recursion hits $D_{\max}$ or batch caps, roll child items up into a structured summary node rather than failing or recursing unbounded.
+- **Consequences**:
+  - *Positive*: Protects against both monolithic bias and micro-task over-fragmentation; provides a clear, adaptive protocol for mid-task discoveries; ensures focused git commits.
+  - *Trade-offs*: None; stdlib-only.
+
+
 
 
