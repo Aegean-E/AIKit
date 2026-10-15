@@ -9,7 +9,7 @@
 - **Total Python Modules**: `5`
 - **Total Classes**: `12`
 - **Total Functions / Methods**: `43`
-- **Total Source Lines**: `3164`
+- **Total Source Lines**: `3194`
 
 ---
 
@@ -118,7 +118,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1067` lines (`54168` bytes)
+**Size**: `1097` lines (`55779` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -148,6 +148,8 @@
   - Method `.test_workflow_covers_posix_and_windows()`
   - Method `.test_workflow_is_bounded_and_least_privileged()`
   - Method `.test_workflow_asserts_pristine_tree()`
+  - Method `.test_workflow_yaml_has_no_unquoted_colon_scalars()`
+  - Method `.test_workflow_uses_no_tabs()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
   - Method `.tearDown()`

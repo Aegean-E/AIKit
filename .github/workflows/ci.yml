@@ -46,7 +46,9 @@ jobs:
 
       # PRINCIPLE-011 Rule 1: pure-stdlib clone-and-run. No install step exists, by design.
       - name: Confirm zero-dependency baseline
-        run: python -c "import sys; print(sys.version); print('stdlib-only: no install step required')"
+        run: |
+          python -c "import sys; print(sys.version)"
+          echo "stdlib-only baseline - no install step required"
 
       # PRINCIPLE-014: unit tier carries the strict sub-second gate.
       - name: Unit tier (strict <1s gate)

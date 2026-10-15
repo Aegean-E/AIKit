@@ -7,6 +7,7 @@ knowledge base AST generation, and operational dogfooding.
 import contextlib
 import io
 import os
+import re
 import sys
 import json
 import shutil
@@ -434,6 +435,35 @@ class TestContinuousVerificationGate(unittest.TestCase):
         # PRINCIPLE-014 R4: running the suite must leave the tree bit-for-bit clean.
         self.assertIn("git status --porcelain", self.workflow_text,
                       "CI never verifies the suite left the working tree clean")
+
+    def test_workflow_yaml_has_no_unquoted_colon_scalars(self):
+        # Red-green pin (PRINCIPLE-014 R6): the first CI push was rejected outright because
+        # `run: python -c "...'stdlib-only: no install step required'"` is a plain YAML scalar
+        # containing ": ", which the parser reads as a nested mapping. A stdlib-only repo has no
+        # PyYAML to validate with, so pin the exact failure mode instead of trusting review.
+        offenders = []
+        for lineno, line in enumerate(self.workflow_text.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("#") or not stripped:
+                continue
+            match = re.match(r"^(?:- )?(run|name|if|shell):\s+(.*)$", stripped)
+            if not match:
+                continue
+            value = match.group(2)
+            # Block scalars and fully quoted values are safe; plain scalars are not.
+            if value in ("|", ">", "|-", ">-") or value.startswith(("'", '"')):
+                continue
+            if ": " in value:
+                offenders.append(f"line {lineno}: {stripped[:70]}")
+        self.assertEqual(
+            offenders, [],
+            "Unquoted YAML scalar contains ': ' and will be parsed as a mapping, rejecting the "
+            f"whole workflow. Use a block scalar (run: |) or quote the value. Offenders: {offenders}",
+        )
+
+    def test_workflow_uses_no_tabs(self):
+        # Tabs are illegal for YAML indentation and reject the workflow at parse time.
+        self.assertNotIn("\t", self.workflow_text, "TAB character in workflow YAML is illegal")
 
 
 class TestDisruptionRecovery(unittest.TestCase):
