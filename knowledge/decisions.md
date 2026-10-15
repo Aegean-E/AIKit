@@ -170,3 +170,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Completely eliminates ASCII tree drift; guarantees lean, fast cold starts without prompt bloat; protects adopter documentation during integration.
   - *Trade-offs*: None; automated test overhead is negligible (<15ms).
+
+### ADR-014: Disruption Recovery CLI Ergonomics, Explicit Micro-Staging, and Transient Buffer Hygiene (PRINCIPLE-006)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Developers and agents previously had to run verbose python one-liners (`python -c "from scripts.disruption_recovery import record_checkpoint; ..."`) to record task progress in `.agents/task_ledger.json`, creating developer friction.
+  2. While `--audit` reported interrupted tasks, there was no standardized command to output human- and AI-readable structured guidance on how and where to resume.
+  3. When saving progress during long workflows, indiscriminate staging (`git add .`) risks committing unvetted drafts or dangling temporary buffers into git history.
+  4. Interrupted atomic writes can leave orphaned `.tmp_*` files that clutter the working tree unnoticed.
+- **Decision**:
+  1. Expand `scripts/disruption_recovery.py` with first-class CLI commands:
+     - `--checkpoint <task_id> --phase <phase> [--phase-num <N>] [--desc <desc>]` to record milestones cleanly.
+     - `--resume` to output structured cold-start resumption guidance (task ID, last phase, next phase, modified files, next steps).
+  2. Codify the **Explicit Micro-Staging Invariant**: agents must explicitly stage only the files verified for that sub-task rather than using blind `git add .`.
+  3. Implement **Transient Buffer Hygiene**: enhance `run_disruption_audit()` to scan for and report dangling `*.tmp_*` buffers.
+  4. Enforce the **Non-Breaking Micro-Commit Rule**: commits are strictly gated by passing unit tests (100% pass gate); intermediate progress that does not yet pass tests must be persisted to the task ledger rather than committed to git.
+- **Consequences**:
+  - *Positive*: Eliminates CLI friction; turns cold-start disruption resumption into a single standardized command; prevents git repository pollution; ensures clean working trees.
+  - *Trade-offs*: None; stdlib-only, zero dependencies.

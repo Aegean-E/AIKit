@@ -221,6 +221,7 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
         "last_checkpoint": None,
         "clean_shutdown": True,
         "quarantined_files": [],
+        "dangling_temp_files": [],
     }
 
     # 1. Check Git Status
@@ -247,7 +248,11 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
         audit["git_error"] = str(e)
 
     # 2. Check Task Ledger for Interrupted Tasks
-    ledger_path = get_ledger_path(ws / ".agents")
+    ledger_path = ws / ".agents" / "task_ledger.json"
+    if not ledger_path.exists() and (ws / "task_ledger.json").exists():
+        ledger_path = ws / "task_ledger.json"
+    elif not ledger_path.exists():
+        ledger_path = get_ledger_path(ws / ".agents")
     ledger = load_ledger(ledger_path)
     active = ledger.get("active_task")
     if active and active.get("status") == "in_progress":
@@ -266,6 +271,14 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
     except Exception:
         pass
 
+    # 4. Check for Dangling Temporary Files (*.tmp_*) from interrupted atomic writes
+    try:
+        for p in ws.rglob("*.tmp_*"):
+            if ".git" not in str(p):
+                audit["dangling_temp_files"].append(str(p.relative_to(ws)))
+    except Exception:
+        pass
+
     return audit
 
 
@@ -277,7 +290,7 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         "============================================================",
     ]
 
-    if audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes"):
+    if audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files"):
         lines.append("🟢 Status: Clean state. No interrupted tasks or uncommitted drift detected.")
     else:
         lines.append("🟡 Status: Potential disruption / in-flight state detected!")
@@ -305,19 +318,87 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         for f in audit["quarantined_files"]:
             lines.append(f"   • {f}")
 
+    if audit.get("dangling_temp_files"):
+        lines.append(f"🧹 Dangling Temp Buffers ({len(audit['dangling_temp_files'])}):")
+        for f in audit["dangling_temp_files"]:
+            lines.append(f"   • {f}")
+
+    lines.append("============================================================")
+    return "\n".join(lines)
+
+
+def format_resume_report(audit: Dict[str, Any]) -> str:
+    """Generate structured guidance for cold-starting AI agents to resume an interrupted task."""
+    lines = [
+        "============================================================",
+        "⚡ DISRUPTION RESUMPTION GUIDANCE (PRINCIPLE-006)",
+        "============================================================",
+    ]
+    interrupted = audit.get("interrupted_task")
+    if not interrupted:
+        lines.append("🟢 No interrupted task detected. Ready for a new task.")
+        lines.append("============================================================")
+        return "\n".join(lines)
+
+    task_id = interrupted.get("task_id", "unknown")
+    phase = interrupted.get("last_phase", "unknown")
+    phase_num = interrupted.get("last_phase_num", 2)
+    next_phase_num = min(5, phase_num if audit.get("has_uncommitted_changes") else phase_num + 1)
+    
+    lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
+    lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")
+    lines.append(f"🚀 Recommended Resumption Phase: Phase {next_phase_num}")
+    if audit.get("modified_files"):
+        lines.append(f"📝 Surviving Modified Files ({len(audit['modified_files'])}):")
+        for f in audit["modified_files"]:
+            lines.append(f"   • {f}")
+    if audit.get("dangling_temp_files"):
+        lines.append(f"🧹 Action Needed: Purge {len(audit['dangling_temp_files'])} dangling .tmp_* files")
+    lines.append(f"💡 Next Action: Inspect surviving files, run unit tests, and resume at Phase {next_phase_num}")
     lines.append("============================================================")
     return "\n".join(lines)
 
 
 if __name__ == "__main__":
-    if "--audit" in sys.argv:
-        report = run_disruption_audit()
-        print(format_audit_report(report))
+    if "--checkpoint" in sys.argv:
+        idx = sys.argv.index("--checkpoint")
+        task_id = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "task"
+        
+        phase = "in_progress"
+        if "--phase" in sys.argv:
+            pidx = sys.argv.index("--phase")
+            if len(sys.argv) > pidx + 1 and not sys.argv[pidx + 1].startswith("--"):
+                phase = sys.argv[pidx + 1]
+                
+        phase_num = None
+        if "--phase-num" in sys.argv:
+            pnidx = sys.argv.index("--phase-num")
+            if len(sys.argv) > pnidx + 1 and not sys.argv[pnidx + 1].startswith("--"):
+                try:
+                    phase_num = int(sys.argv[pnidx + 1])
+                except ValueError:
+                    pass
+                    
+        desc = ""
+        if "--desc" in sys.argv:
+            didx = sys.argv.index("--desc")
+            if len(sys.argv) > didx + 1 and not sys.argv[didx + 1].startswith("--"):
+                desc = sys.argv[didx + 1]
+                
+        cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc)
+        print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
-        tid = sys.argv[idx + 1] if len(sys.argv) > idx + 1 else "active"
+        tid = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "active"
         mark_task_completed(tid)
         print(f"[OK] Task '{tid}' marked as completed.")
+    elif "--resume" in sys.argv:
+        report = run_disruption_audit()
+        print(format_resume_report(report))
+    elif "--audit" in sys.argv:
+        report = run_disruption_audit()
+        print(format_audit_report(report))
     else:
         report = run_disruption_audit()
         print(format_audit_report(report))
+

@@ -24,6 +24,9 @@ from scripts.disruption_recovery import (
     record_checkpoint,
     mark_task_completed,
     prune_checkpoints,
+    run_disruption_audit,
+    format_audit_report,
+    format_resume_report,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -78,6 +81,7 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("PRINCIPLE-003", content, f"PRINCIPLE-003 missing from {target.name}")
             self.assertIn("PRINCIPLE-004", content, f"PRINCIPLE-004 missing from {target.name}")
             self.assertIn("PRINCIPLE-005", content, f"PRINCIPLE-005 missing from {target.name}")
+            self.assertIn("PRINCIPLE-006", content, f"PRINCIPLE-006 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
             self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
             self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
@@ -120,6 +124,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("material surface readme sync", p5["invariant"].lower())
         self.assertIn("executable command parity", p5["invariant"].lower())
         self.assertIn("whole-tree drift shield", p5["invariant"].lower())
+
+    def test_principle_006_disruption_capsule(self):
+        # Enforces PRINCIPLE-006: verified invariant capsule with atomic micro-commits, audit, and CLI ledger
+        principles = parse_principles(AGENTS_MD)
+        p6 = next((p for p in principles if p["id"] == "PRINCIPLE-006"), None)
+        self.assertIsNotNone(p6)
+        self.assertIn("incremental atomic micro-commits", p6["invariant"].lower())
+        self.assertIn("pre-flight disruption audit", p6["invariant"].lower())
+        self.assertIn("disruption_recovery.py", p6["invariant"].lower())
+        self.assertIn("explicit micro-staging", p6["invariant"].lower())
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
@@ -249,6 +263,29 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertEqual(completed_ledger["active_task"]["active_phase"], 5)
         self.assertEqual(completed_ledger["checkpoints"][-1]["phase"], "completed")
         self.assertEqual(completed_ledger["checkpoints"][-1]["phase_num"], 5)
+
+    def test_dangling_temp_file_detection(self):
+        # Create a dangling .tmp_* file simulating an interrupted atomic write
+        dangling_tmp = self.test_dir / "service.py.tmp_1234_9999"
+        dangling_tmp.write_text("partial write", encoding="utf-8")
+        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        self.assertIn("service.py.tmp_1234_9999", [Path(p).name for p in audit["dangling_temp_files"]])
+        report = format_audit_report(audit)
+        self.assertIn("Dangling Temp Buffers", report)
+
+    def test_format_resume_report(self):
+        # Verify resumption guidance outputs structured task orientation
+        record_checkpoint(
+            task_id="interrupted_task",
+            phase="planning",
+            phase_num=2,
+            description="Planning task",
+            ledger_file=self.ledger_file,
+        )
+        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        resume_rep = format_resume_report(audit)
+        self.assertIn("RESUMING INTERRUPTED TASK: 'interrupted_task'", resume_rep)
+        self.assertIn("Phase 2 (planning)", resume_rep)
 
 
 

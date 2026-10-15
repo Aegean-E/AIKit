@@ -24,7 +24,9 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | Context budget gate (<8,000 chars / <1,500 tokens) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
-| **Complete Task Ledger** | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
+| **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Disruption recovery guidance & surviving files |
+| **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
+| **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
 
 ---
 
@@ -119,7 +121,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Core Concept |
 |---|---|---|
 | **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation (<20k chars); material surface sync; executable command parity; whole-tree drift shield. |
-| **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
+| **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; disruption CLI (`scripts/disruption_recovery.py`); explicit micro-staging. |
 | **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
 | **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |
 
@@ -154,12 +156,20 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```bash
    python scripts/disruption_recovery.py --audit
    ```
-   This automatically detects surviving uncommitted files, modified buffers, and interrupted tasks recorded in `.agents/task_ledger.json`.
-2. **Marking Completion**: When a task finishes successfully:
+   This automatically detects surviving uncommitted files, modified buffers, orphaned `.tmp_*` files, and interrupted tasks.
+2. **Resumption Guidance**: To inspect surviving progress and receive structured recovery guidance:
+   ```bash
+   python scripts/disruption_recovery.py --resume
+   ```
+3. **Recording In-Flight Checkpoints**: During multi-step implementations, record milestones cleanly:
+   ```bash
+   python scripts/disruption_recovery.py --checkpoint "task_name" --phase "planning" --desc "description"
+   ```
+4. **Marking Completion**: When a task finishes successfully:
    ```bash
    python scripts/disruption_recovery.py --complete "task_name"
    ```
-3. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
+5. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
 
 ---
 

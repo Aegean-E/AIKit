@@ -101,3 +101,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Directory Tree & Whole-Tree Drift Shield**: Any addition, deletion, or renaming of core scripts or root files requires an atomic update to the `README.md` directory tree, ensuring zero phantom scripts or dead references across the project.
 - **Cold-Start Token Ceiling**: `README.md` is strictly bounded (<20,000 characters / ~5,000 tokens) to guarantee that incoming agents orient without blowing out prompt budgets on turn 1.
 
+---
+
+## ⚡ Disruption Recovery & Progress Checkpointing Architecture (PRINCIPLE-006)
+- **Zero-Progress-Loss Workflow**: Complex tasks are decomposed into discrete, verified micro-milestones. If electricity or session processes abruptly terminate, progress is preserved up to the last atomic checkpoint.
+- **Persistent Task Ledger (WAL)**: `.agents/task_ledger.json` records in-flight tasks, current lifecycle phases (1..5), and completed checkpoints. Bounded rolling pruning (max 20) ensures the ledger remains a lightweight context anchor (<2 KB).
+- **First-Class Disruption CLI**: `scripts/disruption_recovery.py` exposes `--audit` (workspace scan), `--resume` (resumption guidance), `--checkpoint` (atomic step recording), and `--complete` (task finalization).
+- **Explicit Micro-Staging Invariant**: Micro-milestone commits stage strictly the files modified for that sub-task (never blind `git add .`), preventing unvetted draft artifacts from contaminating git history.
+- **Transient Buffer Hygiene**: Startup audits detect and flag orphaned temporary buffers (`*.tmp_*`) from interrupted writes, maintaining deterministic repository health.
+

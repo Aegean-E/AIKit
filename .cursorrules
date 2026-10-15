@@ -15,7 +15,7 @@ Deterministic Grep Anchor: Query='### PRINCIPLE-XXX:' in GUIDELINES.md.
 5. PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
    - Self-describing repo; 30s cold-start orientation (<20k chars); material surface README sync; executable command parity; whole-tree drift shield. [GUIDELINES.md#principle-005]
 6. PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
-   - Incremental atomic micro-commits; pre-flight disruption audit; disruption recovery ledger via `scripts/disruption_recovery.py`. [GUIDELINES.md#principle-006]
+   - Incremental atomic micro-commits; pre-flight disruption audit; disruption recovery CLI & ledger (scripts/disruption_recovery.py); explicit micro-staging. [GUIDELINES.md#principle-006]
 7. PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
    - Cold-start impact gate (evaluate why, benefits, risks/harm mitigation, quality non-diminution) before non-trivial edits. [GUIDELINES.md#principle-007]
 8. PRINCIPLE-008: Hierarchical Problem & Task Decomposition

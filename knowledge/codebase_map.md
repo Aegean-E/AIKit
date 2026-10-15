@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `21`
-- **Total Source Lines**: `1120`
+- **Total Functions / Methods**: `22`
+- **Total Source Lines**: `1238`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `323` lines (`11584` bytes)
+**Size**: `404` lines (`15520` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -31,6 +31,7 @@
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger.*
 - `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
+- `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
 
 ---
 
@@ -66,7 +67,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `325` lines (`15177` bytes)
+**Size**: `362` lines (`17098` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -76,6 +77,7 @@
   - Method `.test_principle_003_anti_hallucination_capsule()`
   - Method `.test_principle_004_compaction_resilience_capsule()`
   - Method `.test_principle_005_cold_start_capsule()`
+  - Method `.test_principle_006_disruption_capsule()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
@@ -84,6 +86,8 @@
   - Method `.test_bounded_rolling_ledger_pruning()`
   - Method `.test_self_healing_quarantine_corrupted_json()`
   - Method `.test_record_checkpoint_and_complete()`
+  - Method `.test_dangling_temp_file_detection()`
+  - Method `.test_format_resume_report()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`

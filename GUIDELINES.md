@@ -19,7 +19,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation (<20k chars), material surface sync, executable command parity, and whole-tree drift shield. |
-| **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and task ledger recovery. |
+| **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and CLI ledger recovery. |
 | **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight cold-start checklist evaluating why, benefits, risks, and quality preservation. |
 | **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem Decomposition | Hierarchical decomposition of complex problems and datasets into bounded sub-tasks. |
 
@@ -125,13 +125,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Universal Polyglot Adopter Blueprint**: When adopting AIKit into non-Python stacks (Node/TS, Rust, Go, Java), the project's `README.md` must adapt the 30-second orientation matrix to declare the canonical stack equivalents (e.g. `npm test` / `cargo test` / `go test`, Node/Rust/Go toolchain versions, dev server commands) ensuring instant cold-start readiness regardless of programming language.
 
 ### PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
-- **Problem**: When electricity cuts out or hardware crashes occur during a multi-file task or long coding session, all uncommitted in-memory work is wiped out, files may be left in half-edited states, and cold-starting AI agents cannot determine what was interrupted or where to resume.
+- **Problem**: When electricity cuts out or hardware crashes occur during a multi-file task or long coding session, all uncommitted in-memory work is wiped out, files may be left in half-edited states, orphaned temporary buffers clutter the tree, and cold-starting AI agents cannot determine what was interrupted or where to resume.
 - **Guideline**:
-  - **Micro-Milestone Atomicity**: Break down complex implementations into small, verifiable sub-tasks and commit working state incrementally rather than accumulating large, vulnerable working-tree drifts.
-  - **Pre-flight Disruption Audit**: Every cold-start session must begin by auditing `git status`, inspecting surviving uncommitted files, and checking for interrupted ledger records before modifying any code.
+  - **Micro-Milestone Atomicity & Verified Commits**: Break down complex implementations into small, verifiable sub-tasks and commit working state incrementally rather than accumulating large, vulnerable working-tree drifts that risk total loss upon power cut.
+  - **Pre-flight Disruption Audit on Cold Start**: Every cold-start session must begin by auditing the working tree via `scripts/disruption_recovery.py --audit` or `--resume`, inspecting surviving uncommitted files, and checking for interrupted ledger records before modifying any code.
   - **Atomic File Modifications**: All source, test, script, and guideline modifications must be written atomically with buffer flushes and atomic replaces (`os.replace`) to eliminate 0-byte truncation risks during unexpected power-downs.
-  - **Disruption Ledger**: Track in-flight multi-step refactors in `.agents/task_ledger.json` (managed via `scripts/disruption_recovery.py`) so any subsequent agent or developer can seamlessly inspect the checkpoint trail and resume.
-  - **Non-Breaking Invariant**: Every intermediate checkpoint commit must maintain a clean build and 100% passing automated unit tests (`PRINCIPLE-014`).
+  - **Disruption Ledger & Resumption Protocol**: Track in-flight multi-step refactors in `.agents/task_ledger.json` via `scripts/disruption_recovery.py --checkpoint <task_id> --phase <phase> --desc <desc>`. Incoming agents execute `scripts/disruption_recovery.py --resume` to inspect surviving files and cleanly resume at the interrupted phase with zero duplicate effort.
+  - **Non-Breaking Micro-Checkpoints (Test Sanctity Gate)**: Every intermediate checkpoint commit must maintain a clean build and 100% passing automated unit tests (`PRINCIPLE-014`). If intermediate code does not pass tests, progress must be recorded in `.agents/task_ledger.json` rather than committing broken states to git.
+  - **Explicit Staging & Transient Buffer Hygiene**: When committing micro-milestones, explicitly stage only the files modified for that specific sub-task (never execute blind `git add .`). Audit and purge any dangling temporary buffers (`*.tmp_*`) left behind by interrupted writes to maintain clean workspace hygiene.
 
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
 - **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs.
