@@ -51,6 +51,13 @@ from scripts.disruption_recovery import (
     migrate_ledger_schema,
     validate_conventional_commit,
 )
+from scripts.check_secrets import (
+    scan_text,
+    shannon_entropy,
+    run_scan,
+    STRONG_ALLOWLIST,
+    WEAK_ALLOWLIST,
+)
 from scripts.check_reachability import (
     find_unreachable,
     find_phantom_keys,
@@ -69,12 +76,17 @@ from scripts.update_knowledge_base import (
 )
 
 
-class TestPrincipleSync(unittest.TestCase):
-    """Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
+# Single source of truth for the principle count, so adding a principle updates one place.
+EXPECTED_PRINCIPLE_COUNT = 19
 
-    def test_parse_18_principles(self):
+
+class TestPrincipleSync(unittest.TestCase):
+    """Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
+
+    def test_parse_all_principles(self):
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 18, f"Expected 18 principles, got {len(principles)}")
+        self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT,
+                         f"Expected {EXPECTED_PRINCIPLE_COUNT} principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
         for i in range(1, 19):
             expected_id = f"PRINCIPLE-{i:03d}"
@@ -85,7 +97,7 @@ class TestPrincipleSync(unittest.TestCase):
     def test_monotonic_lifecycle_phase_alignment(self):
         # Enforces PRINCIPLE-002: principles must belong to monotonic phases 1 through 5
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 18)
+        self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT)
         current_phase = 1
         for p in principles:
             self.assertIn("phase_num", p)
@@ -96,7 +108,7 @@ class TestPrincipleSync(unittest.TestCase):
     def test_targets_in_sync_and_budgeted(self):
         # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-001)
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 18)
+        self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT)
         targets = [
             ROOT_DIR / "GEMINI.md",
             ROOT_DIR / ".agents" / "rules" / "principles.md",
@@ -365,6 +377,7 @@ class TestPrincipleSync(unittest.TestCase):
             "scripts/update_knowledge_base.py",
             "scripts/dogfood.py",
             "scripts/check_reachability.py",
+            "scripts/check_secrets.py",
             "tests/test_kit.py",
             "tests/test_integration.py",
             "knowledge/INDEX.md",
@@ -379,6 +392,92 @@ class TestPrincipleSync(unittest.TestCase):
             basename = Path(rel).name
             self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+
+
+class TestSecretHygieneScanner(unittest.TestCase):
+    """
+    PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner
+    must be proven against real credential shapes rather than trusted. Each fixture below is a
+    syntactically valid credential *shape* using published documentation values or invented
+    strings - no live secret appears in this repository.
+    """
+
+    def test_detects_known_credential_shapes(self):
+        cases = {
+            "AWS access key id": 'AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7NOTREAL"',  # aikit:allow-secret
+            "GitHub token": 'tok = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"',  # aikit:allow-secret
+            "Slack token": 'tok = "xoxb-1234567890-abcdefghijklmnop"',  # aikit:allow-secret
+            "Google API key": 'k = "AIzaSyB1cD3fG5hJ7kL9mN1pQ3rS5tU7vW9xY2z"',  # aikit:allow-secret
+            "Stripe secret key": 'k = "sk_live_abcdefghijklmnopqrstuvwx"',  # aikit:allow-secret
+            "Password in URL": 'dsn = "postgres://admin:s3cretPassw0rd@db.internal:5432/app"',  # aikit:allow-secret
+            "Private key block": "-----BEGIN RSA PRIVATE KEY-----",  # aikit:allow-secret
+            "Hardcoded password assignment": 'password = "correcthorsebattery"',  # aikit:allow-secret
+        }
+        for detector, line in cases.items():
+            with self.subTest(detector=detector):
+                findings = scan_text("fixture.py", line)
+                self.assertTrue(findings, f"{detector} was not detected in: {line}")
+                self.assertEqual(findings[0][2], detector, f"misclassified: {findings[0]}")
+
+    def test_does_not_flag_indirection_or_placeholders(self):
+        safe = [
+            'api_key = os.getenv("API_KEY")',
+            'token = os.environ.get("TOKEN")',
+            'API_KEY=<your-key-here>',
+            'password = "changeme"',
+            'secret = "${VAULT_SECRET}"',  # aikit:allow-secret
+            'key = "placeholder"',
+            'hard_coded = "short"',
+        ]
+        for line in safe:
+            with self.subTest(line=line):
+                self.assertEqual(scan_text("fixture.py", line), [],
+                                 f"false positive on safe line: {line}")
+
+    def test_weak_allowlist_cannot_veto_a_pattern_match(self):
+        # Red-green pin: the scanner first MISSED "AKIAIOSFODNN7EXAMPLE" purely because the line  # aikit:allow-secret
+        # contained the word "example". A weak hint must never suppress a high-confidence match,
+        # or a live key on an "# example usage" line would sail through.
+        line = '# example usage: AWS_KEY = "AKIAIOSFODNN7NOTREAL"'  # aikit:allow-secret
+        findings = scan_text("fixture.py", line)
+        self.assertTrue(findings, "a weak allowlist word suppressed a pattern match")
+        self.assertEqual(findings[0][2], "AWS access key id")
+
+    def test_weak_allowlist_still_suppresses_entropy_fallback(self):
+        # The low-confidence detector should defer to an "example" hint.
+        line = 'example_token = "a9f3c81e2b7d45069af13c2e8b5d7049"'
+        self.assertEqual(scan_text("fixture.py", line), [],
+                         "weak allowlist should suppress the entropy fallback")
+
+    def test_explicit_pragma_suppresses_everything(self):
+        line = 'tok = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"  # aikit:allow-secret'
+        self.assertEqual(scan_text("fixture.py", line), [],
+                         "explicit pragma did not suppress the finding")
+
+    def test_entropy_separates_random_from_prose(self):
+        self.assertGreater(shannon_entropy("f3a9c81e2b7d45069af13c2e8b5d7049"), 3.5)
+        self.assertLess(shannon_entropy("aaaaaaaaaaaaaaaaaaaaaaaa"), 1.0)
+        self.assertEqual(shannon_entropy(""), 0.0)
+
+    def test_agent_memory_free_text_is_scanned(self):
+        # PRINCIPLE-019 R3: the ledger's impact fields are git-tracked, so a credential quoted
+        # while explaining reasoning becomes permanent history.
+        leaky = 'why = "rotate ghp_abcdefghijklmnopqrstuvwxyz0123456789 after deploy"'  # aikit:allow-secret
+        self.assertTrue(scan_text("agent-memory:task_ledger.json", leaky),
+                        "a credential in ledger free-text was not detected")
+
+    def test_this_repository_is_clean(self):
+        # The live invariant: no tracked file or agent memory in AIKit carries a credential.
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = run_scan(mode="all")
+        self.assertEqual(exit_code, 0, "secret scan found potential credentials in the repository")
+
+    def test_gitignore_carries_the_credential_baseline(self):
+        # PRINCIPLE-019 R2: protection added after a leak is protection that already failed.
+        ignore = (ROOT_DIR / ".gitignore").read_text(encoding="utf-8")
+        for surface in (".env", "*.pem", "*.key", "id_rsa*", "credentials", "secrets.*", "*.tfvars"):
+            with self.subTest(surface=surface):
+                self.assertIn(surface, ignore, f".gitignore does not exclude {surface}")
 
 
 class TestInvariantReachabilityShield(unittest.TestCase):

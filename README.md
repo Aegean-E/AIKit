@@ -33,6 +33,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
+| **Secret Scan Gate** | `python scripts/check_secrets.py --staged` | No credential patterns in staged diff or ledger (PRINCIPLE-019) |
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <100ms, writing nothing |
@@ -71,7 +72,8 @@ portable_agent_kit/
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
-│   └── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
+│   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
+│   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
 │   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
@@ -128,7 +130,7 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 
 ---
 
-## 🏛️ The 18 Core Principles (Lifecycle-Ordered)
+## 🏛️ The 19 Core Principles (Lifecycle-Ordered)
 
 The principles are strictly organized across **5 chronological execution phases**:
 
@@ -169,6 +171,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Modular `knowledge/` sync; atomic code-doc pairing; append-only ADRs; AST freshness gate; link shield. |
 | **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Multi-IDE rule sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
 | **PRINCIPLE-018** | Automatic Git Workflow | Conventional Commits; explicit staging (zero blind add); pre-commit triad; adaptive push. |
+| **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; ignore-list baseline; pre-commit secret scan; rotate-not-revert. |
 
 ---
 

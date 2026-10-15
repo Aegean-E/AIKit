@@ -44,6 +44,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active `knowledge/` sync, atomic code-doc pairing, append-only ADRs, AST gating, and freshness check. |
 | **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
 | **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Conventional Commits, explicit staging (no blind add), pre-commit triad, adaptive push. |
+| **[PRINCIPLE-019](#principle-019-secret--sensitive-data-hygiene-irreversible-disclosure-shield)** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files/logs/ledgers, ignore-list baseline, pre-commit secret scan, rotate-not-revert. |
 
 ---
 
@@ -270,6 +271,17 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Adaptive Push & Zero Force Push**: Automatically push to the active tracked branch (`origin/<current_branch>`). If no remote exists, commit locally and report local-only status. If upstream diverged, fetch and rebase (`git pull --rebase`). Force pushes (`--force`, `--force-with-lease`) are strictly forbidden.
   - **Non-Destructive Recoil Invariant**: When resetting or recovering from failures, always use non-destructive rollbacks (`git reset --soft HEAD~1`). Never execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
   - **Terse Delivery Confirmation**: Confirm completion with a concise status summary (<10 lines) citing the short commit hash (`git rev-parse --short HEAD`), commit subject, files committed count, and target branch.
+
+### PRINCIPLE-019: Secret & Sensitive Data Hygiene (Irreversible Disclosure Shield)
+- **Problem**: Secret leakage is the only defect class with no clean rollback: once a credential reaches a commit, a log, a prompt payload, or a shared artifact it must be rotated, not reverted, and `git reset` cannot help. AI agents are structurally prone to it — they paste environment contents into diagnostics, commit scaffolding wholesale, and persist free-text rationale to disk where it is committed like any other file.
+- **Guideline**:
+  - **Zero Credentials in Tracked Files**: No API keys, tokens, passwords, private keys, certificates, connection strings, or session cookies in source, config, fixtures, test data, docs, or commit messages. Secrets arrive only via environment variables or a secret store, read with safe lookups, and appear in the repository only as named placeholders in `.env.example`-style templates.
+  - **Ignore-List Baseline (Pre-Exposure Shield)**: The ignore file must pre-emptively exclude `.env` and variants, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `*.keystore`, `credentials*`, `secrets*`, `*.tfvars` and cloud CLI config directories before such a file can exist.
+  - **Agent Working Memory Is Tracked Output**: Free-text written into `.agents/task_ledger.json` (`--why`, `--benefits`, `--risks`, `--mitigation`), ADR bodies, dogfood logs, and progress notes must reference secrets by name, never by value.
+  - **Redacted Diagnostics & Prompt Payloads**: Errors, logs, tool outputs, and outbound LLM payloads redact credential-shaped values. Never dump whole environment dictionaries, request headers, or raw auth responses.
+  - **Mechanical Pre-Commit Secret Scan**: `scripts/check_secrets.py` scans staged content and agent ledger free-text for credential patterns and high-entropy literals as a fourth gate in the `PRINCIPLE-018` delivery triad. Allowlisting is risk-tiered: an explicit `# aikit:allow-secret` pragma or an unambiguous placeholder suppresses all detectors, while a weak hint such as "example" suppresses only the low-confidence entropy fallback and can never veto a pattern match.
+  - **Rotate, Never Revert (Irreversibility Protocol)**: On suspected exposure, rotate or revoke first, then purge the artifact. Never present `git reset`, a force-push, or a file deletion as remediation.
+  - **Least-Privilege Defaults & Zero Secret Fabrication**: Request the narrowest scope and shortest lifetime, prefer read-only credentials on verification paths, and never invent or placeholder-fill a real credential to make a flow proceed — fail fast with remediation guidance.
 
 ---
 

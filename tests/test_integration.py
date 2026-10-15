@@ -171,8 +171,8 @@ class TestOperationalDogfooding(unittest.TestCase):
     """
 
     SCRIPTS = (
-        "sync_principles.py", "disruption_recovery.py",
-        "update_knowledge_base.py", "dogfood.py",
+        "sync_principles.py", "disruption_recovery.py", "update_knowledge_base.py",
+        "dogfood.py", "check_reachability.py", "check_secrets.py",
     )
 
     @staticmethod

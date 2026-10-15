@@ -19,3 +19,24 @@ __pycache__/
 venv/
 .venv/
 env/
+
+# Credential surfaces (PRINCIPLE-019 Rule 2: ignore-list baseline).
+# Protection added after a leak is protection that already failed.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+credentials
+credentials.*
+secrets.*
+*.tfvars
+.aws/
+.gcloud/
+.azure/

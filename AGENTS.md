@@ -316,6 +316,20 @@
 
 ---
 
+### PRINCIPLE-019: Secret & Sensitive Data Hygiene (Irreversible Disclosure Shield)
+- **Concept**: Secret leakage is the one defect class with no clean rollback: once a credential reaches a commit, a log, a prompt payload, or a shared artifact, it must be rotated rather than reverted, and `git reset` cannot help. AI agents are structurally prone to it, because they paste environment contents into diagnostics, commit scaffolding wholesale, and persist free-text rationale to disk. Secrets must therefore be kept out of tracked files, generated artifacts, and agent working memory by mechanical gate, never by recollection.
+- **Invariant**: Zero credentials in tracked files, logs, or ledgers; secrets via env/secret-store only; ignore-list baseline (`.env`, keys, certs); pre-commit secret scan of staged diffs & ledger free-text; redacted diagnostics; rotate-not-revert on exposure.
+- **Rules**:
+  1. **Zero Credentials in Tracked Files**: Never commit API keys, tokens, passwords, private keys, certificates, connection strings, or session cookies — not in source, config, fixtures, test data, documentation, or commit messages. Secrets are supplied exclusively through environment variables or a secret store, read with safe lookups (`PRINCIPLE-011` R3), and committed only as named placeholders (`API_KEY=<your-key-here>`) in `.env.example`-style templates.
+  2. **Ignore-List Baseline (Pre-Exposure Shield)**: The repository's ignore file must pre-emptively exclude the standard credential surfaces — `.env` and variants, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `*.keystore`, `credentials*`, `secrets*`, `*.tfvars`, cloud CLI config directories — before any such file can exist. Protection added after the fact is protection that already failed.
+  3. **Agent Working Memory Is Tracked Output**: Disk-backed agent memory is committed like any other file, so free-text written into `.agents/task_ledger.json` (`--why`, `--benefits`, `--risks`, `--mitigation`), ADR bodies, dogfood logs, and progress notes must never quote credential values, authorization headers, or raw provider payloads. Reference secrets by name (`the staging API key`), never by value.
+  4. **Redacted Diagnostics & Prompt Payloads**: Error messages, logs, tool outputs, and outbound LLM payloads must redact credential-shaped values rather than echoing them. Never dump whole environment dictionaries, full request headers, or raw auth responses into a diagnostic, a transcript, or a bug report.
+  5. **Mechanical Pre-Commit Secret Scan**: `scripts/check_secrets.py` scans staged content and agent ledger free-text for known credential patterns and high-entropy literals, and runs as a fourth gate in the `PRINCIPLE-018` R3 delivery triad. Findings block delivery. Deliberate exceptions require an explicit allowlist entry or inline pragma — never a silenced scanner.
+  6. **Rotate, Never Revert (Irreversibility Protocol)**: On suspected exposure, treat the secret as permanently compromised. Rotate or revoke it first, then purge the artifact. Never present `git reset`, a force-push, or a deleted file as remediation: the value must be assumed captured the moment it was pushed, logged, or sent to a third-party service.
+  7. **Least-Privilege Defaults & Zero Secret Fabrication**: Request the narrowest scope and shortest lifetime that works, prefer read-only credentials for verification paths, and never invent, guess, or placeholder-fill a real credential value to make a flow proceed — fail fast with remediation guidance instead (`PRINCIPLE-011` R6).
+
+---
+
 ## 🛠️ AI Task Checklists
 
 ### 🛫 Pre-Flight Checklist (Run at Cold Start / Before Coding)

@@ -41,3 +41,5 @@
    - Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap, >7,200 char warning); schema compliance; freshness test gate; Tier 1B domain rules injection. [GUIDELINES.md#principle-017]
 18. **PRINCIPLE-018: Automatic Git Workflow (Commit & Push)**:
    - Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad; non-destructive recoil. [GUIDELINES.md#principle-018]
+19. **PRINCIPLE-019: Secret & Sensitive Data Hygiene (Irreversible Disclosure Shield)**:
+   - Zero credentials in tracked files, logs, or ledgers; secrets via env/secret-store only; ignore-list baseline (`.env`, keys, certs); pre-commit secret scan of staged diffs & ledger free-text; redacted diagnostics; rotate-not-revert on exposure. [GUIDELINES.md#principle-019]

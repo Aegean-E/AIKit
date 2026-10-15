@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-roadmap-m3-reachability",
+    "task_id": "principle-roadmap-m4-secrets",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792103339.7690794,
+    "updated_at": 1792103598.6561198,
     "impact_assessment": {
-      "why": "The green-test-broken-production class recurred 5 times across audits (unused lock, phantom last_phase_num key, porcelain whitelist gap, async omission, tautological dogfood test); no principle covers declared-but-unwired capabilities",
-      "benefits": "Mechanical regression shield for the single highest-frequency defect class in the repo, at zero Tier 1 token cost since it folds into an existing principle rather than adding P019",
-      "risks": "False positives on intentionally-exported library API could create noise and erode trust in the gate",
-      "mitigation": "Allowlist for deliberately public API; checker reports only prod-unreachable symbols; test asserts the checker is clean rather than asserting a symbol list"
+      "why": "Only 3 incidental mentions of secrets across all 18 principles; .gitignore has no .env/key/pem entries; and the git-tracked task_ledger.json persists 4 agent-authored free-text fields, so an agent writing a credential into --why commits it to history permanently",
+      "benefits": "Closes the highest-damage AI-agent failure mode with a mechanical pre-commit scanner; protects the kit's own P007 workflow from being a leak path",
+      "risks": "Entropy-based detection produces false positives that erode trust; a new principle costs Tier 1 budget already over target; over-blocking could break the delivery triad",
+      "mitigation": "Pattern-first detection with known credential prefixes plus bounded entropy; explicit allowlist and inline pragma; condense an existing capsule to pay for the new one per P001 R9"
     },
-    "completed_at": 1792103573.9679976
+    "completed_at": 1792103951.122127
   },
   "checkpoints": [
-    {
-      "task_id": "principle-015-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-015-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792098144.1475663,
-      "timestamp_str": "2026-10-16 00:02:24"
-    },
-    {
-      "task_id": "principle-016-pass1",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 16 with atomic code-and-doc pairing, monotonic append-only ADR register, strict AST syntax validation, and automated link integrity shield",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792098241.0095065,
-      "timestamp_str": "2026-10-16 00:04:01",
-      "impact_assessment": {
-        "why": "Prevent knowledge base drift, stale architectural documentation, overwritten decision history, and broken cross-document links",
-        "benefits": "Guarantee that externalized disk memory stays 100% synchronized with code realities for accurate AI cold starts",
-        "risks": "Context budget creep across IDE rule files",
-        "mitigation": "Keep invariant capsule dense (<180 chars) and concise rule descriptions"
-      }
-    },
     {
       "task_id": "principle-016-pass1",
       "phase": "completed",
@@ -257,6 +232,31 @@
       "status": "completed",
       "timestamp": 1792103573.9679985,
       "timestamp_str": "2026-10-16 01:32:53"
+    },
+    {
+      "task_id": "principle-roadmap-m4-secrets",
+      "phase": "2",
+      "phase_num": 2,
+      "description": "Milestone 4/5: PRINCIPLE-019 secret and sensitive data hygiene with staged-file + ledger scanner",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792103598.6561198,
+      "timestamp_str": "2026-10-16 01:33:18",
+      "impact_assessment": {
+        "why": "Only 3 incidental mentions of secrets across all 18 principles; .gitignore has no .env/key/pem entries; and the git-tracked task_ledger.json persists 4 agent-authored free-text fields, so an agent writing a credential into --why commits it to history permanently",
+        "benefits": "Closes the highest-damage AI-agent failure mode with a mechanical pre-commit scanner; protects the kit's own P007 workflow from being a leak path",
+        "risks": "Entropy-based detection produces false positives that erode trust; a new principle costs Tier 1 budget already over target; over-blocking could break the delivery triad",
+        "mitigation": "Pattern-first detection with known credential prefixes plus bounded entropy; explicit allowlist and inline pragma; condense an existing capsule to pay for the new one per P001 R9"
+      }
+    },
+    {
+      "task_id": "principle-roadmap-m4-secrets",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-roadmap-m4-secrets' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792103951.1221285,
+      "timestamp_str": "2026-10-16 01:39:11"
     }
   ]
 }

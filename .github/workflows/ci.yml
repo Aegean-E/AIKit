@@ -77,7 +77,7 @@ jobs:
       - name: Universal CLI contract
         shell: bash
         run: |
-          for s in sync_principles disruption_recovery update_knowledge_base dogfood check_reachability; do
+          for s in sync_principles disruption_recovery update_knowledge_base dogfood check_reachability check_secrets; do
             python "scripts/$s.py" --help > /dev/null < /dev/null \
               || { echo "::error::scripts/$s.py --help did not exit 0"; exit 1; }
             python "scripts/$s.py" --not-a-real-flag > /dev/null 2>&1 < /dev/null
@@ -88,6 +88,10 @@ jobs:
             fi
           done
           echo "CLI contract verified across all entrypoints"
+
+      # PRINCIPLE-019 Rule 5: a committed credential cannot be reverted, only rotated.
+      - name: Secret hygiene scan
+        run: python scripts/check_secrets.py --all
 
       # PRINCIPLE-014 Rule 7: a tested-but-unwired capability is a defect reported as green.
       - name: Invariant reachability shield

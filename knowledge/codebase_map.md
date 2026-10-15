@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `7`
-- **Total Classes**: `15`
-- **Total Functions / Methods**: `60`
-- **Total Source Lines**: `4163`
+- **Total Python Modules**: `8`
+- **Total Classes**: `16`
+- **Total Functions / Methods**: `71`
+- **Total Source Lines**: `4617`
 
 ---
 
@@ -28,6 +28,26 @@
 - `def collect_state_keys(files)` - *Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals or*
 - `def find_phantom_keys(files)` - *State keys read by production code that no production code ever writes.*
 - `def run_check(verbose)` - *Audit reachability and key round-trips, reporting tersely (PRINCIPLE-012 Rule 4).*
+
+---
+
+### [`scripts/check_secrets.py`](scripts/check_secrets.py)
+> *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
+
+**Size**: `349` lines (`14437` bytes)
+
+**Functions:**
+- `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
+- `def is_strongly_allowlisted(line)` - *An explicit pragma or an unambiguous placeholder suppresses every detector.*
+- `def is_weakly_allowlisted(line)` - *A hint like "example" suppresses only the low-confidence entropy fallback.*
+- `def scan_text(label, text)` - *Return (label, line_no, detector, excerpt) for every finding in a blob of text.*
+- `def should_skip(path_str)`
+- `def git_output(args)`
+- `def scan_staged()` - *Scan staged content only - the surface about to become permanent history.*
+- `def iter_tracked_files()`
+- `def scan_all()`
+- `def scan_agent_memory()` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
+- `def run_scan(mode, target, verbose)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
 
 ---
 
@@ -65,7 +85,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `456` lines (`19849` bytes)
+**Size**: `462` lines (`19997` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -123,7 +143,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `420` lines (`18954` bytes)
+**Size**: `420` lines (`18999` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -168,11 +188,11 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1193` lines (`59585` bytes)
+**Size**: `1292` lines (`65039` bytes)
 
 **Classes:**
-- `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
-  - Method `.test_parse_18_principles()`
+- `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
+  - Method `.test_parse_all_principles()`
   - Method `.test_monotonic_lifecycle_phase_alignment()`
   - Method `.test_targets_in_sync_and_budgeted()`
   - Method `.test_principle_003_anti_hallucination_capsule()`
@@ -190,6 +210,16 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestSecretHygieneScanner` - *PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner*
+  - Method `.test_detects_known_credential_shapes()`
+  - Method `.test_does_not_flag_indirection_or_placeholders()`
+  - Method `.test_weak_allowlist_cannot_veto_a_pattern_match()`
+  - Method `.test_weak_allowlist_still_suppresses_entropy_fallback()`
+  - Method `.test_explicit_pragma_suppresses_everything()`
+  - Method `.test_entropy_separates_random_from_prose()`
+  - Method `.test_agent_memory_free_text_is_scanned()`
+  - Method `.test_this_repository_is_clean()`
+  - Method `.test_gitignore_carries_the_credential_baseline()`
 - `class TestInvariantReachabilityShield` - *PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These*
   - Method `.setUp()`
   - Method `._write(name, source)`
