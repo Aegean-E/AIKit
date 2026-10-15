@@ -396,3 +396,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates deceptive silent mock successes; prevents interactive console deadlocks; ensures identical cross-platform behavior; standardizes exit codes for robust machine orchestration; achieves 10-second verification.
   - *Trade-offs*: None; pure standard library practices.
+
+### ADR-026: Bounded Prompt Ceilings, Schema-First Contracts, Relative-Path Serialization, and TPM Rate Pacing (PRINCIPLE-012 Pass 1)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Unbounded file ingestion and mega-diff dumps exhaust AI context windows, degrading model reasoning, causing "lost-in-the-middle" amnesia, and triggering expensive token burn.
+  2. Multi-turn system prompts and few-shot examples often suffer from conversational fluff and narrative filler, which dilutes instruction following compared to compact schema contracts.
+  3. Absolute paths repeated across prompt injections and ledger states waste up to 70% of serialization overhead across deeply nested repository structures.
+  4. Rapid successive model or tool API invocations without rate pacing trigger HTTP 429 (Too Many Requests) exceptions and cascade into workflow halts.
+  5. Over-engineering with heavy enterprise boilerplate, ceremonial class hierarchies, and unvetted micro-dependencies inflates repository size and maintenance burden.
+- **Decision**:
+  1. Enforce **Bounded Prompt Payload Ceilings & AST Slicing**: Dynamic context payloads injected into prompts must target <4,000 tokens (<16,000 characters). Full-file dumps are replaced by AST symbol digests (`knowledge/codebase_map.md`) and targeted line slices (<100 lines).
+  2. Enforce **Information-Dense Prompt Architecture (Anti-Fluff Invariant)**: High information-to-token ratio; eliminate conversational pleasantries; prioritize terse schema contracts and structured constraints over multi-page narrative instructions or few-shot examples.
+  3. Enforce **Compact Schema & Relative-Path Serialization**: Tool outputs, prompt schemas, and ledger records must use compact JSON/YAML and repository-relative paths (`./src/main.py`), trimming up to 70% of path token bloat.
+  4. Enforce **Adaptive Token-Aware Rate Pacing & Jittered Exponential Backoff**: Track client-side tokens-per-minute (TPM) consumption; proactively pace rapid bursts; implement jittered exponential backoff on HTTP 429 errors.
+  5. Enforce **High-Leverage Standard Library Architecture (Anti-Code-Bloat Invariant)**: Leverage Python/Node standard library tools (`dataclasses`, `pathlib`, `typing`, `http.client`) over heavy external dependencies; keep implementations concise and maintainable.
+- **Consequences**:
+  - *Positive*: Maximizes model attention by eliminating context dilution; reduces token expenditure by ~70% on paths and payloads; prevents HTTP 429 rate-limit deadlocks; keeps codebases lean and maintainable.
+  - *Trade-offs*: None; pure discipline in token budgeting and lean stdlib design.

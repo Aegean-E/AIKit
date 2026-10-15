@@ -208,13 +208,14 @@
 ---
 
 ### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
-- **Concept**: Code must be concise, expressive, and devoid of unnecessary bloat. All interactions with LLMs must be strictly budgeted for tokens—leveraging compact representations and hierarchical batching so requests never exhaust context windows, exceed rate limits (TPM), or waste user tokens.
-- **Invariant**: Concise code; strict token budgets; compact JSON schemas/relative paths; exponential backoff rate-limit guards.
+- **Concept**: Systems and prompt pipelines must be architected for extreme token efficiency, dense serialization, bounded context payloads, rate-limit resilience, and lean, expressive code. Every token sent to or received from an LLM must deliver high informational leverage.
+- **Invariant**: Bounded prompt ceilings (<4k tokens); relative-path serialization (~70% savings); schema-first contracts; TPM rate-pacing with jittered backoff; anti-code-bloat stdlib leverage.
 - **Rules**:
-  1. **Concise, High-Leverage Code**: Avoid gratuitous verbosity, bloated helper chains, or repetitive boilerplate. Write clean, modular, and concise implementations.
-  2. **Strict Token Budgeting**: Prompts must never blindly dump raw, unbounded file or data lists into a single context. Enforce strict batch size caps and character limits.
-  3. **Compact Serialization**: Use dense, compact payload formats (e.g. relative paths, short keys, terse JSON schemas) to cut prompt token consumption by 50–70%.
-  4. **Rate-Limit Guardrails**: Implement token-aware pacing and exponential backoff to operate seamlessly within free-tier API limits.
+  1. **Bounded Prompt Payload Ceilings & AST Context Digests**: Outbound LLM prompts and tool arguments must enforce explicit payload ceilings (target <4,000 tokens / <16,000 characters per outbound payload). Use AST codebase symbol catalogs (`knowledge/codebase_map.md`), summary digests, and targeted line slices (`PRINCIPLE-004`) rather than raw, unbounded multi-file source dumps.
+  2. **Information-Dense Prompt Architecture (Anti-Fluff Invariant)**: System prompts and instructions must maximize the signal-to-token ratio, eliminating conversational filler, polite preamble, and decorative prose. Replace multi-page few-shot examples with strict, schema-enforced type contracts (JSON Schema, typed dictionaries), which provide higher deterministic accuracy at a fraction of the token overhead.
+  3. **Compact Schema & Relative-Path Serialization (~70% Token Savings)**: All prompt payloads, tool inputs/outputs, and persistent ledgers must serialize repository-relative paths (`scripts/disruption_recovery.py`) rather than absolute filesystem paths. Employ concise, non-redundant key names and compact serialization structures (e.g. tabular markdown, compact JSON Lines, or key-value pairs) rather than repetitive nested dictionaries.
+  4. **Adaptive Token-Aware Pacing & Jittered Exponential Backoff**: Batch LLM requests must track estimated token consumption against TPM/RPM quotas to pace requests proactively before triggering HTTP 429 rate-limit errors. Implement full-jitter exponential backoff (`wait = base * (2 ** attempt) + uniform(0, jitter)`) with bounded retries ($3 \le \text{retries} \le 5$), ensuring resilient recovery from temporary provider throttling.
+  5. **High-Leverage Standard Library Architecture (Anti-Code-Bloat Invariant)**: Implementations must maximize expressive leverage per line of code using language standard-library abstractions (`dataclasses`, `pathlib`, `itertools`, `collections`, `contextlib`). Prohibit gratuitous boilerplate, redundant wrapper classes, and ceremonial helpers that inflate codebase token footprints without adding architectural value.
 
 ---
 
@@ -323,7 +324,7 @@
 - [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
-- [ ] **Code Conciseness & Token Budget Plan**: Is the code concise, and are prompts/payloads token-budgeted and compact (**PRINCIPLE-012**)?
+- [ ] **Code Conciseness & Token Budget Plan**: Are prompt payloads capped (<4k tokens), relative-path serialized, and rate-paced (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are file writes, settings, and transaction logs protected against power-loss corruption (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned unit tests to validate this change and prevent regressions (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with zero-blast-radius ephemeral sandboxing for real execution (**PRINCIPLE-015**)?
@@ -341,7 +342,7 @@
 - [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
 - [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and fast (<1s tests)** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
-- [ ] Is the code **concise, lean, and token-frugal** without context waste (**PRINCIPLE-012**)?
+- [ ] Is the code **concise, lean, and token-budgeted (<4k payloads, relative paths)** (**PRINCIPLE-012**)?
 - [ ] Are all state changes and logs **crash-resilient and written atomically** (**PRINCIPLE-013**)?
 - [ ] Have all **automated unit tests passed with 100% success** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed jail (**PRINCIPLE-015**)?

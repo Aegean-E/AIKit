@@ -65,6 +65,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ---
 
+## 🪙 Token Economics & Prompt Architecture
+- **Bounded Prompt Ceilings**: Outbound LLM payloads and tool arguments enforce strict character/token caps (<4,000 tokens / <16,000 chars) to prevent context exhaustion and attention degradation (**PRINCIPLE-012**).
+- **AST-Filtered Context Slices**: Raw multi-file dumps are banned; prompts inject targeted AST symbol digests (`knowledge/codebase_map.md`) and concise code slices (<100 lines).
+- **Compact Relative-Path Serialization**: All persistent ledgers, prompt payloads, and tool arguments serialize repository-relative paths rather than redundant absolute paths (~70% token savings).
+- **Adaptive Rate Pacing & Jittered Backoff**: Batch LLM pipelines track token usage against TPM/RPM quotas and employ full-jitter exponential backoff for resilient rate-limit recovery.
+- **Anti-Code-Bloat Standard Library Leverage**: Expressive standard-library abstractions eliminate ceremonial boilerplate, keeping codebases compact and easy for AI agents to reason over.
+
+---
+
 ## 💾 Persistence & Atomicity (Fail-Safe Architecture)
 - All persistent configuration and state mutations use atomic write patterns (`flush` + `os.fsync` + `os.replace`) to prevent zero-byte truncation during sudden power loss (**PRINCIPLE-013**, **PRINCIPLE-006**).
 
