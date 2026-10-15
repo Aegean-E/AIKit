@@ -238,14 +238,15 @@
 ---
 
 ### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
-- **Concept**: Every code modification, new feature, bug fix, or refactoring must be accompanied by automated unit or integration tests wherever technically feasible. Before finalizing any task, the full automated test suite must be executed and confirmed passing to guarantee zero regressions.
-- **Invariant**: 100% test pass gate (`python -m unittest discover tests`); fast deterministic isolated unit tests before staging/committing.
+- **Concept**: Automated tests form the immutable contract shield of the repository. Every code modification, new feature, bug fix, or refactoring must be accompanied by automated unit or integration tests. Under no circumstance may tests be weakened or deleted to force verification gates to pass.
+- **Invariant**: 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); hermetic isolation (zero leaked files); self-explaining diagnostics.
 - **Rules**:
-  1. **Test-Backed Changes**: Any new feature, service method, model, or bug fix must include dedicated unit tests in `tests/`.
-  2. **Zero-Regression Gate**: The complete test suite (`python -m unittest discover tests` or project test command) must be executed and pass with 100% success before staging and committing.
-  3. **Deterministic & Fast Tests**: Tests must be fully automated, fast (<1s), isolated, independent of external network APIs (using mocks/fakes where necessary), and clean up all temporary filesystem artifacts.
-  4. **Continuous Test Expansion**: As the codebase evolves, edge cases, error conditions, and cross-platform path handling must be incrementally added to the test suite to fortify test coverage.
-  5. **Pre-flight & Post-flight Integration**: The Pre-flight checklist must plan test coverage, and the Post-flight checklist must verify that all tests pass.
+  1. **Test-Backed Changes & Regression Shield**: Every code modification, service layer, data schema, or bug fix must include dedicated unit tests in `tests/`. Adding untested production logic or leaving coverage gaps across critical paths is strictly prohibited.
+  2. **Test Sanctity Invariant (Anti-Regression Masking)**: Existing test assertions represent immutable contractual truth. When a test fails after code changes, the AI must fix the production implementation to satisfy the contract. Weakening assertions (e.g. changing strict checks to `assertTrue(True)`), commenting out tests, deleting test methods, or applying `@unittest.skip` to force passes is strictly prohibited unless the user explicitly requested a breaking contract overhaul.
+  3. **Hermetic Isolation & Zero Flakiness (<1s Gate)**: Unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), run completely deterministically, and avoid external network calls (use mocks/fakes). Prohibit arbitrary wall-clock sleeps (`time.sleep()`); use mock time, deterministic clocks, or seeded pseudorandom generators.
+  4. **Pristine Working Tree Invariant (Zero Leaked Artifacts)**: File I/O tests must execute strictly within ephemeral temporary sandboxes (`tempfile.TemporaryDirectory()` or RAII context managers). Running the test suite must leave `git status --porcelain` completely clean with zero dangling test files, logs, or state artifacts left on disk.
+  5. **Self-Explaining Assertions & Diagnostic Precision**: Test assertions must provide explicit, descriptive failure messages containing actual vs. expected values, evaluated paths, and failure context. Precise diagnostics allow calling agents to pinpoint root causes in a single turn without exploratory guesswork.
+  6. **Hostile Boundary & Edge-Case Hardening**: Tests must prioritize boundary and hostile input verification (empty collections, `None` arguments, 0-byte files, schema variations, extreme numbers, malformed types) rather than superficial happy-path line coverage.
 
 ---
 
@@ -330,7 +331,7 @@
 - [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
-- [ ] **Test Coverage Plan**: Have I planned unit tests to validate this change and prevent regressions (**PRINCIPLE-014**)?
+- [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with boundary cases and self-explaining assertions (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with zero-blast-radius ephemeral sandboxing for real execution (**PRINCIPLE-015**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-016**)?
 
@@ -348,7 +349,7 @@
 - [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
 - [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
 - [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
-- [ ] Have all **automated unit tests passed with 100% success** (**PRINCIPLE-014**)?
+- [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed jail (**PRINCIPLE-015**)?
 - [ ] Has the **AI knowledge base in `knowledge/` been updated and verified** (**PRINCIPLE-016**)?
 - [ ] Have all **AI guideline files been automatically synchronized** if principles changed (**PRINCIPLE-017**)?

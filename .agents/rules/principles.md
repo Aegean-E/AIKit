@@ -34,7 +34,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 13. **PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)**:
    - Resilient atomic writes (flush + fsync + retry replace); advisory locking; shadow backups (.bak); schema migration; signal-drain flush; read-only fallback. [GUIDELINES.md](../../GUIDELINES.md#principle-013)
 14. **PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)**:
-   - 100% test pass gate (`python -m unittest discover tests`); fast deterministic isolated unit tests before staging/committing. [GUIDELINES.md](../../GUIDELINES.md#principle-014)
+   - 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); hermetic isolation (zero leaked files); self-explaining diagnostics. [GUIDELINES.md](../../GUIDELINES.md#principle-014)
 15. **PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)**:
    - Universal operational dogfooding (pump GUI event loop / test CLI / check DOM / API calls); zero-blast-radius test sandbox; terse reporting (<15 lines). [GUIDELINES.md](../../GUIDELINES.md#principle-015)
 16. **PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization**:

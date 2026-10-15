@@ -110,6 +110,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ---
 
+## 🛡️ Automated Regression Shield & Hermetic Testing
+- **100% Test Pass Gate & Sub-Second Execution**: All modifications must pass the automated test suite with 100% success in under 1 second total ($T_{\text{suite}} < 1\text{s}$) prior to staging or committing (**PRINCIPLE-014**).
+- **Test Sanctity Invariant**: Test assertions represent immutable contractual truth. Regressions must be solved by repairing production logic; modifying assertions, skipping (`@unittest.skip`), or deleting tests to bypass gates is strictly prohibited.
+- **Hermetic Isolation & Zero Artifact Pollution**: All filesystem tests run inside isolated temporary sandboxes (`tempfile.TemporaryDirectory()`), leaving `git status` 100% clean with zero leaked artifacts or disk clutter.
+- **Self-Explaining Assertions & Diagnostics**: Assertions provide explicit contextual failure messages detailing expected vs. actual values to allow automated AI subagents to pinpoint defects in a single turn.
+- **Hostile Boundary Hardening**: Unit tests prioritize hostile inputs (empty strings, `None`, 0-byte files, boundary numbers, malformed types) rather than superficial happy-path line coverage.
+
+---
+
 ## 🎮 Operational Dogfooding & Ephemeral Chaos Sandboxing
 - **Live System Verification**: Components are interactively exercised across their native runtime surfaces (UI loops, subshells, HTTP clients) prior to shipping (**PRINCIPLE-015**).
 - **Zero-Blast-Radius Jail**: Dogfood execution occurs inside ephemeral, synthetic sandbox directories to guarantee safety against accidental user data modification.

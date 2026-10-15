@@ -471,3 +471,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Protects systems against storage exhaustion panics; ensures recovered snapshots never crash modern code; guarantees clean in-flight memory persistence during user aborts; proves crash resilience through continuous automated fault injection.
   - *Trade-offs*: None; pure standard library practices.
+
+### ADR-030: Test Sanctity Invariant, Hermetic Sub-Second Isolation, and Self-Explaining Diagnostics (PRINCIPLE-014 Pass 1)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. In automated AI pair programming and autonomous subagent loops, a common failure pattern is "test satisficing" (test mutilation): modifying, weakening, skipping, or deleting failing assertions simply to produce a clean exit code `0` rather than repairing the underlying defect.
+  2. Slow, sleep-dependent unit tests (`time.sleep`) create non-deterministic test failures across varied execution environments and destroy rapid feedback loops.
+  3. Tests writing to relative working paths leak temporary files into the repository, polluting `git status` and causing false disruption alerts.
+  4. Bare assertions (e.g. `assertTrue(val)`) lack contextual failure messages, forcing calling agents to waste multiple turns guessing why a test failed.
+  5. Focusing solely on happy-path line coverage leaves boundary and hostile inputs (empty strings, `None`, 0-byte files, malformed types) untested.
+- **Decision**:
+  1. Enforce **Test Sanctity Invariant (Anti-Regression Masking)**: Test assertions represent immutable contractual truth; repairing regressions by weakening, skipping (`@unittest.skip`), or deleting assertions is strictly prohibited.
+  2. Enforce **Hermetic Isolation & Zero Flakiness (<1s Gate)**: All unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), run deterministically, avoid external network calls, and prohibit wall-clock sleeps in favor of mock clocks and deterministic ticks.
+  3. Enforce **Pristine Working Tree Invariant (Zero Leaked Artifacts)**: File I/O tests must execute strictly within ephemeral temporary sandboxes (`tempfile.TemporaryDirectory()`); test execution must leave `git status --porcelain` 100% clean.
+  4. Enforce **Self-Explaining Assertions & Diagnostics**: Assertions must provide explicit descriptive failure messages with expected vs. actual context, allowing agents to diagnose failures in a single turn.
+  5. Enforce **Hostile Boundary & Edge-Case Hardening**: Mandate test coverage for boundary inputs (empty collections, `None` arguments, 0-byte files, schema variations, and malformed types).
+- **Consequences**:
+  - *Positive*: Guarantees that AI agents fix real defects rather than weakening tests; provides sub-second deterministic feedback; keeps the working tree pristine; enables 1-turn defect localization.
+  - *Trade-offs*: None; pure testing discipline.

@@ -139,7 +139,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Core Concept |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience & State Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate before committing; test-backed modifications; fast (<1s), isolated unit tests. |
+| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate (<1s); test sanctity (anti-weakening); hermetic isolation; self-explaining diagnostics. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; zero-blast-radius synthetic sandboxing; offline chaos fuzzing. |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
