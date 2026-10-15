@@ -297,3 +297,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Crystal-clear structural organization; complete test isolation through constructor DI; clean domain separation; prevents spaghetti code and junk-drawer bloat.
   - *Trade-offs*: Requires explicit typing contracts and constructor wiring; well worth the testability and architectural cleanliness.
+
+### ADR-021: Scalable Layering, Narrow Role Protocols, Pluggable Registries, and Zero-Config DI (PRINCIPLE-009 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. While ADR-020 established the canonical 4-layer architecture, agents frequently over-engineered small scripts (<300 lines) by generating 4 nested directories and 8+ files of folder bloat.
+  2. Abstract interfaces created by LLMs tended to become "fat" monolithic classes (10+ methods), forcing test mocks to implement dozens of dummy stub methods and violating the Anti-Satisficing Invariant (`PRINCIPLE-007`).
+  3. Pluggable adapters were often wired using fragile hardcoded `if/elif` branching in service logic, violating the Open-Closed Principle (OCP).
+  4. Dependency injection frameworks add external dependency overhead, while requiring callers to manually wire adapters damages one-click usability (`PRINCIPLE-011`).
+  5. Cross-layer data leakage occurred when mutable domain or database state was passed directly to presentation layers.
+- **Decision**:
+  1. Codify **Scalable Layering (Anti-Boilerplate Invariant)**: The 4 layers represent logical boundaries; for small utilities (<300 lines), keep layers logically separated within a single module rather than generating excessive folder bloat. Multi-directory trees are reserved for larger systems.
+  2. Enforce **Interface Segregation & Narrow Role Protocols**: Pluggable interfaces must be fine-grained and role-oriented ($1 \le \text{methods} \le 5$). Never force test mocks to implement unused stub methods.
+  3. Enforce **Pluggable Registry & Open-Closed Extensibility (OCP)**: Dynamically register backends and adapters via registries/factories (`@register_adapter` or lookup table) rather than hardcoded `if/elif` branching in domain services.
+  4. Enforce **Pure-Stdlib Dependency Injection & Zero-Config Usability**: Use standard-library constructor injection with default factory fallbacks (`adapter: Protocol | None = None`), enabling instant one-click execution with 100% in-memory test mockability without third-party DI containers.
+  5. Enforce **Boundary Immutability via Immutable DTOs**: Data crossing layer boundaries must use immutable DTOs (`dataclass(frozen=True)` or `NamedTuple`), preventing state leakage and side-effect mutations.
+- **Consequences**:
+  - *Positive*: Eliminates boilerplate bloat for small tools; eliminates dummy stub methods in unit tests; enables zero-modification provider pluggability; reconciles pure DI with zero-friction usability; protects domain state integrity.
+  - *Trade-offs*: None; stdlib-only.

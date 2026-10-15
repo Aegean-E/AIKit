@@ -162,19 +162,20 @@
 ## 🏗️ Phase 3: Architecture & Lean Implementation
 
 ### PRINCIPLE-009: Modularity & Pluggable Architecture
-- **Concept**: Systems must follow a decoupled, 4-layer architecture adhering to the Single Responsibility Principle, explicit interface contracts, dependency injection, and unidirectional data flow. Presentation, domain logic, and infrastructure adapters must never bleed across layer boundaries.
-- **Invariant**: 4-layer architecture (Presentation -> Service -> Domain <- Adapter); explicit typing contracts; dependency injection; zero circular imports.
+- **Concept**: Systems must follow a decoupled, 4-layer architecture adhering to the Single Responsibility Principle, narrow role protocols, open-closed provider registries, zero-config dependency injection, and unidirectional data flow. Presentation, domain logic, and infrastructure adapters must never bleed across layer boundaries.
+- **Invariant**: 4-layer architecture (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs.
 - **Rules**:
-  1. **Canonical 4-Layer Architecture**:
+  1. **Canonical 4-Layer Architecture & Scalable Layering**:
      - *Presentation Layer*: CLI, GUI, or API endpoints. Pure input validation, parsing, routing, and rendering. Never contains business logic, SQL/queries, or raw file I/O.
-     - *Service Layer*: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via pure data transfer objects.
-     - *Domain / Model Layer*: Pure business entities, schemas, mathematical algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
+     - *Service Layer*: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via immutable data transfer objects.
+     - *Domain / Model Layer*: Pure business entities, schemas, algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
      - *Infrastructure / Adapter Layer*: Implements abstract interfaces for filesystem I/O, external network APIs, databases, and third-party tools.
+     - *Scalable Layering (Anti-Boilerplate Invariant)*: The 4 layers represent logical boundaries. For small utilities or micro-modules (<300 lines), layers may be co-located as distinct classes/functions within a single module (e.g. `CliParser`, `WorkflowService`, `DataSchema`, `DiskAdapter`) without generating multi-directory folder bloat. Multi-directory packages are reserved for larger systems ($>300$ lines or multiple backends).
      - *Anti-Junk-Drawer Invariant*: Generic catch-all `utils.py` or `helpers.js` junk drawers are prohibited. Helper functions belong to the domain module that owns them or to focused, single-purpose utilities (`date_utils.py`, `string_parsers.py`).
-  2. **Explicit Interface Contracts**: Pluggable provider/adapter boundaries must declare explicit formal contracts using language-native typing constructs (`abc.ABC` or `typing.Protocol` in Python, interfaces/traits in TS/Rust/Go). Concrete adapters must fulfill 100% of the declared contract.
-  3. **Dependency Injection & Inversion (DIP)**: Domain services must receive infrastructure adapters and dependencies via constructors (`__init__`) or factories. Never hardcode the instantiation of concrete infrastructure adapters inside domain services, enabling deterministic in-memory mock testing (`PRINCIPLE-014`).
-  4. **Unidirectional Dependency Flow & Zero Circular Imports**: Dependencies must flow strictly inward: Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure. High-level domain layers must never import low-level infrastructure or presentation modules. Circular imports (`from X import Y` cycles) are strictly prohibited.
-  5. **Encapsulation & Public Boundary Integrity**: Modules must interact exclusively through declared public methods, properties, or immutable data models. Never access or mutate private internal attributes (`_private`) of external modules.
+  2. **Interface Segregation & Narrow Role Protocols (Anti-Fat-Interface)**: Pluggable provider/adapter boundaries must declare fine-grained, role-oriented contracts using language-native typing constructs (`abc.ABC` or `typing.Protocol`). Interfaces must never force an adapter or test mock to implement unused methods ($1 \le \text{methods} \le 5$). Concrete adapters must fulfill 100% of the declared contract without stubbing dummy methods.
+  3. **Pluggable Registry & Open-Closed Extensibility (OCP)**: Pluggable backends, AI providers, and storage engines must register dynamically via lightweight registries or factories (`@register_adapter("name")` or dictionary lookups) rather than fragile hardcoded `if/elif` branching in service logic. New adapters are plugged in with zero modifications to existing domain orchestration.
+  4. **Pure-Stdlib Dependency Injection & Zero-Config Usability**: Domain services must receive infrastructure adapters via constructor (`__init__`) or factory injection. To maintain one-click zero-install usability (`PRINCIPLE-011`) with zero third-party DI containers, provide default-argument factory fallbacks (`def __init__(self, adapter: StorageAdapter | None = None): self._adapter = adapter or DefaultStorageAdapter()`). This guarantees instant zero-config usability out of the box while enabling 100% in-memory mock injection for isolated unit testing (`PRINCIPLE-014`).
+  5. **Unidirectional Flow & Immutable Data Transfer Objects (DTOs)**: Dependencies must flow strictly inward: Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure. Circular imports are banned. Data crossing layer boundaries must use immutable DTOs (`dataclass(frozen=True)` or `NamedTuple`), preventing state leakage and side-effect mutations across system boundaries. Modules interact exclusively through declared public contracts with zero external mutation of `_private` attributes.
 
 ---
 
@@ -313,7 +314,7 @@
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
 - [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
 - [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
-- [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with formal contracts, DI, and zero circular imports (**PRINCIPLE-009**)?
+- [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for optimal speed, minimal latency, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Does the solution maintain "one-click start" without forcing external app installs (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Is the code concise, and are prompts/payloads token-budgeted and compact (**PRINCIPLE-012**)?
@@ -331,7 +332,7 @@
 - [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-006**)?
 - [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
 - [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
-- [ ] Is the architecture **4-layer decoupled with formal typing contracts and DI** (**PRINCIPLE-009**)?
+- [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
 - [ ] Are code paths **optimized for speed, responsiveness, and lean resource consumption** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **one-click zero-install accessibility** (**PRINCIPLE-011**)?
 - [ ] Is the code **concise, lean, and token-frugal** without context waste (**PRINCIPLE-012**)?

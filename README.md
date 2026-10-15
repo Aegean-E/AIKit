@@ -130,7 +130,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🏗️ Phase 3: Architecture & Lean Implementation
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-009** | Modularity & Pluggable Architecture | 4-layer architecture (Presentation -> Service -> Domain <- Adapter); formal typing contracts; dependency injection; zero circular imports. |
+| **PRINCIPLE-009** | Modularity & Pluggable Architecture | 4-layer architecture (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs. |
 | **PRINCIPLE-010** | Performance & Resource Optimization | $O(N)$ efficiency, non-blocking asynchronous/threaded I/O, lean dependencies, token frugality. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | "One-click start" out of the box with zero mandatory external app installs; sensible defaults and graceful degradation. |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Concise code; dense payload serialization (~70% token savings); batch size limits; rate-limit pacing. |

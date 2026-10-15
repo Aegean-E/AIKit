@@ -26,7 +26,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### 🏗️ Phase 3: Architecture & Lean Implementation
 | ID | Title | Summary |
 |---|---|---|
-| **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, explicit typing contracts, dependency injection, and unidirectional flow. |
+| **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
 | **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Maximum execution speed, non-blocking async operations, and lean dependency footprint. |
 | **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Zero mandatory external apps; one-click start with sensible defaults and graceful degradation. |
 | **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Concise code, strict token budgets, compact payloads, and rate-limit safeguards. |
@@ -162,13 +162,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Dynamic Re-Decomposition**: If execution reveals an unanticipated blocker or dependency gap, pause, update the task ledger with refined sub-tasks ($M'$), and resume monotonically without losing progress.
 
 ### PRINCIPLE-009: Modularity & Pluggable Architecture
-- **Problem**: Monolithic spaghetti code, hardcoded infrastructure dependencies, and generic junk-drawer modules (`utils.py`) couple business logic to specific frameworks, making systems brittle, untestable, and impossible to refactor cleanly.
+- **Problem**: Monolithic spaghetti code, hardcoded infrastructure dependencies, multi-directory boilerplate bloat on small scripts, and generic junk-drawer modules (`utils.py`) couple business logic to specific frameworks, making systems brittle, untestable, and impossible to refactor cleanly.
 - **Guideline**:
-  - **Canonical 4-Layer Architecture**: Enforce strict separation between Presentation (CLI/UI), Service (workflows), Domain (pure models & invariants), and Infrastructure (adapters).
-  - **Anti-Junk-Drawer Invariant**: Prohibit generic `utils.py` catch-alls; group functions by specific domain responsibilities.
-  - **Explicit Interface Contracts**: Declare formal pluggable interfaces (`abc.ABC` or `typing.Protocol`) with 100% concrete implementation adherence.
-  - **Dependency Injection**: Pass adapters and dependencies through constructors or factories; never hardcode adapter instantiation in domain services.
-  - **Unidirectional Flow & Encapsulation**: Maintain strictly inward dependency flow with zero circular imports, and interact exclusively through declared public contracts.
+  - **Canonical 4-Layer Architecture & Scalable Layering**: Enforce strict separation between Presentation (CLI/UI), Service (workflows), Domain (pure models & invariants), and Infrastructure (adapters). For small tools (<300 lines), keep layers logically separated within a single module rather than generating excessive folder bloat.
+  - **Anti-Junk-Drawer Invariant**: Prohibit generic `utils.py` catch-alls; co-locate functions with their domain or group into single-purpose utility modules.
+  - **Interface Segregation & Narrow Role Protocols**: Declare fine-grained role contracts (`abc.ABC` or `typing.Protocol` with $1 \le \text{methods} \le 5$). Never force test mocks to implement unused stub methods.
+  - **Pluggable Registry & Open-Closed Extensibility (OCP)**: Dynamically register backends and adapters via registries/factories rather than hardcoded `if/elif` branching in domain services.
+  - **Pure-Stdlib Dependency Injection & Zero-Config Usability**: Pass adapters via constructor injection with default factory fallbacks (`adapter: Protocol | None = None`), enabling instant one-click execution with 100% in-memory test mockability.
+  - **Unidirectional Flow & Immutable DTOs**: Maintain strictly inward dependency flow with zero circular imports, and pass immutable data transfer objects across boundaries without leaking internal mutable state.
 
 ### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
 - **Problem**: Bloated dependencies, unoptimized loops, blocking operations, and inefficient prompting degrade user experience and inflate resource costs.

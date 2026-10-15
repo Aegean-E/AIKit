@@ -3,11 +3,15 @@
 ## 🏛️ High-Level Architectural Pattern
 The application follows a decoupled, modular architecture adhering to **PRINCIPLE-009**:
 - **Presentation Layer**: CLI, GUI, or API endpoints. Pure input validation, parsing, routing, and rendering. Never contains business logic, SQL/queries, or raw file I/O.
-- **Service Layer**: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via pure data transfer objects. Receives adapters via constructor dependency injection.
+- **Service Layer**: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via immutable data transfer objects. Receives adapters via constructor dependency injection.
 - **Domain / Model Layer**: Pure business entities, schemas, algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
 - **Infrastructure / Adapter Layer**: Implements abstract interfaces (`abc.ABC` or `typing.Protocol`) for filesystem I/O, external network APIs, databases, and third-party tools.
+- **Scalable Layering (Anti-Boilerplate Invariant)**: Layers represent logical boundaries. For small tools (<300 lines), keep layers logically separated within a single module rather than generating excessive folder bloat.
+- **Interface Segregation & Narrow Role Protocols**: Fine-grained role contracts ($1 \le \text{methods} \le 5$) prevent mock stubbing in unit tests.
+- **Pluggable Registry (OCP)**: Dynamically register providers via lightweight registries or factories rather than fragile hardcoded `if/elif` branching.
+- **Zero-Config Dependency Injection**: Standard-library constructor injection with default factory fallbacks (`adapter: Protocol | None = None`) guarantees one-click usability with 100% test mockability.
 - **Anti-Junk-Drawer Invariant**: Generic catch-all `utils.py` or `helpers.js` junk drawers are prohibited. Helper functions belong to the domain module that owns them or to focused, single-purpose utilities.
-- **Unidirectional Dependency Flow**: Dependencies flow strictly inward (Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure). Zero circular imports. Modules interact exclusively through declared public contracts.
+- **Unidirectional Dependency Flow & Immutable DTOs**: Dependencies flow strictly inward (Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure). Zero circular imports. Data crossing boundaries uses immutable DTOs, and modules interact exclusively through declared public contracts.
 
 ---
 
