@@ -16,7 +16,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 4. **PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)**:
    - Disk-backed working memory (`.agents/task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first slice retrieval; bounded rolling ledger. [GUIDELINES.md](../../GUIDELINES.md#principle-004)
 5. **PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)**:
-   - Self-describing repo; 30s cold-start orientation; material surface README sync; executable command parity. [GUIDELINES.md](../../GUIDELINES.md#principle-005)
+   - Self-describing repo; 30s cold-start orientation; material surface README sync; executable command parity; tree-drift shield. [GUIDELINES.md](../../GUIDELINES.md#principle-005)
 6. **PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)**:
    - Incremental atomic micro-commits; pre-flight disruption audit; disruption recovery ledger via `scripts/disruption_recovery.py`. [GUIDELINES.md](../../GUIDELINES.md#principle-006)
 7. **PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)**:

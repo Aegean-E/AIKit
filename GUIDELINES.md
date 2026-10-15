@@ -18,7 +18,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | ID | Title | Summary |
 |---|---|---|
-| **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation, material surface sync, and executable command parity. |
+| **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation, material surface sync, executable command parity, and tree-drift shield. |
 | **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and task ledger recovery. |
 | **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight cold-start checklist evaluating why, benefits, risks, and quality preservation. |
 | **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem Decomposition | Hierarchical decomposition of complex problems and datasets into bounded sub-tasks. |
@@ -112,15 +112,16 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Terse Tool Invocation & Attentional Re-Anchoring**: When executing CLI commands, prefer bounded, summary-oriented flags (`git status --short`, `git log -n 1 --oneline`, `git diff --stat`, test runner `-q`). Never dump unbounded mega-logs or full file diffs into conversational turns. At the beginning of each turn, re-anchor to the Pre-flight/Post-flight checklist and active phase invariants.
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
-- **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit. Furthermore, rotting quickstart commands waste developer and agent turns, and indiscriminate sync rules cause documentation churn on internal refactors.
+- **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit. Furthermore, rotting quickstart commands waste developer and agent turns, unmonitored directory trees drift out of date as files are added or renamed, and indiscriminate sync rules cause documentation churn on internal refactors.
 - **Guideline**:
-  - **Self-Describing Repository & 30-Second Orientation**: The project must maintain an explicit orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) canonical test commands, and (4) directory tree and primary entry points. A cold-starting agent must achieve complete orientation in its first turn without speculative file browsing.
+  - **Self-Describing Repository & 30-Second Orientation**: The project must maintain an explicit, high-visibility orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) canonical test commands, and (4) directory tree and primary entry points. A cold-starting agent must achieve complete operational orientation in its first turn without speculative file browsing.
   - **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters setup/run instructions, CLI flags, environment variables, public API/UI contracts, or governance principles. Internal non-breaking refactors update `knowledge/` rather than adding churn to `README.md`.
   - **Executable Command Parity**: Every command, script invocation, or code snippet documented in `README.md` must be factual, literal, and verified to run successfully in the active runtime environment. Zero phantom commands or broken quickstarts.
   - **Documentation Partitioning (The SSOT Triad)**:
     - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
     - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
     - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
+  - **Directory Tree & Script Reference Invariant (Tree-Drift Shield)**: Whenever top-level files or core entrypoint scripts (e.g. in `scripts/`, `knowledge/`, or repository root) are added, removed, or renamed, the directory tree in `README.md` must be synchronously updated. All file and script paths referenced in `README.md` must physically exist on disk (zero dead links or phantom script references).
 
 ### PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
 - **Problem**: When electricity cuts out or hardware crashes occur during a multi-file task or long coding session, all uncommitted in-memory work is wiped out, files may be left in half-edited states, and cold-starting AI agents cannot determine what was interrupted or where to resume.

@@ -110,7 +110,7 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("bounded rolling ledger", p4["invariant"].lower())
 
     def test_principle_005_cold_start_capsule(self):
-        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, material surface sync, command parity
+        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, material surface sync, command parity, tree-drift shield
         principles = parse_principles(AGENTS_MD)
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
@@ -118,10 +118,26 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("30s cold-start orientation", p5["invariant"].lower())
         self.assertIn("material surface readme sync", p5["invariant"].lower())
         self.assertIn("executable command parity", p5["invariant"].lower())
+        self.assertIn("tree-drift shield", p5["invariant"].lower())
 
-
-
-
+    def test_readme_cold_start_orientation_and_script_parity(self):
+        # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command, and valid script paths
+        readme_path = ROOT_DIR / "README.md"
+        self.assertTrue(readme_path.exists(), "README.md missing from repository root")
+        readme_content = readme_path.read_text(encoding="utf-8")
+        
+        # 1. Orientation block & prerequisites
+        self.assertIn("30-Second Cold-Start Quick Reference", readme_content, "Missing 30s quick reference in README.md")
+        self.assertIn("Python 3.10+", readme_content, "Missing Python runtime prerequisite in README.md")
+        self.assertIn("python -m unittest discover tests", readme_content, "Missing canonical test command in README.md")
+        
+        # 2. Executable script reference parity (Tree-drift shield)
+        import re
+        script_refs = set(re.findall(r"scripts/[\w\-]+\.py", readme_content))
+        self.assertGreaterEqual(len(script_refs), 3, "README.md should reference core scripts")
+        for ref in script_refs:
+            script_path = ROOT_DIR / ref
+            self.assertTrue(script_path.exists(), f"Phantom script reference in README.md: {ref}")
 
 
 class TestDisruptionRecovery(unittest.TestCase):

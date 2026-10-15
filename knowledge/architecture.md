@@ -98,4 +98,5 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
   - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
   - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
 - **Executable Command Parity**: All documented quickstart and run commands must be factual, literal, and verified to run in the active runtime.
+- **Directory Tree & Script Reference Invariant (Tree-Drift Shield)**: Any addition, deletion, or renaming of core scripts or root files requires an atomic update to the `README.md` directory tree, ensuring zero phantom scripts or dead references across the project.
 

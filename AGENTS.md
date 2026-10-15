@@ -90,9 +90,9 @@
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
 - **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles within a single turn. To prevent knowledge drift, public surface documentation must be systematically synchronized.
-- **Invariant**: Self-describing repo; 30s cold-start orientation; material surface README sync; executable command parity.
+- **Invariant**: Self-describing repo; 30s cold-start orientation; material surface README sync; executable command parity; tree-drift shield.
 - **Rules**:
-  1. **Self-Describing Repository & 30-Second Orientation**: The project must maintain an explicit orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) the canonical test command, and (4) the directory tree and primary entry points. A cold-starting agent must achieve complete orientation in its first turn without speculative file browsing.
+  1. **Self-Describing Repository & 30-Second Orientation**: The project must maintain an explicit, high-visibility orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) the canonical test command, and (4) the directory tree and primary entry points. A cold-starting agent must achieve complete operational orientation in its first turn without speculative file browsing.
   2. **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters:
      - Setup, build, or run instructions,
      - CLI flags, environment variables, or public API/UI surfaces,
@@ -103,6 +103,7 @@
      - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
      - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
      - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
+  5. **Directory Tree & Script Reference Invariant (Tree-Drift Shield)**: Whenever top-level files or core entrypoint scripts (e.g. in `scripts/`, `knowledge/`, or repository root) are added, removed, or renamed, the directory tree in `README.md` must be synchronously updated. All file and script paths referenced in `README.md` must physically exist on disk (zero dead links or phantom script references).
 
 
 ---

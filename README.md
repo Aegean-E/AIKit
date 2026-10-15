@@ -6,6 +6,28 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 
 ---
 
+## ⚡ 30-Second Cold-Start Quick Reference
+
+> **Orientation Contract for AI Agents & Developers**: Orient yourself in seconds with the verified commands and prerequisites below.
+
+- **Runtime Prerequisites**: Python 3.10+ (Standard Library only — zero external pip dependencies).
+- **Canonical Regression Shield Gate**:
+  ```bash
+  python -m unittest discover tests
+  ```
+  *(100% test pass required before staging or committing changes).*
+
+### 🛠️ Core Operational Command Matrix
+| Operational Role | Canonical Command | Verification Gate |
+|---|---|---|
+| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (<1s runtime) |
+| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | Context budget gate (<8,000 chars / <1,500 tokens) |
+| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
+| **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
+| **Complete Task Ledger** | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
+
+---
+
 ## 📦 What's Inside
 
 ```text
@@ -89,7 +111,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation; material surface sync; executable command parity. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation; material surface sync; executable command parity; tree-drift shield. |
 | **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
 | **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
 | **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |

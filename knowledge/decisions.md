@@ -140,3 +140,18 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates unnecessary `README.md` churn; accelerates cold-start agent comprehension from multiple turns to a single 30-second read; guarantees 100% executable setup commands; enforces crisp separation between public docs, governance rules, and deep architectural knowledge.
   - *Trade-offs*: Requires agents to distinguish between public surface changes and internal refactors during Phase 5 documentation sync.
+
+### ADR-012: Automated Cold-Start Parity Gate, Directory Tree Drift Invariant, and Adopter Blueprint (PRINCIPLE-005)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Even with high-level orientation guidelines, projects often fail to document canonical test commands and runtime prerequisites in `README.md` itself, leaving cold-starting agents to guess test commands or explore multiple files.
+  2. As tools, helper scripts, and architecture docs are created, renamed, or refactored, the ASCII directory tree in `README.md` easily drifts, resulting in dead references or phantom script citations.
+  3. Documentation parity cannot rely solely on manual vigilance; it requires automated mechanical test gates to prevent documentation rot across refactorings.
+- **Decision**:
+  1. Add an explicit **⚡ 30-Second Cold-Start Quick Reference** section directly under the title in `README.md`, containing runtime prerequisites, the canonical test command (`python -m unittest discover tests`), and an operational command matrix.
+  2. Codify the **Directory Tree & Script Reference Invariant (Tree-Drift Shield)**: every core entrypoint script and top-level directory must be reflected in `README.md`, and all script paths cited in `README.md` must physically exist on disk.
+  3. Implement **Automated Cold-Start Parity Testing** in `tests/test_kit.py`: mechanically verify that `README.md` contains runtime prerequisites, the canonical test command, and valid on-disk paths for all cited `scripts/*.py`.
+- **Consequences**:
+  - *Positive*: Guarantees that any cold-starting agent immediately receives the exact runtime requirements and test commands; mechanically eliminates phantom script references in documentation; shields the project against directory tree drift.
+  - *Trade-offs*: None; test execution is purely deterministic and fast (<10ms).
