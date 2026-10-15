@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Principles Auto-Sync Tool (PRINCIPLE-004)
+Principles Auto-Sync Tool (PRINCIPLE-017)
 Ensures all AI assistant guideline documents remain in 100% synchronization
 with the master specification in AGENTS.md.
 """
@@ -126,10 +126,10 @@ def sync_all(check_only: bool = False):
         ROOT_DIR / ".github" / "copilot-instructions.md": generate_copilot_content(principles),
     }
 
-    # Governance Frugality & Context Budget Check (PRINCIPLE-017)
+    # Governance Frugality & Context Budget Check (PRINCIPLE-001)
     MAX_TARGET_CHARS = 8000  # ~1,500-2,000 tokens per target file
     budget_violations = 0
-    print("\n--- Context Budget Audit (PRINCIPLE-017) ---")
+    print("\n--- Context Budget Audit (PRINCIPLE-001) ---")
     for target_path, expected_content in targets.items():
         char_len = len(expected_content)
         est_tokens = char_len // 4
@@ -156,7 +156,7 @@ def sync_all(check_only: bool = False):
         if check_only:
             print(f"[OUT OF SYNC]: {target_path.relative_to(ROOT_DIR)}")
         else:
-            # Atomic fsync write (PRINCIPLE-012, PRINCIPLE-013)
+            # Atomic fsync write (PRINCIPLE-006, PRINCIPLE-013)
             tmp_target = target_path.with_suffix(target_path.suffix + f".tmp_{os.getpid()}")
             with open(tmp_target, "w", encoding="utf-8") as f:
                 f.write(expected_content)

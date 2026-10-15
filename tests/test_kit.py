@@ -33,20 +33,20 @@ from scripts.update_knowledge_base import (
 
 
 class TestPrincipleSync(unittest.TestCase):
-    """Verifies that all 17 principles are maintained and synchronized (PRINCIPLE-004, PRINCIPLE-017)."""
+    """Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
 
-    def test_parse_17_principles(self):
+    def test_parse_18_principles(self):
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 17, f"Expected 17 principles, got {len(principles)}")
+        self.assertEqual(len(principles), 18, f"Expected 18 principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
-        for i in range(1, 18):
+        for i in range(1, 19):
             expected_id = f"PRINCIPLE-{i:03d}"
             self.assertIn(expected_id, p_ids, f"Missing {expected_id} in AGENTS.md")
 
     def test_targets_in_sync_and_budgeted(self):
-        # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-017)
+        # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-001)
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 17)
+        self.assertEqual(len(principles), 18)
         targets = [
             ROOT_DIR / "GEMINI.md",
             ROOT_DIR / ".agents" / "rules" / "principles.md",
@@ -58,10 +58,10 @@ class TestPrincipleSync(unittest.TestCase):
         for target in targets:
             self.assertTrue(target.exists(), f"Target file missing: {target}")
             content = target.read_text(encoding="utf-8")
-            self.assertIn("PRINCIPLE-014", content, f"PRINCIPLE-014 missing from {target.name}")
-            self.assertIn("PRINCIPLE-015", content, f"PRINCIPLE-015 missing from {target.name}")
-            self.assertIn("PRINCIPLE-016", content, f"PRINCIPLE-016 missing from {target.name}")
+            self.assertIn("PRINCIPLE-001", content, f"PRINCIPLE-001 missing from {target.name}")
+            self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
+            self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
             # Assert context budget cap
             self.assertLessEqual(
                 len(content),
@@ -71,8 +71,9 @@ class TestPrincipleSync(unittest.TestCase):
 
 
 
+
 class TestDisruptionRecovery(unittest.TestCase):
-    """Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-012, PRINCIPLE-013)."""
+    """Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013)."""
 
     def setUp(self):
         self.test_dir = Path(tempfile.mkdtemp(prefix="test_disruption_"))
@@ -120,7 +121,7 @@ class TestDisruptionRecovery(unittest.TestCase):
 
 
 class TestKnowledgeBase(unittest.TestCase):
-    """Verifies AST parsing and documentation completeness (PRINCIPLE-010, PRINCIPLE-014)."""
+    """Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016)."""
 
     def test_core_docs_exist(self):
         for doc in CORE_DOCS:
@@ -148,7 +149,7 @@ class TestKnowledgeBase(unittest.TestCase):
 
 class TestOperationalDogfooding(unittest.TestCase):
     """
-    Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-016).
+    Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).
     Operates the CLI scripts in an isolated ephemeral test directory.
     """
 

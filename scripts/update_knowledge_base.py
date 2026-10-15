@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-010)
+Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)
 
 Inspects the repository AST, extracts exported classes, functions, and docstrings,
 and generates the authoritative `knowledge/codebase_map.md`. Also validates

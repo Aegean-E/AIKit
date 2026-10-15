@@ -9,31 +9,31 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `19`
-- **Total Source Lines**: `820`
+- **Total Source Lines**: `821`
 
 ---
 
 ## 📦 Modules & Exported Symbols
 
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
-> *Disruption Recovery & Task Progress Ledger (PRINCIPLE-012, PRINCIPLE-013)*
+> *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
 **Size**: `255` lines (`9381` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
-- `def atomic_write_json(file_path, data)` - *Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-012).*
-- `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-012).*
+- `def atomic_write_json(file_path, data)` - *Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-013).*
+- `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-013).*
 - `def save_ledger(ledger, ledger_file)` - *Save the task ledger atomically to disk.*
-- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-013).*
+- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-006).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger.*
-- `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-013).*
+- `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 
 ---
 
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
-> *Principles Auto-Sync Tool (PRINCIPLE-004)*
+> *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
 **Size**: `178` lines (`6425` bytes)
 
@@ -49,7 +49,7 @@
 ---
 
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
-> *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-010)*
+> *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
 **Size**: `217` lines (`7035` bytes)
 
@@ -64,23 +64,23 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `170` lines (`6890` bytes)
+**Size**: `171` lines (`6891` bytes)
 
 **Classes:**
-- `class TestPrincipleSync` - *Verifies that all 17 principles are maintained and synchronized (PRINCIPLE-004, PRINCIPLE-017).*
-  - Method `.test_parse_17_principles()`
+- `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
+  - Method `.test_parse_18_principles()`
   - Method `.test_targets_in_sync_and_budgeted()`
-- `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-012, PRINCIPLE-013).*
+- `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
   - Method `.tearDown()`
   - Method `.test_atomic_write_and_load()`
   - Method `.test_self_healing_quarantine_corrupted_json()`
   - Method `.test_record_checkpoint_and_complete()`
-- `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-010, PRINCIPLE-014).*
+- `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
   - Method `.test_ast_symbol_extraction()`
-- `class TestOperationalDogfooding` - *Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-016).*
+- `class TestOperationalDogfooding` - *Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).*
   - Method `.setUp()`
   - Method `.tearDown()`
   - Method `.test_ephemeral_sandbox_isolation()`

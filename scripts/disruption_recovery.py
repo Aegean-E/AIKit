@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Disruption Recovery & Task Progress Ledger (PRINCIPLE-012, PRINCIPLE-013)
+Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)
 Maintains persistent, atomic task checkpoints to prevent progress loss
 during sudden electricity outages, OS crashes, or abrupt session terminations.
 Zero external dependencies (uses standard library only).
@@ -37,7 +37,7 @@ def get_ledger_path(custom_dir: Optional[Path] = None) -> Path:
 
 
 def atomic_write_json(file_path: Path, data: Any) -> None:
-    """Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-012)."""
+    """Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-013)."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = file_path.with_suffix(file_path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
     try:
@@ -57,7 +57,7 @@ def atomic_write_json(file_path: Path, data: Any) -> None:
 
 def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
     """
-    Safely load the task ledger with startup self-healing (PRINCIPLE-012).
+    Safely load the task ledger with startup self-healing (PRINCIPLE-013).
     Quarantines corrupted files from power outages and restores safe empty state.
     """
     path = ledger_file or LEDGER_PATH
@@ -94,7 +94,7 @@ def record_checkpoint(
     ledger_file: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
-    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-013).
+    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-006).
     Ensures that an electricity cut leaves an exact recovery record.
     """
     ledger = load_ledger(ledger_file)
@@ -140,7 +140,7 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> Non
 
 def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]:
     """
-    Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-013).
+    Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).
     Evaluates Git working tree status, surviving uncommitted files, and ledger state.
     """
     ws = workspace_dir or ROOT_DIR
@@ -205,7 +205,7 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
     """Generate human and AI-readable disruption recovery audit report."""
     lines = [
         "============================================================",
-        "⚡ DISRUPTION & PROGRESS RECOVERY AUDIT (PRINCIPLE-013)",
+        "⚡ DISRUPTION & PROGRESS RECOVERY AUDIT (PRINCIPLE-006)",
         "============================================================",
     ]
 

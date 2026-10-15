@@ -11,7 +11,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── AGENTS.md                           <- Master AI Specification & Checklists (All 17 Principles)
+├── AGENTS.md                           <- Master AI Specification & Checklists (All 18 Principles)
 ├── GUIDELINES.md                       <- Comprehensive Architectural Reference & Problem Index
 ├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
 ├── CLAUDE.md                           <- Anthropic Claude Code configuration
@@ -26,6 +26,8 @@ portable_agent_kit/
 │   ├── sync_principles.py              <- Auto-sync engine (syncs all IDE files from AGENTS.md)
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   └── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
+├── tests/
+│   └── test_kit.py                     <- Automated regression shield (sync, atomicity & dogfooding)
 └── knowledge/
     ├── INDEX.md                        <- Knowledge base table of contents & architecture map
     ├── architecture.md                 <- High-level system architecture and component boundaries
@@ -60,7 +62,7 @@ Run the auto-sync script to programmatically regenerate and align all IDE target
 ```bash
 python scripts/sync_principles.py
 ```
-This automatically updates `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, and `.github/copilot-instructions.md`.
+This automatically updates `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, and `.github/copilot-instructions.md`, while auditing context budgets (<1,500 tokens).
 
 ### Step 4: Generate Your Knowledge Base
 Run the knowledge base AST scanner to automatically index your project's classes and functions:
@@ -72,28 +74,47 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 
 ---
 
-## 🏛️ The 17 Core Principles Overview
+## 🏛️ The 18 Core Principles (Lifecycle-Ordered)
 
+The principles are strictly organized across **5 chronological execution phases**:
+
+### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-001** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |
-| **PRINCIPLE-002** | Automatic Git Workflow | AI automatically stages, commits ([Conventional Commits](https://www.conventionalcommits.org/)), and pushes verified code changes upon task completion. |
-| **PRINCIPLE-003** | Modularity & Pluggable Architecture | Single Responsibility Principle; decoupled business logic; abstract provider interfaces. |
-| **PRINCIPLE-004** | Living Principles System (Auto-Sync) | Principles evolve; `scripts/sync_principles.py` automatically synchronizes all AI rules across every IDE format. |
-| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repository; any cold-starting AI agent can immediately orient itself; mandatory `README.md` sync after every change. |
-| **PRINCIPLE-006** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
-| **PRINCIPLE-007** | Performance & Resource Optimization | $O(N)$ efficiency, non-blocking asynchronous/threaded I/O, lean dependencies, token frugality. |
-| **PRINCIPLE-008** | Zero-Friction Onboarding & Instant Usability | "One-click start" out of the box with zero mandatory external app installs; sensible defaults and graceful degradation. |
-| **PRINCIPLE-009** | Token Frugality & Lean Code Architecture | Concise code; dense payload serialization (~70% token savings); batch size limits; rate-limit pacing. |
-| **PRINCIPLE-010** | AI Knowledge Base & Continuous Sync | Dedicated modular repository in `knowledge/` auto-updated after changes; AST symbol mapping. |
-| **PRINCIPLE-011** | Automated Test Verification (Regression Shield) | 100% test pass gate before committing; test-backed modifications; fast (<1s), isolated unit tests. |
-| **PRINCIPLE-012** | Crash Resilience & State Atomicity | Fail-safe atomic writes (`flush` + `os.fsync` + `os.replace`); WAL journaling; startup self-healing of corrupted files. |
-| **PRINCIPLE-013** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
-| **PRINCIPLE-014** | Empirical Grounding & Anti-Hallucination | Read-before-write invariant; verify disk symbols, definitions, and schemas before coding. |
-| **PRINCIPLE-015** | Attentional Drift & Compaction Resilience | Context anchor protocol; externalized working memory on disk; slice viewing to protect context window. |
-| **PRINCIPLE-016** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; zero-blast-radius synthetic sandboxing; offline chaos fuzzing. |
-| **PRINCIPLE-017** | Progressive Disclosure & Governance Frugality | Two-tier rule disclosure; strict prompt context budget (<1,500 tokens); zero instruction bloat. |
+| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier rule disclosure; strict prompt context budget (<1,500 tokens); zero instruction bloat. |
+| **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Chronological prompt & rule sequencing matching task execution lifecycle; primacy weighting. |
+| **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Read-before-write invariant; verify disk symbols, definitions, and schemas before coding. |
+| **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Context anchor protocol; externalized working memory on disk; slice viewing to protect context window. |
 
+### 🧭 Phase 2: Pre-Flight Orientation & Planning
+| Principle | Title | Core Concept |
+|---|---|---|
+| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repository; any cold-starting AI agent can immediately orient itself; mandatory `README.md` sync after every change. |
+| **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
+| **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
+| **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |
+
+### 🏗️ Phase 3: Architecture & Lean Implementation
+| Principle | Title | Core Concept |
+|---|---|---|
+| **PRINCIPLE-009** | Modularity & Pluggable Architecture | Single Responsibility Principle; decoupled business logic; abstract provider interfaces. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | $O(N)$ efficiency, non-blocking asynchronous/threaded I/O, lean dependencies, token frugality. |
+| **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | "One-click start" out of the box with zero mandatory external app installs; sensible defaults and graceful degradation. |
+| **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Concise code; dense payload serialization (~70% token savings); batch size limits; rate-limit pacing. |
+
+### 🛡️ Phase 4: Operational Verification & Resilience
+| Principle | Title | Core Concept |
+|---|---|---|
+| **PRINCIPLE-013** | Crash Resilience & State Atomicity | Fail-safe atomic writes (`flush` + `os.fsync` + `os.replace`); WAL journaling; startup self-healing of corrupted files. |
+| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate before committing; test-backed modifications; fast (<1s), isolated unit tests. |
+| **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; zero-blast-radius synthetic sandboxing; offline chaos fuzzing. |
+
+### 🚀 Phase 5: Living Synchronization & Delivery
+| Principle | Title | Core Concept |
+|---|---|---|
+| **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Dedicated modular repository in `knowledge/` auto-updated after changes; AST symbol mapping. |
+| **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Principles evolve; `scripts/sync_principles.py` automatically synchronizes all AI rules across every IDE format. |
+| **PRINCIPLE-018** | Automatic Git Workflow | AI automatically stages, commits ([Conventional Commits](https://www.conventionalcommits.org/)), and pushes verified code changes upon task completion. |
 
 ---
 
@@ -115,8 +136,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
 
 ## 🛠️ Adding New Principles to Your Project
 
-1. Add `### PRINCIPLE-018: [Title]` to `AGENTS.md` and `GUIDELINES.md` following the standard schema.
-2. Run `python scripts/sync_principles.py`.
-3. All target IDE files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`) will instantly reflect the new principle!
-
-
+1. Add `### PRINCIPLE-019: [Title]` to `AGENTS.md` and `GUIDELINES.md` following the standard schema.
+2. Position it within the relevant lifecycle phase (Phase 1 through 5).
+3. Run `python scripts/sync_principles.py`.
+4. All target IDE files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`) will instantly reflect the new principle!
