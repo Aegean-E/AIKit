@@ -141,13 +141,18 @@
 ---
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-- **Concept**: Complex systems, deep directory hierarchies, and large datasets must be partitioned hierarchically rather than processed via monolithic, flat-batch prompting or unbounded single-pass operations.
-- **Invariant**: Hierarchical decomposition (Root -> Domain -> Sub-task -> Atomic); bounded context; recursive validation with base-case limits.
+- **Concept**: Complex systems, deep directory hierarchies, and non-trivial engineering tasks must be partitioned hierarchically rather than processed via monolithic single-pass operations or flat-batch prompting. Planning proceeds top-down from root goals to atomic leaf units, while execution proceeds bottom-up from foundations to consumers, with each leaf milestone independently verified.
+- **Invariant**: Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; independent leaf verifiability; milestone index contract ($N/M$).
 - **Rules**:
-  1. **Hierarchical Partitioning**: Decompose large inputs or operations into structured levels (e.g. Root Domain $\rightarrow$ High-Level Category $\rightarrow$ Sub-Task $\rightarrow$ Atomic Unit).
-  2. **Bounded Context**: Never feed unbounded flat data or file lists into a single prompt or operation. Decompose into recursive sub-tasks with well-defined base cases and max-depth limits.
-  3. **Recursive Validation & Refinement**: Support recursive self-validation where an AI model checks and refines ambiguous categories, classifications, or edge cases.
-  4. **State Propagation**: Child recursive steps must receive scoped context from parent decisions and return structured nodes back up the tree.
+  1. **Dual-Pillar Framework**:
+     - *Pillar A (Engineering Task Workflow)*: Decompose non-trivial features into structured tiers: Root Goal $\rightarrow$ Functional Domains (Model / Service / Presentation / Test) $\rightarrow$ Atomic Leaf Units.
+     - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep trees, AST structures, or large datasets into bounded sub-graphs with strict base-case recursion limits (max depth $D \le 3$, max fan-out batch $K \le 50$).
+  2. **Top-Down Decomposition, Bottom-Up Execution**:
+     - *Planning (Top-Down)*: Deconstruct high-level user requirements downward into contracts, dependencies, and interfaces.
+     - *Implementation (Bottom-Up)*: Implement upward from foundational primitives and data models first, domain service logic second, presentation/CLI interfaces third, and end-to-end integration tests last. This guarantees every referenced class, method, and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
+  3. **Milestone Indexing Contract**: Hierarchical decomposition directly defines the bounded micro-milestone sequence ($N=1..M$) recorded in `.agents/task_ledger.json` and committed incrementally via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
+  4. **Independent Leaf Verifiability**: Every decomposed atomic unit must be independently testable and syntactically valid. Never leave the working tree in a broken, non-compiling intermediate state between sub-tasks.
+  5. **State & Context Propagation**: Child steps must receive explicit scoped context from parent contracts and return structured, verified artifacts back to the parent task plan.
 
 ---
 
@@ -297,7 +302,7 @@
 - [ ] **Context Verification**: Have I reviewed active principles (`PRINCIPLE-001` through `PRINCIPLE-018`) and repo state (**PRINCIPLE-005**)?
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
 - [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
-- [ ] **Hierarchical Decomposition Plan**: Has the problem been partitioned hierarchically rather than dumped in flat batches (**PRINCIPLE-008**)?
+- [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
 - [ ] **Modularity & Provider Plan**: Is the architecture decoupled with pluggable provider/service boundaries (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for optimal speed, minimal latency, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Does the solution maintain "one-click start" without forcing external app installs (**PRINCIPLE-011**)?
@@ -315,7 +320,7 @@
 - [ ] Has **README.md been updated** to reflect all changes (**PRINCIPLE-005**)?
 - [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-006**)?
 - [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
-- [ ] Have I adhered to **hierarchical decomposition** where applicable (**PRINCIPLE-008**)?
+- [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
 - [ ] Is the architecture **modular** and decoupled (**PRINCIPLE-009**)?
 - [ ] Are code paths **optimized for speed, responsiveness, and lean resource consumption** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **one-click zero-install accessibility** (**PRINCIPLE-011**)?

@@ -21,7 +21,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation (<20k chars), material surface sync, executable command parity, and whole-tree drift shield. |
 | **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and CLI ledger recovery. |
 | **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight Track C checklist evaluating why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing. |
-| **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem Decomposition | Hierarchical decomposition of complex problems and datasets into bounded sub-tasks. |
+| **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem & Task Decomposition | Dual-pillar decomposition: top-down planning, bottom-up execution, milestone indexing ($N/M$), and independent leaf verifiability. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
 | ID | Title | Summary |
@@ -151,11 +151,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
     - **Ledger Persistence & Conversational Conciseness**: Keep chat output <6 lines. Persist full rationale via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc "..." --why "..." --benefits "..." --risks "..." --mitigation "..."` to preserve pre-flight context across compactions.
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-- **Problem**: Monolithic or flat batch processing fails when dealing with deep hierarchies, thousands of items, or complex taxonomies.
+- **Problem**: Monolithic execution bias leads to broken intermediate code, ghost symbol imports, and massive unreviewable diffs. Similarly, processing deep hierarchies or datasets in flat batches causes context exhaustion and OOM crashes.
 - **Guideline**:
-  - Implement hierarchical decomposition: Root Domain $\rightarrow$ High-Level Category $\rightarrow$ Sub-Task $\rightarrow$ Atomic Unit.
-  - Divide-and-conquer problem spaces recursively instead of feeding unbounded flat lists into single prompts.
-  - Enable recursive validation and refinement loops for ambiguous edge cases.
+  - **Dual-Pillar Framework**:
+    - *Pillar A (Engineering Task Workflow)*: Deconstruct features top-down into distinct domains (Model $\rightarrow$ Service $\rightarrow$ Presentation $\rightarrow$ Tests), then into atomic leaf units.
+    - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep file trees, AST nodes, or datasets with strict recursion bounds ($D \le 3$, fan-out $K \le 50$) and base-case termination.
+  - **Top-Down Planning, Bottom-Up Execution**: Plan top-down to discover contracts and dependencies; implement bottom-up (foundational primitives and models first, consumers and presentation second) to guarantee all symbols physically exist before use.
+  - **Milestone Indexing Contract**: Leaf units define the bounded micro-milestones sequence ($N=1..M$) logged in `.agents/task_ledger.json` and committed incrementally via Conventional Commits: `type(task): [milestone N/M] description`.
+  - **Independent Leaf Verifiability**: Every leaf unit must compile and pass tests in isolation, preserving repository stability at every checkpoint.
 
 ### PRINCIPLE-009: Modularity & Pluggable Architecture
 - **Problem**: Monolithic architectures make it difficult to introduce new backends, providers, or algorithms without breaking existing code.

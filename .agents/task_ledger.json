@@ -1,38 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-007-pass2",
+    "task_id": "principle-008-pass1",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792093953.3580225,
+    "updated_at": 1792094212.6321206,
     "impact_assessment": {
-      "why": "Eliminate over-engineering scope creep, add benefits persistence to CLI, and ban type evisceration",
-      "risks": "CLI parameter mismatch or context budget creep",
-      "mitigation": "Default None for benefits and strict context budget check via sync_principles.py"
+      "why": "Eliminate monolithic execution bias, align decomposition with milestone N/M commits, and enforce bottom-up implementation",
+      "benefits": "Guarantees runnable intermediate states, prevents ghost import errors, and establishes clear milestone progression",
+      "risks": "Context budget expansion across IDE rule files",
+      "mitigation": "Keep Tier 1 summaries ultra-dense and verify via sync_principles.py"
     },
-    "completed_at": 1792094122.837209
+    "completed_at": 1792094346.8439872
   },
   "checkpoints": [
-    {
-      "task_id": "principle-003-second-pass",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-003-second-pass' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792091314.3959856,
-      "timestamp_str": "2026-10-15 22:08:34"
-    },
-    {
-      "task_id": "principle-004-upgrade",
-      "phase": "Phase 3: Implementation",
-      "phase_num": 3,
-      "description": "Fortifying Principle 4 with living plan SSOT, compaction resumption sequence, and AST-first retrieval",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792091629.5139563,
-      "timestamp_str": "2026-10-15 22:13:49"
-    },
     {
       "task_id": "principle-004-upgrade",
       "phase": "completed",
@@ -421,6 +403,31 @@
       "status": "completed",
       "timestamp": 1792094122.8372107,
       "timestamp_str": "2026-10-15 22:55:22"
+    },
+    {
+      "task_id": "principle-008-pass1",
+      "phase": "2",
+      "phase_num": 1,
+      "description": "Fortify Principle 8 with dual-pillar decomposition, bottom-up execution, and milestone indexing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792094212.6321206,
+      "timestamp_str": "2026-10-15 22:56:52",
+      "impact_assessment": {
+        "why": "Eliminate monolithic execution bias, align decomposition with milestone N/M commits, and enforce bottom-up implementation",
+        "benefits": "Guarantees runnable intermediate states, prevents ghost import errors, and establishes clear milestone progression",
+        "risks": "Context budget expansion across IDE rule files",
+        "mitigation": "Keep Tier 1 summaries ultra-dense and verify via sync_principles.py"
+      }
+    },
+    {
+      "task_id": "principle-008-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-008-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792094346.843989,
+      "timestamp_str": "2026-10-15 22:59:06"
     }
   ]
 }

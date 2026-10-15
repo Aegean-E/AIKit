@@ -125,3 +125,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Clean Baseline, Reversibility & Principle 8 Bridge**: Workflows start from a clean baseline (`git status`) with defined atomic rollback paths. Defensive mitigations directly formulate the hierarchical sub-tasks decomposed in `PRINCIPLE-008`.
 - **Persistent Ledger Memory & Conversational Conciseness**: Checkpoint flags (`--why`, `--benefits`, `--risks`, `--mitigation`) embed the complete 4-quadrant assessment directly into `.agents/task_ledger.json`, preserving intent and rationale across compactions while keeping conversational chat ultra-terse (<6 lines).
 
+---
+
+## 🌳 Hierarchical Task & Problem Decomposition Architecture (PRINCIPLE-008)
+- **Dual-Pillar Framework**:
+  - *Pillar A (Engineering Task Workflow)*: Eliminates monolithic execution bias by breaking user goals down into functional domains (Model $\rightarrow$ Service $\rightarrow$ Presentation $\rightarrow$ Test) and atomic leaf units.
+  - *Pillar B (Data & System Architecture)*: Divides deep file hierarchies, AST structures, or datasets into bounded recursive chunks with strict termination bounds ($D \le 3$, fan-out $K \le 50$) and explicit base-case fallbacks.
+- **Top-Down Planning, Bottom-Up Execution**:
+  - *Top-Down Planning*: Discovers contracts, API boundaries, and dependencies from the user goal downward.
+  - *Bottom-Up Execution*: Implements code upward starting from foundational primitives and models, moving to domain services, and finally to presentation/CLI and integration tests. Guarantees every referenced class and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
+- **Milestone Indexing Contract ($N/M$)**: Decomposed leaf units directly define the bounded milestone count ($M$) and index ($N$) logged in `.agents/task_ledger.json` and committed incrementally via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
+- **Independent Leaf Verifiability**: Every leaf unit must compile and pass tests in isolation, ensuring the repository remains in a stable, non-broken intermediate state at every micro-commit.
+

@@ -376,6 +376,21 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertIn("Why: Reduce API response latency", resume_rep)
         self.assertIn("Benefits: 50% faster query response times", resume_rep)
 
+    def test_hierarchical_milestone_indexing(self):
+        # Enforces PRINCIPLE-008 & PRINCIPLE-006: milestone sequence [milestone N/M] preserved in ledger
+        total_milestones = 3
+        for n in range(1, total_milestones + 1):
+            record_checkpoint(
+                task_id="feature_pipeline",
+                phase="implementation",
+                phase_num=3,
+                description=f"[milestone {n}/{total_milestones}] Completed sub-task {n}",
+                ledger_file=self.ledger_file,
+            )
+        ledger = load_ledger(self.ledger_file)
+        self.assertEqual(len(ledger["checkpoints"]), 3)
+        self.assertIn("[milestone 3/3]", ledger["checkpoints"][-1]["description"])
+
 
 
 class TestKnowledgeBase(unittest.TestCase):

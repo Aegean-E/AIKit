@@ -244,4 +244,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Perfect balance between preventing laziness and preventing over-engineering; complete 4-quadrant metadata preservation; preserved type safety; ultra-concise chat interactions.
   - *Trade-offs*: None; stdlib-only.
 
+### ADR-018: Dual-Pillar Framework, Top-Down Planning / Bottom-Up Execution, and Milestone Indexing (PRINCIPLE-008)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Principle 8 previously mixed task planning and data processing into ambiguous terminology, leaving room for monolithic execution bias where agents attempt multi-layer features in a single turn.
+  2. Top-down implementation by AI agents frequently produces ghost symbols, broken imports, and hallucinated types because consumer components are written before foundational models exist.
+  3. Conventional micro-commits introduced in `PRINCIPLE-006` (`[milestone N/M]`) lacked a formal definition of where $N/M$ originates.
+  4. Decomposed sub-tasks were not explicitly required to leave the codebase in an independently testable, non-breaking intermediate state.
+- **Decision**:
+  1. Codify the **Dual-Pillar Framework**: Pillar A governs agent engineering task workflows (Goal $\rightarrow$ Domains $\rightarrow$ Leaf Units), while Pillar B governs recursive data/file architecture with concrete limits ($D \le 3, K \le 50$).
+  2. Codify the **Top-Down Planning, Bottom-Up Execution Invariant**: Plan top-down to map contracts; implement bottom-up (models/primitives first $\rightarrow$ domain services $\rightarrow$ consumers/presentation $\rightarrow$ tests) so symbols physically exist before use.
+  3. Establish the **Milestone Indexing Contract**: Hierarchical decomposition directly defines the bounded micro-milestone sequence ($N=1..M$) logged in `.agents/task_ledger.json` and committed incrementally (`PRINCIPLE-006`).
+  4. Enforce **Independent Leaf Verifiability**: Every leaf unit must compile and pass tests in isolation without breaking the working tree.
+- **Consequences**:
+  - *Positive*: Eliminates monolithic execution bias; guarantees clean runnable intermediate states; prevents ghost imports; harmonizes planning with conventional micro-commits.
+  - *Trade-offs*: None; conceptual and behavioral alignment.
+
+
 

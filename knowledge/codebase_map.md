@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `24`
-- **Total Source Lines**: `1482`
+- **Total Source Lines**: `1497`
 
 ---
 
@@ -69,7 +69,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `451` lines (`21637` bytes)
+**Size**: `466` lines (`22353` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -95,6 +95,7 @@
   - Method `.test_non_git_workspace_detection()`
   - Method `.test_checkpoint_with_impact_assessment()`
   - Method `.test_audit_and_resume_reports_with_impact_assessment()`
+  - Method `.test_hierarchical_milestone_indexing()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
