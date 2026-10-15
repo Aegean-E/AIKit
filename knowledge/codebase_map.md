@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `27`
-- **Total Source Lines**: `1733`
+- **Total Functions / Methods**: `28`
+- **Total Source Lines**: `1784`
 
 ---
 
@@ -59,12 +59,13 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `229` lines (`7784` bytes)
+**Size**: `262` lines (`9196` bytes)
 
 **Functions:**
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
+- `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
 - `def update_and_validate(strict)`
 
 ---
@@ -72,7 +73,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `588` lines (`29140` bytes)
+**Size**: `606` lines (`30320` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -85,6 +86,7 @@
   - Method `.test_principle_006_disruption_capsule()`
   - Method `.test_principle_014_regression_shield_capsule()`
   - Method `.test_principle_015_operational_dogfooding_capsule()`
+  - Method `.test_principle_016_knowledge_base_capsule()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
@@ -112,6 +114,7 @@
   - Method `.test_update_and_validate_runs()`
   - Method `.test_ast_symbol_extraction()`
   - Method `.test_ast_strict_mode_fails_on_syntax_error()`
+  - Method `.test_link_integrity_shield()`
 - `class TestOperationalDogfooding` - *Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).*
   - Method `.setUp()`
   - Method `.tearDown()`

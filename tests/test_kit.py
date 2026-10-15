@@ -37,6 +37,7 @@ from scripts.update_knowledge_base import (
     extract_python_symbols,
     generate_codebase_map,
     update_and_validate,
+    validate_knowledge_links,
     CORE_DOCS,
     KNOWLEDGE_DIR,
 )
@@ -163,6 +164,18 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("non-interactive stdin parity", p15["invariant"].lower())
         self.assertIn("golden path + chaos perturbation", p15["invariant"].lower())
         self.assertIn("terse reporting", p15["invariant"].lower())
+
+    def test_principle_016_knowledge_base_capsule(self):
+        # Enforces PRINCIPLE-016: verified invariant capsule with canonical sync, atomic code-and-doc pairing, append-only ADRs, AST gating, link shield, and update_knowledge_base.py
+        principles = parse_principles(AGENTS_MD)
+        p16 = next((p for p in principles if p["id"] == "PRINCIPLE-016"), None)
+        self.assertIsNotNone(p16)
+        self.assertIn("canonical `knowledge/` sync", p16["invariant"].lower())
+        self.assertIn("atomic code-and-doc pairing", p16["invariant"].lower())
+        self.assertIn("monotonic append-only adr register", p16["invariant"].lower())
+        self.assertIn("strict ast syntax validation", p16["invariant"].lower())
+        self.assertIn("link integrity shield", p16["invariant"].lower())
+        self.assertIn("update_knowledge_base.py", p16["invariant"].lower())
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
@@ -561,6 +574,11 @@ class TestKnowledgeBase(unittest.TestCase):
             self.assertIn("[PRINCIPLE-003 AST GATE FAILURE]", str(ctx.exception))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_link_integrity_shield(self):
+        # Enforces PRINCIPLE-016: all links in INDEX.md physically exist on disk
+        broken = validate_knowledge_links(KNOWLEDGE_DIR)
+        self.assertEqual(broken, [], f"Broken links found in knowledge/INDEX.md: {broken}")
 
 
 

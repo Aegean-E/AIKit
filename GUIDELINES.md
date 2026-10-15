@@ -41,7 +41,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### 🚀 Phase 5: Living Synchronization & Delivery
 | ID | Title | Summary |
 |---|---|---|
-| **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active codebase documentation in `knowledge/` auto-updated after every change. |
+| **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active `knowledge/` sync, atomic code-doc pairing, append-only ADRs, and AST verification. |
 | **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible protocol; automatically synchronizes all AI guidelines across the repository. |
 | **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Automated conventional commits and pushes upon task completion. |
 
@@ -242,12 +242,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Terse Context Reporting & Pre-Ship Gate**: Console outputs remain concise status dashboards (<15 lines) with verbose logs diverted to `.agents/dogfood_last_run.log`. Dogfooding must pass with 100% success before staging changes.
 
 ### PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
-- **Problem**: When AI assistants or new contributors enter a codebase, they often lack contextual awareness of internal service contracts, data structures, threading guarantees, and design decisions. This results in slow cold-starts, inaccurate modifications, or knowledge drift.
+- **Problem**: When AI assistants or contributors modify code without updating documentation, knowledge drift sets in; stale service contracts lead to hallucinated calls; retroactively edited ADRs erase architectural rationale; and broken document links disrupt cold starts.
 - **Guideline**:
-  - **Dedicated Knowledge Base**: Maintain an active, modular knowledge repository under `knowledge/` (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`).
-  - **Continuous Updates**: Whenever architecture, services, providers, models, or UI flows change, the corresponding knowledge documents must be updated in the same commit.
-  - **Automated AST Synchronization**: Use `python scripts/update_knowledge_base.py` to continuously parse the codebase AST, refresh `knowledge/codebase_map.md`, and validate knowledge base completeness.
-  - **Cold-Start Acceleration**: Any AI assistant starting work on the repository must first consult `knowledge/INDEX.md` to establish deep contextual grounding without exhaustive searches.
+  - **Canonical Structure & Router Sitemap (`INDEX.md`)**: Maintain an active, modular knowledge repository under `knowledge/` (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`). `INDEX.md` serves as the authoritative router sitemap, providing high-density summaries for instant cold-start navigation.
+  - **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Whenever architecture, service signatures, data models, or state conventions mutate, the corresponding knowledge documents must be updated in the exact same commit. Stale documentation is treated as a build defect.
+  - **Monotonic Append-Only ADR Register**: Architectural decisions in `decisions.md` are immutable historical records; design evolutions append new ADRs marking predecessors as superseded.
+  - **Automated AST Synchronization & Strict Gating**: Execute `scripts/update_knowledge_base.py` to parse the codebase AST, refresh `codebase_map.md`, and halt on any Python syntax errors before advancing to delivery.
+  - **Slice-View Heading Hygiene & Token Budgeting**: Documents must use structured section headings (`##`, `###`) enabling targeted single-call grep slice-viewing (`view_file` <100 lines), preventing prompt context bloat.
+  - **Automated Link Integrity Shield**: Mechanically verify that all internal relative file links cited across `knowledge/INDEX.md` physically resolve to existing disk files.
 
 ### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
 - **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats.

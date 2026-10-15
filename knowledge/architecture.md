@@ -193,3 +193,13 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Single-Domain Leaf Atomicity & Verifiability**: Each leaf unit targets a single architectural layer, compiles cleanly, and passes isolated tests without breaking repository stability.
 - **Dynamic Re-Decomposition Protocol**: When unanticipated blockers or gaps emerge during execution, agents pause forward progression, update the active plan on disk (`task_ledger.json`), adjust $M'$, and resume monotonically without discarding completed progress.
 
+---
+
+## 🧠 AI Knowledge Base & Living External Memory (PRINCIPLE-016)
+- **Canonical Modular Structure & Router Sitemap (`INDEX.md`)**: The knowledge base is partitioned into 7 focused documents (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`). `INDEX.md` serves as the authoritative router sitemap, providing high-density summaries for instant cold-start navigation without blind exploration.
+- **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Whenever public service signatures, schemas, or architectural conventions are modified, the matching `knowledge/` documents must be updated in the exact same commit, eliminating silent documentation rot.
+- **Monotonic Append-Only ADR Register**: Architectural decisions in `knowledge/decisions.md` are immutable historical records. Past decisions are never deleted or rewritten; design pivots append new sequential ADRs that mark predecessors as superseded.
+- **Strict AST Syntax Validation & Symbol Mapping**: `scripts/update_knowledge_base.py` parses the codebase AST, generates the symbol catalog `knowledge/codebase_map.md`, and halts on any Python syntax errors before advancing to delivery.
+- **Automated Link Integrity Shield**: Mechanically validates that all relative file links cited across `knowledge/INDEX.md` physically exist on disk, preventing broken documentation references.
+
+

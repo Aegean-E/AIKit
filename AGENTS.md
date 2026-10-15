@@ -272,12 +272,14 @@
 
 ### PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
 - **Concept**: The repository must maintain an active, structured, and modular codebase knowledge base in `knowledge/`. Every AI assistant interacting with this codebase must consult the knowledge base for deep architectural context and systematically update it after any architectural, service, model, or UI change to eliminate knowledge drift.
-- **Invariant**: Canonical `knowledge/` sync; auto-update architecture/decisions/codebase map on change; `scripts/update_knowledge_base.py`.
+- **Invariant**: Canonical `knowledge/` sync; atomic code-and-doc pairing (zero drift); monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`.
 - **Rules**:
-  1. **Canonical Structure**: The knowledge base must reside in `knowledge/` with modular documentation (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`).
-  2. **Mandatory Sync After Every Change**: Whenever classes, functions, architectural boundaries, or data models are added, modified, or refactored, the relevant knowledge base files must be updated immediately in the same task.
-  3. **Automated Verification**: Run `python scripts/update_knowledge_base.py` to inspect the codebase AST, regenerate `knowledge/codebase_map.md`, and verify documentation completeness.
-  4. **Cold-Start Acceleration**: A cold-starting AI assistant can read `knowledge/INDEX.md` to achieve comprehensive structural understanding without blind codebase searches.
+  1. **Canonical Structure & Router Sitemap (`INDEX.md`)**: The knowledge base must reside in `knowledge/` with modular documentation (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`). `INDEX.md` serves as the authoritative router sitemap, providing high-density summaries for instant cold-start navigation.
+  2. **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Whenever classes, functions, architectural boundaries, API contracts, or data models are added, modified, or refactored, the corresponding `knowledge/` documents must be updated immediately in the exact same commit. Stale or desynchronized documentation is strictly prohibited.
+  3. **Monotonic Append-Only ADR Register**: Architectural decisions in `knowledge/decisions.md` are immutable historical records. Past ADRs must never be rewritten or deleted; when a design is superseded, append a new ADR that explicitly references and marks the prior decision as superseded.
+  4. **Strict AST Syntax Validation & Symbol Mapping**: Execute `scripts/update_knowledge_base.py` to inspect the codebase AST, regenerate `knowledge/codebase_map.md`, and mechanically validate that all Python files have zero syntax errors before advancing to delivery.
+  5. **Slice-View Heading Hygiene & Token Budgeting**: All `knowledge/` documents must use clean, predictable Markdown headings (`##`, `###`) to enable targeted single-call grep slice-viewing (`view_file` <100 lines), preventing prompt context bloat during retrieval.
+  6. **Automated Link Integrity Shield**: All internal relative file links cited across `knowledge/INDEX.md` and related documents must physically resolve to existing files on disk, mechanically validated by `scripts/update_knowledge_base.py`.
 
 ---
 
@@ -333,7 +335,7 @@
 - [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with portable RAII process teardown, non-interactive stdin parity, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
-- [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-016**)?
+- [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` and planned atomic doc updates for any schema or service changes (**PRINCIPLE-016**)?
 
 ### 🛬 Post-Flight Checklist (Run Before Completion)
 - [ ] Is governance overhead **lean and progressively disclosed** without prompt bloat (**PRINCIPLE-001**)?
@@ -351,6 +353,6 @@
 - [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
 - [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution and RAII fixture reversion** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with portable process cleanup and stdin parity (**PRINCIPLE-015**)?
-- [ ] Has the **AI knowledge base in `knowledge/` been updated and verified** (**PRINCIPLE-016**)?
+- [ ] Has the **AI knowledge base in `knowledge/` been updated and verified with zero AST syntax errors and link integrity** (**PRINCIPLE-016**)?
 - [ ] Have all **AI guideline files been automatically synchronized** if principles changed (**PRINCIPLE-017**)?
 - [ ] Has an **automatic commit** been created with a conventional commit message and pushed (**PRINCIPLE-018**)?

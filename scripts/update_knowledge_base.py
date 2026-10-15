@@ -9,6 +9,7 @@ the integrity of all knowledge base documents.
 
 import ast
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -198,6 +199,24 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
     return "\n".join(lines)
 
 
+def validate_knowledge_links(knowledge_dir: Path) -> List[str]:
+    """Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016)."""
+    index_path = knowledge_dir / "INDEX.md"
+    if not index_path.exists():
+        return [f"INDEX.md missing in {knowledge_dir}"]
+    content = index_path.read_text(encoding="utf-8")
+    link_pattern = re.compile(r'\[([^\]]+)\]\(([^)#]+)(?:#[^)]*)?\)')
+    broken = []
+    for match in link_pattern.finditer(content):
+        target = match.group(2).strip()
+        if target.startswith("http://") or target.startswith("https://") or target.startswith("mailto:"):
+            continue
+        target_path = (knowledge_dir / target).resolve()
+        if not target_path.exists():
+            broken.append(f"{target} (referenced in INDEX.md)")
+    return broken
+
+
 def update_and_validate(strict: bool = True):
     KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -219,11 +238,25 @@ def update_and_validate(strict: bool = True):
             missing.append(doc)
 
     if missing:
-        print(f"[WARN] Missing knowledge base documents: {', '.join(missing)}")
+        msg = f"Missing knowledge base documents: {', '.join(missing)}"
+        if strict:
+            raise ValueError(f"[PRINCIPLE-016 KNOWLEDGE BASE GAP] {msg}")
+        print(f"[WARN] {msg}")
     else:
         print(f"[OK] Verified {len(CORE_DOCS)} knowledge base documents in knowledge/")
+
+    # 3. Validate link integrity in knowledge/INDEX.md (PRINCIPLE-016)
+    broken_links = validate_knowledge_links(KNOWLEDGE_DIR)
+    if broken_links:
+        msg = f"Broken relative links in knowledge/INDEX.md: {', '.join(broken_links)}"
+        if strict:
+            raise ValueError(f"[PRINCIPLE-016 LINK INTEGRITY FAILURE] {msg}")
+        print(f"[WARN] {msg}")
+    else:
+        print("[OK] Verified link integrity in knowledge/INDEX.md")
 
 
 if __name__ == "__main__":
     is_lenient = "--lenient" in sys.argv
     update_and_validate(strict=not is_lenient)
+

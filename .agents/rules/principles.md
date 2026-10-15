@@ -38,7 +38,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 15. **PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)**:
    - Domain-specific interactive dogfooding (GUI loop / CLI subshell / DOM mount / API probe); portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines). [GUIDELINES.md](../../GUIDELINES.md#principle-015)
 16. **PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization**:
-   - Canonical `knowledge/` sync; auto-update architecture/decisions/codebase map on change; `scripts/update_knowledge_base.py`. [GUIDELINES.md](../../GUIDELINES.md#principle-016)
+   - Canonical `knowledge/` sync; atomic code-and-doc pairing (zero drift); monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. [GUIDELINES.md](../../GUIDELINES.md#principle-016)
 17. **PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)**:
    - Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap); schema compliance. [GUIDELINES.md](../../GUIDELINES.md#principle-017)
 18. **PRINCIPLE-018: Automatic Git Workflow (Commit & Push)**:

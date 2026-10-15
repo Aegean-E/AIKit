@@ -545,3 +545,21 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates interactive prompt deadlocks; prevents orphaned background workers across all operating systems; catches client-side white screens; protects workspace databases from state pollution.
   - *Trade-offs*: None; robust cross-platform execution.
+
+### ADR-034: Atomic Code-Doc Pairing, Monotonic ADR Hygiene, and Automated Link Integrity Shield (PRINCIPLE-016 Pass 1)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Modifying code, service interfaces, or schemas without synchronously updating `knowledge/` causes silent knowledge drift, leading incoming agents to hallucinate stale APIs.
+  2. Overwriting or deleting past ADRs destroys historical architectural rationale, causing agents to re-introduce previously rejected antipatterns.
+  3. Broken relative Markdown links in documentation disrupt cold-start navigation and cause agent tool call failures.
+  4. Large unstructured documentation files burn prompt context tokens when agents only require specific section slices.
+- **Decision**:
+  1. Enforce **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Service signatures, schemas, and architectural conventions must update synchronously with `knowledge/` documents in the same commit.
+  2. Enforce **Monotonic Append-Only ADR Register**: Decisions in `knowledge/decisions.md` are strictly immutable; design pivots append new sequential ADRs marking predecessors as superseded.
+  3. Enforce **Strict AST Syntax Gating**: `scripts/update_knowledge_base.py` parses the codebase AST, validates zero syntax errors, and updates `codebase_map.md`.
+  4. Enforce **Automated Link Integrity Shield**: `scripts/update_knowledge_base.py` programmatically verifies that all relative file links in `knowledge/INDEX.md` physically resolve on disk.
+  5. Enforce **Slice-View Heading Hygiene**: Markdown documents must use structured section headings (`##`, `###`) to enable targeted single-call grep line slices (<100 lines).
+- **Consequences**:
+  - *Positive*: Eliminates knowledge drift; preserves complete architectural history; guarantees 100% working document links; keeps agent context usage lean and slice-targeted.
+  - *Trade-offs*: None; pure documentation and governance hygiene.
