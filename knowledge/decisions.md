@@ -278,6 +278,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Protects against both monolithic bias and micro-task over-fragmentation; provides a clear, adaptive protocol for mid-task discoveries; ensures focused git commits.
   - *Trade-offs*: None; stdlib-only.
 
-
-
-
+### ADR-020: Canonical 4-Layer Architecture, Dependency Injection, and Explicit Interface Contracts (PRINCIPLE-009)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Principle 9 previously stated high-level modularity goals ("decoupled presentation and business logic", "abstract provider/service interfaces") without specifying concrete architectural layer boundaries or dependency direction.
+  2. Without clear layer definitions, AI agents frequently mix CLI argument parsing, file I/O, business validation, and API calls within single files, leading to monolithic, untestable scripts.
+  3. LLMs routinely construct generic `utils.py` or `helpers.js` "junk drawer" files that accumulate unrelated functions with loose cohesion and high coupling.
+  4. Services often instantiate concrete infrastructure adapters directly inside domain logic, defeating test isolation and mockability.
+  5. Circular dependencies and cross-module mutations of private `_attributes` degrade maintainability.
+- **Decision**:
+  1. Codify the **Canonical 4-Layer Architecture**: (1) Presentation (CLI/UI/API), (2) Service (orchestration & workflows), (3) Domain/Model (pure business entities & invariants), and (4) Infrastructure/Adapter (external I/O & tools).
+  2. Enforce the **Anti-Junk-Drawer Invariant**: Generic `utils.py` files are strictly prohibited. Helpers must be co-located with their domain or grouped into focused, single-purpose utility modules (`date_utils.py`, `string_parsers.py`).
+  3. Codify the **Explicit Interface Contracts Invariant**: All pluggable provider/adapter boundaries must declare explicit contracts using native typing constructs (`abc.ABC` or `typing.Protocol`).
+  4. Enforce **Dependency Injection & Inversion (DIP)**: Domain services must receive adapters via constructor or factory injection, enabling deterministic in-memory mock testing (`PRINCIPLE-014`).
+  5. Enforce **Unidirectional Dependency Flow**: Dependencies must flow strictly inward: Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure. Circular imports are banned.
+  6. Enforce **Encapsulation & Boundary Integrity**: Modules interact strictly through declared public contracts, forbidding external mutation of `_private` attributes.
+- **Consequences**:
+  - *Positive*: Crystal-clear structural organization; complete test isolation through constructor DI; clean domain separation; prevents spaghetti code and junk-drawer bloat.
+  - *Trade-offs*: Requires explicit typing contracts and constructor wiring; well worth the testability and architectural cleanliness.

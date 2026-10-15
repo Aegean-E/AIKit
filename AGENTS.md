@@ -162,12 +162,19 @@
 ## 🏗️ Phase 3: Architecture & Lean Implementation
 
 ### PRINCIPLE-009: Modularity & Pluggable Architecture
-- **Concept**: Every major component must be modular, decoupled, and adhere to the Single Responsibility Principle.
-- **Invariant**: Single responsibility; abstract provider/service interfaces; decoupled presentation and business logic.
+- **Concept**: Systems must follow a decoupled, 4-layer architecture adhering to the Single Responsibility Principle, explicit interface contracts, dependency injection, and unidirectional data flow. Presentation, domain logic, and infrastructure adapters must never bleed across layer boundaries.
+- **Invariant**: 4-layer architecture (Presentation -> Service -> Domain <- Adapter); explicit typing contracts; dependency injection; zero circular imports.
 - **Rules**:
-  1. **Pluggable Provider/Service Interfaces**: Core services must use abstract provider or adapter interfaces. Never tightly couple business logic to specific external APIs, third-party libraries, or runtime backends.
-  2. **Decoupled Presentation & Logic**: UI/CLI entrypoints must only handle presentation, input validation, and user interactions. Business logic must live strictly in decoupled service modules and data models.
-  3. **Extensibility**: Adding a new provider, strategy, format, or algorithm must require minimal changes and zero breaking changes to existing modules.
+  1. **Canonical 4-Layer Architecture**:
+     - *Presentation Layer*: CLI, GUI, or API endpoints. Pure input validation, parsing, routing, and rendering. Never contains business logic, SQL/queries, or raw file I/O.
+     - *Service Layer*: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via pure data transfer objects.
+     - *Domain / Model Layer*: Pure business entities, schemas, mathematical algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
+     - *Infrastructure / Adapter Layer*: Implements abstract interfaces for filesystem I/O, external network APIs, databases, and third-party tools.
+     - *Anti-Junk-Drawer Invariant*: Generic catch-all `utils.py` or `helpers.js` junk drawers are prohibited. Helper functions belong to the domain module that owns them or to focused, single-purpose utilities (`date_utils.py`, `string_parsers.py`).
+  2. **Explicit Interface Contracts**: Pluggable provider/adapter boundaries must declare explicit formal contracts using language-native typing constructs (`abc.ABC` or `typing.Protocol` in Python, interfaces/traits in TS/Rust/Go). Concrete adapters must fulfill 100% of the declared contract.
+  3. **Dependency Injection & Inversion (DIP)**: Domain services must receive infrastructure adapters and dependencies via constructors (`__init__`) or factories. Never hardcode the instantiation of concrete infrastructure adapters inside domain services, enabling deterministic in-memory mock testing (`PRINCIPLE-014`).
+  4. **Unidirectional Dependency Flow & Zero Circular Imports**: Dependencies must flow strictly inward: Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure. High-level domain layers must never import low-level infrastructure or presentation modules. Circular imports (`from X import Y` cycles) are strictly prohibited.
+  5. **Encapsulation & Public Boundary Integrity**: Modules must interact exclusively through declared public methods, properties, or immutable data models. Never access or mutate private internal attributes (`_private`) of external modules.
 
 ---
 
@@ -306,7 +313,7 @@
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
 - [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
 - [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
-- [ ] **Modularity & Provider Plan**: Is the architecture decoupled with pluggable provider/service boundaries (**PRINCIPLE-009**)?
+- [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with formal contracts, DI, and zero circular imports (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for optimal speed, minimal latency, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Does the solution maintain "one-click start" without forcing external app installs (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Is the code concise, and are prompts/payloads token-budgeted and compact (**PRINCIPLE-012**)?
@@ -324,7 +331,7 @@
 - [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-006**)?
 - [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
 - [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
-- [ ] Is the architecture **modular** and decoupled (**PRINCIPLE-009**)?
+- [ ] Is the architecture **4-layer decoupled with formal typing contracts and DI** (**PRINCIPLE-009**)?
 - [ ] Are code paths **optimized for speed, responsiveness, and lean resource consumption** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **one-click zero-install accessibility** (**PRINCIPLE-011**)?
 - [ ] Is the code **concise, lean, and token-frugal** without context waste (**PRINCIPLE-012**)?

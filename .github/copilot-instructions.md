@@ -21,7 +21,7 @@ Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.
 8. **PRINCIPLE-008: Hierarchical Problem & Task Decomposition**:
    - Hierarchical decomposition (Goal -> Domain -> Leaf Unit); top-down plan, bottom-up execution; bounded milestones ($2 \le M \le 6$); independent leaf verifiability ($N/M$). [GUIDELINES.md#principle-008]
 9. **PRINCIPLE-009: Modularity & Pluggable Architecture**:
-   - Single responsibility; abstract provider/service interfaces; decoupled presentation and business logic. [GUIDELINES.md#principle-009]
+   - 4-layer architecture (Presentation -> Service -> Domain <- Adapter); explicit typing contracts; dependency injection; zero circular imports. [GUIDELINES.md#principle-009]
 10. **PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)**:
    - Algorithmic efficiency ($O(N)$ scanning, set lookups); non-blocking async execution; lean stdlib-first dependencies. [GUIDELINES.md#principle-010]
 11. **PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)**:

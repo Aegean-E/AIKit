@@ -2,10 +2,12 @@
 
 ## 🏛️ High-Level Architectural Pattern
 The application follows a decoupled, modular architecture adhering to **PRINCIPLE-009**:
-- **Presentation Layer**: Handles user interactions, command-line arguments, or graphical interface rendering. Never contains raw disk I/O, network calls, or business rules.
-- **Service Layer**: Implements domain logic, algorithms, batching, and coordination. Communicates with presentation via callbacks or events.
-- **Provider / Adapter Layer**: Decouples external services, APIs, databases, or AI models behind pluggable abstract interfaces.
-- **Data Models**: Pure data schemas, configuration models, and immutable transfer objects.
+- **Presentation Layer**: CLI, GUI, or API endpoints. Pure input validation, parsing, routing, and rendering. Never contains business logic, SQL/queries, or raw file I/O.
+- **Service Layer**: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via pure data transfer objects. Receives adapters via constructor dependency injection.
+- **Domain / Model Layer**: Pure business entities, schemas, algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
+- **Infrastructure / Adapter Layer**: Implements abstract interfaces (`abc.ABC` or `typing.Protocol`) for filesystem I/O, external network APIs, databases, and third-party tools.
+- **Anti-Junk-Drawer Invariant**: Generic catch-all `utils.py` or `helpers.js` junk drawers are prohibited. Helper functions belong to the domain module that owns them or to focused, single-purpose utilities.
+- **Unidirectional Dependency Flow**: Dependencies flow strictly inward (Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure). Zero circular imports. Modules interact exclusively through declared public contracts.
 
 ---
 
