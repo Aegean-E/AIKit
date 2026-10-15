@@ -356,6 +356,7 @@ class TestPrincipleSync(unittest.TestCase):
             "scripts/sync_principles.py",
             "scripts/disruption_recovery.py",
             "scripts/update_knowledge_base.py",
+            "scripts/dogfood.py",
             "tests/test_kit.py",
             "tests/test_integration.py",
             "knowledge/INDEX.md",

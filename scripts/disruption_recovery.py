@@ -798,7 +798,7 @@ def validate_conventional_commit(message: str) -> Tuple[bool, str]:
 VALUE_FLAGS = {
     "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
     "--why", "--benefits", "--benefit", "--risks", "--mitigation",
-    "--complete", "--reset",
+    "--complete", "--reset", "--workspace",
 }
 # Standalone action flags.
 ACTION_FLAGS = {"--clean", "--resume", "--audit", "--help", "-h"}
@@ -817,6 +817,11 @@ Actions (default: --audit):
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task
   --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
+
+Workspace:
+  --workspace <dir>          Operate on <dir>/.agents/task_ledger.json instead of this
+                             repository's ledger. Required for sandboxed dogfooding, which
+                             must never mutate the host repo (PRINCIPLE-015 R4).
 
 Checkpoint options:
   --phase <name>             Lifecycle phase label (e.g. planning, implementation)
@@ -859,6 +864,21 @@ if __name__ == "__main__":
         print("Why: the requested action is not part of this tool's CLI contract.", file=sys.stderr)
         print("Fix: run 'py scripts/disruption_recovery.py --help' to list valid actions.", file=sys.stderr)
         sys.exit(2)
+
+    # Resolve the target workspace once. Default stays repository-anchored so an agent in a
+    # subdirectory still finds the real ledger; --workspace redirects it for sandboxed runs.
+    _ws_dir: Optional[Path] = None
+    if "--workspace" in sys.argv:
+        _widx = sys.argv.index("--workspace")
+        if len(sys.argv) > _widx + 1 and not sys.argv[_widx + 1].startswith("--"):
+            _ws_dir = Path(sys.argv[_widx + 1]).expanduser()
+        else:
+            print("[INVALID USAGE] --workspace requires a directory path.", file=sys.stderr)
+            print("Why: the ledger location cannot be inferred without it.", file=sys.stderr)
+            print("Fix: pass '--workspace <dir>', e.g. --workspace ./sandbox", file=sys.stderr)
+            sys.exit(2)
+    _ledger = (_ws_dir / ".agents" / "task_ledger.json") if _ws_dir else None
+    _audit_root = _ws_dir if _ws_dir else None
 
     if "--validate-commit" in sys.argv:
         idx = sys.argv.index("--validate-commit")
@@ -936,23 +956,24 @@ if __name__ == "__main__":
             benefits=benefits,
             risks=risks,
             mitigation=mitigation,
+            ledger_file=_ledger,
         )
         print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "active"
-        mark_task_completed(tid)
+        mark_task_completed(tid, ledger_file=_ledger)
         print(f"[OK] Task '{tid}' marked as completed.")
     elif "--reset" in sys.argv:
         idx = sys.argv.index("--reset")
         reason = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "Reset by user/agent"
-        res = reset_active_task(reason=reason)
+        res = reset_active_task(reason=reason, ledger_file=_ledger)
         if res:
             print(f"[OK] Active task '{res.get('task_id')}' abandoned and reset: {reason}")
         else:
             print("[OK] No active task was in progress.")
     elif "--clean" in sys.argv:
-        purged = clean_dangling_temp_files()
+        purged = clean_dangling_temp_files(workspace_dir=_audit_root)
         if purged:
             print(f"[OK] Purged {len(purged)} dangling temporary buffer(s):")
             for f in purged:
@@ -960,12 +981,12 @@ if __name__ == "__main__":
         else:
             print("[OK] Workspace clean. No dangling temporary buffers found.")
     elif "--resume" in sys.argv:
-        report = run_disruption_audit()
+        report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_resume_report(report))
     elif "--audit" in sys.argv:
-        report = run_disruption_audit()
+        report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_audit_report(report))
     else:
-        report = run_disruption_audit()
+        report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_audit_report(report))
 

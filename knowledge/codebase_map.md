@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `5`
-- **Total Classes**: `12`
-- **Total Functions / Methods**: `43`
-- **Total Source Lines**: `3194`
+- **Total Python Modules**: `6`
+- **Total Classes**: `14`
+- **Total Functions / Methods**: `53`
+- **Total Source Lines**: `3793`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `971` lines (`39281` bytes)
+**Size**: `992` lines (`40633` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -43,6 +43,25 @@
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
 - `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
+
+---
+
+### [`scripts/dogfood.py`](scripts/dogfood.py)
+> *Operational Dogfooding Runner (PRINCIPLE-015)*
+
+**Size**: `451` lines (`19486` bytes)
+
+**Functions:**
+- `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
+- `def supervised(argv, cwd)` - *RAII supervisor: guarantees recursive teardown even if the body raises.*
+- `def sandbox_jail()` - *Ephemeral workspace outside the repository and outside host user directories*
+- `def run_cli(script, args, cwd)` - *Invoke a CLI as a real binary with stdin closed (PRINCIPLE-015 Rule 3 EOF safety).*
+- `def repo_fingerprint()` - *Content fingerprint of the repository working tree, or None when git is unavailable.*
+- `def track_golden_lifecycle(jail, log)` - *Track 1 (PRINCIPLE-015 Rule 5): a complete create -> modify -> retrieve lifecycle driven*
+- `def track_chaos_perturbation(jail, log)` - *Track 2 (PRINCIPLE-015 Rule 5): hostile perturbations. Each must fail cleanly with no*
+- `def track_readonly_gates(jail, log)` - *Track 3: the two freshness gates the delivery triad depends on must run read-only from an*
+- `def track_help_startup_budget(jail, log)` - *Track 4: every entrypoint must answer --help safely and inside the PRINCIPLE-010 R5*
+- `def run_dogfood(verbose, keep_sandbox)` - *Execute every dogfood track and emit a terse dashboard (PRINCIPLE-015 Rule 7).*
 
 ---
 
@@ -88,7 +107,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `294` lines (`13080` bytes)
+**Size**: `420` lines (`18954` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -109,6 +128,21 @@
   - Method `.test_golden_path_help_contract()`
   - Method `.test_chaos_unknown_flag_rejected_with_remediation_triad()`
   - Method `.test_dogfood_matrix_leaves_zero_blast_radius()`
+- `class TestWorkspaceIsolation` - *`disruption_recovery.py` anchors its ledger to the repository, not the working directory, so*
+  - Method `.setUp()`
+  - Method `._ledger_cli(*args)`
+  - Method `.test_workspace_flag_redirects_the_ledger()`
+  - Method `.test_workspace_without_value_is_refused()`
+  - Method `.test_audit_and_resume_honour_the_workspace()`
+- `class TestDogfoodRunner` - *The operational dogfood runner is itself a shipped surface (PRINCIPLE-015), so it carries*
+  - Method `.setUpClass()`
+  - Method `.test_dogfood_run_passes_every_track()`
+  - Method `.test_dogfood_reports_tersely()`
+  - Method `.test_dogfood_covers_golden_and_chaos_tracks()`
+  - Method `.test_dogfood_emits_no_unhandled_traceback()`
+  - Method `.test_dogfood_writes_its_declared_log()`
+  - Method `.test_dogfood_leaves_tracked_content_untouched()`
+  - Method `.test_dogfood_cli_contract()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_integration_tier_bounds_every_spawn()`
@@ -118,7 +152,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1097` lines (`55779` bytes)
+**Size**: `1098` lines (`55813` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

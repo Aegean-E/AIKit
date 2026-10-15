@@ -77,7 +77,7 @@ jobs:
       - name: Universal CLI contract
         shell: bash
         run: |
-          for s in sync_principles disruption_recovery update_knowledge_base; do
+          for s in sync_principles disruption_recovery update_knowledge_base dogfood; do
             python "scripts/$s.py" --help > /dev/null < /dev/null \
               || { echo "::error::scripts/$s.py --help did not exit 0"; exit 1; }
             python "scripts/$s.py" --not-a-real-flag > /dev/null 2>&1 < /dev/null
@@ -88,6 +88,10 @@ jobs:
             fi
           done
           echo "CLI contract verified across all entrypoints"
+
+      # PRINCIPLE-015 Rule 7: operational dogfooding is a pre-ship gate, not an optional extra.
+      - name: Operational dogfood gate
+        run: python scripts/dogfood.py
 
       # PRINCIPLE-014 Rule 4 / PRINCIPLE-015 Rule 4: the suite must not mutate the tree.
       - name: Assert pristine working tree

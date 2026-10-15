@@ -17,22 +17,6 @@
   "checkpoints": [
     {
       "task_id": "principle-015-pass1",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Fortify Principle 15 with supervised process lifecycles, headless display parity, dual-track golden+chaos verification, safety jail containment, and deterministic domain exit contracts",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792097760.3157175,
-      "timestamp_str": "2026-10-15 23:56:00",
-      "impact_assessment": {
-        "why": "Prevent zombie dev servers, port conflicts, display server crashes, superficial help-only dogfooding, and workspace pollution",
-        "benefits": "Guarantee that built software runs in real operational environments without crashing or leaking background daemons",
-        "risks": "Context budget creep across IDE rule files",
-        "mitigation": "Keep invariant capsule dense (<230 chars) and concise rule descriptions"
-      }
-    },
-    {
-      "task_id": "principle-015-pass1",
       "phase": "completed",
       "phase_num": 5,
       "description": "Task 'principle-015-pass1' completed successfully.",
@@ -264,6 +248,15 @@
       "status": "completed",
       "timestamp": 1792102657.9867811,
       "timestamp_str": "2026-10-16 01:17:37"
+    },
+    {
+      "task_id": "principle-roadmap-m2-dogfood",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-roadmap-m2-dogfood' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792103316.2020974,
+      "timestamp_str": "2026-10-16 01:28:36"
     }
   ]
 }

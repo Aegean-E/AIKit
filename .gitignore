@@ -5,6 +5,10 @@ __pycache__/
 *.so
 .pytest_cache/
 
+# Operational dogfooding run log (PRINCIPLE-015 Rule 7 declares this path; it is a
+# transient run artifact and the one deliberate write outside SANDBOX_ROOT)
+.agents/dogfood_last_run.log
+
 # Disruption recovery quarantine artifacts
 *.corrupt_*
 *.tmp*

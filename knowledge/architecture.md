@@ -127,6 +127,28 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Operational Dogfood Runner (Implemented Surface)
+`scripts/dogfood.py` makes **PRINCIPLE-015** executable. See [ADR-043](decisions.md).
+
+| Track | What it proves |
+|---|---|
+| golden lifecycle | create -> modify -> retrieve -> complete through the real ledger CLI, asserted on disk |
+| chaos perturbation | malformed flag, missing flag value, corrupted ledger, 0-byte truncation all handled cleanly |
+| read-only gates | both `--check` freshness gates run read-only and report truthfully from an unrelated cwd |
+| help + startup budget | every entrypoint answers `--help` safely, measured as a real process |
+| blast radius | tracked repository content is byte-identical after the run |
+
+- **RAII Process Supervision**: `supervised()` guarantees recursive teardown via `taskkill /F /T`
+  on Windows and `killpg(SIGKILL)` on POSIX (`start_new_session=True`), so no spawn is orphaned.
+- **Sandbox Jail + Workspace Redirection**: the ledger CLI anchors to the repository, not the cwd,
+  so `--workspace <dir>` is what actually keeps writes inside the jail. Without it the first
+  dogfood run overwrote the live ledger.
+- **Content-Hashed Blast Radius**: `repo_fingerprint()` hashes `git status --porcelain` plus every
+  `git ls-files` entry's bytes. Comparing porcelain *text* is blind to content changes in files
+  that were already dirty, and that hole let the first run pass while clobbering the ledger.
+- **UTF-8 Capture**: every spawn forces `encoding="utf-8"`; the locale codec (cp1254 here) kills
+  reader threads on the CLIs' non-ASCII status glyphs and silently returns empty output.
+
 ### Two-Tier Test Budget (Implemented Surface)
 Tests are partitioned by whether they must spawn a process, with both tiers running under the one
 canonical command (`python -m unittest discover tests`). See [ADR-040](decisions.md).

@@ -11,6 +11,7 @@ nothing here is hidden or opt-in. Every spawned process is bounded by an explici
 (PRINCIPLE-010 R3, PRINCIPLE-015 R2) so a hung child can never stall the suite.
 """
 
+import json
 import os
 import re
 import shutil
@@ -169,7 +170,10 @@ class TestOperationalDogfooding(unittest.TestCase):
     once in a bounded thread pool (PRINCIPLE-010 R3) to keep this tier's cost flat.
     """
 
-    SCRIPTS = ("sync_principles.py", "disruption_recovery.py", "update_knowledge_base.py")
+    SCRIPTS = (
+        "sync_principles.py", "disruption_recovery.py",
+        "update_knowledge_base.py", "dogfood.py",
+    )
 
     @staticmethod
     def _porcelain():
@@ -249,6 +253,128 @@ class TestOperationalDogfooding(unittest.TestCase):
             self.tree_before, self.tree_after,
             "PRINCIPLE-015 violation: the golden-path + chaos CLI matrix mutated the working tree",
         )
+
+
+class TestWorkspaceIsolation(unittest.TestCase):
+    """
+    `disruption_recovery.py` anchors its ledger to the repository, not the working directory, so
+    without `--workspace` a sandboxed dogfood run writes straight into the real ledger. The first
+    dogfood run did exactly that, clobbering the active task (PRINCIPLE-015 R4).
+    """
+
+    def setUp(self):
+        self.jail = Path(tempfile.mkdtemp(prefix="test_workspace_"))
+        self.addCleanup(shutil.rmtree, self.jail, ignore_errors=True)
+
+    def _ledger_cli(self, *args):
+        return subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), *args],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+
+    def test_workspace_flag_redirects_the_ledger(self):
+        real_ledger = ROOT_DIR / ".agents" / "task_ledger.json"
+        before = real_ledger.read_bytes() if real_ledger.exists() else None
+
+        res = self._ledger_cli("--workspace", str(self.jail),
+                               "--checkpoint", "isolated", "--phase", "planning",
+                               "--desc", "workspace isolation probe")
+        self.assertEqual(res.returncode, 0, f"checkpoint failed: {res.stderr[:200]}")
+
+        sandbox_ledger = self.jail / ".agents" / "task_ledger.json"
+        self.assertTrue(sandbox_ledger.exists(), "--workspace did not write into the sandbox")
+        data = json.loads(sandbox_ledger.read_text(encoding="utf-8"))
+        self.assertEqual(data["active_task"]["task_id"], "isolated")
+
+        after = real_ledger.read_bytes() if real_ledger.exists() else None
+        self.assertEqual(before, after, "--workspace run mutated the repository ledger")
+
+    def test_workspace_without_value_is_refused(self):
+        # PRINCIPLE-011 R5/R6: a flag that silently defaults to the real ledger would be worse
+        # than an error, so a missing value must exit 2 with the remediation triad.
+        res = self._ledger_cli("--workspace")
+        self.assertEqual(res.returncode, 2, f"expected exit 2, got {res.returncode}")
+        self.assertIn("[INVALID USAGE]", res.stderr)
+        self.assertIn("Fix:", res.stderr)
+
+    def test_audit_and_resume_honour_the_workspace(self):
+        self._ledger_cli("--workspace", str(self.jail),
+                         "--checkpoint", "scoped", "--phase", "verification",
+                         "--phase-num", "4", "--desc", "scoped task")
+        res = self._ledger_cli("--workspace", str(self.jail), "--resume")
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("scoped", res.stdout)
+        self.assertIn("Phase 4", res.stdout, "resume lost the phase recorded in the sandbox")
+
+
+class TestDogfoodRunner(unittest.TestCase):
+    """
+    The operational dogfood runner is itself a shipped surface (PRINCIPLE-015), so it carries
+    regression coverage like any other entrypoint.
+    """
+
+    RUNNER = ROOT_DIR / "scripts" / "dogfood.py"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.result = subprocess.run(
+            [sys.executable, str(cls.RUNNER)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=str(ROOT_DIR), stdin=subprocess.DEVNULL, timeout=60,
+        )
+
+    def test_dogfood_run_passes_every_track(self):
+        self.assertEqual(
+            self.result.returncode, 0,
+            f"dogfood gate failed. stdout: {self.result.stdout[-900:]} "
+            f"stderr: {self.result.stderr[-400:]}",
+        )
+        self.assertNotIn("[FAIL]", self.result.stdout)
+        self.assertIn("tracks passed", self.result.stdout)
+
+    def test_dogfood_reports_tersely(self):
+        # PRINCIPLE-015 R7: the console dashboard stays readable at a glance.
+        lines = [l for l in self.result.stdout.splitlines() if l.strip()]
+        self.assertLessEqual(len(lines), 18, f"dashboard too verbose ({len(lines)} lines)")
+
+    def test_dogfood_covers_golden_and_chaos_tracks(self):
+        # PRINCIPLE-015 R5: testing --help alone is explicitly forbidden.
+        for track in ("golden lifecycle", "chaos perturbation", "blast radius"):
+            with self.subTest(track=track):
+                self.assertIn(track, self.result.stdout, f"dogfood omits the {track} track")
+
+    def test_dogfood_emits_no_unhandled_traceback(self):
+        # A reader-thread UnicodeDecodeError previously surfaced here on a cp1254 locale.
+        self.assertNotIn("Traceback", self.result.stderr)
+        self.assertNotIn("UnicodeDecodeError", self.result.stderr)
+
+    def test_dogfood_writes_its_declared_log(self):
+        log = ROOT_DIR / ".agents" / "dogfood_last_run.log"
+        self.assertTrue(log.exists(), "PRINCIPLE-015 R7 log was not written")
+        self.assertIn("track:", log.read_text(encoding="utf-8"))
+
+    def test_dogfood_leaves_tracked_content_untouched(self):
+        # The runner's own blast-radius claim, verified independently of the runner.
+        self.assertIn("zero host mutation", self.result.stdout)
+
+    def test_dogfood_cli_contract(self):
+        help_res = subprocess.run(
+            [sys.executable, str(self.RUNNER), "--help"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(help_res.returncode, 0)
+        self.assertIn("Usage:", help_res.stdout)
+        self.assertEqual(help_res.stderr, "")
+
+        bad_res = subprocess.run(
+            [sys.executable, str(self.RUNNER), "--nope"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(bad_res.returncode, 2)
+        self.assertIn("[INVALID USAGE]", bad_res.stderr)
 
 
 class TestTierBudgetDiscipline(unittest.TestCase):
