@@ -194,12 +194,15 @@
 ---
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
-- **Concept**: The application must be instantly usable out of the box ("one-click and start") without forcing users to jump through cumbersome installation hurdles, manual environment configurations, or mandatory third-party software setups.
-- **Invariant**: Zero mandatory external dependencies; out-of-the-box defaults; graceful degradation with actionable user guidance.
+- **Concept**: The repository and applications must be instantly runnable and testable out of the box ("one-click and start") immediately upon clone, with zero mandatory package installations, zero config boilerplate, auto-bootstrapping workspaces, and resilient fallbacks.
+- **Invariant**: Pure-stdlib clone-and-run baseline; self-bootstrapping workspace; zero-crash config fallbacks; non-interactive headless parity; actionable remediation triad.
 - **Rules**:
-  1. **Zero Mandatory External Setup**: Never force users into external dependency setup to experience core application features. Provide immediate zero-install pathways and intelligent fallbacks.
-  2. **Sensible Out-of-the-Box Defaults**: The application must run cleanly on first launch using default settings without requiring manual configuration files.
-  3. **Graceful Degradation**: If an optional external service or runtime is unavailable or unconfigured, the application must guide the user with clear instructions rather than crashing, freezing, or error-looping.
+  1. **Pure-Stdlib Clone-and-Run Baseline**: The core application, CLI entrypoints, and regression test suites must execute cleanly immediately after `git clone` using language standard-library primitives alone. Third-party packages must be strictly optional adapters or plugins (`PRINCIPLE-009`, `PRINCIPLE-010`) that degrade gracefully when uninstalled.
+  2. **Self-Bootstrapping Workspace & Auto-Initialization**: Applications must automatically bootstrap required runtime directories (`.agents/`, `data/`, `logs/`) and initialize default configuration states on first launch if absent. Never fail on cold start due to missing folders or uncopied config templates.
+  3. **Zero-Crash Missing Config Protocol**: Never access environment variables or configuration dicts via raw indexing (`os.environ['KEY']`). Always use safe lookups (`os.getenv('KEY')`) with sensible defaults, offline dry-run modes, or mock provider fallbacks. If an external credential is strictly required to proceed, exit cleanly with diagnostic guidance rather than an unhandled `KeyError` or stack trace.
+  4. **Non-Interactive & Headless Parity**: Commands must default to non-interactive execution when running in automated AI subagent contexts, IDE extensions, or CI/CD pipelines (`not sys.stdin.isatty()`). Provide explicit non-interactive flags (`--yes`, `--batch`) and never hang indefinitely waiting on terminal stdin input.
+  5. **Actionable Remediation Triad (Anti-Cryptic Error Invariant)**: User-facing error messages must adhere to the 3-part Remediation Triad: (1) **What happened** (concise failure summary), (2) **Why it happened** (underlying root cause), and (3) **How to fix it** (exact, copy-pasteable command or remediation step). Never dump raw, unhandled exception stack traces to end users.
+  6. **Idempotent Health Diagnostics (`doctor` pattern)**: Applications must provide an idempotent pre-flight health diagnostic command (e.g. `--audit` or `--doctor`) to verify runtime version parity, platform permissions, tool paths, and ledger state with clear PASS/WARN/FAIL reporting.
 
 ---
 
@@ -318,7 +321,7 @@
 - [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
 - [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
-- [ ] **Friction & Accessibility Check**: Does the solution maintain "one-click start" without forcing external app installs (**PRINCIPLE-011**)?
+- [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Is the code concise, and are prompts/payloads token-budgeted and compact (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are file writes, settings, and transaction logs protected against power-loss corruption (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned unit tests to validate this change and prevent regressions (**PRINCIPLE-014**)?
@@ -336,7 +339,7 @@
 - [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
 - [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
 - [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and fast (<1s tests)** (**PRINCIPLE-010**)?
-- [ ] Does the app maintain **one-click zero-install accessibility** (**PRINCIPLE-011**)?
+- [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
 - [ ] Is the code **concise, lean, and token-frugal** without context waste (**PRINCIPLE-012**)?
 - [ ] Are all state changes and logs **crash-resilient and written atomically** (**PRINCIPLE-013**)?
 - [ ] Have all **automated unit tests passed with 100% success** (**PRINCIPLE-014**)?

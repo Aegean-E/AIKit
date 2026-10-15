@@ -357,3 +357,24 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates process deadlocks and zombie storms; prevents premature multithreading overhead; eliminates disk thrashing from unbatched atomic writes; guarantees leak-free daemon operation and sub-100ms CLI startup.
   - *Trade-offs*: None; pure standard library practices.
+
+### ADR-024: Pure-Stdlib Core, Self-Bootstrapping Workspace, Zero-Crash Config, and Headless Parity (PRINCIPLE-011)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. AI-generated code frequently crashes on initial launch due to unhandled `KeyError` exceptions when expected environment variables are missing.
+  2. Missing directories (e.g. `.agents/`, `logs/`, `data/`) cause `FileNotFoundError` crashes instead of self-initializing default scaffolds.
+  3. Excessive external package requirements in `requirements.txt` cause onboarding friction and build failures on clean machines or Windows environments.
+  4. Interactive terminal prompts (`input()`) cause permanent deadlocks when scripts run in headless AI subagents, IDE extensions, or CI/CD pipelines.
+  5. Cryptic bare exception tracebacks leave users and AI agents confused about how to resolve runtime failures.
+- **Decision**:
+  1. Enforce **Pure-Stdlib Clone-and-Run Baseline**: Core entrypoints and unit test suites must run immediately after `git clone` using standard library primitives alone. Third-party dependencies are strictly optional plugins.
+  2. Enforce **Self-Bootstrapping Workspace**: Applications must auto-create missing directories and default configuration states on launch.
+  3. Enforce **Zero-Crash Missing Config Protocol**: Access environment variables safely via `os.getenv()` with mock/dry-run fallbacks; exit cleanly with actionable advice if credentials are mandatory.
+  4. Enforce **Non-Interactive & Headless Parity**: Default to non-interactive mode when `not sys.stdin.isatty()`; provide `--yes` / `--batch` flags and never hang on stdin.
+  5. Enforce **Actionable Remediation Triad**: User-facing errors must present (1) What happened, (2) Why it happened, and (3) How to fix it with an exact command.
+  6. Enforce **Idempotent Health Diagnostics (`doctor` pattern)**: Provide an explicit check command (`--audit` / `--doctor`) to verify environment and ledger health.
+- **Consequences**:
+  - *Positive*: True one-click usability; zero cold-start crashes; safe headless execution for AI agents; crystal-clear actionable error messages.
+  - *Trade-offs*: None; pure standard library practices.
+

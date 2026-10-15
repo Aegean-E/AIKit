@@ -54,6 +54,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ---
 
+## 🚀 Zero-Friction Usability & Onboarding Architecture
+- **Pure-Stdlib Baseline**: Core application entrypoints and automated tests run on language standard-library primitives alone immediately upon `git clone` (**PRINCIPLE-011**).
+- **Self-Bootstrapping Workspace**: Required directories (`.agents/`, `data/`, `logs/`) and default configuration files are automatically scaffolded on first boot.
+- **Zero-Crash Config Protocol**: Environment variables and settings are queried safely via `os.getenv()` with dry-run/mock fallbacks, preventing unhandled `KeyError` crashes.
+- **Non-Interactive & Headless Parity**: Automated runs in AI subagent shells default to non-interactive execution (`--yes` / `--batch`), preventing stdin deadlocks.
+- **Actionable Remediation Triad**: Error states provide clear failure summaries, root causes, and copy-pasteable remediation commands rather than unhandled tracebacks.
+
+---
+
 ## 💾 Persistence & Atomicity (Fail-Safe Architecture)
 - All persistent configuration and state mutations use atomic write patterns (`flush` + `os.fsync` + `os.replace`) to prevent zero-byte truncation during sudden power loss (**PRINCIPLE-013**, **PRINCIPLE-006**).
 
