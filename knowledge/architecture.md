@@ -49,8 +49,15 @@ The system enforces strict chronological ordering (**PRINCIPLE-002**) across all
 ---
 
 ## ⚡ Progressive Rule Disclosure & Governance Frugality
-- **Two-Tier Architecture**: Injected IDE prompt instructions are capped (<1,500 tokens) with terse canonical summaries (Tier 1), while exhaustive guides, edge-case rationale, and failure analysis live in disk-backed knowledge documents (Tier 2) (**PRINCIPLE-001**).
-- **Mechanical Invariant Density**: Compression eliminates narrative filler and history while preserving 100% of hard technical constraints (e.g., `fsync` + `replace`, 100% test pass gate, read-before-write).
-- **Actionable Pointer Contract**: Tier 1 summaries provide explicit path and anchor pointers (`[GUIDELINES.md#principle-xxx]`) enabling instant 1-shot retrieval of deep knowledge without blind codebase scanning.
-- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and mechanically enforces character/token budgets across all generated AI rules, preventing instruction bloat.
-
+- **Two-Tier Architecture**: Injected IDE prompt instructions are capped (<1,500 tokens) with terse, self-sufficient invariant capsules (Tier 1), while exhaustive guides, edge-case rationale, and failure analysis live in disk-backed knowledge documents (Tier 2) (**PRINCIPLE-001**).
+- **Self-Sufficient Invariant Capsules**: Every Tier 1 entry contains the exact technical mechanism (e.g., `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check), ensuring routine code generation is 100% accurate with zero disk roundtrips.
+- **Autonomous Retrieval Trigger Protocol**: Defines explicit operational triggers where an AI agent must slice-view Tier 2 knowledge:
+  1. *Architectural Boundary Trigger*: Introducing new services, data schemas, or cross-module API contracts.
+  2. *Failure & Regression Trigger*: Test failures, build breakages, or unhandled exceptions.
+  3. *Ambiguity Trigger*: Underspecified domain requirements or missing schema models.
+- **Universal vs Domain Rule Partitioning (Adopter Architecture)**:
+  - *Tier 1A (Universal AI Governance)*: AIKit's immutable 18 engineering invariants (<1,000 tokens).
+  - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
+  - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
+- **Deterministic Grep Anchor Contract**: All Tier 2 sections use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
+- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and mechanically enforces character/token budgets (<8,000 chars / ~1,500 tokens) across all generated AI rules, preventing instruction bloat.

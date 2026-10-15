@@ -50,13 +50,21 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ## 📖 Principle Details
 
 ### PRINCIPLE-001: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
-- **Problem**: As governance frameworks expand with dozens of principles and checklists, blindly injecting monolithic rule files into every AI prompt burns 15–30% of active context windows, induces instruction dilution ("lost in the middle"), inflates token costs, and increases latency.
+- **Problem**: Monolithic rule injections burn 15–30% of active context windows, dilute reasoning, inflate latency, and trigger "satisficing" bugs where models guess implementation details instead of following rigorous invariants.
 - **Guideline**:
   - **Two-Tier Progressive Disclosure**:
-    - *Tier 1 (Always-Injected System Instructions)*: Target IDE rules (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, 1-line canonical summaries and essential invariant pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
+    - *Tier 1 (Always-Injected System Instructions)*: Target IDE rules (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, self-sufficient invariant capsules and essential pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
     - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
-  - **Mechanical Invariant Density (Anti-Vagueness Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Technical invariants (e.g. atomic `flush` + `fsync` + `replace`, 100% test pass gate, read-before-write symbol checks) must remain explicitly stated in Tier 1 summaries.
-  - **Actionable Pointer Contract**: Every Tier 1 summary must provide direct, unambiguous file pointers (e.g. `[GUIDELINES.md#principle-xxx]`) so the agent knows precisely where to retrieve Tier 2 context in a single slice view without blind codebase searches.
+  - **Self-Sufficient Invariant Capsules (Anti-Satisficing Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Every Tier 1 summary must encode the exact technical mechanism (e.g., `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check) so routine tasks succeed with 100% accuracy without requiring disk roundtrips.
+  - **Autonomous Tier 2 Retrieval Trigger Protocol**: The AI agent must proactively slice-view Tier 2 documentation (`GUIDELINES.md` / `knowledge/`) upon encountering any of the following 3 operational triggers:
+    1. *Architectural Boundary Trigger*: Introducing new services, data schemas, or modifying cross-module API contracts.
+    2. *Failure & Regression Trigger*: Encountering any test failure, build breakage, or runtime exception.
+    3. *Ambiguity Trigger*: Addressing underspecified domain requirements or missing schema models.
+  - **Universal vs. Domain Rule Partitioning (Adopter Ready)**: When deploying AIKit to govern external projects, maintain a strict 3-tier boundary:
+    - *Tier 1A (Universal AI Governance)*: AIKit's immutable 18 engineering invariants (<1,000 tokens).
+    - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
+    - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
+  - **Deterministic Grep Anchor Contract**: All Tier 2 guideline sections must use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers must instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
   - **Strict Injected Context Budget & Automated Gate**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens / <8,000 chars total overhead). `scripts/sync_principles.py` must track, report, and mechanically guard against rule footprint creep.
   - **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
   - **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.

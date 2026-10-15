@@ -42,6 +42,8 @@ class TestPrincipleSync(unittest.TestCase):
         for i in range(1, 19):
             expected_id = f"PRINCIPLE-{i:03d}"
             self.assertIn(expected_id, p_ids, f"Missing {expected_id} in AGENTS.md")
+        for p in principles:
+            self.assertTrue(p["invariant"], f"Principle {p['id']} is missing an invariant capsule")
 
     def test_targets_in_sync_and_budgeted(self):
         # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-001)
@@ -62,6 +64,7 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
             self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
+            self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
             # Assert context budget cap
             self.assertLessEqual(
                 len(content),

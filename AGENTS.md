@@ -10,21 +10,31 @@
 
 ### PRINCIPLE-001: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
 - **Concept**: AI governance systems must never consume excessive context windows or degrade model reasoning through instruction bloat. System-level rule injections must remain ultra-dense and compact (Tier 1), while deep architectural rationale, historical logs, and exhaustive edge cases are offloaded to disk-backed knowledge documents (Tier 2) to be retrieved progressively on demand.
+- **Invariant**: Two-tier progressive disclosure (<1,500 tokens Tier 1); self-sufficient invariant capsules with deterministic grep anchors (`### PRINCIPLE-XXX:`); slice-view Tier 2 on architectural boundary, regression, or ambiguity.
 - **Rules**:
   1. **Two-Tier Progressive Disclosure**:
-     - *Tier 1 (Always-Injected System Instructions)*: IDE rule files (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, 1-line canonical summaries and essential invariant pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
+     - *Tier 1 (Always-Injected System Instructions)*: IDE rule files (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, self-sufficient invariant capsules and essential pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
      - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
-  2. **Mechanical Invariant Density (Anti-Vagueness Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Technical invariants (e.g. atomic `flush` + `fsync` + `replace`, 100% test pass gate, read-before-write symbol checks) must remain explicitly stated in Tier 1 summaries.
-  3. **Actionable Pointer Contract**: Every Tier 1 summary must provide direct, unambiguous file pointers (e.g. `[GUIDELINES.md#principle-xxx]`) so the agent knows precisely where to retrieve Tier 2 context in a single slice view without blind codebase searches.
-  4. **Strict Injected Context Budget & Automated Gate**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens / <8,000 chars total overhead). `scripts/sync_principles.py` must track, report, and mechanically guard against rule footprint creep.
-  5. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
-  6. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
-  7. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
+  2. **Self-Sufficient Invariant Capsules (Anti-Satisficing Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Every Tier 1 summary must encode the exact technical mechanism (e.g. `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check) so routine tasks succeed with 100% accuracy without requiring disk reads.
+  3. **Autonomous Tier 2 Retrieval Trigger Protocol**: The AI agent must proactively slice-view Tier 2 documentation (`GUIDELINES.md` / `knowledge/`) upon encountering any of the following 3 operational triggers:
+     - *Architectural Boundary Trigger*: Introducing new services, data schemas, or modifying cross-module API contracts.
+     - *Failure & Regression Trigger*: Encountering any test failure, build breakage, or runtime exception.
+     - *Ambiguity Trigger*: Addressing underspecified domain requirements or missing schema models.
+  4. **Universal vs. Domain Rule Partitioning (Adopter Ready)**: When deploying AIKit to govern external projects, maintain a strict 3-tier boundary:
+     - *Tier 1A (Universal AI Governance)*: AIKit's immutable 18 engineering invariants (<1,000 tokens).
+     - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
+     - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
+  5. **Deterministic Grep Anchor Contract**: All Tier 2 guideline sections must use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers must instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
+  6. **Strict Injected Context Budget & Automated Gate**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens / <8,000 chars total overhead). `scripts/sync_principles.py` must track, report, and mechanically guard against rule footprint creep.
+  7. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
+  8. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
+  9. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
 
 ---
 
 ### PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)
 - **Concept**: Prompts, rules, checklists, and documentation must be arranged strictly along the chronological execution lifecycle of an agent's task (Grounding $\rightarrow$ Orientation $\rightarrow$ Design $\rightarrow$ Verification $\rightarrow$ Delivery). Instructions must never present late-stage actions (e.g. committing, pushing) before early-stage prerequisites (e.g. symbol verification, pre-flight analysis), eliminating instruction order bias and cognitive phase confusion.
+- **Invariant**: Monotonic 5-phase lifecycle order (Phase 1 Grounding -> Phase 2 Orientation -> Phase 3 Architecture -> Phase 4 Verification -> Phase 5 Delivery); zero late-stage priming.
 - **Rules**:
   1. **Temporal Lifecycle Alignment**: All rules, checklists, and principle registries must follow the 5 lifecycle phases: Phase 1 (Meta-Governance & Grounding), Phase 2 (Pre-Flight Orientation & Planning), Phase 3 (Architecture & Implementation), Phase 4 (Operational Verification & Resilience), Phase 5 (Living Documentation & Delivery).
   2. **Primacy-Weighted Anchoring**: Place epistemic grounding and safety invariants at the top (primacy) where model attention is sharpest. Place terminal delivery gates (commit, push, clean exit) at the terminal position.
@@ -35,6 +45,7 @@
 
 ### PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)
 - **Concept**: Never make architectural assumptions, guess function signatures, invent phantom dependencies, or extrapolate ambiguous data models without first reading and verifying factual source code, schemas, and runtime state on disk.
+- **Invariant**: Read-before-write invariant (`view_file`/`grep_search` symbol check before write); zero assumption on ambiguity; deterministic AST test gating.
 - **Rules**:
   1. **Read-Before-Write Invariant**: Never edit a file, call an internal function, or instantiate a class without first reading or grepping its definition and signature from the local codebase.
   2. **Empirical Fact-Checking**: When referencing file paths, configuration keys, or third-party capabilities, verify their presence on disk or in the active runtime environment rather than presuming they exist.
@@ -45,6 +56,7 @@
 
 ### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
 - **Concept**: Complex, long-running agent workflows must actively counteract attentional drift and context compaction through externalized working memory, disciplined context budgeting, and continuous self-orientation against persistent disk state.
+- **Invariant**: Externalized working memory (`.agents/task_ledger.json`); continuous checklist re-anchoring; cold-start self-orientation via `git status` + `git log -n 1`.
 - **Rules**:
   1. **Externalized Working Memory**: Never store task status, multi-step plans, or architectural decisions solely in transient conversation turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`, or working scratch files).
   2. **Continuous Checklist Re-anchoring**: At the beginning of each turn and after any compaction event, the AI must actively re-anchor to the Pre-flight/Post-flight checklist and active principles rather than relying on stale conversational inertia.
@@ -57,6 +69,7 @@
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
 - **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles. To prevent knowledge drift, `README.md` must be systematically updated after every meaningful change.
+- **Invariant**: Self-describing repository; zero-ambiguity quickstart; mandatory `README.md` update after every feature, UI, or architectural change.
 - **Rules**:
   1. **Self-Describing Repository**: Every architectural decision, file structure, command, and configuration option must be documented explicitly in `README.md`, `GUIDELINES.md`, and code docstrings. No hidden or implicit assumptions are allowed.
   2. **Mandatory README Update After Every Change**: After completing any feature, UI update, configuration change, refactoring, or architectural modification, the AI must immediately update `README.md` to reflect the new state.
@@ -66,6 +79,7 @@
 
 ### PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
 - **Concept**: Development workflows and AI execution sessions must be resilient against abrupt disruptions—such as sudden power outages, battery depletion, OS crashes, or process termination. Progress must never be treated as an all-or-nothing end-of-turn artifact; it must be recorded through incremental, atomic micro-checkpoints, persistent task ledgers, and immediate cold-start recovery protocols to guarantee zero work loss without compromising code quality.
+- **Invariant**: Incremental atomic micro-commits; pre-flight disruption audit; disruption recovery ledger via `scripts/disruption_recovery.py`.
 - **Rules**:
   1. **Micro-Milestone Atomicity & Verified Commits**: For multi-step tasks or non-trivial implementations, the AI must checkpoint and commit working state incrementally after each logical, verified sub-task (e.g. service logic $\rightarrow$ verified commit; UI component $\rightarrow$ verified commit; docs/tests $\rightarrow$ verified commit) rather than accumulating large, vulnerable working-tree states that risk total loss upon power cut.
   2. **Pre-flight Disruption Audit on Cold Start**: Upon every cold start or conversation resumption, before beginning any new coding task, the AI must immediately audit the working tree (`git status`, uncommitted changes, untracked files, temp artifacts) to detect, preserve, and recover any uncommitted progress interrupted by an unclean shutdown.
@@ -77,6 +91,7 @@
 
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
 - **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively identifies potential *harm/regressions*, and proactively guards quality.
+- **Invariant**: Cold-start impact gate (evaluate why, benefits, risks/harm mitigation, quality non-diminution) before non-trivial edits.
 - **Rules**:
   1. **Mandatory Cold-Start Assessment**:
      - **Why is this required?**: Articulate the exact user goal, pain point, or architectural gap being solved.
@@ -94,6 +109,7 @@
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
 - **Concept**: Complex systems, deep directory hierarchies, and large datasets must be partitioned hierarchically rather than processed via monolithic, flat-batch prompting or unbounded single-pass operations.
+- **Invariant**: Hierarchical decomposition (Root -> Domain -> Sub-task -> Atomic); bounded context; recursive validation with base-case limits.
 - **Rules**:
   1. **Hierarchical Partitioning**: Decompose large inputs or operations into structured levels (e.g. Root Domain $\rightarrow$ High-Level Category $\rightarrow$ Sub-Task $\rightarrow$ Atomic Unit).
   2. **Bounded Context**: Never feed unbounded flat data or file lists into a single prompt or operation. Decompose into recursive sub-tasks with well-defined base cases and max-depth limits.
@@ -106,6 +122,7 @@
 
 ### PRINCIPLE-009: Modularity & Pluggable Architecture
 - **Concept**: Every major component must be modular, decoupled, and adhere to the Single Responsibility Principle.
+- **Invariant**: Single responsibility; abstract provider/service interfaces; decoupled presentation and business logic.
 - **Rules**:
   1. **Pluggable Provider/Service Interfaces**: Core services must use abstract provider or adapter interfaces. Never tightly couple business logic to specific external APIs, third-party libraries, or runtime backends.
   2. **Decoupled Presentation & Logic**: UI/CLI entrypoints must only handle presentation, input validation, and user interactions. Business logic must live strictly in decoupled service modules and data models.
@@ -115,6 +132,7 @@
 
 ### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
 - **Concept**: Every code change, architectural modification, and dependency choice must be optimized for execution speed, low latency, optimal algorithmic complexity, and lean resource utilization (CPU, memory, disk I/O, and token budgets).
+- **Invariant**: Algorithmic efficiency ($O(N)$ scanning, set lookups); non-blocking async execution; lean stdlib-first dependencies.
 - **Rules**:
   1. **Algorithmic & I/O Efficiency**: All scanning, filtering, and data transformations must employ optimal algorithmic complexity ($O(N)$ scanning, set lookups, generator pipelines, buffered file operations).
   2. **Non-Blocking & Asynchronous Execution**: Heavy operations (file system walks, batch processing, network/API calls) must execute asynchronously or in worker threads, never blocking the UI or main event loop.
@@ -126,6 +144,7 @@
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
 - **Concept**: The application must be instantly usable out of the box ("one-click and start") without forcing users to jump through cumbersome installation hurdles, manual environment configurations, or mandatory third-party software setups.
+- **Invariant**: Zero mandatory external dependencies; out-of-the-box defaults; graceful degradation with actionable user guidance.
 - **Rules**:
   1. **Zero Mandatory External Setup**: Never force users into external dependency setup to experience core application features. Provide immediate zero-install pathways and intelligent fallbacks.
   2. **Sensible Out-of-the-Box Defaults**: The application must run cleanly on first launch using default settings without requiring manual configuration files.
@@ -135,6 +154,7 @@
 
 ### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
 - **Concept**: Code must be concise, expressive, and devoid of unnecessary bloat. All interactions with LLMs must be strictly budgeted for tokens—leveraging compact representations and hierarchical batching so requests never exhaust context windows, exceed rate limits (TPM), or waste user tokens.
+- **Invariant**: Concise code; strict token budgets; compact JSON schemas/relative paths; exponential backoff rate-limit guards.
 - **Rules**:
   1. **Concise, High-Leverage Code**: Avoid gratuitous verbosity, bloated helper chains, or repetitive boilerplate. Write clean, modular, and concise implementations.
   2. **Strict Token Budgeting**: Prompts must never blindly dump raw, unbounded file or data lists into a single context. Enforce strict batch size caps and character limits.
@@ -147,6 +167,7 @@
 
 ### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
 - **Concept**: The application must remain fail-safe and self-healing against abrupt disruptions—such as sudden power outages, battery exhaustion, OS crashes, or external process termination. User data, application settings, and state transaction logs must never be left in a corrupted, half-written, or unrecoverable state due to unexpected power loss.
+- **Invariant**: Fail-safe atomic writes (temp buffer -> `flush()` -> `os.fsync()` -> `os.replace()`); WAL for batch ops; isolate `*.corrupt_*`.
 - **Rules**:
   1. **Atomic State & Configuration Persistence**: All persistent JSON state, configuration, and cache files must be written via atomic temporary files with buffer flushing (`flush` + `os.fsync`) followed by atomic replacement (`os.replace`). Direct in-place truncation writes that risk 0-byte files on power cut are strictly prohibited.
   2. **Incremental Transaction Journaling (WAL)**: Batch modifications must record operations incrementally into persistent storage as each operation safely completes, guaranteeing that an interrupted batch leaves an accurate, reversible trail up to the exact moment of failure.
@@ -158,6 +179,7 @@
 
 ### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
 - **Concept**: Every code modification, new feature, bug fix, or refactoring must be accompanied by automated unit or integration tests wherever technically feasible. Before finalizing any task, the full automated test suite must be executed and confirmed passing to guarantee zero regressions.
+- **Invariant**: 100% test pass gate (`python -m unittest discover tests`); fast deterministic isolated unit tests before staging/committing.
 - **Rules**:
   1. **Test-Backed Changes**: Any new feature, service method, model, or bug fix must include dedicated unit tests in `tests/`.
   2. **Zero-Regression Gate**: The complete test suite (`python -m unittest discover tests` or project test command) must be executed and pass with 100% success before staging and committing.
@@ -169,6 +191,7 @@
 
 ### PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
 - **Concept**: Synthetic headless unit tests in idealized vacuums fail to detect real-world interaction bugs. The AI assistant must interactively execute and operate what it builds across domain surfaces (UI event loops, CLI subshells, web dev servers, or backend APIs) coupled with chaos fuzzing and zero-blast-radius sandboxing.
+- **Invariant**: Universal operational dogfooding (pump GUI event loop / test CLI / check DOM / API calls); zero-blast-radius test sandbox; terse reporting (<15 lines).
 - **Rules**:
   1. **Domain-Specific Interactive Dogfooding**:
      - *Desktop GUI*: Spawns the live window in-process, pumps the event loop, invokes buttons, traverses tabs, stress-tests mid-operation window destruction, and mechanically traps unhandled callback exceptions.
@@ -188,6 +211,7 @@
 
 ### PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
 - **Concept**: The repository must maintain an active, structured, and modular codebase knowledge base in `knowledge/`. Every AI assistant interacting with this codebase must consult the knowledge base for deep architectural context and systematically update it after any architectural, service, model, or UI change to eliminate knowledge drift.
+- **Invariant**: Canonical `knowledge/` sync; auto-update architecture/decisions/codebase map on change; `scripts/update_knowledge_base.py`.
 - **Rules**:
   1. **Canonical Structure**: The knowledge base must reside in `knowledge/` with modular documentation (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`).
   2. **Mandatory Sync After Every Change**: Whenever classes, functions, architectural boundaries, or data models are added, modified, or refactored, the relevant knowledge base files must be updated immediately in the same task.
@@ -198,10 +222,12 @@
 
 ### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
 - **Concept**: Principles can and will be added as the project evolves. Whenever any principle is added, updated, or revised, all AI guideline documents across the repository must be automatically synchronized to maintain absolute consistency.
+- **Invariant**: Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap); schema compliance.
 - **Rules**:
   1. **Canonical Schema**: Any new principle must follow the standard schema:
      - `PRINCIPLE-XXX: [Title]`
      - **Concept**: High-level explanation.
+     - **Invariant**: Dense mechanical formula and anchor pointer.
      - **Rules**: Concrete, testable requirements.
   2. **Automated Cross-AI Synchronization**: Whenever principles change, the AI MUST immediately update all guideline targets across the repository:
      - `AGENTS.md` (Master AI specification)
@@ -219,6 +245,7 @@
 
 ### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
 - **Concept**: AI must maintain an active, clean, and reliable Git trail without requiring manual commit reminders from the user.
+- **Invariant**: Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + git push upon verified task completion.
 - **Rules**:
   1. **Automatic Commits**: After completing any meaningful task, feature implementation, refactoring, or documentation update, the AI must automatically stage and commit the changes.
   2. **Conventional Commits**: Commit messages must follow the Conventional Commits format (`feat(...)`, `fix(...)`, `refactor(...)`, `docs(...)`, `chore(...)`) with clear, descriptive explanations.

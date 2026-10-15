@@ -81,7 +81,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier rule disclosure; strict prompt context budget (<1,500 tokens); zero instruction bloat. |
+| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,500 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
 | **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Chronological prompt & rule sequencing matching task execution lifecycle; primacy weighting. |
 | **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Read-before-write invariant; verify disk symbols, definitions, and schemas before coding. |
 | **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Context anchor protocol; externalized working memory on disk; slice viewing to protect context window. |

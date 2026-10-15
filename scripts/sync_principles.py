@@ -16,15 +16,27 @@ AGENTS_MD = ROOT_DIR / "AGENTS.md"
 
 def parse_principles(agents_file: Path):
     content = agents_file.read_text(encoding="utf-8")
-    # Match principles: ### PRINCIPLE-XXX: Title
-    pattern = r"### (PRINCIPLE-\d+):\s*([^\n]+)\n- \*\*Concept\*\*:\s*([^\n]+)"
-    matches = re.findall(pattern, content)
+    pattern = r"### (PRINCIPLE-\d+):\s*([^\n]+)"
+    matches = list(re.finditer(pattern, content))
     principles = []
-    for pid, title, concept in matches:
+    for i, match in enumerate(matches):
+        pid = match.group(1).strip()
+        title = match.group(2).strip()
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        block = content[start:end]
+
+        concept_match = re.search(r"- \*\*Concept\*\*:\s*([^\n]+)", block)
+        invariant_match = re.search(r"- \*\*Invariant\*\*:\s*([^\n]+)", block)
+
+        concept = concept_match.group(1).strip() if concept_match else ""
+        invariant = invariant_match.group(1).strip() if invariant_match else concept
+
         principles.append({
-            "id": pid.strip(),
-            "title": title.strip(),
-            "concept": concept.strip()
+            "id": pid,
+            "title": title,
+            "concept": concept,
+            "invariant": invariant,
         })
     return principles
 
@@ -34,12 +46,15 @@ def generate_gemini_content(principles):
         "# AI Guidelines & Project Principles",
         "",
         "See full specification in [AGENTS.md](AGENTS.md) and [GUIDELINES.md](GUIDELINES.md).",
+        "Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
         "",
-        "## Core Principles Summary:"
+        "## Core Principles Summary (Tier 1 Invariants):"
     ]
     for i, p in enumerate(principles, 1):
+        summary = p.get("invariant") or p.get("concept")
+        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {p['concept']}")
+        lines.append(f"   - {summary} {anchor}")
     lines.append("")
     return "\n".join(lines)
 
@@ -52,12 +67,15 @@ def generate_agents_rule_content(principles):
         "",
         "> **MANDATORY FOR ALL AI AGENTS:**",
         "> Strictly follow the core principles defined in [AGENTS.md](../../AGENTS.md) and [GUIDELINES.md](../../GUIDELINES.md).",
+        "> Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
         "",
-        "## Core Principles:"
+        "## Core Principles (Tier 1 Invariants):"
     ]
     for i, p in enumerate(principles, 1):
+        summary = p.get("invariant") or p.get("concept")
+        anchor = f"[GUIDELINES.md](../../GUIDELINES.md#{p['id'].lower()})"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {p['concept']}")
+        lines.append(f"   - {summary} {anchor}")
     lines.append("")
     return "\n".join(lines)
 
@@ -68,12 +86,15 @@ def generate_claude_content(principles):
         "",
         "> **MANDATORY FOR CLAUDE CODE & CLAUDE ASSISTANTS:**",
         "> Strictly follow all principles and guidelines defined in [AGENTS.md](AGENTS.md) and [GUIDELINES.md](GUIDELINES.md).",
+        "> Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
         "",
-        "## Core Principles:"
+        "## Core Principles (Tier 1 Invariants):"
     ]
     for i, p in enumerate(principles, 1):
+        summary = p.get("invariant") or p.get("concept")
+        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {p['concept']}")
+        lines.append(f"   - {summary} {anchor}")
     lines.append("")
     return "\n".join(lines)
 
@@ -83,12 +104,15 @@ def generate_cursorrules_content(principles):
         "# Cursor AI Assistant Guidelines",
         "",
         "Strictly read, respect, and enforce all principles defined in AGENTS.md and GUIDELINES.md.",
+        "Deterministic Grep Anchor: Query='### PRINCIPLE-XXX:' in GUIDELINES.md.",
         "",
-        "## Core Principles Summary:"
+        "## Core Principles Summary (Tier 1 Invariants):"
     ]
     for i, p in enumerate(principles, 1):
+        summary = p.get("invariant") or p.get("concept")
+        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. {p['id']}: {p['title']}")
-        lines.append(f"   - {p['concept']}")
+        lines.append(f"   - {summary} {anchor}")
     lines.append("")
     return "\n".join(lines)
 
@@ -98,12 +122,15 @@ def generate_copilot_content(principles):
         "# GitHub Copilot Instructions",
         "",
         "All GitHub Copilot interactions in this repository must align with the architectural rules in `AGENTS.md` and `GUIDELINES.md`.",
+        "Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
         "",
-        "## Core Principles Summary:"
+        "## Core Principles Summary (Tier 1 Invariants):"
     ]
     for i, p in enumerate(principles, 1):
+        summary = p.get("invariant") or p.get("concept")
+        anchor = f"[GUIDELINES.md#{p['id'].lower()}]"
         lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {p['concept']}")
+        lines.append(f"   - {summary} {anchor}")
     lines.append("")
     return "\n".join(lines)
 
