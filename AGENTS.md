@@ -37,13 +37,16 @@
 - **Invariant**: Monotonic 5-phase lifecycle execution gate (Phase 4 test pass required before Phase 5 delivery); adaptive task pathing (Query/Doc/Eng); immunity to late-stage user priming.
 - **Rules**:
   1. **Monotonic Execution Gating (Lock-Step Integrity)**: All engineering workflows must advance through the 5 lifecycle phases sequentially: Phase 1 (Meta-Governance & Grounding) $\rightarrow$ Phase 2 (Pre-Flight Orientation & Planning) $\rightarrow$ Phase 3 (Architecture & Lean Implementation) $\rightarrow$ Phase 4 (Operational Verification & Resilience) $\rightarrow$ Phase 5 (Living Documentation & Delivery). Phase 5 actions (commit, push, release) are mechanically illegal and locked until Phase 4 verification gates (tests, dogfooding) pass with 100% success.
-  2. **Adaptive Lifecycle Pathing (Scale to Task Scale)**: To keep development zero-friction, task execution adapts across 3 explicit operational tracks:
+  2. **Remediation Recoil Protocol (Phase 4 Failure)**: When Phase 4 verification fails (test breakage, build failure, or dogfood crash), monotonic forward progression pauses. The agent must recoil strictly to Phase 3 (for code defects) or Phase 2 (for architectural/assumption defects), fix the root cause, and re-run Phase 4. Modifying test assertions to mask regressions is strictly prohibited (Test Sanctity Invariant).
+  3. **Adaptive Lifecycle Pathing & Automatic Escalation**: To keep development zero-friction, task execution adapts across 3 explicit operational tracks:
      - *Track A (Query / Exploration)*: Questions, code explanations, or searches $\rightarrow$ Phase 1 (Grounding) $\rightarrow$ Direct Output (Phases 2–5 bypassed).
      - *Track B (Trivial / Documentation)*: Typo fixes, markdown tweaks, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget check.
      - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
-  3. **Immunity to Late-Stage User Priming**: When users issue urgent late-stage commands (e.g. *"commit right now"*, *"push immediately"*, *"skip tests"*), the AI must remain anchored to the lifecycle gate. Terminal delivery actions cannot be executed until required verification gates pass.
-  4. **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the top of prompts (primacy zone) where transformer attention is sharpest. Terminal delivery gates must reside strictly at the end.
-  5. **Continuous Sequence Audit**: Auto-sync tooling and automated tests must mechanically verify that all 18 principles are partitioned across the 5 lifecycle phases in strictly monotonic sequence without phase inversions.
+     - *Automatic Track Escalation*: If any Track A or Track B task mutates executable code, data schemas, or dependency configs, it must instantly escalate to Track C, unlocking mandatory Phase 2 impact planning and Phase 4 regression gates.
+  4. **Compaction Phase Resumption**: In multi-turn sessions, the active phase number (1 through 5) must be recorded in working memory (`.agents/task_ledger.json`). Upon conversation compaction or cold restart, the agent must orient against the ledger to resume execution at the exact interrupted phase rather than losing state.
+  5. **Immunity to Late-Stage User Priming**: When users issue urgent late-stage commands (e.g. *"commit right now"*, *"push immediately"*, *"skip tests"*), the AI must remain anchored to the lifecycle gate. Terminal delivery actions cannot be executed until required verification gates pass.
+  6. **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the top of prompts (primacy zone) where transformer attention is sharpest. Terminal delivery gates must reside strictly at the end.
+  7. **Continuous Sequence Audit**: Auto-sync tooling and automated tests must mechanically verify that all 18 principles are partitioned across the 5 lifecycle phases in strictly monotonic sequence without phase inversions.
 
 ---
 

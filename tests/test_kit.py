@@ -124,13 +124,17 @@ class TestDisruptionRecovery(unittest.TestCase):
         )
         ledger = load_ledger(self.ledger_file)
         self.assertEqual(ledger["active_task"]["task_id"], "task_abc")
+        self.assertEqual(ledger["active_task"]["active_phase"], 3)
         self.assertEqual(len(ledger["checkpoints"]), 1)
+        self.assertEqual(ledger["checkpoints"][0]["phase_num"], 3)
         self.assertEqual(ledger["checkpoints"][0]["description"], "Created service layer")
 
         mark_task_completed("task_abc", ledger_file=self.ledger_file)
         completed_ledger = load_ledger(self.ledger_file)
         self.assertEqual(completed_ledger["active_task"]["status"], "completed")
+        self.assertEqual(completed_ledger["active_task"]["active_phase"], 5)
         self.assertEqual(completed_ledger["checkpoints"][-1]["phase"], "completed")
+        self.assertEqual(completed_ledger["checkpoints"][-1]["phase_num"], 5)
 
 
 

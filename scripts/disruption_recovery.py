@@ -85,6 +85,37 @@ def save_ledger(ledger: Dict[str, Any], ledger_file: Optional[Path] = None) -> N
     atomic_write_json(path, ledger)
 
 
+PHASE_MAPPING = {
+    "phase 1": 1,
+    "grounding": 1,
+    "phase 2": 2,
+    "orientation": 2,
+    "planning": 2,
+    "phase 3": 3,
+    "architecture": 3,
+    "implementation": 3,
+    "phase 4": 4,
+    "verification": 4,
+    "testing": 4,
+    "dogfooding": 4,
+    "phase 5": 5,
+    "delivery": 5,
+    "sync": 5,
+    "completed": 5,
+}
+
+
+def resolve_phase_num(phase: str, explicit_num: Optional[int] = None) -> int:
+    """Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002)."""
+    if explicit_num is not None and 1 <= explicit_num <= 5:
+        return explicit_num
+    normalized = phase.strip().lower()
+    for key, num in PHASE_MAPPING.items():
+        if key in normalized:
+            return num
+    return 1
+
+
 def record_checkpoint(
     task_id: str,
     phase: str,
@@ -92,15 +123,18 @@ def record_checkpoint(
     files_affected: Optional[List[str]] = None,
     status: str = "in_progress",
     ledger_file: Optional[Path] = None,
+    phase_num: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-006).
-    Ensures that an electricity cut leaves an exact recovery record.
+    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006).
+    Tracks active_phase to allow instant phase-accurate resumption after conversation compaction.
     """
+    resolved_phase = resolve_phase_num(phase, phase_num)
     ledger = load_ledger(ledger_file)
     checkpoint_entry = {
         "task_id": task_id,
         "phase": phase,
+        "phase_num": resolved_phase,
         "description": description,
         "files_affected": [str(f) for f in (files_affected or [])],
         "status": status,
@@ -111,6 +145,7 @@ def record_checkpoint(
     ledger["active_task"] = {
         "task_id": task_id,
         "last_phase": phase,
+        "active_phase": resolved_phase,
         "status": status,
         "updated_at": checkpoint_entry["timestamp"],
     }
@@ -124,12 +159,14 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> Non
     ledger = load_ledger(ledger_file)
     if ledger.get("active_task", {}).get("task_id") == task_id:
         ledger["active_task"]["status"] = "completed"
+        ledger["active_task"]["active_phase"] = 5
         ledger["active_task"]["completed_at"] = time.time()
-    
+
     # Also record completion checkpoint
     ledger.setdefault("checkpoints", []).append({
         "task_id": task_id,
         "phase": "completed",
+        "phase_num": 5,
         "description": f"Task '{task_id}' completed successfully.",
         "status": "completed",
         "timestamp": time.time(),

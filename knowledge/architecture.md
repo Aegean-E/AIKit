@@ -17,16 +17,22 @@ The system enforces strict chronological ordering and operational execution gati
 4. **Phase 4: Operational Verification & Resilience**: Atomic JSON mutations (`fsync` + `replace`), 100% automated test pass gate, and interactive dogfooding inside ephemeral sandboxes.
 5. **Phase 5: Living Synchronization & Delivery**: Active codebase AST synchronization in `knowledge/`, automated cross-IDE rule synchronization, and conventional commit/push workflow.
 
-### 🔒 Monotonic Operational Execution Gate
+### 🔒 Monotonic Operational Execution Gate & Remediation Recoil
 - Workflows must advance through the 5 phases in strict sequential order.
 - Phase 5 delivery actions (staging, committing, pushing, releasing) are **mechanically locked** until Phase 4 verification gates (automated test suite, operational dogfooding) pass with 100% success.
+- **Remediation Recoil Protocol**: When Phase 4 verification fails (test breakage, build failure, or dogfood crash), monotonic forward progression pauses. The agent recoils strictly to Phase 3 (code defects) or Phase 2 (architectural/assumption defects), fixes the root cause, and re-executes Phase 4. Modifying test assertions to mask regressions is strictly prohibited (Test Sanctity Invariant).
 - **Immunity to Late-Stage User Priming**: When users issue urgent conversational commands to bypass testing (e.g. *"commit right now"*, *"push immediately"*), the AI remains anchored to the lifecycle gate. Terminal delivery actions cannot be executed until required verification gates pass.
 
-### ⚡ Adaptive Lifecycle Pathing (Scale to Task Scale)
+### ⚡ Adaptive Lifecycle Pathing & Automatic Track Escalation
 To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit operational tracks:
 - **Track A (Query / Exploration)**: Questions, code explanations, or searches $\rightarrow$ Phase 1 (Grounding) $\rightarrow$ Direct Output (Phases 2–5 bypassed).
 - **Track B (Trivial / Documentation)**: Typo fixes, markdown tweaks, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget checks.
 - **Track C (Engineering / Feature / Refactor)**: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
+- **Automatic Track Escalation**: If any Track A or Track B task mutates executable source code, schemas, or dependencies, the task automatically escalates to Track C, unlocking mandatory Phase 2 planning and Phase 4 regression gates.
+
+### 🔄 Compaction Phase Resumption
+- In multi-turn sessions, the active phase number (`active_phase: 1..5`) is recorded directly in `.agents/task_ledger.json` alongside task checkpoints.
+- Upon conversation compaction or cold restart, the agent orients against the ledger to resume execution at the exact interrupted phase rather than losing state or skipping ahead.
 
 ---
 

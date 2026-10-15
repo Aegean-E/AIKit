@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `19`
-- **Total Source Lines**: `900`
+- **Total Functions / Methods**: `20`
+- **Total Source Lines**: `941`
 
 ---
 
@@ -18,14 +18,15 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `255` lines (`9381` bytes)
+**Size**: `292` lines (`10409` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
 - `def atomic_write_json(file_path, data)` - *Atomically write JSON data using fsync and temporary replacement (PRINCIPLE-013).*
 - `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-013).*
 - `def save_ledger(ledger, ledger_file)` - *Save the task ledger atomically to disk.*
-- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-006).*
+- `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
+- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger.*
 - `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
@@ -64,7 +65,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `185` lines (`7696` bytes)
+**Size**: `189` lines (`7985` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

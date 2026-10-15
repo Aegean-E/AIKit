@@ -11,7 +11,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-001](#principle-001-progressive-rule-disclosure--governance-frugality-zero-instruction-bloat)** | Progressive Disclosure & Lean Rules | Two-tier rule disclosure, strict prompt token budget (<1,500 tokens), and zero instruction bloat. |
-| **[PRINCIPLE-002](#principle-002-lifecycle-aligned-instruction-ordering--attentional-priming-cognitive-flow-invariant)** | Lifecycle-Aligned Instruction Ordering | Chronological prompt & rule sequencing matching task execution lifecycle; primacy weighting. |
+| **[PRINCIPLE-002](#principle-002-lifecycle-aligned-instruction-ordering--attentional-priming-cognitive-flow-invariant)** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate, remediation recoil, adaptive pathing, and late-stage priming immunity. |
 | **[PRINCIPLE-003](#principle-003-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Read-before-write invariant, verifying disk symbols, and deterministic AST verification. |
 | **[PRINCIPLE-004](#principle-004-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Context anchor protocol, continuous checklist re-anchoring, and ledger self-orientation. |
 
@@ -71,13 +71,16 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
 
 ### PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)
-- **Problem**: Arbitrary principle ordering causes cognitive phase confusion, while passive chronological text fails to prevent agents from skipping verification or yielding to late-stage user pressure ("push right now!"). Furthermore, forcing heavy multi-phase ceremonies on trivial queries destroys usability.
+- **Problem**: Arbitrary principle ordering causes cognitive phase confusion, while passive chronological text fails to prevent agents from skipping verification, cheating tests on failure, or yielding to late-stage user pressure ("push right now!"). Furthermore, forcing heavy multi-phase ceremonies on trivial queries destroys usability.
 - **Guideline**:
   - **Monotonic Execution Gating (Lock-Step Integrity)**: Workflows must advance strictly along the 5 lifecycle phases: Meta-Governance $\rightarrow$ Pre-Flight Orientation $\rightarrow$ Architecture & Implementation $\rightarrow$ Verification & Resilience $\rightarrow$ Living Sync & Delivery. Phase 5 delivery actions (git commit, push, PR) are mechanically locked until Phase 4 verification gates (automated unit tests, operational dogfooding) pass with 100% success.
-  - **Adaptive Lifecycle Pathing (Scale to Task Scale)**: To keep development fast and frictionless, execution adapts across 3 explicit operational tracks:
+  - **Remediation Recoil Protocol (Phase 4 Failure)**: When Phase 4 verification breaks, forward progression pauses immediately. The agent recoils strictly to Phase 3 (for code defects) or Phase 2 (for architectural/assumption defects), fixes the root cause, and re-executes Phase 4. Modifying test assertions to mask regressions is strictly prohibited (Test Sanctity Invariant).
+  - **Adaptive Lifecycle Pathing & Automatic Escalation**: To keep development fast and frictionless, execution adapts across 3 explicit operational tracks:
     - *Track A (Query / Exploration)*: Information retrieval and code explanation $\rightarrow$ Phase 1 Grounding $\rightarrow$ direct answer (Phases 2–5 bypassed).
     - *Track B (Trivial / Documentation)*: Typo fixes, doc edits, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget check.
-    - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase monotonic sequence with mandatory impact gates, regression tests, and living sync.
+    - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
+    - *Automatic Track Escalation*: If any Track A or Track B task mutates executable source code, schemas, or dependencies, the task automatically escalates to Track C, unlocking mandatory Phase 2 planning and Phase 4 regression gates.
+  - **Compaction Phase Resumption**: In multi-turn sessions, the active phase number (1 through 5) must be recorded in working memory (`.agents/task_ledger.json`). Upon conversation compaction or cold restart, the agent must orient against the ledger to resume execution at the exact interrupted phase rather than losing state.
   - **Immunity to Late-Stage User Priming**: When users issue urgent conversational commands to bypass testing (e.g., *"commit right now"*, *"push immediately"*), the AI must remain anchored to the lifecycle gate: delivery actions are strictly blocked until verification succeeds.
   - **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the primacy zone (top of context) where transformer attention is sharpest. Terminal delivery actions must reside strictly at the end.
   - **Continuous Sequence Audit**: Auto-sync tooling and automated test suites mechanically parse Phase headers and guarantee that principles maintain strictly monotonic lifecycle phase progression.
