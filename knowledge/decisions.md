@@ -581,3 +581,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Mechanically prevents stale codebase maps via automated tests; eliminates contradictory documentation through SSOT partitioning; guarantees backward-compatible schema evolutions.
   - *Trade-offs*: Requires running `scripts/update_knowledge_base.py` whenever source code changes to satisfy test assertions.
 
+### ADR-036: Deterministic Sync Freshness Gate, Strict Principle Schema, and Tier 1B Domain Rules Injection (PRINCIPLE-017)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Unit tests verified file existence and token budgets, but did not assert that target IDE prompt files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, etc.) were bit-for-bit fresh against `AGENTS.md`, allowing stale prompt files to be committed.
+  2. `parse_principles()` permitted missing `Concept`, `Invariant`, or `Rules` sections, risking incomplete prompt injections.
+  3. Desynchronization between `AGENTS.md`, `GUIDELINES.md`, and `README.md` was undetected by automated tooling.
+  4. External projects adopting AIKit had no automated mechanism to inject custom project domain rules (Tier 1B) into generated IDE rule files without manually editing multiple generated files.
+- **Decision**:
+  1. Enforce **Deterministic Auto-Sync Freshness Gate**: Unit tests must assert that `sync_all(check_only=True)` returns 0 mismatches against on-disk files.
+  2. Enforce **Strict Principle Schema Validation**: `parse_principles()` must validate non-empty Title, Concept, Invariant, and numbered Rules, halting on any omission.
+  3. Enforce **Triad Documentation Consistency Shield**: Programmatically verify that all principles in `AGENTS.md` are present in `GUIDELINES.md` and `README.md`.
+  4. Enforce **Dynamic Lifecycle Phase Tracking**: Replace hardcoded ranges with dynamic header-driven phase mapping, enforcing monotonic execution ($Phase_i \ge Phase_{i-1}$).
+  5. Enforce **Tier 1B Domain Rules Extension Slot**: If `.agents/rules/domain.md` exists and satisfies budget constraints (<1,200 chars / ~300 tokens), `sync_principles.py` automatically injects it under `## Project Domain Invariants (Tier 1B)` in all generated targets.
+- **Consequences**:
+  - *Positive*: Mechanically shields all IDE environments from rule drift; guarantees principle schema completeness; enables zero-friction domain customization for adopter repositories.
+  - *Trade-offs*: Modifications to `AGENTS.md` require running `scripts/sync_principles.py` before test assertions pass.
+
+

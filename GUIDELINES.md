@@ -42,7 +42,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active `knowledge/` sync, atomic code-doc pairing, append-only ADRs, AST gating, and freshness check. |
-| **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible protocol; automatically synchronizes all AI guidelines across the repository. |
+| **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
 | **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Automated conventional commits and pushes upon task completion. |
 
 ---
@@ -252,11 +252,13 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Slice-View Heading Hygiene & Link Integrity Shield**: Documents must use structured section headings (`##`, `###`) enabling targeted single-call grep slice-viewing (`view_file` <100 lines). `scripts/update_knowledge_base.py` mechanically validates that all relative file links in `knowledge/INDEX.md` resolve to physical disk paths.
 
 ### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
-- **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats.
+- **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats; missing schemas dilute rule precision; and un-injected domain rules force adopters to manually maintain multiple files.
 - **Guideline**:
-  - When new architectural patterns or project requirements emerge, register a new principle following the `PRINCIPLE-XXX` template.
-  - **Mandatory Auto-Sync**: Modifying or adding any principle must automatically update all AI guideline targets (`AGENTS.md`, `GUIDELINES.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`, and `README.md`).
-  - Use `scripts/sync_principles.py` to programmatically validate and synchronize all targets.
+  - **Canonical Schema & Strict Validation**: Every principle must follow the strict 4-section schema: `### PRINCIPLE-XXX: [Title]`, `- **Concept**:`, `- **Invariant**:`, and `- **Rules**:` with numbered testable constraints. `scripts/sync_principles.py` validates schema completeness and halts on missing sections.
+  - **Mandatory Cross-IDE Auto-Sync**: Modifying or adding any principle must automatically update all AI guideline targets (`AGENTS.md`, `GUIDELINES.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`, and `README.md`) via atomic writes (`fsync` + `os.replace`).
+  - **Deterministic Freshness Test Gate**: Automated unit tests in `tests/test_kit.py` mechanically assert that all on-disk IDE targets are 100% in sync with `AGENTS.md` before changes can be shipped.
+  - **Triad Documentation Consistency Shield**: Programmatically validates that principle IDs and titles match across `AGENTS.md`, `GUIDELINES.md`, and `README.md`.
+  - **Tier 1B Domain Rules Extension**: Adopter projects can define custom domain rules in `.agents/rules/domain.md` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath universal principles in all generated targets.
 
 ### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
 - **Problem**: Uncommitted work leads to lost progress, uncoordinated branches, and accidental regressions.

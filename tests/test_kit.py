@@ -16,7 +16,14 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from scripts.sync_principles import parse_principles, sync_all, AGENTS_MD
+from scripts.sync_principles import (
+    parse_principles,
+    sync_all,
+    validate_triad_consistency,
+    load_tier_1b_domain_rules,
+    append_domain_rules,
+    AGENTS_MD,
+)
 from scripts.disruption_recovery import (
     load_ledger,
     save_ledger,
@@ -177,6 +184,85 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("strict ast syntax validation", p16["invariant"].lower())
         self.assertIn("link integrity shield", p16["invariant"].lower())
         self.assertIn("update_knowledge_base.py", p16["invariant"].lower())
+
+    def test_principle_017_auto_sync_capsule(self):
+        # Enforces PRINCIPLE-017: verified invariant capsule with automated sync, budget check, schema compliance, freshness test gate, and Tier 1B domain rules
+        principles = parse_principles(AGENTS_MD)
+        p17 = next((p for p in principles if p["id"] == "PRINCIPLE-017"), None)
+        self.assertIsNotNone(p17)
+        self.assertIn("sync_principles.py", p17["invariant"].lower())
+        self.assertIn("context budget check", p17["invariant"].lower())
+        self.assertIn("schema compliance", p17["invariant"].lower())
+        self.assertIn("freshness test gate", p17["invariant"].lower())
+        self.assertIn("tier 1b domain rules", p17["invariant"].lower())
+
+    def test_guideline_targets_freshness_gate(self):
+        # Enforces PRINCIPLE-017: all 5 IDE prompt files must be 100% in sync with AGENTS.md
+        mismatches = sync_all(check_only=True, exit_on_mismatch=False)
+        self.assertEqual(
+            mismatches,
+            0,
+            f"{mismatches} AI guideline targets are out of sync with AGENTS.md. "
+            f"Run 'py scripts/sync_principles.py' to synchronize."
+        )
+
+    def test_triad_consistency_gate(self):
+        # Enforces PRINCIPLE-017: AGENTS.md, GUIDELINES.md, and README.md must have 100% principle parity
+        principles = parse_principles(AGENTS_MD)
+        errors = validate_triad_consistency(principles)
+        self.assertEqual(errors, [], f"Triad documentation drift detected: {errors}")
+
+    def test_principle_schema_strictness(self):
+        # Enforces PRINCIPLE-017: principles with missing schema components must raise ValueError
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_schema_"))
+        try:
+            # Missing concept
+            bad_doc = temp_dir / "bad1.md"
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Invariant**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                parse_principles(bad_doc, strict=True)
+            self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
+
+            # Missing invariant
+            bad_doc = temp_dir / "bad2.md"
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Concept**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                parse_principles(bad_doc, strict=True)
+            self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
+
+            # Missing rules
+            bad_doc = temp_dir / "bad3.md"
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Concept**: Test\n- **Invariant**: Test\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                parse_principles(bad_doc, strict=True)
+            self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_tier_1b_domain_rules_injection(self):
+        # Enforces PRINCIPLE-001 & PRINCIPLE-017: Tier 1B domain rules can be loaded and appended within budget
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_domain_"))
+        try:
+            domain_file = temp_dir / "domain.md"
+            domain_file.write_text("- Framework: React 19\n- Database: SQLite\n- Strict linting enabled\n", encoding="utf-8")
+            loaded = load_tier_1b_domain_rules(domain_file)
+            self.assertIn("React 19", loaded)
+
+            # Test appending
+            lines = ["# Title", ""]
+            append_domain_rules(lines, loaded)
+            content = "\n".join(lines)
+            self.assertIn("Project Domain Invariants (Tier 1B)", content)
+            self.assertIn("React 19", content)
+
+            # Test budget ceiling overflow (>1200 chars)
+            oversized = "x" * 1205
+            domain_file.write_text(oversized, encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                load_tier_1b_domain_rules(domain_file)
+            self.assertIn("[PRINCIPLE-001 BUDGET EXCEEDED]", str(ctx.exception))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,

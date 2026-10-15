@@ -204,4 +204,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Automated Link Integrity Shield**: Mechanically validates that all relative file links cited across `knowledge/INDEX.md` physically exist on disk, preventing broken documentation references.
 - **Language-Agnostic Knowledge Layout**: The 7-document architecture represents a universal engineering standard extensible to any polyglot repository (TypeScript, Go, Rust, Python).
 
+---
+
+## 🔄 Living Principles & Cross-IDE Governance Architecture (PRINCIPLE-017)
+- **Multi-IDE Target Synchronization**: Principles defined in `AGENTS.md` are automatically compiled and synchronized to all active AI assistant environments (`GEMINI.md`, `.agents/rules/principles.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`) using atomic buffer replacements (`fsync` + `os.replace`).
+- **Canonical Schema Validation**: Every principle must strictly declare Title, Concept, Invariant capsule, and numbered Rules; `scripts/sync_principles.py` validates schema completeness and halts on missing sections.
+- **Deterministic Auto-Sync Freshness Gate**: Automated unit tests assert `sync_all(check_only=True) == 0`, preventing any pull request or commit from shipping with stale or desynchronized IDE rule files.
+- **Triad Documentation Consistency Shield**: Programmatically verifies that all principle IDs and titles in `AGENTS.md` match across `GUIDELINES.md` and `README.md`.
+- **Dynamic Monotonic Phase Progression**: Tracks lifecycle phases (Phases 1 through 5) dynamically without rigid range bounds, ensuring non-decreasing execution order ($Phase_i \ge Phase_{i-1}$).
+- **Tier 1B Domain Rules Injection**: Allows adopter repositories to define project-specific conventions in `.agents/rules/domain.md` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath the universal principles in all generated targets without modifying core tool code.
+
+
 

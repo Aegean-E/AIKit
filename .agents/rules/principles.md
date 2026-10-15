@@ -40,6 +40,6 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 16. **PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization**:
    - Canonical `knowledge/` sync; atomic code-and-doc pairing (zero drift); monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. [GUIDELINES.md](../../GUIDELINES.md#principle-016)
 17. **PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)**:
-   - Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap); schema compliance. [GUIDELINES.md](../../GUIDELINES.md#principle-017)
+   - Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap); schema compliance; freshness test gate; Tier 1B domain rules injection. [GUIDELINES.md](../../GUIDELINES.md#principle-017)
 18. **PRINCIPLE-018: Automatic Git Workflow (Commit & Push)**:
    - Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + git push upon verified task completion. [GUIDELINES.md](../../GUIDELINES.md#principle-018)
