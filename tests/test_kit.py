@@ -141,15 +141,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("explicit micro-staging", p6["invariant"].lower())
 
     def test_principle_014_regression_shield_capsule(self):
-        # Enforces PRINCIPLE-014: verified invariant capsule with 100% test pass gate, sub-second execution, test sanctity, hermetic isolation, and self-explaining diagnostics
+        # Enforces PRINCIPLE-014: verified invariant capsule with 100% test pass gate, sub-second execution, test sanctity, RAII fixture reversion, anti-tautology, and negative path coverage
         principles = parse_principles(AGENTS_MD)
         p14 = next((p for p in principles if p["id"] == "PRINCIPLE-014"), None)
         self.assertIsNotNone(p14)
         self.assertIn("100% test pass gate", p14["invariant"].lower())
         self.assertIn("<1s", p14["invariant"].lower())
         self.assertIn("test sanctity invariant", p14["invariant"].lower())
-        self.assertIn("hermetic isolation", p14["invariant"].lower())
-        self.assertIn("self-explaining diagnostics", p14["invariant"].lower())
+        self.assertIn("raii fixture reversion", p14["invariant"].lower())
+        self.assertIn("anti-tautological observable contracts", p14["invariant"].lower())
+        self.assertIn("hostile & negative path coverage", p14["invariant"].lower())
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,

@@ -490,3 +490,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Guarantees that AI agents fix real defects rather than weakening tests; provides sub-second deterministic feedback; keeps the working tree pristine; enables 1-turn defect localization.
   - *Trade-offs*: None; pure testing discipline.
+
+### ADR-031: RAII Fixture Reversion, Anti-Tautological Observable Contracts, and Red-Green Defect Pinning (PRINCIPLE-014 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Tests that modify global interpreter state (`os.environ`, `sys.argv`, logger levels, or singleton registries) without atomic cleanup cause order-dependent test failures (leaky fixtures), wasting agent turns on non-existent bugs.
+  2. Over-mocking internal helper methods creates tautological "mock echo" tests that achieve high line coverage while testing zero real domain logic, failing when internal implementations are refactored.
+  3. When resolving reported defects, agents often apply speculative fixes without first establishing a reproducible failing test, risking recurrent regressions.
+  4. Testing often ignores negative error-handling branches (`except` blocks, custom error types, exit codes, and diagnostic messages), causing production code to crash on malformed inputs.
+  5. Non-deterministic tests with unseeded pseudorandom data intermittently fail, eroding AI agent autonomy and prompting unnecessary code changes.
+- **Decision**:
+  1. Enforce **RAII Fixture Reversion (Anti-Pollution Invariant)**: Tests modifying global state (`os.environ`, `sys.argv`, singletons) must guarantee bit-for-bit restoration via `self.addCleanup()` or context managers, ensuring tests pass in any execution order.
+  2. Enforce **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, return values, state transitions, and exception boundaries rather than internal mock call counts (`assert_called_once`); prefer lightweight in-memory instances over excessive mocking.
+  3. Enforce **Red-Green Defect Pinning**: Before resolving a reported bug or defect, write a reproducing unit test that fails on the defect (Red), then verify that the fix makes it pass (Green).
+  4. Enforce **Hostile & Negative Path Parity**: Mandate coverage for negative and error paths (expected exception classes, exit codes, and user-facing diagnostic messages).
+  5. Enforce **Zero Flakiness Tolerance & Seed Pinning**: Tests using pseudorandom generation must pin their seeds (`random.seed(42)`). Flaky tests are treated as Sev-1 blocking defects.
+- **Consequences**:
+  - *Positive*: Eliminates order-dependent test flakiness; prevents tautological tests; guarantees that bug fixes are verified and permanently shielded against regressions; ensures error handling is thoroughly validated.
+  - *Trade-offs*: Requires disciplined test fixture teardown and explicit negative path test design.

@@ -113,9 +113,9 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 ## 🛡️ Automated Regression Shield & Hermetic Testing
 - **100% Test Pass Gate & Sub-Second Execution**: All modifications must pass the automated test suite with 100% success in under 1 second total ($T_{\text{suite}} < 1\text{s}$) prior to staging or committing (**PRINCIPLE-014**).
 - **Test Sanctity Invariant**: Test assertions represent immutable contractual truth. Regressions must be solved by repairing production logic; modifying assertions, skipping (`@unittest.skip`), or deleting tests to bypass gates is strictly prohibited.
-- **Hermetic Isolation & Zero Artifact Pollution**: All filesystem tests run inside isolated temporary sandboxes (`tempfile.TemporaryDirectory()`), leaving `git status` 100% clean with zero leaked artifacts or disk clutter.
-- **Self-Explaining Assertions & Diagnostics**: Assertions provide explicit contextual failure messages detailing expected vs. actual values to allow automated AI subagents to pinpoint defects in a single turn.
-- **Hostile Boundary Hardening**: Unit tests prioritize hostile inputs (empty strings, `None`, 0-byte files, boundary numbers, malformed types) rather than superficial happy-path line coverage.
+- **Pristine Working Tree & RAII Fixture Reversion**: All filesystem tests run inside isolated temporary sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global state (`os.environ`, `sys.argv`, singletons) guarantee complete teardown via `addCleanup()`, leaving `git status` bit-for-bit clean with zero leaked artifacts or polluted process state.
+- **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, return values, state transitions, and exception boundaries rather than internal mock call counts (`assert_called_once`), avoiding meaningless tautological tests.
+- **Red-Green Defect Pinning & Negative Path Coverage**: Reproduce bugs with failing tests first (Red) before fixing (Green). Prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme numbers, expected exceptions, and formatted diagnostic messages).
 
 ---
 

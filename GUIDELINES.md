@@ -35,7 +35,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-013](#principle-013-crash-resilience-state-atomicity--power-loss-recovery-fail-safe-operations)** | Crash Resilience & Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate (<1s), test sanctity (anti-weakening), hermetic fixtures, and diagnostics. |
+| **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate (<1s), test sanctity, RAII fixture reversion, anti-tautology, and negative paths. |
 | **[PRINCIPLE-015](#principle-015-universal-operational-dogfooding--chaos-verification-the-ai-must-use-what-it-builds)** | Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding, zero-blast-radius sandboxing, and chaos resilience. |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
@@ -216,14 +216,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Continuous Fault-Injection Verification**: Automated tests must inject 0-byte truncations, corrupted JSON streams, and lock collisions to guarantee 100% self-healing recovery.
 
 ### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
-- **Problem**: Code changes without tests break contractual contracts; AI agents frequently weaken or delete failing test assertions to force passing gates; slow, flaky, sleep-dependent tests stall feedback; and leaked test files pollute the working tree.
+- **Problem**: Code changes without tests break contractual contracts; AI agents frequently weaken or delete failing test assertions to force passing gates; shared-state pollution causes order-dependent flakiness; tautological mock echoes test nothing; and leaked test files pollute the working tree.
 - **Guideline**:
   - **Test-Backed Changes & Regression Shield**: Every code mutation, schema change, or bug fix must include dedicated unit tests in `tests/`; untested production logic is strictly prohibited.
   - **Test Sanctity Invariant (Anti-Regression Masking)**: Test assertions represent immutable contractual truth; fixing regressions by weakening, skipping (`@unittest.skip`), or deleting assertions is forbidden.
-  - **Hermetic Isolation & Zero Flakiness (<1s Gate)**: All unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), avoid real network calls, and prohibit `time.sleep()` in favor of mock clocks or deterministic ticks.
-  - **Pristine Working Tree Invariant (Zero Leaked Artifacts)**: File I/O tests must execute strictly within ephemeral sandboxes (`tempfile.TemporaryDirectory()`); running tests leaves `git status` bit-for-bit clean.
-  - **Self-Explaining Assertions & Diagnostics**: Assertions must provide explicit failure messages with expected vs. actual values to allow calling agents to localize defects in a single turn.
-  - **Hostile Boundary & Edge-Case Coverage**: Prioritize hostile boundary tests (empty inputs, `None`, 0-byte files, extreme values, malformed structures) over superficial happy-path line coverage.
+  - **Hermetic Isolation & Zero Flakiness (<1s Gate)**: All unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), avoid real network calls, pin random seeds (`random.seed(42)`), and prohibit `time.sleep()` in favor of mock clocks or deterministic ticks.
+  - **Pristine Working Tree & RAII Fixture Reversion**: File I/O tests must execute strictly within ephemeral sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global state (`os.environ`, `sys.argv`, singletons) must guarantee bit-for-bit restoration via `addCleanup()`; running tests leaves `git status` bit-for-bit clean.
+  - **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, return values, and state transitions; avoid over-mocking domain logic into meaningless echo tests.
+  - **Red-Green Defect Pinning & Negative Path Coverage**: Reproduce bugs with failing tests first (Red) before fixing (Green); prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme values, expected exceptions, and diagnostic messages).
 
 ### PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
 - **Problem**: Headless unit tests test components in an idealized vacuum with synthetic data, leaving real-world interaction bugs undetected (e.g. unhandled UI event loop callback errors, broken CLI signal handlers, routing failures, or malformed API responses).

@@ -239,14 +239,14 @@
 
 ### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
 - **Concept**: Automated tests form the immutable contract shield of the repository. Every code modification, new feature, bug fix, or refactoring must be accompanied by automated unit or integration tests. Under no circumstance may tests be weakened or deleted to force verification gates to pass.
-- **Invariant**: 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); hermetic isolation (zero leaked files); self-explaining diagnostics.
+- **Invariant**: 100% test pass gate (<1s sub-second execution); test sanctity invariant (anti-weakening); RAII fixture reversion (zero state leakage); anti-tautological observable contracts; hostile & negative path coverage.
 - **Rules**:
   1. **Test-Backed Changes & Regression Shield**: Every code modification, service layer, data schema, or bug fix must include dedicated unit tests in `tests/`. Adding untested production logic or leaving coverage gaps across critical paths is strictly prohibited.
   2. **Test Sanctity Invariant (Anti-Regression Masking)**: Existing test assertions represent immutable contractual truth. When a test fails after code changes, the AI must fix the production implementation to satisfy the contract. Weakening assertions (e.g. changing strict checks to `assertTrue(True)`), commenting out tests, deleting test methods, or applying `@unittest.skip` to force passes is strictly prohibited unless the user explicitly requested a breaking contract overhaul.
-  3. **Hermetic Isolation & Zero Flakiness (<1s Gate)**: Unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), run completely deterministically, and avoid external network calls (use mocks/fakes). Prohibit arbitrary wall-clock sleeps (`time.sleep()`); use mock time, deterministic clocks, or seeded pseudorandom generators.
-  4. **Pristine Working Tree Invariant (Zero Leaked Artifacts)**: File I/O tests must execute strictly within ephemeral temporary sandboxes (`tempfile.TemporaryDirectory()` or RAII context managers). Running the test suite must leave `git status --porcelain` completely clean with zero dangling test files, logs, or state artifacts left on disk.
-  5. **Self-Explaining Assertions & Diagnostic Precision**: Test assertions must provide explicit, descriptive failure messages containing actual vs. expected values, evaluated paths, and failure context. Precise diagnostics allow calling agents to pinpoint root causes in a single turn without exploratory guesswork.
-  6. **Hostile Boundary & Edge-Case Hardening**: Tests must prioritize boundary and hostile input verification (empty collections, `None` arguments, 0-byte files, schema variations, extreme numbers, malformed types) rather than superficial happy-path line coverage.
+  3. **Hermetic Isolation & Zero Flakiness (<1s Gate)**: Unit tests must execute in under 1 second total ($T_{\text{suite}} < 1\text{s}$), run completely deterministically, and avoid external network calls (use mocks/fakes). Prohibit arbitrary wall-clock sleeps (`time.sleep()`); use mock time, deterministic clocks, or seeded pseudorandom generators (`random.seed(42)`). Flaky tests are treated as blocking Sev-1 defects.
+  4. **Pristine Working Tree & RAII Fixture Reversion**: File I/O tests must execute strictly within ephemeral temporary sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global process state (`os.environ`, `sys.argv`, logger levels, or singletons) must guarantee bit-for-bit restoration via RAII context managers or `self.addCleanup()`. Running tests must leave `git status --porcelain` completely clean with zero leaked artifacts.
+  5. **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, state transitions, return payloads, and exception boundaries rather than internal private implementation details or mock call counts (`assert_called_once`). Avoid over-mocking domain logic into meaningless echo tests; prefer lightweight in-memory instances.
+  6. **Red-Green Defect Pinning & Hostile Negative Path Hardening**: Before resolving a reported bug or defect, write a reproducing unit test that fails on the defect (Red), then verify that the fix makes it pass (Green). Prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme values, malformed types, expected exception classes, and formatted diagnostic messages) over superficial happy-path coverage.
 
 ---
 
@@ -331,7 +331,7 @@
 - [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
-- [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with boundary cases and self-explaining assertions (**PRINCIPLE-014**)?
+- [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with zero-blast-radius ephemeral sandboxing for real execution (**PRINCIPLE-015**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-016**)?
 
@@ -349,7 +349,7 @@
 - [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
 - [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
 - [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
-- [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution** (**PRINCIPLE-014**)?
+- [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution and RAII fixture reversion** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed jail (**PRINCIPLE-015**)?
 - [ ] Has the **AI knowledge base in `knowledge/` been updated and verified** (**PRINCIPLE-016**)?
 - [ ] Have all **AI guideline files been automatically synchronized** if principles changed (**PRINCIPLE-017**)?
