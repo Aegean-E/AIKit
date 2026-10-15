@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `33`
-- **Total Source Lines**: `2131`
+- **Total Functions / Methods**: `34`
+- **Total Source Lines**: `2261`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `673` lines (`25996` bytes)
+**Size**: `739` lines (`28244` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -37,6 +37,7 @@
 - `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
+- `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
 
 ---
 
@@ -78,7 +79,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `769` lines (`38960` bytes)
+**Size**: `833` lines (`41933` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -93,6 +94,7 @@
   - Method `.test_principle_015_operational_dogfooding_capsule()`
   - Method `.test_principle_016_knowledge_base_capsule()`
   - Method `.test_principle_017_auto_sync_capsule()`
+  - Method `.test_principle_018_git_workflow_capsule()`
   - Method `.test_guideline_targets_freshness_gate()`
   - Method `.test_triad_consistency_gate()`
   - Method `.test_principle_schema_strictness()`
@@ -121,6 +123,8 @@
   - Method `.test_audit_and_resume_reports_with_impact_assessment()`
   - Method `.test_hierarchical_milestone_indexing()`
   - Method `.test_dynamic_re_decomposition_on_discovery()`
+  - Method `.test_conventional_commit_validation()`
+  - Method `.test_commit_validator_cli()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`

@@ -575,8 +575,74 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+VALID_COMMIT_TYPES = {
+    "feat",
+    "fix",
+    "refactor",
+    "docs",
+    "chore",
+    "test",
+    "perf",
+    "build",
+    "ci",
+}
+
+
+def validate_conventional_commit(message: str) -> Tuple[bool, str]:
+    """
+    Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).
+    Pattern: <type>[(<scope>)]: <description>
+    Optionally allows milestone prefix in description: [milestone N/M]
+    Returns (is_valid, reason).
+    """
+    if not message or not message.strip():
+        return False, "Commit message cannot be empty."
+
+    lines = message.strip().split("\n")
+    subject = lines[0].strip()
+
+    if len(subject) > 72:
+        return False, f"Subject line exceeds 72 characters ({len(subject)} chars)."
+
+    import re
+    pattern = r"^([a-z]+)(?:\(([a-zA-Z0-9_\-\./]+)\))?(!)?:\s+(.+)$"
+    match = re.match(pattern, subject)
+    if not match:
+        return False, "Message does not match Conventional Commits format: '<type>[(<scope>)]: <description>'."
+
+    ctype, scope, breaking, desc = match.groups()
+    if ctype not in VALID_COMMIT_TYPES:
+        allowed = ", ".join(sorted(VALID_COMMIT_TYPES))
+        return False, f"Invalid commit type '{ctype}'. Allowed types: {allowed}."
+
+    desc = desc.strip()
+    if not desc:
+        return False, "Commit description cannot be empty."
+
+    # Reject lazy anti-patterns
+    anti_patterns = {"wip", "update", "fix", "fixed", "changes", "stuff", "test"}
+    if desc.lower() in anti_patterns or desc.lower().rstrip(".") in anti_patterns:
+        return False, f"Description '{desc}' is too generic. Provide a descriptive explanation."
+
+    return True, "Valid conventional commit."
+
+
 if __name__ == "__main__":
-    if "--checkpoint" in sys.argv:
+    if "--validate-commit" in sys.argv:
+        idx = sys.argv.index("--validate-commit")
+        if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--"):
+            commit_msg = sys.argv[idx + 1]
+        else:
+            sys.stderr.write("Error: --validate-commit requires a commit message argument.\n")
+            sys.exit(1)
+        valid, reason = validate_conventional_commit(commit_msg)
+        if valid:
+            print(f"[OK] {reason}")
+            sys.exit(0)
+        else:
+            sys.stderr.write(f"[INVALID] {reason}\n")
+            sys.exit(1)
+    elif "--checkpoint" in sys.argv:
         idx = sys.argv.index("--checkpoint")
         task_id = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "task"
         

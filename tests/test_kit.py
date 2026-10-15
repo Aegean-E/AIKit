@@ -41,6 +41,7 @@ from scripts.disruption_recovery import (
     file_lock,
     check_disk_headroom,
     migrate_ledger_schema,
+    validate_conventional_commit,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -197,6 +198,18 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("schema compliance", p17["invariant"].lower())
         self.assertIn("freshness test gate", p17["invariant"].lower())
         self.assertIn("tier 1b domain rules", p17["invariant"].lower())
+
+    def test_principle_018_git_workflow_capsule(self):
+        # Enforces PRINCIPLE-018: verified invariant capsule with conventional commits, adaptive push, explicit staging, pre-commit triad, and non-destructive recoil
+        principles = parse_principles(AGENTS_MD)
+        p18 = next((p for p in principles if p["id"] == "PRINCIPLE-018"), None)
+        self.assertIsNotNone(p18)
+        self.assertIn("automatic conventional commits", p18["invariant"].lower())
+        self.assertIn("adaptive push", p18["invariant"].lower())
+        self.assertIn("explicit staging", p18["invariant"].lower())
+        self.assertIn("zero `git add .`", p18["invariant"].lower())
+        self.assertIn("pre-commit delivery triad", p18["invariant"].lower())
+        self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
         # Enforces PRINCIPLE-017: all 5 IDE prompt files must be 100% in sync with AGENTS.md
@@ -656,6 +669,57 @@ class TestDisruptionRecovery(unittest.TestCase):
         ledger = load_ledger(self.ledger_file)
         self.assertEqual(len(ledger["checkpoints"]), 4)
         self.assertIn("[milestone 3/3]", ledger["checkpoints"][-1]["description"])
+
+    def test_conventional_commit_validation(self):
+        # Enforces PRINCIPLE-018: conventional commit syntax validation with milestone support
+        valid_samples = [
+            "feat(principles): add Principle 18 git workflow",
+            "fix(auth): resolve token expiration bug",
+            "refactor(core): streamline AST parser",
+            "docs(readme): update quickstart guide",
+            "chore(deps): update test fixtures",
+            "test(kit): add regression test for recovery",
+            "feat(pipeline): [milestone 1/3] create initial schema",
+            "feat!: breaking change in public API contract",
+        ]
+        for msg in valid_samples:
+            valid, reason = validate_conventional_commit(msg)
+            self.assertTrue(valid, f"Expected '{msg}' to be valid, got: {reason}")
+
+        invalid_samples = [
+            "",
+            "   ",
+            "random commit message",
+            "feat: ",
+            "feat: wip",
+            "fix: update",
+            "unknown(core): something",
+            "feat: " + ("a" * 80),  # exceeds 72 chars
+        ]
+        for msg in invalid_samples:
+            valid, reason = validate_conventional_commit(msg)
+            self.assertFalse(valid, f"Expected '{msg}' to be invalid")
+
+    def test_commit_validator_cli(self):
+        # Enforces PRINCIPLE-018: CLI flag --validate-commit returns 0 on valid and 1 on invalid
+        import subprocess
+        # Valid
+        res_ok = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--validate-commit", "feat(cli): add valid flag"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res_ok.returncode, 0)
+        self.assertIn("[OK]", res_ok.stdout)
+
+        # Invalid
+        res_bad = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--validate-commit", "invalid commit"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res_bad.returncode, 1)
+        self.assertIn("[INVALID]", res_bad.stderr)
 
 
 

@@ -40,4 +40,4 @@
 17. **PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)**:
    - Automated cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (<8,000 chars cap, >7,200 char warning); schema compliance; freshness test gate; Tier 1B domain rules injection. [GUIDELINES.md#principle-017]
 18. **PRINCIPLE-018: Automatic Git Workflow (Commit & Push)**:
-   - Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + git push upon verified task completion. [GUIDELINES.md#principle-018]
+   - Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad; non-destructive recoil. [GUIDELINES.md#principle-018]

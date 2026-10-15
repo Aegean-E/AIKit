@@ -148,7 +148,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Modular `knowledge/` sync; atomic code-doc pairing; append-only ADRs; AST freshness gate; link shield. |
 | **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Multi-IDE rule sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
-| **PRINCIPLE-018** | Automatic Git Workflow | AI automatically stages, commits ([Conventional Commits](https://www.conventionalcommits.org/)), and pushes verified code changes upon task completion. |
+| **PRINCIPLE-018** | Automatic Git Workflow | Conventional Commits; explicit staging (zero blind add); pre-commit triad; adaptive push. |
 
 ---
 

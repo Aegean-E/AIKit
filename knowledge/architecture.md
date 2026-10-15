@@ -214,5 +214,16 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dynamic Monotonic Phase Progression**: Tracks lifecycle phases (Phases 1 through 5) dynamically without rigid range bounds, ensuring non-decreasing execution order ($Phase_i \ge Phase_{i-1}$).
 - **Tier 1B Domain Rules Blueprint & Proactive Budget Warnings**: Adopter repositories define project-specific conventions in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all targets and emits proactive warnings if prompt files exceed 90% capacity (>7,200 chars).
 
+---
+
+## 🚀 Automatic Git Workflow & Delivery Architecture (PRINCIPLE-018)
+- **Terminal Lifecycle Execution**: Phase 5 git commit and push actions are mechanically locked until Phase 4 verification gates (tests, dogfooding, and freshness checks) pass with 100% success.
+- **Explicit Staging Invariant**: Blind staging commands (`git add .`, `git add -A`) are strictly prohibited; target paths must be explicitly enumerated (`git add <file1> <file2>`) to prevent secret exposure or sweeping unrelated OS/test scratch files into git history.
+- **Pre-Commit Delivery Triad**: Enforces a 3-point check before terminal commits: (1) 100% unit tests pass, (2) rule targets and codebase map pass freshness checks (`--check`), and (3) clean working tree with zero orphaned temporary buffers.
+- **Adaptive Remote Protocol & Zero Force Push**: Automatically inspects active branches and upstream remotes. Commits are pushed adaptively; unconfigured remotes fall back safely to local commits with clear reporting. Rebase pulls (`git pull --rebase`) resolve remote divergence; force pushes (`--force`, `--force-with-lease`) are strictly forbidden.
+- **Non-Destructive Recoil**: Automated error recovery must utilize soft rollbacks (`git reset --soft HEAD~1`), preserving working tree changes and strictly banning destructive resets (`git reset --hard`, `git clean -fdx`).
+- **Standardized Conventional Commits**: Commit messages follow the Conventional Commits specification (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `build`, `ci`) with optional milestone indexing (`[milestone N/M]`), validated via pure-stdlib tooling.
+
+
 
 

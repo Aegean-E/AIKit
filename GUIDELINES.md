@@ -43,7 +43,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 |---|---|---|
 | **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active `knowledge/` sync, atomic code-doc pairing, append-only ADRs, AST gating, and freshness check. |
 | **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
-| **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Automated conventional commits and pushes upon task completion. |
+| **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Conventional Commits, explicit staging (no blind add), pre-commit triad, adaptive push. |
 
 ---
 
@@ -261,15 +261,14 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Tier 1B Domain Rules Blueprint**: Adopter projects define custom domain rules in `.agents/rules/domain.md` from `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath universal principles in all generated targets.
 
 ### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
-- **Problem**: Uncommitted work leads to lost progress, uncoordinated branches, and accidental regressions.
+- **Problem**: Uncommitted work leads to lost progress and uncoordinated branches; blind staging sweeps unwanted junk into commits; diverging remotes trigger dangerous force-pushes; and destructive resets wipe out uncommitted progress.
 - **Guideline**:
-  - The AI assistant automatically stages, commits, and pushes verified code changes upon task or milestone completion.
-  - Always use [Conventional Commits](https://www.conventionalcommits.org/):
-    - `feat(scope): ...`
-    - `fix(scope): ...`
-    - `refactor(scope): ...`
-    - `docs(scope): ...`
-    - `chore(scope): ...`
+  - **Automatic Conventional Commits**: Upon completing any verified task or milestone, automatically commit using Conventional Commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `build`, `ci`) with concise, imperative descriptions (<72 chars) and milestone indices (`[milestone N/M]`).
+  - **Explicit Staging Invariant (Zero Blind Staging)**: Never execute blind `git add .` or `git add -A`. Explicitly name target files (`git add <file1> <file2> ...`) to avoid staging untracked test sandboxes, build artifacts, `.env` secrets, or unrelated human edits.
+  - **Pre-Commit Delivery Triad Gate**: Terminal commits are locked until 3 gates pass: (1) 100% unit tests pass, (2) principle rules and codebase map pass freshness checks (`--check`), and (3) `git status --short` confirms only intended files are staged.
+  - **Adaptive Push & Zero Force Push**: Automatically push to the active tracked branch (`origin/<current_branch>`). If no remote exists, commit locally and report local-only status. If upstream diverged, fetch and rebase (`git pull --rebase`). Force pushes (`--force`, `--force-with-lease`) are strictly forbidden.
+  - **Non-Destructive Recoil Invariant**: When resetting or recovering from failures, always use non-destructive rollbacks (`git reset --soft HEAD~1`). Never execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
+  - **Terse Delivery Confirmation**: Confirm completion with a concise status summary (<10 lines) citing the short commit hash (`git rev-parse --short HEAD`), commit subject, files committed count, and target branch.
 
 ---
 

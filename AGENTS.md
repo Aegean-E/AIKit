@@ -297,13 +297,15 @@
 ---
 
 ### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
-- **Concept**: AI must maintain an active, clean, and reliable Git trail without requiring manual commit reminders from the user.
-- **Invariant**: Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + git push upon verified task completion.
+- **Concept**: AI must maintain an active, clean, and reliable Git trail without requiring manual commit reminders from the user, operating with explicit staging, adaptive remote push, and non-destructive failure recovery.
+- **Invariant**: Automatic conventional commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad; non-destructive recoil.
 - **Rules**:
-  1. **Automatic Commits**: After completing any meaningful task, feature implementation, refactoring, or documentation update, the AI must automatically stage and commit the changes.
-  2. **Conventional Commits**: Commit messages must follow the Conventional Commits format (`feat(...)`, `fix(...)`, `refactor(...)`, `docs(...)`, `chore(...)`) with clear, descriptive explanations.
-  3. **Automatic Push**: After committing, the AI must automatically push the commit to the active remote branch (`origin/main` or current working branch) and confirm the commit hash to the user.
-  4. **Integrity Check**: Before committing, ensure the code builds/runs, all unit tests pass (100%), and no temporary or unwanted files are staged.
+  1. **Automatic Conventional Commits**: Upon completing any verified task or milestone, the AI must automatically commit changes using Conventional Commits (`type(scope): description` or `type(scope): [milestone N/M] description`). Valid types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `build`, `ci`.
+  2. **Explicit Staging Invariant (Zero Blind Staging)**: Never execute blind `git add .` or `git add -A`. Explicitly name target files (`git add <file1> <file2> ...`) to prevent accidental inclusion of secrets, OS artifacts, build clutter, or unrelated user edits.
+  3. **Pre-Commit Delivery Triad Gate**: Terminal commits are mechanically locked until 3 gates pass: (1) 100% unit tests pass, (2) principle rules and codebase map pass freshness checks (`--check`), and (3) `git status --short` confirms only intended files are staged.
+  4. **Adaptive Push & Zero Force Push**: Automatically push to the active tracked branch (`origin/<current_branch>`). If no remote is configured, commit locally and report local-only status. If upstream diverged, fetch and rebase (`git pull --rebase`). Never execute `git push --force` or `--force-with-lease` without explicit user instruction.
+  5. **Non-Destructive Recoil Invariant**: When resetting or recovering from failures, always use non-destructive rollbacks (`git reset --soft HEAD~1`). Never execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
+  6. **Terse Delivery Confirmation**: Confirm completion with a concise status summary (<10 lines) citing the short commit hash (`git rev-parse --short HEAD`), commit subject, files committed count, and target branch.
 
 ---
 
@@ -345,4 +347,4 @@
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with portable process cleanup and stdin parity (**PRINCIPLE-015**)?
 - [ ] Has the **AI knowledge base in `knowledge/` been updated and verified with zero AST syntax errors, link integrity, and codebase map freshness** (**PRINCIPLE-016**)?
 - [ ] Have all **AI guideline files been verified fresh and synchronized with zero schema drift and triad parity** (**PRINCIPLE-017**)?
-- [ ] Has an **automatic commit** been created with a conventional commit message and pushed (**PRINCIPLE-018**)?
+- [ ] Has code been **explicitly staged (no blind 'git add .'), committed with Conventional Commits, verified via pre-commit triad, and pushed safely without force** (**PRINCIPLE-018**)?

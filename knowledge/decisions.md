@@ -618,5 +618,24 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Guarantees exact title consistency across human and agent documentation; protects against accidental duplicate rules; provides zero-friction onboarding template for adopter projects.
   - *Trade-offs*: Title edits in `AGENTS.md` require updating `GUIDELINES.md` simultaneously.
 
+### ADR-038: Explicit Staging Invariant, Adaptive Remote Push, and Conventional Commit Tooling (PRINCIPLE-018)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Agents frequently execute blind staging (`git add .`), accidentally committing unwanted scratch buffers, OS artifacts, test sandboxes, or unrelated human workspace edits.
+  2. Pushing blindly to `origin main` causes agent crashes in greenfield local-only repositories (where no remote exists yet) or triggers dangerous force-pushes upon upstream divergence.
+  3. Agents attempting error recovery sometimes execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
+  4. There was no automated validator for Conventional Commit formats and milestone indices.
+- **Decision**:
+  1. Enforce **Explicit Staging Invariant**: Blind staging commands (`git add .`, `git add -A`) are strictly prohibited; target paths must be explicitly listed in git add commands.
+  2. Enforce **Pre-Commit Delivery Triad**: Terminal commits are locked until (1) 100% tests pass, (2) principle rules and codebase map pass freshness checks (`--check`), and (3) clean working tree is confirmed.
+  3. Enforce **Adaptive Push & Zero Force Push**: Automatically inspect active branches and remotes; fall back cleanly to local-only commits if unconfigured; rebase on divergence; strictly prohibit `--force`.
+  4. Enforce **Non-Destructive Recoil Invariant**: Error recoveries must use soft rollbacks (`git reset --soft HEAD~1`), preserving working tree changes.
+  5. Provide **Pure-Stdlib Conventional Commit Validator**: Implement `validate_conventional_commit()` in `scripts/disruption_recovery.py` with `--validate-commit` CLI support.
+- **Consequences**:
+  - *Positive*: Guarantees clean, noise-free git history; protects against data loss during failure recovery; provides automated validation for Conventional Commits and micro-milestone indexing.
+  - *Trade-offs*: Requires explicit staging commands instead of one-line blanket additions.
+
+
 
 
