@@ -27,6 +27,8 @@ from scripts.disruption_recovery import (
     run_disruption_audit,
     format_audit_report,
     format_resume_report,
+    reset_active_task,
+    clean_dangling_temp_files,
 )
 from scripts.update_knowledge_base import (
     extract_python_symbols,
@@ -286,6 +288,44 @@ class TestDisruptionRecovery(unittest.TestCase):
         resume_rep = format_resume_report(audit)
         self.assertIn("RESUMING INTERRUPTED TASK: 'interrupted_task'", resume_rep)
         self.assertIn("Phase 2 (planning)", resume_rep)
+
+    def test_reset_active_task(self):
+        # Enforces PRINCIPLE-006: clean task reset without manual JSON tampering
+        record_checkpoint(
+            task_id="stale_task",
+            phase="planning",
+            phase_num=2,
+            description="Stale planning",
+            ledger_file=self.ledger_file,
+        )
+        ledger = load_ledger(self.ledger_file)
+        self.assertEqual(ledger["active_task"]["task_id"], "stale_task")
+        
+        abandoned = reset_active_task(reason="Superseded by user request", ledger_file=self.ledger_file)
+        self.assertIsNotNone(abandoned)
+        self.assertEqual(abandoned["task_id"], "stale_task")
+        
+        updated_ledger = load_ledger(self.ledger_file)
+        self.assertIsNone(updated_ledger["active_task"])
+        self.assertEqual(updated_ledger["checkpoints"][-1]["phase"], "abandoned")
+        self.assertIn("Superseded by user request", updated_ledger["checkpoints"][-1]["description"])
+
+    def test_clean_dangling_temp_files(self):
+        # Enforces PRINCIPLE-006: safe automated purging of orphaned *.tmp_* buffers
+        tmp_file = self.test_dir / "model.py.tmp_8888_7777"
+        tmp_file.write_text("corrupted buffer", encoding="utf-8")
+        self.assertTrue(tmp_file.exists())
+        
+        purged = clean_dangling_temp_files(workspace_dir=self.test_dir)
+        self.assertIn("model.py.tmp_8888_7777", [Path(p).name for p in purged])
+        self.assertFalse(tmp_file.exists())
+
+    def test_non_git_workspace_detection(self):
+        # In isolated test_dir (not a git repo), audit must detect missing git tracking
+        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        self.assertTrue(audit.get("git_missing"))
+        report = format_audit_report(audit)
+        self.assertIn("Git Inactive", report)
 
 
 

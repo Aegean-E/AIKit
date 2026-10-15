@@ -206,6 +206,50 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> Non
     save_ledger(ledger, ledger_file)
 
 
+def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """Abandon or reset the active in-progress task in the ledger (PRINCIPLE-006)."""
+    ledger = load_ledger(ledger_file)
+    active = ledger.get("active_task")
+    if not active or active.get("status") != "in_progress":
+        return None
+
+    task_id = active.get("task_id", "unknown")
+    active["status"] = "abandoned"
+    active["abandoned_reason"] = reason
+    active["abandoned_at"] = time.time()
+
+    ledger.setdefault("checkpoints", []).append({
+        "task_id": task_id,
+        "phase": "abandoned",
+        "phase_num": active.get("last_phase_num", 1),
+        "description": f"Task '{task_id}' abandoned: {reason}",
+        "status": "abandoned",
+        "timestamp": time.time(),
+        "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+    })
+    ledger["active_task"] = None
+    save_ledger(ledger, ledger_file)
+    return active
+
+
+def clean_dangling_temp_files(workspace_dir: Optional[Path] = None) -> List[str]:
+    """Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013)."""
+    ws = workspace_dir or ROOT_DIR
+    deleted = []
+    try:
+        for p in ws.rglob("*.tmp_*"):
+            if ".git" not in str(p) and p.is_file():
+                try:
+                    rel = str(p.relative_to(ws))
+                    p.unlink()
+                    deleted.append(rel)
+                except OSError:
+                    pass
+    except Exception:
+        pass
+    return deleted
+
+
 def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]:
     """
     Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).
@@ -225,6 +269,7 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
     }
 
     # 1. Check Git Status
+    audit["git_missing"] = False
     try:
         proc = subprocess.run(
             ["git", "status", "--porcelain"],
@@ -244,7 +289,11 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
                 elif status_code == "??":
                     audit["untracked_files"].append(file_rel)
             audit["has_uncommitted_changes"] = bool(audit["modified_files"] or audit["untracked_files"])
+        else:
+            audit["git_missing"] = True
+            audit["git_error"] = proc.stderr.strip() or f"git exit code {proc.returncode}"
     except Exception as e:
+        audit["git_missing"] = True
         audit["git_error"] = str(e)
 
     # 2. Check Task Ledger for Interrupted Tasks
@@ -290,10 +339,13 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         "============================================================",
     ]
 
-    if audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files"):
+    if audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files") and not audit.get("git_missing"):
         lines.append("🟢 Status: Clean state. No interrupted tasks or uncommitted drift detected.")
     else:
         lines.append("🟡 Status: Potential disruption / in-flight state detected!")
+
+    if audit.get("git_missing"):
+        lines.append("⚠️  Git Inactive: Not a git repository (run 'git init' to enable full tracking)")
 
     if audit.get("interrupted_task"):
         it = audit["interrupted_task"]
@@ -353,7 +405,7 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
         for f in audit["modified_files"]:
             lines.append(f"   • {f}")
     if audit.get("dangling_temp_files"):
-        lines.append(f"🧹 Action Needed: Purge {len(audit['dangling_temp_files'])} dangling .tmp_* files")
+        lines.append(f"🧹 Action Needed: Purge {len(audit['dangling_temp_files'])} dangling .tmp_* files (run 'python scripts/disruption_recovery.py --clean')")
     lines.append(f"💡 Next Action: Inspect surviving files, run unit tests, and resume at Phase {next_phase_num}")
     lines.append("============================================================")
     return "\n".join(lines)
@@ -392,6 +444,22 @@ if __name__ == "__main__":
         tid = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "active"
         mark_task_completed(tid)
         print(f"[OK] Task '{tid}' marked as completed.")
+    elif "--reset" in sys.argv:
+        idx = sys.argv.index("--reset")
+        reason = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "Reset by user/agent"
+        res = reset_active_task(reason=reason)
+        if res:
+            print(f"[OK] Active task '{res.get('task_id')}' abandoned and reset: {reason}")
+        else:
+            print("[OK] No active task was in progress.")
+    elif "--clean" in sys.argv:
+        purged = clean_dangling_temp_files()
+        if purged:
+            print(f"[OK] Purged {len(purged)} dangling temporary buffer(s):")
+            for f in purged:
+                print(f"   • {f}")
+        else:
+            print("[OK] Workspace clean. No dangling temporary buffers found.")
     elif "--resume" in sys.argv:
         report = run_disruption_audit()
         print(format_resume_report(report))

@@ -1,12 +1,12 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-006-upgrade",
-    "last_phase": "implementation",
+    "task_id": "principle-006-pass2",
+    "last_phase": "planning",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792093104.225903,
-    "completed_at": 1792093274.580046
+    "updated_at": 1792093368.7495575,
+    "completed_at": 1792093569.6603208
   },
   "checkpoints": [
     {
@@ -383,6 +383,25 @@
       "status": "completed",
       "timestamp": 1792093274.5800478,
       "timestamp_str": "2026-10-15 22:41:14"
+    },
+    {
+      "task_id": "principle-006-pass2",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "Planning reset, clean, non-git detection, and conventional micro-commits",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792093368.7495575,
+      "timestamp_str": "2026-10-15 22:42:48"
+    },
+    {
+      "task_id": "principle-006-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-006-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792093569.6603222,
+      "timestamp_str": "2026-10-15 22:46:09"
     }
   ]
 }

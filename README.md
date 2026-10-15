@@ -27,6 +27,8 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Disruption recovery guidance & surviving files |
 | **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
+| **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
+| **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
 
 ---
 
@@ -169,7 +171,15 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```bash
    python scripts/disruption_recovery.py --complete "task_name"
    ```
-5. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
+5. **Resetting In-Flight Tasks**: To abandon or reset a task without manually editing JSON:
+   ```bash
+   python scripts/disruption_recovery.py --reset "Superseded by new requirements"
+   ```
+6. **Purging Dangling Temp Files**: Safely remove orphaned `.tmp_*` files:
+   ```bash
+   python scripts/disruption_recovery.py --clean
+   ```
+7. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
 
 ---
 

@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `22`
-- **Total Source Lines**: `1238`
+- **Total Functions / Methods**: `24`
+- **Total Source Lines**: `1346`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `404` lines (`15520` bytes)
+**Size**: `472` lines (`18329` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -29,6 +29,8 @@
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
 - `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger.*
+- `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (PRINCIPLE-006).*
+- `def clean_dangling_temp_files(workspace_dir)` - *Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013).*
 - `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
@@ -67,7 +69,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `362` lines (`17098` bytes)
+**Size**: `402` lines (`18971` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -88,6 +90,9 @@
   - Method `.test_record_checkpoint_and_complete()`
   - Method `.test_dangling_temp_file_detection()`
   - Method `.test_format_resume_report()`
+  - Method `.test_reset_active_task()`
+  - Method `.test_clean_dangling_temp_files()`
+  - Method `.test_non_git_workspace_detection()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`

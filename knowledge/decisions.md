@@ -189,3 +189,20 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates CLI friction; turns cold-start disruption resumption into a single standardized command; prevents git repository pollution; ensures clean working trees.
   - *Trade-offs*: None; stdlib-only, zero dependencies.
+
+### ADR-015: Disruption CLI Reset & Clean Commands, Git Detection, and Conventional Micro-Commits (PRINCIPLE-006)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. If an in-progress task was abandoned or superseded, developers and agents previously had to manually edit `.agents/task_ledger.json` to clear `active_task`.
+  2. When orphaned `*.tmp_*` buffers were identified by audit, manual file deletion commands were required across platforms.
+  3. When AIKit is adopted into a folder without git initialized (`git status` fails), `run_disruption_audit()` silently reported a clean state, hiding the missing git tracking.
+  4. Micro-milestone commits risked inconsistency if free-form messages like `wip` were used.
+- **Decision**:
+  1. Add `reset_active_task()` and `--reset [reason]` to `scripts/disruption_recovery.py` to cleanly abandon/clear active tasks in the ledger.
+  2. Add `clean_dangling_temp_files()` and `--clean` to `scripts/disruption_recovery.py` to automatically purge orphaned temporary buffers.
+  3. Add non-git workspace detection in `run_disruption_audit()` to report `⚠️ Git Inactive: Not a git repository (run 'git init' to enable full tracking)`.
+  4. Standardize the **Conventional Micro-Commit Format**: `type(task): [milestone N/M] description`.
+- **Consequences**:
+  - *Positive*: One-click task abort and buffer cleanup; proactive warning when git is missing; pristine git histories with structured conventional micro-commits.
+  - *Trade-offs*: None; 100% standard library.
