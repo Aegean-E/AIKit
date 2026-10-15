@@ -87,3 +87,15 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
   - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
 - **Deterministic Grep Anchor Contract**: All Tier 2 sections use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
 - **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and mechanically enforces character/token budgets (<8,000 chars / ~1,500 tokens) across all generated AI rules, preventing instruction bloat.
+
+---
+
+## 📚 Living Documentation & Cold-Start Orientation (The SSOT Triad)
+- **30-Second Cold-Start Orientation**: `README.md` serves as the authoritative entrypoint for cold-starting agents, providing unambiguous prerequisites, setup/run commands, test commands, and directory layouts (**PRINCIPLE-005**).
+- **Material Surface Sync Contract**: Synchronous updates to `README.md` are gated strictly by modifications to public surface areas (quickstart, CLI flags, public APIs, governance principles). Internal refactors sync to `knowledge/` to prevent documentation churn.
+- **Documentation Partitioning (The SSOT Triad)**:
+  - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
+  - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
+  - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
+- **Executable Command Parity**: All documented quickstart and run commands must be factual, literal, and verified to run in the active runtime.
+

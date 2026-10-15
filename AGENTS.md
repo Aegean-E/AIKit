@@ -89,12 +89,21 @@
 ## 🧭 Phase 2: Pre-Flight Orientation & Planning
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
-- **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles. To prevent knowledge drift, `README.md` must be systematically updated after every meaningful change.
-- **Invariant**: Self-describing repository; zero-ambiguity quickstart; mandatory `README.md` update after every feature, UI, or architectural change.
+- **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles within a single turn. To prevent knowledge drift, public surface documentation must be systematically synchronized.
+- **Invariant**: Self-describing repo; 30s cold-start orientation; material surface README sync; executable command parity.
 - **Rules**:
-  1. **Self-Describing Repository**: Every architectural decision, file structure, command, and configuration option must be documented explicitly in `README.md`, `GUIDELINES.md`, and code docstrings. No hidden or implicit assumptions are allowed.
-  2. **Mandatory README Update After Every Change**: After completing any feature, UI update, configuration change, refactoring, or architectural modification, the AI must immediately update `README.md` to reflect the new state.
-  3. **Zero-Ambiguity Quickstart**: The setup and run instructions in `README.md` must always remain functional and up to date for a cold-starting AI or user.
+  1. **Self-Describing Repository & 30-Second Orientation**: The project must maintain an explicit orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) the canonical test command, and (4) the directory tree and primary entry points. A cold-starting agent must achieve complete orientation in its first turn without speculative file browsing.
+  2. **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters:
+     - Setup, build, or run instructions,
+     - CLI flags, environment variables, or public API/UI surfaces,
+     - Architectural boundaries, core directory layouts, or governance principles.
+     Internal non-breaking refactors that preserve public surfaces update `knowledge/` rather than adding churn to `README.md`.
+  3. **Executable Command Parity**: Every command, script invocation, or code snippet documented in `README.md` must be factual, literal, and verified to run successfully in the active runtime environment. Zero phantom commands or broken quickstarts.
+  4. **Documentation Partitioning (The SSOT Triad)**:
+     - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
+     - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
+     - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
+
 
 ---
 

@@ -77,6 +77,7 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
             self.assertIn("PRINCIPLE-003", content, f"PRINCIPLE-003 missing from {target.name}")
             self.assertIn("PRINCIPLE-004", content, f"PRINCIPLE-004 missing from {target.name}")
+            self.assertIn("PRINCIPLE-005", content, f"PRINCIPLE-005 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
             self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
             self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
@@ -107,6 +108,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("anti-repetition", p4["invariant"].lower())
         self.assertIn("ast-first", p4["invariant"].lower())
         self.assertIn("bounded rolling ledger", p4["invariant"].lower())
+
+    def test_principle_005_cold_start_capsule(self):
+        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, material surface sync, command parity
+        principles = parse_principles(AGENTS_MD)
+        p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
+        self.assertIsNotNone(p5)
+        self.assertIn("self-describing repo", p5["invariant"].lower())
+        self.assertIn("30s cold-start orientation", p5["invariant"].lower())
+        self.assertIn("material surface readme sync", p5["invariant"].lower())
+        self.assertIn("executable command parity", p5["invariant"].lower())
 
 
 

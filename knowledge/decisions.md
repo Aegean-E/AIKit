@@ -124,6 +124,19 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Keeps working memory footprint permanently small (<2 KB); eliminates repetitive user questioning after compaction; keeps decision records clean; prevents terminal output context blowouts.
   - *Trade-offs*: None; zero external dependencies, entirely deterministic.
 
-
-
-
+### ADR-011: Material Surface Sync Contract, 30-Second Cold-Start Orientation, and Documentation SSOT Triad (PRINCIPLE-005)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**: In agentic repositories:
+  1. Blanket rules like "update README.md after every change" trigger severe documentation churn—agents spend tokens modifying the root README for trivial internal refactors, test additions, or bug fixes that don't affect public interfaces.
+  2. Cold-starting agents entering a repository with zero conversational context often spend several expensive discovery turns reading arbitrary files just to discover how to run the project or where core modules reside.
+  3. Setup commands in READMEs frequently decay into non-working pseudo-code or broken aliases because they are treated as static markdown without executable parity verification.
+  4. Architectural documentation, governance invariants, and onboarding orientation often become blurred across files with duplicate, conflicting information.
+- **Decision**:
+  1. Mandate the **30-Second Cold-Start Orientation** in `README.md`: require standard entry points, verified one-line run commands, runtime prerequisites, and a high-level file tree index so cold-starting agents or developers can orient within 30 seconds.
+  2. Implement the **Material Surface Sync Contract**: restrict mandatory `README.md` updates strictly to changes in public surfaces (quickstart commands, CLI flags, public API contracts, new principles, repository directory structures). Internal refactoring, private helper changes, and test updates must sync to `knowledge/` (architecture or decisions) instead of churning `README.md`.
+  3. Codify **Executable Command Parity**: all commands, test invocations, and script entrypoints documented in `README.md` must be literal, reproducible, shell-agnostic, and guaranteed to succeed without hidden flags or environment variables.
+  4. Establish the **Documentation SSOT Triad**: partition documentation into (1) `README.md` (Orientation & Public Surface), (2) `AGENTS.md` / `GUIDELINES.md` (Governance & Invariants), and (3) `knowledge/` (Deep Architecture, AST Map & ADRs).
+- **Consequences**:
+  - *Positive*: Eliminates unnecessary `README.md` churn; accelerates cold-start agent comprehension from multiple turns to a single 30-second read; guarantees 100% executable setup commands; enforces crisp separation between public docs, governance rules, and deep architectural knowledge.
+  - *Trade-offs*: Requires agents to distinguish between public surface changes and internal refactors during Phase 5 documentation sync.

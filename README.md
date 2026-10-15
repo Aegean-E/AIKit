@@ -89,7 +89,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repository; any cold-starting AI agent can immediately orient itself; mandatory `README.md` sync after every change. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation; material surface sync; executable command parity. |
 | **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; task ledger recovery (`scripts/disruption_recovery.py`). |
 | **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Cold-start gate evaluating: Why required? Expected benefits? Potential harm/risks? Quality non-diminution guarantee. |
 | **PRINCIPLE-008** | Hierarchical Problem Decomposition | Decompose complex or large-scale tasks into bounded recursive sub-tasks; avoid monolithic unbounded context dumps. |
