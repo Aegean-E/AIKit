@@ -27,7 +27,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
-| **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Maximum execution speed, non-blocking async operations, and lean dependency footprint. |
+| **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, RAII resource cleanup, and lazy imports. |
 | **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Zero mandatory external apps; one-click start with sensible defaults and graceful degradation. |
 | **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Concise code, strict token budgets, compact payloads, and rate-limit safeguards. |
 
@@ -172,12 +172,13 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Unidirectional Flow & Immutable DTOs**: Maintain strictly inward dependency flow with zero circular imports, and pass immutable data transfer objects across boundaries without leaking internal mutable state.
 
 ### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
-- **Problem**: Bloated dependencies, unoptimized loops, blocking operations, and inefficient prompting degrade user experience and inflate resource costs.
+- **Problem**: Quadratic loops ($O(N^2)$), blocking I/O on async event loops, memory and file descriptor leaks, heavy startup imports, and slow test suites degrade performance and developer velocity.
 - **Guideline**:
-  - **Speed & Latency**: Optimize algorithms for minimal runtime ($O(N)$ scanning, generators, set lookups).
-  - **Non-blocking Execution**: Execute disk operations and heavy tasks in background threads or async tasks to keep event loops silky smooth.
-  - **Lean Dependencies**: Maintain a minimal dependency footprint; favor standard library solutions and lazy imports.
-  - **Prompt Frugality**: Design token-efficient prompt structures to accelerate inference and reduce API costs.
+  - **Algorithmic Stream Processing**: Employ $O(1)$ set/dict lookups and generator pipelines (`yield`) to maintain $O(1)$ auxiliary memory; avoid buffering unbounded files into memory.
+  - **Non-Blocking Concurrency**: Never perform blocking I/O on async event loops or GUI threads; offload to `asyncio.to_thread()` or worker pools with thread-safe locks.
+  - **Deterministic Resource Reclamation (RAII)**: Manage file handles, sockets, and subprocesses via context managers (`with`) to prevent leaks; enforce bounds on in-memory caches.
+  - **Zero-Weight Baseline & Lazy Imports**: Run core logic on stdlib primitives (<100ms startup); import optional external dependencies lazily inside adapter methods.
+  - **Sub-Second Test Gate**: Keep the full automated unit test suite running in under 1 second (<1s) by testing in memory or isolated temp fixtures without artificial delays.
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
 - **Problem**: Requiring external desktop software or complicated setup adds huge friction and drives away potential users.

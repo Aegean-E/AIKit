@@ -316,3 +316,25 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates boilerplate bloat for small tools; eliminates dummy stub methods in unit tests; enables zero-modification provider pluggability; reconciles pure DI with zero-friction usability; protects domain state integrity.
   - *Trade-offs*: None; stdlib-only.
+
+### ADR-022: Stream-First Processing, Non-Blocking Event-Loop Hygiene, RAII Cleanup, and Lazy Imports (PRINCIPLE-010)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Principle 10 previously overlapped with Principle 12 by mixing token budgeting and prompt engineering into computational runtime optimization.
+  2. AI agents frequently introduce $O(N^2)$ quadratic scanning bottlenecks and buffer entire multi-hundred megabyte files into memory with `.read()`.
+  3. Blocking synchronous I/O executed on async event loops or GUI threads causes event-loop starvation and application freezing.
+  4. Failure to use context managers (`with`) causes operating system file descriptor leaks on Windows/Linux, and unbounded caches leak memory in daemon processes.
+  5. Top-level imports of optional third-party packages ruin cold startup latency and break zero-install usability (`PRINCIPLE-011`).
+  6. Slow unit tests tempt developers and agents to bypass verification gates.
+- **Decision**:
+  1. Partition token economics strictly to `PRINCIPLE-012`, focusing `PRINCIPLE-010` purely on computational runtime, I/O, memory, and concurrency.
+  2. Enforce **Algorithmic Stream Processing ($O(1)$ Auxiliary Memory)**: Use $O(1)$ set/dict lookups and generator pipelines (`yield`) to stream unbounded files and datasets without memory buffering.
+  3. Enforce **Non-Blocking Concurrency & Thread Offloading**: Strictly ban blocking I/O on async event loops and GUI threads; offload to `asyncio.to_thread()` or worker pools with thread-safe locks (`threading.Lock`).
+  4. Enforce **Deterministic Resource Reclamation (RAII)**: Require context managers (`with`) or explicit try/finally for all OS resources; enforce bounds on in-memory caches.
+  5. Enforce **Zero-Weight Baseline & Lazy Imports**: Run core logic on stdlib primitives (<100ms startup); import optional external packages lazily inside adapter methods.
+  6. Enforce **Sub-Second Test Performance Gate**: Keep the full unit test suite running under 1 second (<1s) by eliminating artificial delays (`time.sleep()`).
+- **Consequences**:
+  - *Positive*: Eliminates UI freezes, memory leaks, file descriptor leaks, quadratic slowdowns, and cold-start import lag; clarifies boundary between Principles 10 and 12; guarantees sub-second test feedback.
+  - *Trade-offs*: None; pure standard library practices.
+

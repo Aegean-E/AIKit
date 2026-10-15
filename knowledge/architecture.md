@@ -42,9 +42,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ---
 
-## 🧵 Threading & Concurrency Model
-- **Non-blocking UI / Event Loop**: Heavy disk scanning, network requests, and computationally intensive tasks run in asynchronous tasks or background worker threads (**PRINCIPLE-010**).
-- **Thread Safety**: State transitions and shared data structures are guarded against race conditions.
+## 🧵 Concurrency, Performance & Resource Architecture
+- **Non-blocking UI & Event Loops**: Heavy filesystem I/O, subprocess execution, and computationally intensive tasks run in asynchronous tasks or background worker threads via `asyncio.to_thread()` (**PRINCIPLE-010**).
+- **Thread Safety**: State transitions and shared mutable data structures across threads are guarded by explicit synchronization locks (`threading.Lock`) or thread-safe queues.
+- **Deterministic Resource Reclamation (RAII)**: All operating system resources (file descriptors, sockets, subprocesses) must be managed using context managers (`with`) to prevent leaks. In-memory caches enforce bounds (`maxsize=N`).
+- **Algorithmic Stream Processing**: Iterators and generator pipelines process unbounded datasets with $O(1)$ auxiliary memory and $O(1)$ set/dict lookups.
+- **Sub-Second Test Performance Gate**: Full automated unit test suite executes in under 1 second (<1s) against in-memory or ephemeral isolated fixtures without artificial sleep delays.
 
 ---
 

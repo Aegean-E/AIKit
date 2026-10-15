@@ -180,14 +180,15 @@
 ---
 
 ### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
-- **Concept**: Every code change, architectural modification, and dependency choice must be optimized for execution speed, low latency, optimal algorithmic complexity, and lean resource utilization (CPU, memory, disk I/O, and token budgets).
-- **Invariant**: Algorithmic efficiency ($O(N)$ scanning, set lookups); non-blocking async execution; lean stdlib-first dependencies.
+- **Concept**: Systems must be architected for computational efficiency, sub-second latency, deterministic resource reclamation, non-blocking I/O, and lean dependency footprints. Code must maximize runtime performance while maintaining clean modularity and zero memory leaks.
+- **Invariant**: Algorithmic stream efficiency ($O(1)$ auxiliary memory); non-blocking event-loop hygiene; deterministic RAII resource cleanup; zero-weight lazy imports; sub-second test gate (<1s).
 - **Rules**:
-  1. **Algorithmic & I/O Efficiency**: All scanning, filtering, and data transformations must employ optimal algorithmic complexity ($O(N)$ scanning, set lookups, generator pipelines, buffered file operations).
-  2. **Non-Blocking & Asynchronous Execution**: Heavy operations (file system walks, batch processing, network/API calls) must execute asynchronously or in worker threads, never blocking the UI or main event loop.
-  3. **Lean Dependency Footprint**: Avoid introducing bloated, heavy third-party packages when standard library or lightweight modules suffice. Utilize lazy loading for heavy dependencies.
-  4. **Token & Network Frugality**: Prompts, batch sizes, and data payloads must be budgeted to minimize latency, token consumption, and API costs while preserving reasoning accuracy.
-  5. **No Brittle Premature Hacks**: Optimization must remain readable, maintainable, modular (**PRINCIPLE-009**), and strictly tested.
+  1. **Algorithmic Stream Processing ($O(1)$ Auxiliary Memory)**: Scanning, filtering, and data transformations must use $O(1)$ set/dict lookups rather than $O(N)$ linear scans. Unbounded files, directories, and data streams must be processed via iterator pipelines and generators (`yield`) rather than buffering entire payloads into memory with `.read()`.
+  2. **Non-Blocking Event Loops & Thread Offloading**: Heavy synchronous operations (filesystem I/O, subprocess execution, database queries, network calls) must never execute directly on asynchronous event loops or GUI main threads. Offload blocking workloads to `asyncio.to_thread()` or background worker thread pools. Synchronize shared state across threads using explicit locks (`threading.Lock`) or thread-safe queues.
+  3. **Deterministic Resource Reclamation (RAII Invariant)**: All operating system resources (file descriptors, sockets, database handles, subprocesses) must be deterministically managed using context managers (`with` statements) or explicit `try...finally` teardown to prevent resource leakage. In-memory caches must enforce explicit bounds (`maxsize=N`) or eviction policies.
+  4. **Zero-Weight Baseline & Lazy Import Architecture**: Core application workflows must execute on standard-library primitives with sub-100ms startup latency. Optional external packages must be imported lazily inside the specific adapter functions or methods that require them, ensuring core imports never fail or incur startup penalty in zero-install environments (`PRINCIPLE-011`).
+  5. **Sub-Second Test Performance Gate (<1s)**: Automated unit tests must be architected for extreme execution speed, executing in memory or against ephemeral isolated fixtures without artificial sleep delays (`time.sleep()`), ensuring the full test suite runs in under 1 second (`PRINCIPLE-014`).
+  6. **Clean Optimization (Anti-Cleverness Invariant)**: Performance optimizations must never compromise code clarity, type safety, modularity (`PRINCIPLE-009`), or correctness. Micro-optimizations that degrade readability without measurable profiling justification are strictly prohibited.
 
 ---
 
@@ -315,7 +316,7 @@
 - [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
 - [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
 - [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
-- [ ] **Performance & Resource Plan**: Is the solution designed for optimal speed, minimal latency, and lean dependencies (**PRINCIPLE-010**)?
+- [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Does the solution maintain "one-click start" without forcing external app installs (**PRINCIPLE-011**)?
 - [ ] **Code Conciseness & Token Budget Plan**: Is the code concise, and are prompts/payloads token-budgeted and compact (**PRINCIPLE-012**)?
 - [ ] **Crash Resilience & Atomicity Plan**: Are file writes, settings, and transaction logs protected against power-loss corruption (**PRINCIPLE-013**)?
@@ -333,7 +334,7 @@
 - [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
 - [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
 - [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
-- [ ] Are code paths **optimized for speed, responsiveness, and lean resource consumption** (**PRINCIPLE-010**)?
+- [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and fast (<1s tests)** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **one-click zero-install accessibility** (**PRINCIPLE-011**)?
 - [ ] Is the code **concise, lean, and token-frugal** without context waste (**PRINCIPLE-012**)?
 - [ ] Are all state changes and logs **crash-resilient and written atomically** (**PRINCIPLE-013**)?
