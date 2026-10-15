@@ -14,7 +14,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 3. **PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)**:
    - Read-before-write slice freshness & call-site check; manifest dependency grounding; platform parity; dual-track ambiguity protocol; strict AST syntax gate. [GUIDELINES.md](../../GUIDELINES.md#principle-003)
 4. **PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)**:
-   - Externalized working memory (`.agents/task_ledger.json`); continuous checklist re-anchoring; cold-start self-orientation via `git status` + `git log -n 1`. [GUIDELINES.md](../../GUIDELINES.md#principle-004)
+   - Disk-backed working memory (`.agents/task_ledger.json`); living plan SSOT; AST-first slice retrieval; deterministic compaction resumption sequence. [GUIDELINES.md](../../GUIDELINES.md#principle-004)
 5. **PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)**:
    - Self-describing repository; zero-ambiguity quickstart; mandatory `README.md` update after every feature, UI, or architectural change. [GUIDELINES.md](../../GUIDELINES.md#principle-005)
 6. **PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)**:

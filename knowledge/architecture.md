@@ -59,8 +59,10 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 ---
 
 ## 🧠 Attentional Drift Prevention & State Externalization
-- **Disk-Anchored Memory**: In-flight state, task checkpoints, and architectural rationale are externalized immediately to `.agents/task_ledger.json` and `knowledge/decisions.md`, eliminating dependence on volatile conversational context (**PRINCIPLE-004**).
-- **Context-Budgeted Retrieval**: Code examination uses slice windows and targeted searches to preserve the LLM attention budget.
+- **Disk-Anchored Memory & Living Plan SSOT**: In-flight state, task checkpoints, and architectural rationale are externalized immediately to `.agents/task_ledger.json` and `knowledge/decisions.md`, eliminating dependence on volatile conversational context. Multi-step plans are updated in-place on disk rather than reprinting bloat into conversation history (**PRINCIPLE-004**).
+- **Deterministic Compaction Resumption**: Upon conversation compaction or cold restart, agents execute a 3-step audit (Ledger `active_phase` check $\rightarrow$ Working tree check $\rightarrow$ Monotonic resumption) without re-asking resolved questions.
+- **AST-First & Slice-Capped Retrieval**: Code examination prioritizes AST symbol maps (`knowledge/codebase_map.md`) and slice views (<100 lines) to preserve token budgets and prevent premature context compaction.
+- **Immediate ADR Register**: Negative constraints and architectural invariants are committed immediately to `knowledge/decisions.md` to prevent constraint decay across long sessions.
 
 ---
 

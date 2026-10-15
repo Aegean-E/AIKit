@@ -70,13 +70,18 @@
 ---
 
 ### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
-- **Concept**: Complex, long-running agent workflows must actively counteract attentional drift and context compaction through externalized working memory, disciplined context budgeting, and continuous self-orientation against persistent disk state.
-- **Invariant**: Externalized working memory (`.agents/task_ledger.json`); continuous checklist re-anchoring; cold-start self-orientation via `git status` + `git log -n 1`.
+- **Concept**: Complex, long-running agent workflows must actively counteract attentional drift, context exhaustion, and compaction amnesia through externalized working memory, living plan SSOT hygiene, disciplined AST-first retrieval, and persistent disk-anchored state.
+- **Invariant**: Disk-backed working memory (`.agents/task_ledger.json`); living plan SSOT; AST-first slice retrieval; deterministic compaction resumption sequence.
 - **Rules**:
-  1. **Externalized Working Memory**: Never store task status, multi-step plans, or architectural decisions solely in transient conversation turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`, or working scratch files).
-  2. **Continuous Checklist Re-anchoring**: At the beginning of each turn and after any compaction event, the AI must actively re-anchor to the Pre-flight/Post-flight checklist and active principles rather than relying on stale conversational inertia.
-  3. **Context-Budgeted Information Retrieval**: When retrieving code or context, use targeted slice viewing (`StartLine`/`EndLine`, `grep_search`, AST outlines) rather than blindly dumping large files into context, preventing context bloating that accelerates compaction.
-  4. **Compaction Self-Orientation**: Upon detecting a compaction resume or cold restart, the AI must immediately inspect `git status`, the latest commit log (`git log -n 1`), and the task ledger (`.agents/task_ledger.json`) to establish 100% factual grounding before proposing or executing code.
+  1. **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines).
+  2. **Deterministic Compaction Resumption Sequence**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
+     - *Step 1 (Ledger Audit)*: Inspect `.agents/task_ledger.json` for `active_task`, `active_phase` (1..5), and completed checkpoints.
+     - *Step 2 (Working Tree Audit)*: Inspect `git status` and `git log -n 1` to establish factual physical ground truth.
+     - *Step 3 (Monotonic Resumption)*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps.
+  3. **AST-First & Slice-Capped Retrieval**: When exploring code, consult AST symbol catalogs (`knowledge/codebase_map.md`) or targeted symbol greps before opening raw files. When reading source code, use targeted line slices (`StartLine`/`EndLine` <100 lines) focused on the relevant symbol, preventing context window exhaustion.
+  4. **Immediate ADR Persistence (Negative Constraint Guard)**: Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
+  5. **Continuous Attentional Re-Anchoring**: At the beginning of each execution turn, re-anchor to the Pre-flight/Post-flight lifecycle checklist and active phase invariants rather than drifting on conversational inertia.
+
 
 ---
 

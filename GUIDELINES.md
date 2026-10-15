@@ -13,7 +13,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | **[PRINCIPLE-001](#principle-001-progressive-rule-disclosure--governance-frugality-zero-instruction-bloat)** | Progressive Disclosure & Lean Rules | Two-tier rule disclosure, strict prompt token budget (<1,500 tokens), and zero instruction bloat. |
 | **[PRINCIPLE-002](#principle-002-lifecycle-aligned-instruction-ordering--attentional-priming-cognitive-flow-invariant)** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate, remediation recoil, adaptive pathing, and late-stage priming immunity. |
 | **[PRINCIPLE-003](#principle-003-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Slice freshness & call-site check, manifest dependencies, platform parity, and strict AST gate. |
-| **[PRINCIPLE-004](#principle-004-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Context anchor protocol, continuous checklist re-anchoring, and ledger self-orientation. |
+| **[PRINCIPLE-004](#principle-004-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Disk working memory (`task_ledger.json`), living plan SSOT, AST-first slice retrieval, and compaction resumption sequence. |
 
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | ID | Title | Summary |
@@ -100,12 +100,16 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Strict AST & Syntax Gating**: Rely on deterministic verification tools (`scripts/update_knowledge_base.py`, AST parsers, compiler dry-runs, and unit tests) to mechanically validate syntax and symbol integrity. `scripts/update_knowledge_base.py` enforces strict AST validation and halts on any syntax error before advancing to Phase 4.
 
 ### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
-- **Problem**: In long-running pair programming sessions, large contexts induce "attentional drift" (the AI forgetting rules, skipping checklists, or losing constraints) and conversation compaction discards transient conversational context, causing amnesia.
+- **Problem**: In long-running pair programming sessions, large contexts induce "attentional drift" (the AI forgetting rules, skipping checklists, or losing constraints), repetitive plan printing pollutes conversational history, unbounded file dumps exhaust tokens, and conversation compaction discards transient context, inducing amnesia.
 - **Guideline**:
-  - **Externalized Working Memory**: Never store task status, multi-step plans, or architectural decisions solely in transient conversation turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`, or working scratch files).
-  - **Continuous Checklist Re-anchoring**: At the beginning of each turn and after any compaction event, the AI must actively re-anchor to the Pre-flight/Post-flight checklist and active principles rather than relying on stale conversational inertia.
-  - **Context-Budgeted Information Retrieval**: When retrieving code or context, use targeted slice viewing (`StartLine`/`EndLine`, `grep_search`, AST outlines) rather than blindly dumping large files into context, preventing context bloating that accelerates compaction.
-  - **Compaction Self-Orientation**: Upon detecting a compaction resume or cold restart, the AI must immediately inspect `git status`, the latest commit log (`git log -n 1`), and the task ledger (`.agents/task_ledger.json`) to establish 100% factual grounding before proposing or executing code.
+  - **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines).
+  - **Deterministic Compaction Resumption Sequence**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
+    1. *Ledger Audit*: Inspect `.agents/task_ledger.json` for `active_task`, `active_phase` (1..5), and completed checkpoints.
+    2. *Working Tree Audit*: Inspect `git status` and `git log -n 1` to establish factual physical ground truth.
+    3. *Monotonic Resumption*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps.
+  - **AST-First & Slice-Capped Retrieval**: When exploring code, consult AST symbol catalogs (`knowledge/codebase_map.md`) or targeted symbol greps before opening raw files. When reading source code, use targeted line slices (`StartLine`/`EndLine` <100 lines) focused on the relevant symbol, preventing context window exhaustion.
+  - **Immediate ADR Persistence (Negative Constraint Guard)**: Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
+  - **Continuous Attentional Re-Anchoring**: At the beginning of each execution turn, re-anchor to the Pre-flight/Post-flight lifecycle checklist and active phase invariants rather than drifting on conversational inertia.
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
 - **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit.

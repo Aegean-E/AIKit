@@ -75,6 +75,7 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("PRINCIPLE-001", content, f"PRINCIPLE-001 missing from {target.name}")
             self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
             self.assertIn("PRINCIPLE-003", content, f"PRINCIPLE-003 missing from {target.name}")
+            self.assertIn("PRINCIPLE-004", content, f"PRINCIPLE-004 missing from {target.name}")
             self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
             self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
             self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
@@ -94,6 +95,17 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("call-site", p3["invariant"].lower())
         self.assertIn("platform parity", p3["invariant"].lower())
         self.assertIn("ast syntax gate", p3["invariant"].lower())
+
+    def test_principle_004_compaction_resilience_capsule(self):
+        # Enforces PRINCIPLE-004: verified invariant capsule with task_ledger, living plan SSOT, AST-first retrieval
+        principles = parse_principles(AGENTS_MD)
+        p4 = next((p for p in principles if p["id"] == "PRINCIPLE-004"), None)
+        self.assertIsNotNone(p4)
+        self.assertIn("task_ledger.json", p4["invariant"].lower())
+        self.assertIn("living plan ssot", p4["invariant"].lower())
+        self.assertIn("ast-first", p4["invariant"].lower())
+        self.assertIn("compaction resumption", p4["invariant"].lower())
+
 
 
 
