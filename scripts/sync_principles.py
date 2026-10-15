@@ -19,8 +19,9 @@ GUIDELINES_MD = ROOT_DIR / "GUIDELINES.md"
 README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 
-MAX_TARGET_CHARS = 8000  # ~1,500-2,000 tokens per target file (PRINCIPLE-001)
+MAX_TARGET_CHARS = 8000  # Hard ceiling per target file (PRINCIPLE-001)
 WARN_TARGET_CHARS = 7200  # 90% of MAX_TARGET_CHARS (early warning threshold)
+TARGET_TOKEN_BUDGET = 1500  # Tier 1 token target (PRINCIPLE-001); ~4 chars/token estimate
 MAX_DOMAIN_CHARS = 1200  # ~300 tokens for Tier 1B domain rules (PRINCIPLE-001 Rule 4)
 
 
@@ -312,6 +313,8 @@ def sync_all(
             print(f"[BUDGET EXCEEDED] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {MAX_TARGET_CHARS} cap")
         elif char_len >= WARN_TARGET_CHARS:
             print(f"[BUDGET WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) >= {WARN_TARGET_CHARS} (90% capacity)")
+        elif est_tokens > TARGET_TOKEN_BUDGET:
+            print(f"[TOKEN WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {TARGET_TOKEN_BUDGET}-token Tier 1 target")
         else:
             print(f"[BUDGET PASS] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
 
@@ -323,7 +326,8 @@ def sync_all(
 
     mismatches = 0
     for target_path, expected_content in targets.items():
-        target_path.parent.mkdir(parents=True, exist_ok=True)
+        if not check_only:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
         if target_path.exists():
             current_content = target_path.read_text(encoding="utf-8")
             if current_content.strip() == expected_content.strip():
@@ -371,6 +375,24 @@ if __name__ == "__main__":
     if "-h" in sys.argv or "--help" in sys.argv:
         print_help()
         sys.exit(0)
+
+    _known = {"--check", "--domain", "--help", "-h"}
+    _argv = sys.argv[1:]
+    _unknown = []
+    _i = 0
+    while _i < len(_argv):
+        _tok = _argv[_i]
+        if _tok.startswith("-"):
+            if _tok not in _known:
+                _unknown.append(_tok)
+            elif _tok == "--domain":
+                _i += 1  # consume the path value
+        _i += 1
+    if _unknown:
+        print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(_unknown)}", file=sys.stderr)
+        print("Why: unrecognized flags would otherwise trigger an unintended full rule rewrite.", file=sys.stderr)
+        print("Fix: run 'py scripts/sync_principles.py --help' to list valid options.", file=sys.stderr)
+        sys.exit(2)
 
     check_mode = "--check" in sys.argv
     custom_domain = None

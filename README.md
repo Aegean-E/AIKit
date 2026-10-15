@@ -29,6 +29,13 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks task completed in `.agents/task_ledger.json` |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
+| **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <100ms, writing nothing |
+
+**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every script in `scripts/` honours the same
+contract: `--help` / `-h` prints a usage block to stdout and exits `0` without touching the filesystem;
+an unrecognized flag is refused with the What → Why → Fix remediation triad on stderr and exit code `2`
+(never the default action); `0` = success, `1` = operational failure, `2` = CLI misuse. Read-only
+verification runs through `--check` on `sync_principles.py` and `update_knowledge_base.py`.
 
 ---
 

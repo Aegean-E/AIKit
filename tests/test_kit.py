@@ -4,12 +4,16 @@ Validates principle synchronization, disruption recovery atomicity,
 knowledge base AST generation, and operational dogfooding.
 """
 
+import contextlib
+import io
 import os
 import sys
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # Add project root to path
@@ -212,13 +216,17 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
-        # Enforces PRINCIPLE-017: all 5 IDE prompt files must be 100% in sync with AGENTS.md
-        mismatches = sync_all(check_only=True, exit_on_mismatch=False)
+        # Enforces PRINCIPLE-017: all 5 IDE prompt files must be 100% in sync with AGENTS.md.
+        # Diagnostics are buffered (PRINCIPLE-012 R3) and replayed only on failure.
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            mismatches = sync_all(check_only=True, exit_on_mismatch=False)
         self.assertEqual(
             mismatches,
             0,
             f"{mismatches} AI guideline targets are out of sync with AGENTS.md. "
-            f"Run 'py scripts/sync_principles.py' to synchronize."
+            f"Run 'py scripts/sync_principles.py' to synchronize. "
+            f"Diagnostics: {buffer.getvalue()}"
         )
 
     def test_triad_consistency_gate(self):
@@ -308,18 +316,6 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertLessEqual(len(content), 1200, f"domain.md.template exceeds 1,200 chars ({len(content)} chars)")
         self.assertIn("Stack & Runtime Constraints", content)
         self.assertIn("Domain Architectural Invariants", content)
-
-    def test_cli_help_is_safe_and_non_mutating(self):
-        # Enforces PRINCIPLE-017: running with --help or -h prints help and does not mutate files
-        import subprocess
-        result = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "scripts" / "sync_principles.py"), "--help"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("AIKit Principles Auto-Sync Tool", result.stdout)
-        self.assertIn("--check", result.stdout)
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
@@ -741,7 +737,8 @@ class TestKnowledgeBase(unittest.TestCase):
                     doc_path.write_text("# Index\n[Architecture](architecture.md)\n", encoding="utf-8")
                 else:
                     doc_path.write_text(f"# {doc}\n", encoding="utf-8")
-            update_and_validate(knowledge_dir=temp_k_dir, strict=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                update_and_validate(knowledge_dir=temp_k_dir, strict=True)
             codebase_map = temp_k_dir / "codebase_map.md"
             self.assertTrue(codebase_map.exists())
             content = codebase_map.read_text(encoding="utf-8")
@@ -811,22 +808,95 @@ class TestKnowledgeBase(unittest.TestCase):
 
 class TestOperationalDogfooding(unittest.TestCase):
     """
-    Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).
-    Operates the CLI scripts in an isolated ephemeral test directory.
+    Dual-Track CLI Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).
+    Executes every entrypoint as a real subshell binary from an ephemeral sandbox cwd with
+    stdin closed, asserting the CLI contract and zero host mutation. The subshell matrix runs
+    once in a bounded thread pool (PRINCIPLE-010 R3) to hold the sub-second suite gate.
     """
 
-    def setUp(self):
-        self.sandbox = Path(tempfile.mkdtemp(prefix="dogfood_jail_"))
+    SCRIPTS = ("sync_principles.py", "disruption_recovery.py", "update_knowledge_base.py")
 
-    def tearDown(self):
-        shutil.rmtree(self.sandbox, ignore_errors=True)
+    @staticmethod
+    def _porcelain():
+        """Return the working-tree state, or None when git is unavailable."""
+        try:
+            res = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True, text=True, cwd=str(ROOT_DIR), timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return res.stdout if res.returncode == 0 else None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.sandbox = Path(tempfile.mkdtemp(prefix="dogfood_jail_"))
+        cls.addClassCleanup(shutil.rmtree, cls.sandbox, ignore_errors=True)
+
+        def invoke(job):
+            script, flag = job
+            return job, subprocess.run(
+                [sys.executable, str(ROOT_DIR / "scripts" / script), flag],
+                capture_output=True, text=True, cwd=str(cls.sandbox),
+                stdin=subprocess.DEVNULL, timeout=10,
+            )
+
+        # Track 1 (golden path): --help. Track 2 (hostile chaos): a malformed flag.
+        jobs = [(s, f) for f in ("--help", "--not-a-real-flag") for s in cls.SCRIPTS]
+        cls.tree_before = cls._porcelain()
+        with ThreadPoolExecutor(max_workers=min(len(jobs), (os.cpu_count() or 2))) as pool:
+            cls.results = dict(pool.map(invoke, jobs))
+        cls.tree_after = cls._porcelain()
+
+    def _assert_no_host_mutation(self, context):
+        if self.tree_before is None or self.tree_after is None:
+            self.skipTest("git unavailable; blast-radius assertion requires a git worktree")
+        self.assertEqual(
+            self.tree_before, self.tree_after,
+            f"PRINCIPLE-015 violation: {context} mutated the working tree",
+        )
 
     def test_ephemeral_sandbox_isolation(self):
-        # Verify the sandbox is outside user dirs and strictly ephemeral
+        # Blast-radius guard: the jail must be ephemeral and never the repo or a host user dir
         self.assertTrue(self.sandbox.exists())
-        self.assertTrue("dogfood_jail_" in self.sandbox.name)
-        # Blast radius guard: ensure it does not point to user Desktop or Project Root
-        self.assertNotEqual(self.sandbox.resolve(), ROOT_DIR.resolve())
+        resolved = self.sandbox.resolve()
+        self.assertNotEqual(resolved, ROOT_DIR.resolve())
+        self.assertNotIn(
+            str(ROOT_DIR.resolve()), str(resolved),
+            f"Sandbox {resolved} must live outside the repository tree",
+        )
+
+    def test_golden_path_help_contract(self):
+        # PRINCIPLE-011 R5/R6 + PRINCIPLE-015 R1: --help on every entrypoint exits 0 and
+        # prints a usage block to stdout with clean stderr.
+        for script in self.SCRIPTS:
+            with self.subTest(script=script):
+                res = self.results[(script, "--help")]
+                self.assertEqual(res.returncode, 0, f"{script} --help must exit 0, got {res.returncode}")
+                self.assertEqual(res.stderr, "", f"{script} --help wrote to stderr: {res.stderr!r}")
+                self.assertIn("Usage:", res.stdout, f"{script} --help printed no usage block")
+                self.assertIn("--help", res.stdout, f"{script} --help did not document --help")
+                self.assertNotIn("Traceback", res.stdout + res.stderr)
+
+    def test_chaos_unknown_flag_rejected_with_remediation_triad(self):
+        # PRINCIPLE-015 R5 hostile perturbation: a malformed flag must abort with exit 2 and the
+        # What/Why/Fix triad rather than silently performing the default action.
+        for script in self.SCRIPTS:
+            with self.subTest(script=script):
+                res = self.results[(script, "--not-a-real-flag")]
+                self.assertEqual(
+                    res.returncode, 2,
+                    f"{script} must exit 2 on CLI misuse, got {res.returncode}",
+                )
+                self.assertIn("[INVALID USAGE]", res.stderr, f"{script} misuse lacks a What clause")
+                self.assertIn("Why:", res.stderr, f"{script} misuse lacks a Why clause")
+                self.assertIn("Fix:", res.stderr, f"{script} misuse lacks a Fix clause")
+                self.assertNotIn("Traceback", res.stderr)
+
+    def test_dogfood_matrix_leaves_zero_blast_radius(self):
+        # PRINCIPLE-015 R4 + PRINCIPLE-014 R4: the whole subshell matrix (golden + chaos)
+        # must leave the working tree bit-for-bit unchanged.
+        self._assert_no_host_mutation("the golden-path + chaos CLI matrix")
 
 
 if __name__ == "__main__":

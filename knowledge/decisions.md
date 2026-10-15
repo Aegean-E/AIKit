@@ -639,3 +639,27 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 
 
 
+
+### ADR-039: Universal CLI Contract Parity, Safe Help Short-Circuit, and Real Dual-Track Dogfooding (PRINCIPLE-010, PRINCIPLE-011, PRINCIPLE-015)
+- **Date**: 2026-10-16
+- **Status**: Accepted
+- **Context**:
+  1. Only `scripts/sync_principles.py` handled `--help`. `scripts/update_knowledge_base.py --help` fell through to its default action and **silently rewrote `knowledge/codebase_map.md`** — a help request mutated the repository. `scripts/disruption_recovery.py --help` ran a full git-backed disruption audit.
+  2. All three entrypoints silently swallowed unrecognized flags: `--bogus-flag` performed the default action and exited `0`, violating the PRINCIPLE-011 R5 exit-code contract (`2` = CLI misuse). For an agent that mistypes a flag, this produced a *silent wrong action reported as success* — including an unintended repository write.
+  3. Because help did not short-circuit before AST walks and subprocess calls, the PRINCIPLE-010 R5 startup budget (<100ms to `--help`) was breached on 2 of 3 entrypoints (107ms and 130ms).
+  4. PRINCIPLE-015 carried the heaviest operational mandates in the system yet had no mechanical enforcement. Its sole dogfood test created a temporary directory and then asserted that the directory existed and carried the prefix it had just supplied — a tautology, in breach of the PRINCIPLE-014 R5 anti-tautological invariant.
+  5. The PRINCIPLE-001 invariant reads "<1,500 tokens / <8,000 chars", but only characters were gated. At ~4 chars/token the 8,000-char cap admits ~2,000 tokens, so `.agents/rules/principles.md` sat at ~1,556 est. tokens — past the stated target — and the gate reported `[BUDGET PASS]`.
+  6. The verification gate sprayed ~37 lines of sync chatter into agent context on every run, against PRINCIPLE-012 R3 (runners default to quiet).
+- **Decision**:
+  1. Establish a **Universal CLI Contract** across all `scripts/`: `--help`/`-h` short-circuits before any import-heavy work or I/O, prints usage to stdout, and exits `0`; unknown flags are refused with the What → Why → Fix remediation triad on stderr and exit `2`; `0`/`1`/`2` exit semantics are uniform.
+  2. Implement **value-aware flag validation**: validators skip the value token of known value-taking flags (`--desc`, `--why`, `--validate-commit`, …), so free-text values are never misread as unknown options.
+  3. Enforce **`--check` purity**: `sync_all` no longer calls `mkdir(parents=True)` on target parents in check-only mode, so the read-only gate cannot create directories.
+  4. Add **token-target observability**: `TARGET_TOKEN_BUDGET = 1500` emits `[TOKEN WARN]` when a target passes the stated Tier 1 token target while remaining under the hard character cap, making the previously silent breach visible without churning the 5 generated targets.
+  5. Replace the tautological dogfood test with a **real dual-track CLI dogfood matrix**: every entrypoint is executed as a subshell binary from an ephemeral `dogfood_jail_*` sandbox cwd with stdin closed (EOF safety), across a golden path (`--help`) and a hostile perturbation (malformed flag), asserting exit codes, the remediation triad, zero tracebacks, and a bit-for-bit unchanged `git status --porcelain` before and after the matrix.
+  6. Hold the sub-second gate by running the subshell matrix **once** in `setUpClass` through a bounded `ThreadPoolExecutor` ($K \le$ `os.cpu_count()`) per PRINCIPLE-010 R3, and by retiring the older single-script help test that the 3-script contract strictly subsumes.
+  7. Buffer sync/validation diagnostics in the test gate via `contextlib.redirect_stdout`, replaying them in the assertion message only on failure.
+  8. Add **PRINCIPLE-017 and PRINCIPLE-018 pre-flight checklist entries**, which previously appeared only in the post-flight list, so rule-freshness and rollback baselines are established at cold start rather than discovered at delivery.
+- **Consequences**:
+  - *Positive*: Eliminates the silent-wrong-action failure class on every CLI surface; a help request can no longer mutate the repository; brings all 3 entrypoints inside the <100ms startup budget (107/130ms → 52/67ms); converts PRINCIPLE-015 from unenforced prose into a mechanical gate; cuts verification-gate output from 37 lines to 0.
+  - *Trade-offs*: Strict flag rejection means any future flag must be registered in its script's `KNOWN_FLAGS` set or it will be refused with exit `2` — deliberate, since silent acceptance was the defect. The dogfood matrix adds ~45ms of real subshell execution to the suite (0.694s → 0.739s), retained because headless in-process tests cannot observe exit codes or stderr contracts.
+  - *Deferred*: A standalone `scripts/dogfood.py` runner with process-tree teardown and `.agents/dogfood_last_run.log` remains unbuilt; the CLI matrix covers the single-process CLI domain, but the GUI/web/API domains in PRINCIPLE-015 R1 stay uninstantiated until AIKit governs a project that has those surfaces. The ledger key `version` also still differs from the `schema_version` name mandated by PRINCIPLE-016 R5; left unchanged to avoid a breaking schema rename for a naming nit.

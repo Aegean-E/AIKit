@@ -127,6 +127,24 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Universal CLI Contract (Implemented Surface)
+Every entrypoint in `scripts/` implements one uniform contract, enforced mechanically by the
+`TestOperationalDogfooding` matrix (see [ADR-039](decisions.md)):
+
+| Invocation | Required behaviour | Exit |
+|---|---|---|
+| `--help` / `-h` | Usage block to stdout, clean stderr, zero filesystem writes, short-circuits before AST/git work (<100ms) | `0` |
+| Unrecognized flag | What → Why → Fix remediation triad to stderr; default action is **never** performed | `2` |
+| Normal operation | Action performed; operational failure reported | `0` / `1` |
+
+- **Value-Aware Flag Validation**: Validators (`validate_argv` in `disruption_recovery.py`, `_validate_argv` in
+  `update_knowledge_base.py`, inline in `sync_principles.py`) skip the value token of known value-taking flags,
+  so free-text values such as `--desc "-n refactor"` are never misread as unknown options.
+- **Bounded-Parallel Dogfood Matrix**: The subshell matrix (3 scripts × {golden `--help`, chaos malformed flag})
+  executes once in `setUpClass` through a `ThreadPoolExecutor` bounded by `os.cpu_count()` (**PRINCIPLE-010** R3),
+  from an ephemeral `dogfood_jail_*` cwd with `stdin=DEVNULL`, asserting a bit-for-bit unchanged
+  `git status --porcelain` across the whole matrix. This keeps genuine subshell dogfooding inside the <1s gate.
+
 ---
 
 ## ⚡ Progressive Rule Disclosure & Governance Frugality

@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
-- **Total Functions / Methods**: `34`
-- **Total Source Lines**: `2261`
+- **Total Functions / Methods**: `36`
+- **Total Source Lines**: `2450`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `739` lines (`28244` bytes)
+**Size**: `804` lines (`30993` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -38,13 +38,14 @@
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
 - `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
+- `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 
 ---
 
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `385` lines (`15970` bytes)
+**Size**: `407` lines (`16994` bytes)
 
 **Functions:**
 - `def load_tier_1b_domain_rules(domain_path)` - *Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017).*
@@ -64,7 +65,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `304` lines (`10990` bytes)
+**Size**: `336` lines (`12238` bytes)
 
 **Functions:**
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
@@ -73,13 +74,14 @@
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
 - `def check_codebase_map_freshness(knowledge_dir, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
 - `def update_and_validate(knowledge_dir, strict)`
+- `def _validate_argv(argv, known, help_text)` - *Short-circuit on --help and reject unknown flags with exit 2 (PRINCIPLE-011, PRINCIPLE-015).*
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `833` lines (`41933` bytes)
+**Size**: `903` lines (`45686` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -100,7 +102,6 @@
   - Method `.test_principle_schema_strictness()`
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
-  - Method `.test_cli_help_is_safe_and_non_mutating()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`
@@ -133,9 +134,13 @@
   - Method `.test_ast_symbol_extraction()`
   - Method `.test_ast_strict_mode_fails_on_syntax_error()`
   - Method `.test_link_integrity_shield()`
-- `class TestOperationalDogfooding` - *Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).*
-  - Method `.setUp()`
-  - Method `.tearDown()`
+- `class TestOperationalDogfooding` - *Dual-Track CLI Dogfooding & Zero-Blast-Radius Chaos Test (PRINCIPLE-015).*
+  - Method `._porcelain()` - *Return the working-tree state, or None when git is unavailable.*
+  - Method `.setUpClass(cls)`
+  - Method `._assert_no_host_mutation(context)`
   - Method `.test_ephemeral_sandbox_isolation()`
+  - Method `.test_golden_path_help_contract()`
+  - Method `.test_chaos_unknown_flag_rejected_with_remediation_triad()`
+  - Method `.test_dogfood_matrix_leaves_zero_blast_radius()`
 
 ---

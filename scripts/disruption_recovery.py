@@ -627,7 +627,72 @@ def validate_conventional_commit(message: str) -> Tuple[bool, str]:
     return True, "Valid conventional commit."
 
 
+# Flags that consume the following argv token as their value.
+VALUE_FLAGS = {
+    "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
+    "--why", "--benefits", "--benefit", "--risks", "--mitigation",
+    "--complete", "--reset",
+}
+# Standalone action flags.
+ACTION_FLAGS = {"--clean", "--resume", "--audit", "--help", "-h"}
+KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS
+
+HELP_TEXT = """AIKit Disruption Recovery & Task Ledger (PRINCIPLE-006, PRINCIPLE-013)
+
+Usage:
+  py scripts/disruption_recovery.py [ACTION] [OPTIONS]
+
+Actions (default: --audit):
+  --audit                    Report working-tree drift, dangling buffers, and ledger state
+  --resume                   Print the resumption report for an interrupted task
+  --clean                    Purge orphaned temporary buffers (*.tmp_*)
+  --checkpoint <task_id>     Record a task checkpoint in .agents/task_ledger.json
+  --complete <task_id>       Mark a task as completed
+  --reset [reason]           Abandon and clear the active task
+  --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
+
+Checkpoint options:
+  --phase <name>             Lifecycle phase label (e.g. planning, implementation)
+  --phase-num <1-5>          Numeric lifecycle phase for compaction resumption
+  --desc <text>              Checkpoint description
+  --why <text>               Pre-flight impact: root cause / user goal (PRINCIPLE-007)
+  --benefits <text>          Pre-flight impact: expected benefits
+  --risks <text>             Pre-flight impact: blast-radius risks
+  --mitigation <text>        Pre-flight impact: risk mitigations
+  -h, --help                 Show this help message and exit
+
+Exit codes:
+  0  success    1  operational failure    2  CLI argument misuse
+"""
+
+
+def validate_argv(argv: List[str]) -> List[str]:
+    """Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011)."""
+    unknown: List[str] = []
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        if token.startswith("-"):
+            if token not in KNOWN_FLAGS:
+                unknown.append(token)
+            elif token in VALUE_FLAGS:
+                i += 1  # consume this flag's value, whatever it looks like
+        i += 1
+    return unknown
+
+
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(HELP_TEXT, end="")
+        sys.exit(0)
+
+    _unknown = validate_argv(sys.argv[1:])
+    if _unknown:
+        print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(_unknown)}", file=sys.stderr)
+        print("Why: the requested action is not part of this tool's CLI contract.", file=sys.stderr)
+        print("Fix: run 'py scripts/disruption_recovery.py --help' to list valid actions.", file=sys.stderr)
+        sys.exit(2)
+
     if "--validate-commit" in sys.argv:
         idx = sys.argv.index("--validate-commit")
         if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--"):

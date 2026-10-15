@@ -328,6 +328,8 @@
 - [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with portable RAII process teardown, non-interactive stdin parity, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` and planned atomic doc updates for any schema or service changes (**PRINCIPLE-016**)?
+- [ ] **Rule Freshness Baseline**: Have I confirmed the rule sync and codebase map are fresh at cold start (`py scripts/sync_principles.py --check`, `py scripts/update_knowledge_base.py --check`) so pre-existing drift is never misattributed to my changes (**PRINCIPLE-017**)?
+- [ ] **Delivery Baseline & Rollback Path**: Is the working tree clean (`git status --short`) on a tracked branch with a known-good `HEAD` to recoil to via `git reset --soft` (**PRINCIPLE-018**)?
 
 ### 🛬 Post-Flight Checklist (Run Before Completion)
 - [ ] Is governance overhead **lean and progressively disclosed** without prompt bloat (**PRINCIPLE-001**)?

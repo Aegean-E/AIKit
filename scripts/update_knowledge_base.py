@@ -285,7 +285,39 @@ def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = Tru
         print(f"[OK] Verified link integrity in {k_dir.name}/INDEX.md")
 
 
+KNOWN_FLAGS = {"--check", "--lenient", "--help", "-h"}
+
+HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
+
+Usage:
+  py scripts/update_knowledge_base.py [OPTIONS]
+
+Options:
+  --check     Verify codebase_map.md is fresh against the AST without writing (exits 1 on drift)
+  --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
+  -h, --help  Show this help message and exit
+
+Exit codes:
+  0  success    1  stale map / validation failure    2  CLI argument misuse
+"""
+
+
+def _validate_argv(argv: List[str], known: set, help_text: str) -> None:
+    """Short-circuit on --help and reject unknown flags with exit 2 (PRINCIPLE-011, PRINCIPLE-015)."""
+    if "-h" in argv or "--help" in argv:
+        print(help_text, end="")
+        sys.exit(0)
+    unknown = [a for a in argv if a.startswith("-") and a not in known]
+    if unknown:
+        print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(unknown)}", file=sys.stderr)
+        print(f"Why: this tool accepts only {', '.join(sorted(known))}.", file=sys.stderr)
+        print("Fix: run 'py scripts/update_knowledge_base.py --help' to list valid options.", file=sys.stderr)
+        sys.exit(2)
+
+
 if __name__ == "__main__":
+    _validate_argv(sys.argv[1:], KNOWN_FLAGS, HELP_TEXT)
+
     if "--check" in sys.argv:
         try:
             fresh = check_codebase_map_freshness(strict=False)
