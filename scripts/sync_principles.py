@@ -141,7 +141,8 @@ def sync_all(check_only: bool = False):
             print(f"[BUDGET {status}] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
 
     if budget_violations > 0:
-        sys.stderr.write(f"\n[WARN] {budget_violations} target file(s) exceed prompt context budget!\n")
+        sys.stderr.write(f"\n[ERROR] {budget_violations} target file(s) exceed prompt context budget! (PRINCIPLE-001)\n")
+        sys.exit(1)
 
     mismatches = 0
     for target_path, expected_content in targets.items():

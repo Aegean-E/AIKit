@@ -14,10 +14,12 @@
   1. **Two-Tier Progressive Disclosure**:
      - *Tier 1 (Always-Injected System Instructions)*: IDE rule files (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, 1-line canonical summaries and essential invariant pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
      - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
-  2. **Strict Injected Context Budget**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens total overhead). `scripts/sync_principles.py` must track, report, and guard against rule footprint creep.
-  3. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
-  4. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
-  5. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
+  2. **Mechanical Invariant Density (Anti-Vagueness Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Technical invariants (e.g. atomic `flush` + `fsync` + `replace`, 100% test pass gate, read-before-write symbol checks) must remain explicitly stated in Tier 1 summaries.
+  3. **Actionable Pointer Contract**: Every Tier 1 summary must provide direct, unambiguous file pointers (e.g. `[GUIDELINES.md#principle-xxx]`) so the agent knows precisely where to retrieve Tier 2 context in a single slice view without blind codebase searches.
+  4. **Strict Injected Context Budget & Automated Gate**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens / <8,000 chars total overhead). `scripts/sync_principles.py` must track, report, and mechanically guard against rule footprint creep.
+  5. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
+  6. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
+  7. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
 
 ---
 

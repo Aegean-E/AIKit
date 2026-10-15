@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `19`
-- **Total Source Lines**: `821`
+- **Total Source Lines**: `822`
 
 ---
 
@@ -35,7 +35,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `178` lines (`6425` bytes)
+**Size**: `179` lines (`6462` bytes)
 
 **Functions:**
 - `def parse_principles(agents_file)`

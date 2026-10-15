@@ -50,4 +50,7 @@ The system enforces strict chronological ordering (**PRINCIPLE-002**) across all
 
 ## ⚡ Progressive Rule Disclosure & Governance Frugality
 - **Two-Tier Architecture**: Injected IDE prompt instructions are capped (<1,500 tokens) with terse canonical summaries (Tier 1), while exhaustive guides, edge-case rationale, and failure analysis live in disk-backed knowledge documents (Tier 2) (**PRINCIPLE-001**).
-- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and validates character/token budgets across all generated AI rules, preventing instruction bloat.
+- **Mechanical Invariant Density**: Compression eliminates narrative filler and history while preserving 100% of hard technical constraints (e.g., `fsync` + `replace`, 100% test pass gate, read-before-write).
+- **Actionable Pointer Contract**: Tier 1 summaries provide explicit path and anchor pointers (`[GUIDELINES.md#principle-xxx]`) enabling instant 1-shot retrieval of deep knowledge without blind codebase scanning.
+- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and mechanically enforces character/token budgets across all generated AI rules, preventing instruction bloat.
+
