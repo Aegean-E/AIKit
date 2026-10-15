@@ -24,6 +24,8 @@ This document defines the architectural guidelines and design principles for thi
 | **[PRINCIPLE-014](#principle-014-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Read-before-write invariant, verifying disk symbols, and deterministic AST verification. |
 | **[PRINCIPLE-015](#principle-015-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Context anchor protocol, continuous checklist re-anchoring, and ledger self-orientation. |
 | **[PRINCIPLE-016](#principle-016-universal-operational-dogfooding--chaos-verification-the-ai-must-use-what-it-builds)** | Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding, zero-blast-radius sandboxing, and chaos resilience. |
+| **[PRINCIPLE-017](#principle-017-progressive-rule-disclosure--governance-frugality-zero-instruction-bloat)** | Progressive Disclosure & Lean Rules | Two-tier rule disclosure, strict prompt token budget, and zero instruction bloat. |
+
 
 ---
 
@@ -161,13 +163,25 @@ This document defines the architectural guidelines and design principles for thi
   - **Terse Context Reporting**: Dogfood runner outputs in terminal/chat must remain concise status dashboards (<15 lines). Verbose diagnostics and stack traces must be externalized to persistent disk logs (`.agents/dogfood_last_run.log`) to prevent conversational attentional drift and context compaction (**PRINCIPLE-009**, **PRINCIPLE-015**).
   - **Pre-Ship Dogfooding Gate**: The interactive dogfooding suite must be executed and confirmed passing with 100% success alongside standard unit tests before staging changes.
 
+### PRINCIPLE-017: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
+- **Problem**: As governance frameworks expand with dozens of principles and checklists, blindly injecting monolithic rule files into every AI prompt burns 15–30% of active context windows, induces instruction dilution ("lost in the middle"), inflates token costs, and increases latency.
+- **Guideline**:
+  - **Two-Tier Progressive Disclosure**:
+    - *Tier 1 (Always-Injected System Instructions)*: Target IDE rules (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, 1-line canonical summaries and essential invariant pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
+    - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
+  - **Strict Injected Context Budget**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens total overhead). `scripts/sync_principles.py` must track, report, and guard against rule footprint creep.
+  - **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
+  - **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
+  - **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
+
 ---
 
 ## 📝 How to Add New Principles
 
 To add a new principle:
-1. Assign the next sequential ID (`PRINCIPLE-017`, etc.).
+1. Assign the next sequential ID (`PRINCIPLE-018`, etc.).
 2. Define the **Problem/Concept** and concrete **Rules/Guidelines**.
 3. Update `GUIDELINES.md` and `AGENTS.md`.
 4. Run `python scripts/sync_principles.py` to auto-propagate across all AI guidelines.
+
 

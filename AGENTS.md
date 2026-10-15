@@ -193,14 +193,28 @@
 
 ---
 
+### PRINCIPLE-017: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
+- **Concept**: AI governance systems must never consume excessive context windows or degrade model reasoning through instruction bloat. System-level rule injections must remain ultra-dense and compact (Tier 1), while deep architectural rationale, historical logs, and exhaustive edge cases are offloaded to disk-backed knowledge documents (Tier 2) to be retrieved progressively on demand.
+- **Rules**:
+  1. **Two-Tier Progressive Disclosure**:
+     - *Tier 1 (Always-Injected System Instructions)*: IDE rule files (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, 1-line canonical summaries and essential invariant pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
+     - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
+  2. **Strict Injected Context Budget**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens total overhead). `scripts/sync_principles.py` must track, report, and guard against rule footprint creep.
+  3. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
+  4. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
+  5. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
+
+---
+
 ## 🛠️ AI Task Checklists
 
 ### 🛫 Pre-Flight Checklist (Run at Cold Start / Before Coding)
-- [ ] **Context Verification**: Have I reviewed active principles (`PRINCIPLE-001` through `PRINCIPLE-016`) and repo state?
+- [ ] **Context Verification**: Have I reviewed active principles (`PRINCIPLE-001` through `PRINCIPLE-017`) and repo state?
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-013**)?
 - [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` to understand existing patterns (**PRINCIPLE-010**)?
 - [ ] **Empirical Grounding (Read-Before-Write)**: Have I verified code definitions, imports, paths, and signatures on disk before writing or modifying code (**PRINCIPLE-014**)?
 - [ ] **Attentional Anchor & Budget**: Is my working memory externalized to disk, and am I using targeted slices to preserve context budget (**PRINCIPLE-015**)?
+- [ ] **Instruction & Context Budget Plan**: Are prompt rules, summaries, and outputs compact to prevent context bloat and preserve LLM focus (**PRINCIPLE-017**)?
 - [ ] **Necessity Assessment**: Why is this change needed, and what specific problem does it address?
 - [ ] **Benefit Projection**: How will this directly enhance user value, modularity, or reliability?
 - [ ] **Test Coverage Plan**: Have I planned unit tests to validate this change and prevent regressions (**PRINCIPLE-011**)?
@@ -221,6 +235,7 @@
 - [ ] Is all code **empirically grounded** with verified symbols, zero hallucinations, and AST validation (**PRINCIPLE-014**)?
 - [ ] Was **working memory externalized** to disk/ledger, avoiding attentional drift (**PRINCIPLE-015**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed jail (**PRINCIPLE-016**)?
+- [ ] Is governance overhead **lean and progressively disclosed** without injecting bloat into always-on prompt contexts (**PRINCIPLE-017**)?
 - [ ] Are all state changes and logs **crash-resilient and written atomically** (**PRINCIPLE-012**, **PRINCIPLE-013**)?
 - [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-013**)?
 - [ ] Have all **automated unit tests passed with 100% success** (**PRINCIPLE-011**)?
@@ -229,4 +244,5 @@
 - [ ] Has **README.md been updated** to reflect all changes (**PRINCIPLE-005**)?
 - [ ] Has an **automatic commit** been created with a conventional commit message (**PRINCIPLE-002**)?
 - [ ] Has the commit been **automatically pushed** to the remote repository (**PRINCIPLE-002**)?
+
 

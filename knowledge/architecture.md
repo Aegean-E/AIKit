@@ -36,3 +36,10 @@ The application follows a decoupled, modular architecture adhering to **PRINCIPL
 - **Live System Verification**: Components are interactively exercised across their native runtime surfaces (UI loops, subshells, HTTP clients) prior to shipping (**PRINCIPLE-016**).
 - **Zero-Blast-Radius Jail**: Dogfood execution occurs inside ephemeral, synthetic sandbox directories to guarantee safety against accidental user data modification.
 
+---
+
+## ⚡ Progressive Rule Disclosure & Governance Frugality
+- **Two-Tier Architecture**: Injected IDE prompt instructions are capped (<1,500 tokens) with terse canonical summaries (Tier 1), while exhaustive guides, edge-case rationale, and failure analysis live in disk-backed knowledge documents (Tier 2) (**PRINCIPLE-017**).
+- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and validates character/token budgets across all generated AI rules, preventing instruction bloat.
+
+

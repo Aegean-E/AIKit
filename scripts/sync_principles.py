@@ -126,6 +126,23 @@ def sync_all(check_only: bool = False):
         ROOT_DIR / ".github" / "copilot-instructions.md": generate_copilot_content(principles),
     }
 
+    # Governance Frugality & Context Budget Check (PRINCIPLE-017)
+    MAX_TARGET_CHARS = 8000  # ~1,500-2,000 tokens per target file
+    budget_violations = 0
+    print("\n--- Context Budget Audit (PRINCIPLE-017) ---")
+    for target_path, expected_content in targets.items():
+        char_len = len(expected_content)
+        est_tokens = char_len // 4
+        status = "PASS" if char_len <= MAX_TARGET_CHARS else "EXCEEDED"
+        if status == "EXCEEDED":
+            budget_violations += 1
+            print(f"[BUDGET {status}] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {MAX_TARGET_CHARS} cap")
+        else:
+            print(f"[BUDGET {status}] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
+
+    if budget_violations > 0:
+        sys.stderr.write(f"\n[WARN] {budget_violations} target file(s) exceed prompt context budget!\n")
+
     mismatches = 0
     for target_path, expected_content in targets.items():
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,3 +175,4 @@ def sync_all(check_only: bool = False):
 if __name__ == "__main__":
     check_mode = "--check" in sys.argv
     sync_all(check_only=check_mode)
+

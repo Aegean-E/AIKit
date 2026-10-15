@@ -33,21 +33,20 @@ from scripts.update_knowledge_base import (
 
 
 class TestPrincipleSync(unittest.TestCase):
-    """Verifies that all 16 principles are maintained and synchronized (PRINCIPLE-004)."""
+    """Verifies that all 17 principles are maintained and synchronized (PRINCIPLE-004, PRINCIPLE-017)."""
 
-    def test_parse_16_principles(self):
+    def test_parse_17_principles(self):
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 16, f"Expected 16 principles, got {len(principles)}")
+        self.assertEqual(len(principles), 17, f"Expected 17 principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
-        for i in range(1, 17):
+        for i in range(1, 18):
             expected_id = f"PRINCIPLE-{i:03d}"
             self.assertIn(expected_id, p_ids, f"Missing {expected_id} in AGENTS.md")
 
-    def test_targets_in_sync(self):
-        # All target files must be 100% in sync with AGENTS.md
+    def test_targets_in_sync_and_budgeted(self):
+        # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-017)
         principles = parse_principles(AGENTS_MD)
-        self.assertEqual(len(principles), 16)
-        # Check files directly
+        self.assertEqual(len(principles), 17)
         targets = [
             ROOT_DIR / "GEMINI.md",
             ROOT_DIR / ".agents" / "rules" / "principles.md",
@@ -55,12 +54,21 @@ class TestPrincipleSync(unittest.TestCase):
             ROOT_DIR / ".cursorrules",
             ROOT_DIR / ".github" / "copilot-instructions.md",
         ]
+        MAX_ALLOWED_CHARS = 8000  # <2,000 tokens per target file
         for target in targets:
             self.assertTrue(target.exists(), f"Target file missing: {target}")
             content = target.read_text(encoding="utf-8")
             self.assertIn("PRINCIPLE-014", content, f"PRINCIPLE-014 missing from {target.name}")
             self.assertIn("PRINCIPLE-015", content, f"PRINCIPLE-015 missing from {target.name}")
             self.assertIn("PRINCIPLE-016", content, f"PRINCIPLE-016 missing from {target.name}")
+            self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
+            # Assert context budget cap
+            self.assertLessEqual(
+                len(content),
+                MAX_ALLOWED_CHARS,
+                f"Governance bloat detected in {target.name}: {len(content)} chars > {MAX_ALLOWED_CHARS}"
+            )
+
 
 
 class TestDisruptionRecovery(unittest.TestCase):

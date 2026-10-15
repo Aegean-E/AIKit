@@ -11,7 +11,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── AGENTS.md                           <- Master AI Specification & Checklists (All 16 Principles)
+├── AGENTS.md                           <- Master AI Specification & Checklists (All 17 Principles)
 ├── GUIDELINES.md                       <- Comprehensive Architectural Reference & Problem Index
 ├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
 ├── CLAUDE.md                           <- Anthropic Claude Code configuration
@@ -72,7 +72,7 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 
 ---
 
-## 🏛️ The 16 Core Principles Overview
+## 🏛️ The 17 Core Principles Overview
 
 | Principle | Title | Core Concept |
 |---|---|---|
@@ -92,6 +92,7 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 | **PRINCIPLE-014** | Empirical Grounding & Anti-Hallucination | Read-before-write invariant; verify disk symbols, definitions, and schemas before coding. |
 | **PRINCIPLE-015** | Attentional Drift & Compaction Resilience | Context anchor protocol; externalized working memory on disk; slice viewing to protect context window. |
 | **PRINCIPLE-016** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; zero-blast-radius synthetic sandboxing; offline chaos fuzzing. |
+| **PRINCIPLE-017** | Progressive Disclosure & Governance Frugality | Two-tier rule disclosure; strict prompt context budget (<1,500 tokens); zero instruction bloat. |
 
 
 ---
@@ -114,7 +115,8 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
 
 ## 🛠️ Adding New Principles to Your Project
 
-1. Add `### PRINCIPLE-017: [Title]` to `AGENTS.md` and `GUIDELINES.md` following the standard schema.
+1. Add `### PRINCIPLE-018: [Title]` to `AGENTS.md` and `GUIDELINES.md` following the standard schema.
 2. Run `python scripts/sync_principles.py`.
 3. All target IDE files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`) will instantly reflect the new principle!
+
 
