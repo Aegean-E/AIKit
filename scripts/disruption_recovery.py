@@ -155,10 +155,14 @@ def record_checkpoint(
     status: str = "in_progress",
     ledger_file: Optional[Path] = None,
     phase_num: Optional[int] = None,
+    why: Optional[str] = None,
+    risks: Optional[str] = None,
+    mitigation: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006).
+    Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).
     Tracks active_phase to allow instant phase-accurate resumption after conversation compaction.
+    Optionally persists pre-flight impact assessment metadata (why, risks, mitigation).
     """
     resolved_phase = resolve_phase_num(phase, phase_num)
     ledger = load_ledger(ledger_file)
@@ -173,6 +177,16 @@ def record_checkpoint(
         "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
     }
 
+    if why or risks or mitigation:
+        impact = {}
+        if why:
+            impact["why"] = why
+        if risks:
+            impact["risks"] = risks
+        if mitigation:
+            impact["mitigation"] = mitigation
+        checkpoint_entry["impact_assessment"] = impact
+
     ledger["active_task"] = {
         "task_id": task_id,
         "last_phase": phase,
@@ -180,6 +194,9 @@ def record_checkpoint(
         "status": status,
         "updated_at": checkpoint_entry["timestamp"],
     }
+    if why or risks or mitigation:
+        ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
+
     ledger.setdefault("checkpoints", []).append(checkpoint_entry)
     save_ledger(ledger, ledger_file)
     return checkpoint_entry
@@ -355,6 +372,21 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         lc = audit["last_checkpoint"]
         lines.append(f"📌 Last Checkpoint: [{lc.get('timestamp_str')}] {lc.get('phase')} - {lc.get('description')}")
 
+    impact = None
+    if audit.get("interrupted_task") and audit["interrupted_task"].get("impact_assessment"):
+        impact = audit["interrupted_task"]["impact_assessment"]
+    elif audit.get("last_checkpoint") and audit["last_checkpoint"].get("impact_assessment"):
+        impact = audit["last_checkpoint"]["impact_assessment"]
+
+    if impact:
+        lines.append("🎯 Pre-Flight Impact Assessment (PRINCIPLE-007):")
+        if impact.get("why"):
+            lines.append(f"   • Why: {impact['why']}")
+        if impact.get("risks"):
+            lines.append(f"   • Risks: {impact['risks']}")
+        if impact.get("mitigation"):
+            lines.append(f"   • Mitigation: {impact['mitigation']}")
+
     if audit.get("modified_files"):
         lines.append(f"📝 Modified Files ({len(audit['modified_files'])}):")
         for f in audit["modified_files"]:
@@ -400,6 +432,17 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
     lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")
     lines.append(f"🚀 Recommended Resumption Phase: Phase {next_phase_num}")
+
+    impact = interrupted.get("impact_assessment")
+    if impact:
+        lines.append("🎯 Pre-Flight Impact Assessment (PRINCIPLE-007):")
+        if impact.get("why"):
+            lines.append(f"   • Why: {impact['why']}")
+        if impact.get("risks"):
+            lines.append(f"   • Risks: {impact['risks']}")
+        if impact.get("mitigation"):
+            lines.append(f"   • Mitigation: {impact['mitigation']}")
+
     if audit.get("modified_files"):
         lines.append(f"📝 Surviving Modified Files ({len(audit['modified_files'])}):")
         for f in audit["modified_files"]:
@@ -436,8 +479,34 @@ if __name__ == "__main__":
             didx = sys.argv.index("--desc")
             if len(sys.argv) > didx + 1 and not sys.argv[didx + 1].startswith("--"):
                 desc = sys.argv[didx + 1]
+
+        why = None
+        if "--why" in sys.argv:
+            widx = sys.argv.index("--why")
+            if len(sys.argv) > widx + 1 and not sys.argv[widx + 1].startswith("--"):
+                why = sys.argv[widx + 1]
+
+        risks = None
+        if "--risks" in sys.argv:
+            ridx = sys.argv.index("--risks")
+            if len(sys.argv) > ridx + 1 and not sys.argv[ridx + 1].startswith("--"):
+                risks = sys.argv[ridx + 1]
+
+        mitigation = None
+        if "--mitigation" in sys.argv:
+            midx = sys.argv.index("--mitigation")
+            if len(sys.argv) > midx + 1 and not sys.argv[midx + 1].startswith("--"):
+                mitigation = sys.argv[midx + 1]
                 
-        cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc)
+        cp = record_checkpoint(
+            task_id=task_id,
+            phase=phase,
+            phase_num=phase_num,
+            description=desc,
+            why=why,
+            risks=risks,
+            mitigation=mitigation,
+        )
         print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")

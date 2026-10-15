@@ -206,3 +206,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: One-click task abort and buffer cleanup; proactive warning when git is missing; pristine git histories with structured conventional micro-commits.
   - *Trade-offs*: None; 100% standard library.
+
+### ADR-016: Pre-Flight Track C Impact Gating, 4 Blast-Radius Dimensions, Anti-Satisficing Invariant, and Ledger Impact Persistence (PRINCIPLE-007)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Principle 7 previously lacked a distinct trigger boundary, risking process overhead on read-only queries (Track A) or simple typo fixes (Track B) while being too loose on major engineering refactors (Track C).
+  2. The risk assessment question ("How could it harm the project?") was abstract, often leading to generic LLM platitudes rather than concrete technical blast-radius checks.
+  3. Quality non-diminution prohibited "substandard or lazy code" but did not mechanically enumerate the classic satisficing shortcuts LLMs take (stubs, `# TODO`, silent exception swallowing, weakened test assertions, UI demotion).
+  4. Pre-flight assessments were executed purely "mentally" or in chat, causing rationale, risks, and mitigation designs to be lost upon conversation compaction or power disruption.
+- **Decision**:
+  1. Anchor the mandatory 4-quadrant impact assessment strictly to **Track C (Engineering/Feature/Refactor)** tasks; Track B scales to a micro-sanity check (zero syntax/link breakage); Track A bypasses the gate.
+  2. Codify the **4 Blast-Radius Dimensions**: (1) Contracts & Signatures, (2) Dependency Infiltration, (3) Concurrency & Thread Safety, (4) State Mutation & Schema Drift.
+  3. Codify the **Anti-Satisficing Invariant (Zero Lazy Code)** with explicit mechanical prohibitions against `# TODO` placeholders, silent exception swallowing (`except Exception: pass`), assertion tampering, and UI downgrades.
+  4. Require clean baseline verification (`git status`) and explicit rollback/recoil preparedness before mutating code.
+  5. Expand `scripts/disruption_recovery.py` with optional `--why`, `--risks`, and `--mitigation` flags in `record_checkpoint` and CLI to persist pre-flight impact metadata in `.agents/task_ledger.json` across compactions.
+- **Consequences**:
+  - *Positive*: Eliminates impulsive LLM coding; provides a concrete 4-point blast-radius checklist; permanently bans LLM shortcuts; preserves pre-flight architectural intent across compactions and disruptions.
+  - *Trade-offs*: Adds optional arguments to checkpointing CLI; remains 100% standard library and backward-compatible.
+

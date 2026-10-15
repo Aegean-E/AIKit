@@ -20,7 +20,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 |---|---|---|
 | **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation (<20k chars), material surface sync, executable command parity, and whole-tree drift shield. |
 | **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and CLI ledger recovery. |
-| **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight cold-start checklist evaluating why, benefits, risks, and quality preservation. |
+| **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight Track C checklist evaluating why, benefits, 4 blast-radius risks, and anti-satisficing. |
 | **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem Decomposition | Hierarchical decomposition of complex problems and datasets into bounded sub-tasks. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
@@ -137,11 +137,17 @@ The principles are strictly ordered according to the **5 Chronological Execution
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
 - **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs.
 - **Guideline**:
-  - Before writing code, execute a pre-flight assessment:
-    - **Why required**: Understand root cause and motivation.
-    - **Expected benefits**: Identify improvements to UX, modularity, or performance.
-    - **Potential harm/risks**: Anticipate failure modes, high latency, context window exhaustion, or thread locks.
-    - **Quality Non-Diminution**: Checklists must strictly elevate standards and prevent corners from being cut; they must never justify degraded quality.
+  - Before mutating code or schemas on Track C tasks, execute a structured pre-flight impact assessment:
+    - **Why required**: Understand root cause, user goal, or architectural gap.
+    - **Expected benefits**: Concrete UX, modularity, performance, or reliability gains.
+    - **4 Blast-Radius Dimensions**:
+      - *Contracts*: Public API, CLI flag, signature, and schema parity.
+      - *Dependencies*: Zero undeclared external packages or non-standard tools.
+      - *Concurrency*: Non-blocking async execution, no event-loop starvation or thread deadlocks.
+      - *State*: Backward-compatible storage schemas and atomic mutations.
+    - **Anti-Satisficing (Quality Non-Diminution)**: Strictly forbids `# TODO` stubs, silent exception swallowing (`except Exception: pass`), weakened test assertions, or aesthetic degradation. Checklists must elevate standards, never justify degraded code.
+    - **Reversibility**: Verify clean working baseline before starting and maintain clear rollback paths.
+    - **Ledger Persistence**: Persist rationale via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc "..." --why "..." --risks "..." --mitigation "..."` to preserve pre-flight context across compactions.
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
 - **Problem**: Monolithic or flat batch processing fails when dealing with deep hierarchies, thousands of items, or complex taxonomies.

@@ -327,6 +327,49 @@ class TestDisruptionRecovery(unittest.TestCase):
         report = format_audit_report(audit)
         self.assertIn("Git Inactive", report)
 
+    def test_checkpoint_with_impact_assessment(self):
+        # Enforces PRINCIPLE-007: pre-flight impact assessment persisted into task ledger
+        cp = record_checkpoint(
+            task_id="feature_auth",
+            phase="planning",
+            phase_num=2,
+            description="Pre-flight auth planning",
+            why="Improve session security",
+            risks="Session drops on network glitch",
+            mitigation="Add exponential backoff refresh loop",
+            ledger_file=self.ledger_file,
+        )
+        self.assertIn("impact_assessment", cp)
+        self.assertEqual(cp["impact_assessment"]["why"], "Improve session security")
+        self.assertEqual(cp["impact_assessment"]["risks"], "Session drops on network glitch")
+        self.assertEqual(cp["impact_assessment"]["mitigation"], "Add exponential backoff refresh loop")
+
+        ledger = load_ledger(self.ledger_file)
+        self.assertEqual(ledger["active_task"]["impact_assessment"]["why"], "Improve session security")
+
+    def test_audit_and_resume_reports_with_impact_assessment(self):
+        # Enforces PRINCIPLE-007 & PRINCIPLE-006: reports display pre-flight impact guidance
+        record_checkpoint(
+            task_id="feature_cache",
+            phase="planning",
+            phase_num=2,
+            description="Planning cache layer",
+            why="Reduce API response latency",
+            risks="Stale cache data",
+            mitigation="Time-to-live invalidation with version tags",
+            ledger_file=self.ledger_file,
+        )
+        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        audit_rep = format_audit_report(audit)
+        self.assertIn("Pre-Flight Impact Assessment (PRINCIPLE-007)", audit_rep)
+        self.assertIn("Why: Reduce API response latency", audit_rep)
+        self.assertIn("Risks: Stale cache data", audit_rep)
+        self.assertIn("Mitigation: Time-to-live invalidation with version tags", audit_rep)
+
+        resume_rep = format_resume_report(audit)
+        self.assertIn("Pre-Flight Impact Assessment (PRINCIPLE-007)", resume_rep)
+        self.assertIn("Why: Reduce API response latency", resume_rep)
+
 
 
 class TestKnowledgeBase(unittest.TestCase):

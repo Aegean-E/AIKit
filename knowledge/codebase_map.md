@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `24`
-- **Total Source Lines**: `1346`
+- **Total Source Lines**: `1458`
 
 ---
 
@@ -18,7 +18,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `472` lines (`18329` bytes)
+**Size**: `541` lines (`20927` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -27,7 +27,7 @@
 - `def prune_checkpoints(checkpoints, active_task_id, max_history)` - *Prune checkpoints to maintain a bounded rolling memory window (PRINCIPLE-004).*
 - `def save_ledger(ledger, ledger_file, max_history)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
-- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006).*
+- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, risks, mitigation)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger.*
 - `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (PRINCIPLE-006).*
 - `def clean_dangling_temp_files(workspace_dir)` - *Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013).*
@@ -69,7 +69,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `402` lines (`18971` bytes)
+**Size**: `445` lines (`21138` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -93,6 +93,8 @@
   - Method `.test_reset_active_task()`
   - Method `.test_clean_dangling_temp_files()`
   - Method `.test_non_git_workspace_detection()`
+  - Method `.test_checkpoint_with_impact_assessment()`
+  - Method `.test_audit_and_resume_reports_with_impact_assessment()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`

@@ -111,3 +111,16 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Explicit Micro-Staging Invariant**: Micro-milestone commits stage strictly the files modified for that sub-task (never blind `git add .`), preventing unvetted draft artifacts from contaminating git history.
 - **Transient Buffer Hygiene**: Startup audits detect and flag orphaned temporary buffers (`*.tmp_*`) from interrupted writes, maintaining deterministic repository health.
 
+---
+
+## 🎯 Pre-Flight Impact & Quality Gate Architecture (PRINCIPLE-007)
+- **Track C Impact Assessment Gate**: Before mutating executable code, schemas, or dependencies on Track C tasks, the AI must evaluate the 4 impact quadrants (Why, Expected Benefits, Blast-Radius Risks, and Mitigation). Track B scales down to a micro-sanity check; Track A is read-only.
+- **4 Blast-Radius Dimensions**:
+  1. *Contracts & Signatures*: Zero orphaned call-sites, broken CLI flags, or mismatched serialization schemas.
+  2. *Dependency Infiltration*: Zero undeclared external packages or non-standard tools.
+  3. *Concurrency & Thread Safety*: Non-blocking asynchronous execution without event-loop starvation or thread deadlocks.
+  4. *State Mutation & Schema Drift*: Backward-compatible storage schemas and fail-safe atomic mutations.
+- **Anti-Satisficing (Quality Non-Diminution)**: Mechanically prohibits classic LLM shortcuts: no `# TODO` stubs, no silent exception swallowing (`except Exception: pass`), no weakened or deleted test assertions, and no demoted UI designs.
+- **Clean Baseline & Reversibility**: Workflows must start from a clean baseline (`git status`) and maintain atomic recoil paths if Phase 4 or Phase 15 verification gates fail.
+- **Persistent Ledger Memory**: Checkpoint flags (`--why`, `--risks`, `--mitigation`) embed the pre-flight assessment directly into `.agents/task_ledger.json`, preserving intent and rationale across compactions and disruptions.
+

@@ -122,20 +122,20 @@
 ---
 
 ### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
-- **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively identifies potential *harm/regressions*, and proactively guards quality.
-- **Invariant**: Cold-start impact gate (evaluate why, benefits, risks/harm mitigation, quality non-diminution) before non-trivial edits.
+- **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively neutralizes concrete *blast-radius risks*, strictly enforces *quality non-diminution*, and preserves assessment memory across interruptions.
+- **Invariant**: Track C impact gate (evaluate why, benefits, 4 blast-radius dimensions, anti-satisficing, clean reversibility) before non-trivial edits.
 - **Rules**:
-  1. **Mandatory Cold-Start Assessment**:
-     - **Why is this required?**: Articulate the exact user goal, pain point, or architectural gap being solved.
-     - **How does it benefit the project?**: Identify concrete improvements to user experience, performance, modularity, or reliability.
-     - **How could it harm the project?**: Preemptively analyze potential downsides (e.g. breaking changes, performance drops, API rate limit exposure, thread blocking, UI freezes, or complexity bloat).
-     - **Mitigation Plan**: Implement defensive designs to neutralize identified risks before applying changes.
-  2. **Quality Non-Diminution**:
-     - Principles and checklists must **never** be used as an excuse to deliver substandard, crippled, or lazy implementations.
-     - All code must maintain high visual polish, complete type safety, robust exception handling, and non-blocking asynchronous execution where applicable.
-  3. **Continuous Enforcement**:
-     - Run the pre-flight checklist mentally or in scratch plans at every cold start.
-     - Complete all items in the task checklist before marking work finished.
+  1. **Adaptive Lifecycle Trigger (Track C Gate)**: The full 4-quadrant impact assessment is mandatory for **Track C (Engineering/Feature/Refactor)** tasks before mutating code or schemas. For Track B (Trivial/Doc), scale to a micro-sanity check (zero syntax/link breakage). Track A (Query/Exploration) bypasses this gate.
+  2. **The 4 Blast-Radius Dimensions**: When evaluating *"How could this harm the project?"*, the AI must explicitly assess:
+     - *Contract & Signature Breakage*: Call-site ripple effects on public APIs, CLI flags, method signatures, or data serialization schemas.
+     - *Dependency Infiltration*: Accidental introduction of undeclared third-party packages, external runtime binaries, or version mismatches (`PRINCIPLE-003`).
+     - *Concurrency & Thread Safety*: Synchronous blocking I/O, event-loop starvation, thread deadlocks, or UI freezing (`PRINCIPLE-010`).
+     - *State Mutation & Schema Drift*: Modifying file formats or storage schemas without backward compatibility, migrations, or atomicity (`PRINCIPLE-013`).
+  3. **Anti-Satisficing & Quality Non-Diminution (Zero Lazy Code)**:
+     - Principles, token frugality, or checklists must **never** be used as an excuse to deliver substandard, stubbed, or crippled implementations.
+     - *Forbidden Shortcuts*: Never leave `# TODO`, `// implement later`, `pass`, or mock placeholders in production code paths. Never silently swallow exceptions (`except Exception: pass`). Never weaken, skip, or delete unit test assertions to force tests to pass (`PRINCIPLE-014`). Never demote polished UI to bare wireframes.
+  4. **Reversibility & Recoil Preparedness**: Before starting non-trivial mutations, verify a clean working baseline (`git status`). Ensure every modification has an atomic rollback path if Phase 4 verification or Phase 15 dogfooding encounters an unresolvable failure.
+  5. **Persistent Assessment Memory**: Record the pre-flight rationale, risks, and mitigation either in the task scratchpad or directly in the task ledger via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc <desc> --why <why> --risks <risks> --mitigation <mitigation>` so intent survives conversation compaction and disruption recovery.
 
 ---
 
@@ -295,7 +295,7 @@
 - [ ] **Attentional Anchor & Budget**: Is my working memory externalized to disk, and am I using targeted slices to preserve context budget (**PRINCIPLE-004**)?
 - [ ] **Context Verification**: Have I reviewed active principles (`PRINCIPLE-001` through `PRINCIPLE-018`) and repo state (**PRINCIPLE-005**)?
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
-- [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, analyzed potential harm/risks, and guarded quality (**PRINCIPLE-007**)?
+- [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
 - [ ] **Hierarchical Decomposition Plan**: Has the problem been partitioned hierarchically rather than dumped in flat batches (**PRINCIPLE-008**)?
 - [ ] **Modularity & Provider Plan**: Is the architecture decoupled with pluggable provider/service boundaries (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for optimal speed, minimal latency, and lean dependencies (**PRINCIPLE-010**)?
