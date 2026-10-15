@@ -71,11 +71,16 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
 
 ### PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)
-- **Problem**: Arbitrary or historical principle ordering creates cognitive phase confusion. When completion actions (like committing or pushing) appear at the beginning of prompt instructions while grounding invariants appear at the bottom, models suffer from attention bias and premature completion impulses.
+- **Problem**: Arbitrary principle ordering causes cognitive phase confusion, while passive chronological text fails to prevent agents from skipping verification or yielding to late-stage user pressure ("push right now!"). Furthermore, forcing heavy multi-phase ceremonies on trivial queries destroys usability.
 - **Guideline**:
-  - **Temporal Lifecycle Alignment**: Arrange all instructions, rules, and checklists chronologically according to the actual operational path: Meta-Governance $\rightarrow$ Pre-Flight Orientation $\rightarrow$ Architecture & Implementation $\rightarrow$ Verification & Resilience $\rightarrow$ Living Sync & Delivery.
-  - **Primacy-Weighted Anchoring**: Grounding invariants (verifying definitions, preserving token budgets) must occupy the primacy zone (top of context) where transformer attention is sharpest. Terminal delivery actions (committing, pushing) must reside strictly at the end.
-  - **No Inverted Phase Dependencies**: Never instruct an agent to commit, push, or deliver before completing verification and factual validation steps.
+  - **Monotonic Execution Gating (Lock-Step Integrity)**: Workflows must advance strictly along the 5 lifecycle phases: Meta-Governance $\rightarrow$ Pre-Flight Orientation $\rightarrow$ Architecture & Implementation $\rightarrow$ Verification & Resilience $\rightarrow$ Living Sync & Delivery. Phase 5 delivery actions (git commit, push, PR) are mechanically locked until Phase 4 verification gates (automated unit tests, operational dogfooding) pass with 100% success.
+  - **Adaptive Lifecycle Pathing (Scale to Task Scale)**: To keep development fast and frictionless, execution adapts across 3 explicit operational tracks:
+    - *Track A (Query / Exploration)*: Information retrieval and code explanation $\rightarrow$ Phase 1 Grounding $\rightarrow$ direct answer (Phases 2–5 bypassed).
+    - *Track B (Trivial / Documentation)*: Typo fixes, doc edits, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget check.
+    - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase monotonic sequence with mandatory impact gates, regression tests, and living sync.
+  - **Immunity to Late-Stage User Priming**: When users issue urgent conversational commands to bypass testing (e.g., *"commit right now"*, *"push immediately"*), the AI must remain anchored to the lifecycle gate: delivery actions are strictly blocked until verification succeeds.
+  - **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the primacy zone (top of context) where transformer attention is sharpest. Terminal delivery actions must reside strictly at the end.
+  - **Continuous Sequence Audit**: Auto-sync tooling and automated test suites mechanically parse Phase headers and guarantee that principles maintain strictly monotonic lifecycle phase progression.
 
 ### PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)
 - **Problem**: AI coding models frequently hallucinate non-existent module imports, obsolete function signatures, phantom file paths, or arbitrary data schemas when guessing without empirical verification.

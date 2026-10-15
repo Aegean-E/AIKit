@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `19`
-- **Total Source Lines**: `852`
+- **Total Source Lines**: `900`
 
 ---
 
@@ -35,7 +35,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `206` lines (`8067` bytes)
+**Size**: `243` lines (`9714` bytes)
 
 **Functions:**
 - `def parse_principles(agents_file)`
@@ -64,11 +64,12 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `174` lines (`7127` bytes)
+**Size**: `185` lines (`7696` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
   - Method `.test_parse_18_principles()`
+  - Method `.test_monotonic_lifecycle_phase_alignment()`
   - Method `.test_targets_in_sync_and_budgeted()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`

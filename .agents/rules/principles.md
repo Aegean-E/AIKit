@@ -10,7 +10,7 @@ This rule is automatically loaded from the workspace customizations root (`.agen
 1. **PRINCIPLE-001: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)**:
    - Two-tier progressive disclosure (<1,500 tokens Tier 1); self-sufficient invariant capsules with deterministic grep anchors (`### PRINCIPLE-XXX:`); slice-view Tier 2 on architectural boundary, regression, or ambiguity. [GUIDELINES.md](../../GUIDELINES.md#principle-001)
 2. **PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)**:
-   - Monotonic 5-phase lifecycle order (Phase 1 Grounding -> Phase 2 Orientation -> Phase 3 Architecture -> Phase 4 Verification -> Phase 5 Delivery); zero late-stage priming. [GUIDELINES.md](../../GUIDELINES.md#principle-002)
+   - Monotonic 5-phase lifecycle execution gate (Phase 4 test pass required before Phase 5 delivery); adaptive task pathing (Query/Doc/Eng); immunity to late-stage user priming. [GUIDELINES.md](../../GUIDELINES.md#principle-002)
 3. **PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)**:
    - Read-before-write invariant (`view_file`/`grep_search` symbol check before write); zero assumption on ambiguity; deterministic AST test gating. [GUIDELINES.md](../../GUIDELINES.md#principle-003)
 4. **PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)**:

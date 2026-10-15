@@ -45,6 +45,17 @@ class TestPrincipleSync(unittest.TestCase):
         for p in principles:
             self.assertTrue(p["invariant"], f"Principle {p['id']} is missing an invariant capsule")
 
+    def test_monotonic_lifecycle_phase_alignment(self):
+        # Enforces PRINCIPLE-002: principles must belong to monotonic phases 1 through 5
+        principles = parse_principles(AGENTS_MD)
+        self.assertEqual(len(principles), 18)
+        current_phase = 1
+        for p in principles:
+            self.assertIn("phase_num", p)
+            self.assertGreaterEqual(p["phase_num"], current_phase, f"Phase inversion detected at {p['id']}")
+            current_phase = p["phase_num"]
+        self.assertEqual(current_phase, 5, "Principles did not reach Phase 5")
+
     def test_targets_in_sync_and_budgeted(self):
         # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-001)
         principles = parse_principles(AGENTS_MD)

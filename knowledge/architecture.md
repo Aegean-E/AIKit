@@ -10,12 +10,23 @@ The application follows a decoupled, modular architecture adhering to **PRINCIPL
 ---
 
 ## 🧭 5-Phase Execution Pipeline Architecture
-The system enforces strict chronological ordering (**PRINCIPLE-002**) across all instructions, agent prompts, and task checkpoints:
+The system enforces strict chronological ordering and operational execution gating (**PRINCIPLE-002**) across all instructions, agent prompts, and task checkpoints:
 1. **Phase 1: Meta-Governance & Attentional Grounding**: Progressive disclosure (<1,500 tokens), cognitive flow sequencing, read-before-write symbol verification, and externalized disk memory.
 2. **Phase 2: Pre-Flight Orientation & Planning**: Cold-start documentation, power-loss disruption audit, impact/quality checklist, and hierarchical task decomposition.
 3. **Phase 3: Architecture & Lean Implementation**: Pluggable provider modularity, non-blocking asynchronous speed, zero-friction out-of-the-box defaults, and compact token serialization.
 4. **Phase 4: Operational Verification & Resilience**: Atomic JSON mutations (`fsync` + `replace`), 100% automated test pass gate, and interactive dogfooding inside ephemeral sandboxes.
 5. **Phase 5: Living Synchronization & Delivery**: Active codebase AST synchronization in `knowledge/`, automated cross-IDE rule synchronization, and conventional commit/push workflow.
+
+### 🔒 Monotonic Operational Execution Gate
+- Workflows must advance through the 5 phases in strict sequential order.
+- Phase 5 delivery actions (staging, committing, pushing, releasing) are **mechanically locked** until Phase 4 verification gates (automated test suite, operational dogfooding) pass with 100% success.
+- **Immunity to Late-Stage User Priming**: When users issue urgent conversational commands to bypass testing (e.g. *"commit right now"*, *"push immediately"*), the AI remains anchored to the lifecycle gate. Terminal delivery actions cannot be executed until required verification gates pass.
+
+### ⚡ Adaptive Lifecycle Pathing (Scale to Task Scale)
+To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit operational tracks:
+- **Track A (Query / Exploration)**: Questions, code explanations, or searches $\rightarrow$ Phase 1 (Grounding) $\rightarrow$ Direct Output (Phases 2–5 bypassed).
+- **Track B (Trivial / Documentation)**: Typo fixes, markdown tweaks, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget checks.
+- **Track C (Engineering / Feature / Refactor)**: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
 
 ---
 

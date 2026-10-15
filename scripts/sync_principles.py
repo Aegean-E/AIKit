@@ -16,6 +16,9 @@ AGENTS_MD = ROOT_DIR / "AGENTS.md"
 
 def parse_principles(agents_file: Path):
     content = agents_file.read_text(encoding="utf-8")
+    phase_pattern = r"##\s*([^\n]*Phase\s*(\d+)[:\s]*([^\n]*))"
+    phase_matches = list(re.finditer(phase_pattern, content))
+
     pattern = r"### (PRINCIPLE-\d+):\s*([^\n]+)"
     matches = list(re.finditer(pattern, content))
     principles = []
@@ -32,12 +35,46 @@ def parse_principles(agents_file: Path):
         concept = concept_match.group(1).strip() if concept_match else ""
         invariant = invariant_match.group(1).strip() if invariant_match else concept
 
+        # Determine phase based on preceding phase header
+        principle_phase_num = 0
+        principle_phase_name = ""
+        for pm in phase_matches:
+            if pm.start() < match.start():
+                principle_phase_num = int(pm.group(2))
+                principle_phase_name = pm.group(1).strip()
+            else:
+                break
+
         principles.append({
             "id": pid,
             "title": title,
             "concept": concept,
             "invariant": invariant,
+            "phase_num": principle_phase_num,
+            "phase_name": principle_phase_name,
         })
+
+    # Continuous Sequence Audit: validate monotonic lifecycle progression (PRINCIPLE-002)
+    expected_phases = {
+        1: [f"PRINCIPLE-{i:03d}" for i in range(1, 5)],
+        2: [f"PRINCIPLE-{i:03d}" for i in range(5, 9)],
+        3: [f"PRINCIPLE-{i:03d}" for i in range(9, 13)],
+        4: [f"PRINCIPLE-{i:03d}" for i in range(13, 16)],
+        5: [f"PRINCIPLE-{i:03d}" for i in range(16, 19)],
+    }
+
+    for phase_num, expected_pids in expected_phases.items():
+        for expected_pid in expected_pids:
+            matching = [p for p in principles if p["id"] == expected_pid]
+            if not matching:
+                raise ValueError(f"[PRINCIPLE-002 VIOLATION] Missing {expected_pid} in specification.")
+            actual_phase = matching[0]["phase_num"]
+            if actual_phase != phase_num:
+                raise ValueError(
+                    f"[PRINCIPLE-002 VIOLATION] Principle {expected_pid} is assigned to Phase {actual_phase}, "
+                    f"expected Phase {phase_num} (monotonic lifecycle progression violated)."
+                )
+
     return principles
 
 
