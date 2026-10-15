@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "principle-014-pass2",
+    "task_id": "principle-015-pass1",
     "last_phase": "2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792097503.0112581,
+    "updated_at": 1792097760.3157175,
     "impact_assessment": {
-      "why": "Prevent order-dependent test pollution, tautological mock echoes, and unverified bug fixes",
-      "benefits": "Guarantee zero test flakiness, true behavioral verification, and robust error path regression shield",
+      "why": "Prevent zombie dev servers, port conflicts, display server crashes, superficial help-only dogfooding, and workspace pollution",
+      "benefits": "Guarantee that built software runs in real operational environments without crashing or leaking background daemons",
       "risks": "Context budget creep across IDE rule files",
-      "mitigation": "Keep invariant capsule dense (<170 chars) and concise rule descriptions"
+      "mitigation": "Keep invariant capsule dense (<230 chars) and concise rule descriptions"
     },
-    "completed_at": 1792097669.2002175
+    "completed_at": 1792097914.8939693
   },
   "checkpoints": [
-    {
-      "task_id": "principle-010-pass1",
-      "phase": "2",
-      "phase_num": 1,
-      "description": "Pre-flight checkpoint for Principle 10 Pass 1 fortification",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792095081.5474515,
-      "timestamp_str": "2026-10-15 23:11:21",
-      "impact_assessment": {
-        "why": "Fortify Principle 10 with algorithmic stream processing, non-blocking async hygiene, deterministic RAII cleanup, zero-weight lazy imports, and sub-second test gate",
-        "benefits": "Eliminates UI freezing, memory leaks, descriptor leaks, quadratic slowdowns, and startup import lag",
-        "risks": "Prompt token budget creep, doc drift",
-        "mitigation": "Sync budget audit, update knowledge base, 100% unit test pass"
-      }
-    },
-    {
-      "task_id": "principle-010-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-010-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792095233.1478586,
-      "timestamp_str": "2026-10-15 23:13:53"
-    },
     {
       "task_id": "principle-010-pass2",
       "phase": "2",
@@ -264,6 +239,31 @@
       "status": "completed",
       "timestamp": 1792097669.2002203,
       "timestamp_str": "2026-10-15 23:54:29"
+    },
+    {
+      "task_id": "principle-015-pass1",
+      "phase": "2",
+      "phase_num": 1,
+      "description": "Fortify Principle 15 with supervised process lifecycles, headless display parity, dual-track golden+chaos verification, safety jail containment, and deterministic domain exit contracts",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792097760.3157175,
+      "timestamp_str": "2026-10-15 23:56:00",
+      "impact_assessment": {
+        "why": "Prevent zombie dev servers, port conflicts, display server crashes, superficial help-only dogfooding, and workspace pollution",
+        "benefits": "Guarantee that built software runs in real operational environments without crashing or leaking background daemons",
+        "risks": "Context budget creep across IDE rule files",
+        "mitigation": "Keep invariant capsule dense (<230 chars) and concise rule descriptions"
+      }
+    },
+    {
+      "task_id": "principle-015-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'principle-015-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792097914.8939712,
+      "timestamp_str": "2026-10-15 23:58:34"
     }
   ]
 }

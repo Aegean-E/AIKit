@@ -509,3 +509,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**:
   - *Positive*: Eliminates order-dependent test flakiness; prevents tautological tests; guarantees that bug fixes are verified and permanently shielded against regressions; ensures error handling is thoroughly validated.
   - *Trade-offs*: Requires disciplined test fixture teardown and explicit negative path test design.
+
+### ADR-032: Supervised Process Lifecycles, Headless Display Parity, and Dual-Track Chaos Dogfooding (PRINCIPLE-015 Pass 1)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. Headless unit tests in isolated vacuums fail to detect real-world execution bugs (event loop freezing, unhandled callback exceptions, routing failures, or exit code mismatches).
+  2. Spawning background dev servers or subshells during dogfooding without supervised process trees frequently leaks zombie processes and locks network ports (`EADDRINUSE`).
+  3. Running desktop GUI applications in headless environments (CI runners, containers, remote subshells) without display fallback crashes the verification harness.
+  4. Cheating operational verification by executing `--help` alone conceals critical runtime failures across data lifecycles.
+  5. Uncontrolled operational testing poses a risk of mutating host user directories or polluting the workspace repository.
+- **Decision**:
+  1. Enforce **Headless Parity & Virtualized Display Loops**: Desktop GUI dogfooding must support virtualized displays (`xvfb`/offscreen) and bounded timeouts ($T \le 10\text{s}$) with automated window destruction.
+  2. Enforce **Supervised Process Tree Lifecycles (RAII Process Cleanup)**: All server processes and child daemons must execute within managed supervisors or RAII context managers that guarantee recursive child process termination (`SIGTERM` followed by `SIGKILL`) on exit or assertion failure.
+  3. Enforce **Dual-Track Dogfooding (Golden Path + Hostile Chaos Injection)**: Testing `--help` alone is forbidden; every dogfood run must execute a complete golden workflow (create, modify, retrieve) and at least one hostile perturbation (simulated SIGINT interrupt, invalid payload, malformed data stream).
+  4. Enforce **Strict Ephemeral Safety Jail (`SANDBOX_ROOT`)**: File modifications must execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`), asserting zero host file mutations and bit-for-bit clean `git status`.
+  5. Enforce **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean exit codes.
+- **Consequences**:
+  - *Positive*: Guarantees that built applications function end-to-end in real environments; eliminates background zombie processes and port collisions; protects user files with strict sandboxing; prevents superficial verification cheating.
+  - *Trade-offs*: None; pure operational engineering discipline.

@@ -9,7 +9,7 @@
 - **Total Python Modules**: `4`
 - **Total Classes**: `4`
 - **Total Functions / Methods**: `27`
-- **Total Source Lines**: `1721`
+- **Total Source Lines**: `1732`
 
 ---
 
@@ -72,7 +72,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `576` lines (`28207` bytes)
+**Size**: `587` lines (`29043` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 18 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -84,6 +84,7 @@
   - Method `.test_principle_005_cold_start_capsule()`
   - Method `.test_principle_006_disruption_capsule()`
   - Method `.test_principle_014_regression_shield_capsule()`
+  - Method `.test_principle_015_operational_dogfooding_capsule()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
 - `class TestDisruptionRecovery` - *Verifies atomic write, disruption ledger, and crash recovery (PRINCIPLE-006, PRINCIPLE-013).*
   - Method `.setUp()`

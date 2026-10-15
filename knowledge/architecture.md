@@ -120,8 +120,11 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 ---
 
 ## 🎮 Operational Dogfooding & Ephemeral Chaos Sandboxing
-- **Live System Verification**: Components are interactively exercised across their native runtime surfaces (UI loops, subshells, HTTP clients) prior to shipping (**PRINCIPLE-015**).
-- **Zero-Blast-Radius Jail**: Dogfood execution occurs inside ephemeral, synthetic sandbox directories to guarantee safety against accidental user data modification.
+- **Live System Verification & Headless Parity**: Components are interactively exercised across their native runtime surfaces (UI loops, subshells, HTTP clients) prior to shipping (**PRINCIPLE-015**). Desktop GUIs leverage virtual display buffers (`xvfb`/offscreen) with bounded timeouts ($T \le 10\text{s}$).
+- **Supervised Process Tree Lifecycles (RAII Process Cleanup)**: All server processes and child daemons run within managed supervisors or RAII context managers that guarantee recursive child process termination (`SIGTERM` followed by `SIGKILL`) on exit or assertion failure, preventing port collisions (`EADDRINUSE`) and zombie background processes.
+- **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
+- **Strict Ephemeral Safety Jail (`SANDBOX_ROOT`)**: File modifications execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`), mechanically asserting zero host mutations and bit-for-bit clean `git status`.
+- **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
 ---
 
