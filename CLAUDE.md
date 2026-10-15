@@ -24,7 +24,7 @@
 9. **PRINCIPLE-009: Modularity & Pluggable Architecture**:
    - 4-layer architecture (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs. [GUIDELINES.md#principle-009]
 10. **PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)**:
-   - Algorithmic stream efficiency ($O(1)$ auxiliary memory); non-blocking event-loop hygiene; deterministic RAII resource cleanup; zero-weight lazy imports; sub-second test gate (<1s). [GUIDELINES.md#principle-010]
+   - Algorithmic stream efficiency ($O(1)$ memory); non-blocking event-loop hygiene; bounded subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms startup); sub-second test gate (<1s). [GUIDELINES.md#principle-010]
 11. **PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)**:
    - Zero mandatory external dependencies; out-of-the-box defaults; graceful degradation with actionable user guidance. [GUIDELINES.md#principle-011]
 12. **PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)**:

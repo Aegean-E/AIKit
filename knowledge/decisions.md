@@ -338,3 +338,22 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Eliminates UI freezes, memory leaks, file descriptor leaks, quadratic slowdowns, and cold-start import lag; clarifies boundary between Principles 10 and 12; guarantees sub-second test feedback.
   - *Trade-offs*: None; pure standard library practices.
 
+### ADR-023: Subprocess Timeout Gating, Measurement-Driven Concurrency, Batch I/O Coalescing, and Ring-Buffer State (PRINCIPLE-010 Pass 2)
+- **Date**: 2026-10-15
+- **Status**: Accepted
+- **Context**:
+  1. AI agents often invoke external tools and commands via `subprocess.run()` without explicit timeouts, risking permanent deadlocks if child processes hang.
+  2. Spawning unbounded child processes causes process table (PID) exhaustion and OS-level thrashing.
+  3. LLMs routinely apply speculative multithreading to sub-20ms micro-tasks, resulting in context-switch overhead that slows down execution while introducing race conditions.
+  4. Performing atomic writes (`flush` + `os.fsync` + `os.replace`) in tight loops causes severe disk I/O thrashing.
+  5. Background daemons, watchers, and monitors frequently accumulate unbounded event logs and diffs, leading to process memory creep.
+  6. Heavy imports in CLI entrypoints inflate cold startup times beyond acceptable responsiveness thresholds.
+- **Decision**:
+  1. Enforce **Subprocess Timeout Gating & Bounded Concurrency**: Require explicit timeouts (`timeout=30`) on all subprocess calls and bound parallel process execution ($K \le \text{os.cpu\_count()}$).
+  2. Codify the **Measurement-Driven Concurrency (Profile-Before-Optimizing Invariant)**: Never introduce multithreading or multiprocessing for tasks whose single-threaded baseline completes in under 20ms.
+  3. Enforce **Batch I/O Coalescing (Write-Coalescing Invariant)**: Coalesce high-frequency mutations in memory before committing atomic transactions, eliminating tight-loop `fsync` bottlenecks.
+  4. Enforce **Bounded Daemon Working State (Ring Buffer Hygiene)**: Require long-running daemons and monitors to use bounded ring buffers (`collections.deque(maxlen=N)`) or bounded caches (`maxsize=N`) for constant $O(1)$ memory consumption.
+  5. Enforce **Cold Startup Latency Budget (<100ms)**: Keep CLI entrypoint startup under 100ms by restricting top-level imports to lightweight stdlib modules and loading domain modules lazily.
+- **Consequences**:
+  - *Positive*: Eliminates process deadlocks and zombie storms; prevents premature multithreading overhead; eliminates disk thrashing from unbatched atomic writes; guarantees leak-free daemon operation and sub-100ms CLI startup.
+  - *Trade-offs*: None; pure standard library practices.

@@ -27,7 +27,7 @@ The principles are strictly ordered according to the **5 Chronological Execution
 | ID | Title | Summary |
 |---|---|---|
 | **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
-| **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, RAII resource cleanup, and lazy imports. |
+| **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, subprocess timeouts, batch coalescing, and lazy imports. |
 | **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Zero mandatory external apps; one-click start with sensible defaults and graceful degradation. |
 | **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Concise code, strict token budgets, compact payloads, and rate-limit safeguards. |
 
@@ -172,12 +172,13 @@ The principles are strictly ordered according to the **5 Chronological Execution
   - **Unidirectional Flow & Immutable DTOs**: Maintain strictly inward dependency flow with zero circular imports, and pass immutable data transfer objects across boundaries without leaking internal mutable state.
 
 ### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
-- **Problem**: Quadratic loops ($O(N^2)$), blocking I/O on async event loops, memory and file descriptor leaks, heavy startup imports, and slow test suites degrade performance and developer velocity.
+- **Problem**: Quadratic loops ($O(N^2)$), blocking I/O on async event loops, hung subprocess deadlocks, disk thrashing from unbatched `fsync`, daemon memory creep, heavy startup imports, and slow test suites degrade performance and developer velocity.
 - **Guideline**:
   - **Algorithmic Stream Processing**: Employ $O(1)$ set/dict lookups and generator pipelines (`yield`) to maintain $O(1)$ auxiliary memory; avoid buffering unbounded files into memory.
-  - **Non-Blocking Concurrency**: Never perform blocking I/O on async event loops or GUI threads; offload to `asyncio.to_thread()` or worker pools with thread-safe locks.
-  - **Deterministic Resource Reclamation (RAII)**: Manage file handles, sockets, and subprocesses via context managers (`with`) to prevent leaks; enforce bounds on in-memory caches.
-  - **Zero-Weight Baseline & Lazy Imports**: Run core logic on stdlib primitives (<100ms startup); import optional external dependencies lazily inside adapter methods.
+  - **Non-Blocking Concurrency & Profile-First**: Never perform blocking I/O on async event loops or GUI threads; offload to `asyncio.to_thread()` or worker pools with thread-safe locks. Avoid premature concurrency on sub-20ms micro-tasks.
+  - **Subprocess Timeout Gate**: Declare explicit timeouts on all `subprocess.run` calls (`timeout=30`) and bound parallel execution ($K \le \text{cpu\_count}$) to prevent zombie hangs and PID exhaustion.
+  - **Deterministic Resource Reclamation & Ring Buffers (RAII)**: Manage file handles, sockets, and subprocesses via context managers (`with`); use bounded ring buffers (`deque(maxlen=N)`) in daemons and monitors to guarantee $O(1)$ memory.
+  - **Batch I/O Coalescing & Cold Startup Budget**: Coalesce high-frequency disk writes in memory before atomic commit to prevent `fsync` thrashing; keep CLI entrypoint startup under 100ms with lazy module loading.
   - **Sub-Second Test Gate**: Keep the full automated unit test suite running in under 1 second (<1s) by testing in memory or isolated temp fixtures without artificial delays.
 
 ### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)

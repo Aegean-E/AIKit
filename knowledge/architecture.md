@@ -44,9 +44,12 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 
 ## 🧵 Concurrency, Performance & Resource Architecture
 - **Non-blocking UI & Event Loops**: Heavy filesystem I/O, subprocess execution, and computationally intensive tasks run in asynchronous tasks or background worker threads via `asyncio.to_thread()` (**PRINCIPLE-010**).
+- **Measurement-Driven Concurrency**: Avoid premature multithreading on sub-20ms micro-tasks; reserve concurrency for genuinely I/O-bound or heavy CPU operations ($>200\text{ms}$).
 - **Thread Safety**: State transitions and shared mutable data structures across threads are guarded by explicit synchronization locks (`threading.Lock`) or thread-safe queues.
-- **Deterministic Resource Reclamation (RAII)**: All operating system resources (file descriptors, sockets, subprocesses) must be managed using context managers (`with`) to prevent leaks. In-memory caches enforce bounds (`maxsize=N`).
-- **Algorithmic Stream Processing**: Iterators and generator pipelines process unbounded datasets with $O(1)$ auxiliary memory and $O(1)$ set/dict lookups.
+- **Subprocess Timeout Gate & Bounded Concurrency**: All subprocess executions declare explicit timeouts (`timeout=30`) and bounded parallel process limits ($K \le \text{os.cpu\_count()}$) to prevent zombie hangs and PID starvation.
+- **Deterministic Resource Reclamation & Ring Buffers (RAII)**: All operating system resources (file descriptors, sockets, subprocesses) use context managers (`with`) to prevent leaks. Long-running daemons and monitors enforce constant $O(1)$ memory via bounded ring buffers (`collections.deque(maxlen=N)`).
+- **Batch I/O Coalescing**: High-frequency disk mutations are coalesced in memory before atomic commit, eliminating disk thrashing from tight-loop `fsync` calls.
+- **Algorithmic Stream Processing & Startup Budget**: Iterators and generator pipelines process unbounded datasets with $O(1)$ auxiliary memory and $O(1)$ set/dict lookups. CLI entrypoints maintain a strict startup budget (<100ms) with lazy module loading.
 - **Sub-Second Test Performance Gate**: Full automated unit test suite executes in under 1 second (<1s) against in-memory or ephemeral isolated fixtures without artificial sleep delays.
 
 ---
