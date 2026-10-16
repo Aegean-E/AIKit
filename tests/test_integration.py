@@ -380,6 +380,34 @@ class TestDogfoodRunner(unittest.TestCase):
         self.assertIn("[INVALID USAGE]", bad_res.stderr)
 
 
+class TestInvolvedCli(unittest.TestCase):
+    """`sync_principles.py --involved` is the authoritative answer to PRINCIPLE-001 R3."""
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "sync_principles.py"), *args],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+
+    def test_lists_involved_principles_one_per_line(self):
+        res = self._run("--involved", "FAIL:", "python", "scripts/dogfood.py", "exited", "1")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(res.stdout.split(), ["PRINCIPLE-015"])
+
+    def test_text_after_involved_is_never_parsed_as_options(self):
+        # Failing output often contains flags; they are text here, not --help or misuse.
+        res = self._run("--involved", "--help", "--not-a-real-flag")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertNotIn("Usage:", res.stdout)
+        self.assertEqual(res.stdout.split(), ["PRINCIPLE-010"])  # its capsule names `--help`
+
+    def test_missing_text_is_misuse(self):
+        res = self._run("--involved")
+        self.assertEqual(res.returncode, 2)
+        self.assertIn("Fix:", res.stderr)
+
+
 class TestRepositorySecretHygiene(unittest.TestCase):
     """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
 

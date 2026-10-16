@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `20`
-- **Total Functions / Methods**: `73`
-- **Total Source Lines**: `5155`
+- **Total Classes**: `21`
+- **Total Functions / Methods**: `74`
+- **Total Source Lines**: `5249`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `508` lines (`23265` bytes)
+**Size**: `547` lines (`25430` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -119,6 +119,7 @@
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
 - `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
+- `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
@@ -144,7 +145,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `458` lines (`20874` bytes)
+**Size**: `486` lines (`22170` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -180,6 +181,11 @@
   - Method `.test_dogfood_writes_its_declared_log()`
   - Method `.test_dogfood_leaves_tracked_content_untouched()`
   - Method `.test_dogfood_cli_contract()`
+- `class TestInvolvedCli` - *`sync_principles.py --involved` is the authoritative answer to PRINCIPLE-001 R3.*
+  - Method `._run(*args)`
+  - Method `.test_lists_involved_principles_one_per_line()`
+  - Method `.test_text_after_involved_is_never_parsed_as_options()`
+  - Method `.test_missing_text_is_misuse()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
@@ -192,7 +198,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1701` lines (`89018` bytes)
+**Size**: `1728` lines (`90712` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -230,6 +236,8 @@
   - Method `.test_every_agent_rule_reaches_tier1()`
   - Method `.test_precedence_never_contradicts_another_principle()`
   - Method `.test_open_terms_are_defined()`
+  - Method `.test_involvement_is_deterministic()`
+  - Method `.test_common_words_do_not_involve_principles()`
   - Method `.test_single_id_placeholder()`
   - Method `.test_tool_neutral_retrieval()`
 - `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*

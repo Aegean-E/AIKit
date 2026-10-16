@@ -1,7 +1,7 @@
 # Workspace Agent Rules (Tier 1)
 
 > Generated from `GUIDELINES.md` by `scripts/sync_principles.py`; do not edit.
-> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read the `### PRINCIPLE-NNN:` section of each involved principle, never the whole file.
+> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read the `### PRINCIPLE-NNN:` section of each principle `sync_principles.py --involved` lists; never the whole file unless asked.
 
 ## Core Principles
 - PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Pre-Flight checklist before the first Track C edit; Post-Flight checklist before any Track B or C commit; report only failed items (R8).

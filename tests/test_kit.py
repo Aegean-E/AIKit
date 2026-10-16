@@ -36,6 +36,7 @@ from scripts.sync_principles import (
     estimate_tokens,
     render_tier1_target,
     is_generated_target,
+    involved_principles,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -556,8 +557,8 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
             "R3 contract trigger": "contract change",
             "R3 failure trigger": "failure",
             "R3 ambiguity trigger": "ambiguity",
-            "R3 involved principles": "each involved principle",
-            "R3 no full load": "never the whole file",
+            "R3 involved principles": "sync_principles.py --involved",
+            "R3 no full load": "never the whole file unless asked",
             "R8 Pre-Flight": "Pre-Flight checklist before the first Track C edit",
             "R8 Post-Flight": "Post-Flight checklist before any Track B or C commit",
             "R8 reporting": "report only failed items",
@@ -576,12 +577,38 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
 
     def test_open_terms_are_defined(self):
         # Terms a model would otherwise resolve its own way must be defined in the rule text.
-        for definition in ("A principle is *involved* when",
+        for definition in ("A principle is *involved* when a backtick-quoted name in its capsule",
+                           "other than those needed to compute the involved principles",
+                           "overrides exactly two things in this principle",
+                           "An item that does not apply to the task counts as passed",
                            "a public function (a module-level name not starting with `_`)",
                            "counts as loading it in full",
                            "Track A tasks evaluate neither"):
             with self.subTest(definition=definition):
                 self.assertIn(definition, self.rules)
+
+    def test_involvement_is_deterministic(self):
+        # Red-green pin: "involved" used to hinge on undefined "terms"; common words like "test"
+        # occur in most capsules, so models built different reading lists. Now it is computed.
+        principles = parse_principles(SSOT_MD)
+        cases = {
+            "edit README.md typo": ["PRINCIPLE-003"],
+            "FAIL: python scripts/dogfood.py exited 1": ["PRINCIPLE-015"],
+            "python scripts/check_secrets.py --all failed": ["PRINCIPLE-019"],
+            "[TOKEN EXCEEDED] (PRINCIPLE-001)": ["PRINCIPLE-001"],
+            "PRINCIPLE-999 is not a principle": ["PRINCIPLE-003"],
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(involved_principles(principles, text), expected)
+                # Same input, same answer: no model judgement involved.
+                self.assertEqual(involved_principles(principles, text),
+                                 involved_principles(principles, text))
+
+    def test_common_words_do_not_involve_principles(self):
+        # Only backtick-quoted names count, so prose words never trigger involvement.
+        text = "test gate tier budget capsule commit checklist schema"
+        self.assertEqual(involved_principles(parse_principles(SSOT_MD), text), ["PRINCIPLE-003"])
 
     def test_single_id_placeholder(self):
         # Two placeholders for one thing ("XXX" in Tier 1, "NNN" in R5) invite two readings.

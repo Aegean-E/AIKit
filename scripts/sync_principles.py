@@ -253,7 +253,8 @@ def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str 
         # keeps the two in lock-step so every agent receives the same instruction.
         f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; do not edit.",
         "> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or "
-        "ambiguity, read the `### PRINCIPLE-NNN:` section of each involved principle, never the whole file.",
+        "ambiguity, read the `### PRINCIPLE-NNN:` section of each principle "
+        "`sync_principles.py --involved` lists; never the whole file unless asked.",
         "",
         "## Core Principles",
     ]
@@ -458,6 +459,30 @@ def sync_all(
     return 0
 
 
+INVOLVEMENT_FALLBACK = "PRINCIPLE-003"
+
+
+def involved_principles(principles: List[Dict], text: str) -> List[str]:
+    """
+    Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.
+
+    A principle is involved when a backtick-quoted name in its capsule (a file, path, script or
+    command) occurs verbatim in `text`, or when `text` contains its ID. `text` is the paths the
+    agent will change, the commands it will run, and any failing output. With no match the answer
+    is PRINCIPLE-003. Matching on names rather than on loose "terms" is the point: words like
+    "test" or "gate" occur in nearly every capsule, so letting each model judge what counts as a
+    term gave different models different reading lists.
+    """
+    involved = set(re.findall(r"PRINCIPLE-\d{3}", text))
+    known = {p["id"] for p in principles}
+    involved &= known
+    for p in principles:
+        names = [n.strip() for n in re.findall(r"`([^`]+)`", p.get("invariant", ""))]
+        if any(name and name in text for name in names):
+            involved.add(p["id"])
+    return sorted(involved) or [INVOLVEMENT_FALLBACK]
+
+
 def print_help():
     """Print command line usage for sync_principles.py."""
     print("""AIKit Principles Auto-Sync Tool (PRINCIPLE-017)
@@ -468,11 +493,25 @@ Usage:
 Options:
   --check          Verify that all guideline targets are fresh without modifying files (exits 1 on drift)
   --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
+  --involved TEXT  List the principles TEXT involves (PRINCIPLE-001 R3); must be the first argument,
+                   and every later argument is TEXT: paths to change, commands to run, failing output
   -h, --help       Show this help message and exit
 """)
 
 
 if __name__ == "__main__":
+    # --involved takes free text that may itself contain flags (failing output often mentions
+    # --help), so it must come first and nothing after it is parsed as an option.
+    if len(sys.argv) > 1 and sys.argv[1] == "--involved":
+        if len(sys.argv) < 3:
+            print("[INVALID USAGE] --involved requires text to match.", file=sys.stderr)
+            print("Why: involvement is computed from the paths, commands or failing output given.", file=sys.stderr)
+            print("Fix: py scripts/sync_principles.py --involved scripts/dogfood.py \"pytest failed\"", file=sys.stderr)
+            sys.exit(2)
+        for pid in involved_principles(parse_principles(SSOT_MD, strict=True), " ".join(sys.argv[2:])):
+            print(pid)
+        sys.exit(0)
+
     if "-h" in sys.argv or "--help" in sys.argv:
         print_help()
         sys.exit(0)

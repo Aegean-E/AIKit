@@ -25,6 +25,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
+| **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
