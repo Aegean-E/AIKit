@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `29`
-- **Total Functions / Methods**: `86`
-- **Total Source Lines**: `6088`
+- **Total Functions / Methods**: `88`
+- **Total Source Lines**: `6118`
 
 ---
 
@@ -55,7 +55,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1202` lines (`51532` bytes)
+**Size**: `1191` lines (`51250` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -78,8 +78,10 @@
 - `def clean_dangling_temp_files(workspace_dir)` - *Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013).*
 - `def git_porcelain_status(workspace)` - *Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3).*
 - `def run_disruption_audit(workspace_dir, git_status)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
+- `def append_file_list(lines, title, files, cap)` - *Append a titled file list of at most `cap` entries, so a huge tree stays bounded (PRINCIPLE-004 R5).*
+- `def audit_body_lines(audit)` - *Findings shared by --audit and --resume, so neither report hides what the other shows.*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
-- `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
+- `def format_resume_report(audit)` - *The one cold-start report (PRINCIPLE-004 R2): every --audit finding, then where to resume.*
 - `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
 - `def _ast_without_docstrings(source)` - *AST dump with docstrings removed; comments and formatting never reach the AST.*
 - `def classify_change(path, old, new)` - *Return (track, reason) for one changed file. Pure: no I/O.*
@@ -213,7 +215,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2242` lines (`120544` bytes)
+**Size**: `2283` lines (`123250` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -286,6 +288,11 @@
   - Method `.test_every_rule_names_its_audience()`
   - Method `.test_every_kind_of_state_has_one_home()`
   - Method `.test_no_second_resumption_procedure()`
+  - Method `.test_one_cold_start_command_everywhere()`
+  - Method `.test_fifteen_line_limit_has_one_owner()`
+  - Method `.test_no_unobservable_obligation()`
+  - Method `.test_resume_never_says_ready_over_uncommitted_files()`
+  - Method `.test_report_file_lists_are_bounded()`
   - Method `.test_schemas_are_not_sent_to_adrs()`
   - Method `.test_active_task_is_bounded_and_keeps_its_plan()`
   - Method `.test_resume_prints_the_plan()`

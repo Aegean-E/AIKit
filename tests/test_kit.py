@@ -187,14 +187,17 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("ast syntax gate", p3["invariant"].lower())
 
     def test_principle_004_compaction_resilience_capsule(self):
-        # Enforces PRINCIPLE-004: verified invariant capsule with task_ledger, living plan SSOT, anti-repetition
+        # Enforces PRINCIPLE-004: the capsule names where the plan lives and how it is read back
         principles = parse_principles(SSOT_MD)
         p4 = next((p for p in principles if p["id"] == "PRINCIPLE-004"), None)
         self.assertIsNotNone(p4)
         self.assertIn("task_ledger.json", p4["invariant"].lower())
-        self.assertIn("living plan ssot", p4["invariant"].lower())
-        self.assertIn("anti-repetition", p4["invariant"].lower())
-        self.assertIn("ast-first", p4["invariant"].lower())
+        # Mechanisms, not labels (ADR-061): which checkpoint is the plan, the cold-start
+        # command, the anti-repetition rule, and the read/output cap.
+        self.assertIn("plan = latest `[1/` phase 2 `--desc`", p4["invariant"].lower())
+        self.assertIn("cold start `--resume`", p4["invariant"].lower())
+        self.assertIn("never re-ask recorded answers", p4["invariant"].lower())
+        self.assertIn("reads/output <=100 lines", p4["invariant"].lower())
         # "bounded rolling ledger" was removed under PRINCIPLE-001 R2's deletion test (the tool
         # bounds the ledger; no agent action follows). The capsule now names the mechanisms:
         self.assertIn("phase 2 `--desc`", p4["invariant"].lower())
@@ -941,15 +944,21 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
 
     def test_every_kind_of_state_has_one_home(self):
         for definition in (
-            "the plan is the `--desc` text of the task's latest Phase 2 checkpoint",
+            "The plan is the `--desc` text of the task's latest `--phase-num 2` checkpoint",
             "whose `--desc` starts with `[1/`",
-            "MUST record a new `--phase-num 2` checkpoint with the full revised plan",
-            "a deliverable the user asked for (an analysis, a report) is not a progress message",
+            "MUST record a new such checkpoint with the full revised plan",
+            "MUST record the answer as the `--desc` of a checkpoint in the current phase before its next file edit",
             "MUST run `python scripts/disruption_recovery.py --resume` before any other action",
+            "MUST NOT overwrite or discard them and MUST tell the user they exist",
+            "search `knowledge/decisions.md` for the subject",
+            "when records disagree the newest wins",
             "A user who changes a recorded decision is followed",
-            "A single read MUST NOT exceed 100 lines",
-            "An *architectural decision* is one that changes a public contract",
-            "Data schemas are written to `knowledge/data_models.md`",
+            "A *read* is any tool call or command that prints file contents",
+            "One read MUST NOT print more than 100 lines of a file",
+            "or is a user instruction the user says applies to future tasks or to the whole project",
+            "A schema's fields are written only to `knowledge/data_models.md`",
+            "MUST NOT put more than 100 lines into the conversation",
+            "before the final message of its turn MUST be at most 15 lines, code blocks included",
             "Checklist timing is set by PRINCIPLE-001 R8",
         ):
             with self.subTest(definition=definition):
@@ -958,8 +967,40 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
     def test_no_second_resumption_procedure(self):
         # Red-green pin: R2 told agents to hand-inspect `active_phase` in the JSON while P002 R4
         # said to run --resume - two procedures for one event. R2 now defers to P002 R4.
-        self.assertIn("follow PRINCIPLE-002 R4", self.rules)
+        self.assertIn("`Recommended Resumption Phase` with the printed plan (PRINCIPLE-002 R4)", self.rules)
         self.assertNotIn("Inspect `.agents/task_ledger.json` for `active_task`", self.rules)
+
+    def test_one_cold_start_command_everywhere(self):
+        # Red-green pin (third pass): P002 R1 said `--audit` on a cold start, P006 R2 said
+        # `--audit` or `--resume`, P004 R2 said `--resume` - three answers to one question.
+        self.assertNotIn("`--audit` on a cold start", self.text)
+        self.assertNotIn("`--audit` or `--resume`", self.text)
+        self.assertIn("--resume` on a cold start per PRINCIPLE-004 R2", self.text)
+
+    def test_fifteen_line_limit_has_one_owner(self):
+        # Red-green pin: P004 allowed 15 lines ("within 15") while P012 R4 demanded "<15".
+        p012 = self.text[self.text.index("### PRINCIPLE-012:"):self.text.index("\n### PRINCIPLE-013:")]
+        self.assertNotIn("<15 lines", p012)
+        self.assertIn("limited to 15 lines by PRINCIPLE-004 R5", p012)
+
+    def test_no_unobservable_obligation(self):
+        # Red-green pin: "the agent MUST know its current phase" cannot be checked by anyone.
+        self.assertNotIn("MUST know", self.rules)
+
+    def test_resume_never_says_ready_over_uncommitted_files(self):
+        # Red-green pin: with no interrupted task, --resume printed only "Ready for a new task"
+        # and hid the modified and untracked files that --audit showed.
+        report = format_resume_report({"modified_files": ["a.py"], "untracked_files": ["b.py"]})
+        self.assertIn("a.py", report)
+        self.assertIn("b.py", report)
+        self.assertNotIn("Ready for a new task", report)
+        self.assertIn("Ready for a new task", format_resume_report({}))
+
+    def test_report_file_lists_are_bounded(self):
+        # Red-green pin: 500 untracked files printed 500 lines into the conversation (R5).
+        report = format_audit_report({"untracked_files": [f"f{i}.py" for i in range(500)]})
+        self.assertLessEqual(len(report.splitlines()), 30)
+        self.assertIn("… and 480 more", report)
 
     def test_schemas_are_not_sent_to_adrs(self):
         # Red-green pin: R4 sent data schemas to decisions.md, contradicting PRINCIPLE-016 R5.

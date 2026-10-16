@@ -30,7 +30,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
-| **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Disruption recovery guidance & surviving files |
+| **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase |
 | **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
@@ -182,15 +182,12 @@ The principles are strictly organized across **5 chronological execution phases*
 ## ⚡ Disruption Recovery & Power-Loss Protection
 
 If electricity cuts out, battery dies, or the computer crashes mid-task:
-1. **Pre-flight Audit**: On cold start or when opening a terminal, run:
-   ```bash
-   python scripts/disruption_recovery.py --audit
-   ```
-   This automatically detects surviving uncommitted files, modified buffers, orphaned `.tmp_*` files, and interrupted tasks.
-2. **Resumption Guidance**: To inspect surviving progress and receive structured recovery guidance:
+1. **Pre-flight Audit**: On a cold start, run this one command first (PRINCIPLE-004 R2):
    ```bash
    python scripts/disruption_recovery.py --resume
    ```
+   It prints every `--audit` finding (conflicts, modified and untracked files, orphaned `.tmp_*` files, quarantined files; at most 20 entries per list), then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
+2. **Findings Only**: `python scripts/disruption_recovery.py --audit` prints the same findings without resumption guidance.
 3. **Recording In-Flight Checkpoints & Impact Rationale**: During multi-step implementations, record milestones cleanly (including optional pre-flight impact assessment):
    ```bash
    python scripts/disruption_recovery.py --checkpoint "task_name" --phase "planning" --desc "description" --why "why" --benefits "benefits" --risks "risks" --mitigation "mitigation"

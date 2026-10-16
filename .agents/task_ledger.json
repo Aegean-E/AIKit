@@ -1,48 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p004-pass2",
-    "last_phase": "verification",
+    "task_id": "p004-pass3",
+    "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792173650.2084408,
-    "completed_at": 1792173650.3357744
+    "updated_at": 1792174038.364361,
+    "completed_at": 1792174038.4986477
   },
   "checkpoints": [
-    {
-      "task_id": "p001-ssot-consolidation",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p001-ssot-consolidation' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792142856.4766295,
-      "timestamp_str": "2026-10-16 12:27:36"
-    },
-    {
-      "task_id": "p001-drift-shields",
-      "phase": "3",
-      "phase_num": 3,
-      "description": "Milestone 3/3: mechanical shields for stale principle counts and checklist coverage",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792142885.0993392,
-      "timestamp_str": "2026-10-16 12:28:05",
-      "impact_assessment": {
-        "why": "Two defects this pass (7 stale '18' counts, P019 absent from both checklists) came from expansion-time drift that no test caught",
-        "benefits": "Next principle added cannot leave a stale count or an unchecked checklist",
-        "risks": "Count regex could false-positive on unrelated numbers",
-        "mitigation": "Measure every current match first; scope the regex to principle-count phrasing only"
-      }
-    },
-    {
-      "task_id": "p001-drift-shields",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p001-drift-shields' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792142923.2799501,
-      "timestamp_str": "2026-10-16 12:28:43"
-    },
     {
       "task_id": "p002-unambiguity",
       "phase": "in_progress",
@@ -204,6 +170,35 @@
       "status": "completed",
       "timestamp": 1792173650.3357768,
       "timestamp_str": "2026-10-16 21:00:50"
+    },
+    {
+      "task_id": "p004-pass3",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] one cold-start command, one owner per limit, defined terms in R1-R5 (ADR-061)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174038.2237742,
+      "timestamp_str": "2026-10-16 21:07:18"
+    },
+    {
+      "task_id": "p004-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174038.364361,
+      "timestamp_str": "2026-10-16 21:07:18"
+    },
+    {
+      "task_id": "p004-pass3",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p004-pass3' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792174038.4986496,
+      "timestamp_str": "2026-10-16 21:07:18"
     }
   ]
 }

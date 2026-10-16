@@ -675,13 +675,22 @@ def run_disruption_audit(
     return audit
 
 
-def format_audit_report(audit: Dict[str, Any]) -> str:
-    """Generate human and AI-readable disruption recovery audit report."""
-    lines = [
-        "============================================================",
-        "⚡ DISRUPTION & PROGRESS RECOVERY AUDIT (PRINCIPLE-006)",
-        "============================================================",
-    ]
+REPORT_LIST_CAP = 20
+
+
+def append_file_list(lines: List[str], title: str, files: List[str], cap: int = REPORT_LIST_CAP) -> None:
+    """Append a titled file list of at most `cap` entries, so a huge tree stays bounded (PRINCIPLE-004 R5)."""
+    if not files:
+        return
+    lines.append(f"{title} ({len(files)}):")
+    lines.extend(f"   • {f}" for f in files[:cap])
+    if len(files) > cap:
+        lines.append(f"   … and {len(files) - cap} more (run 'git status --short' for the full list)")
+
+
+def audit_body_lines(audit: Dict[str, Any]) -> List[str]:
+    """Findings shared by --audit and --resume, so neither report hides what the other shows."""
+    lines: List[str] = []
 
     if audit.get("has_conflicts"):
         lines.append("🔴 Status: UNRESOLVED MERGE CONFLICTS - resolve before any edit or commit!")
@@ -693,9 +702,7 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         lines.append("🟡 Status: Potential disruption / in-flight state detected!")
 
     if audit.get("conflicted_files"):
-        lines.append(f"⛔ Conflicted Files ({len(audit['conflicted_files'])}) - interrupted merge/rebase:")
-        for f in audit["conflicted_files"]:
-            lines.append(f"   • {f}")
+        append_file_list(lines, "⛔ Conflicted Files - interrupted merge/rebase", audit["conflicted_files"])
         lines.append("   Fix: resolve, then 'git add <file>' — or abort via 'git merge --abort' / 'git rebase --abort'")
 
     for err in audit.get("scan_errors", []):
@@ -729,46 +736,45 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         if impact.get("mitigation"):
             lines.append(f"   • Mitigation: {impact['mitigation']}")
 
-    if audit.get("modified_files"):
-        lines.append(f"📝 Modified Files ({len(audit['modified_files'])}):")
-        for f in audit["modified_files"]:
-            lines.append(f"   • {f}")
+    append_file_list(lines, "📝 Modified Files", audit.get("modified_files", []))
+    append_file_list(lines, "📁 Untracked Files", audit.get("untracked_files", []))
+    append_file_list(lines, "🛡️  Quarantined Corrupted Files", audit.get("quarantined_files", []))
+    append_file_list(lines, "🧹 Dangling Temp Buffers", audit.get("dangling_temp_files", []))
+    return lines
 
-    if audit.get("untracked_files"):
-        lines.append(f"📁 Untracked Files ({len(audit['untracked_files'])}):")
-        for f in audit["untracked_files"]:
-            lines.append(f"   • {f}")
 
-    if audit.get("quarantined_files"):
-        lines.append(f"🛡️  Quarantined Corrupted Files ({len(audit['quarantined_files'])}):")
-        for f in audit["quarantined_files"]:
-            lines.append(f"   • {f}")
-
-    if audit.get("dangling_temp_files"):
-        lines.append(f"🧹 Dangling Temp Buffers ({len(audit['dangling_temp_files'])}):")
-        for f in audit["dangling_temp_files"]:
-            lines.append(f"   • {f}")
-
+def format_audit_report(audit: Dict[str, Any]) -> str:
+    """Generate human and AI-readable disruption recovery audit report."""
+    lines = [
+        "============================================================",
+        "⚡ DISRUPTION & PROGRESS RECOVERY AUDIT (PRINCIPLE-006)",
+        "============================================================",
+    ]
+    lines += audit_body_lines(audit)
     lines.append("============================================================")
     return "\n".join(lines)
 
 
 def format_resume_report(audit: Dict[str, Any]) -> str:
-    """Generate structured guidance for cold-starting AI agents to resume an interrupted task."""
+    """
+    The one cold-start report (PRINCIPLE-004 R2): every --audit finding, then where to resume.
+    It used to print only the interrupted task, so with no active task it said "Ready for a new
+    task" over uncommitted, untracked or quarantined files that --audit would have shown.
+    """
     lines = [
         "============================================================",
         "⚡ DISRUPTION RESUMPTION GUIDANCE (PRINCIPLE-006)",
         "============================================================",
     ]
+    lines += audit_body_lines(audit)
     if audit.get("conflicted_files"):
-        lines.append(f"⛔ BLOCKED: {len(audit['conflicted_files'])} unresolved conflict(s) must be resolved first:")
-        for f in audit["conflicted_files"]:
-            lines.append(f"   • {f}")
-        lines.append("   Fix: resolve and 'git add <file>', or 'git merge --abort' / 'git rebase --abort'")
+        lines.append("⛔ BLOCKED: resolve the conflicts above before any other action.")
 
     interrupted = audit.get("interrupted_task")
     if not interrupted:
-        if not audit.get("conflicted_files"):
+        if audit.get("modified_files") or audit.get("untracked_files") or audit.get("dangling_temp_files"):
+            lines.append("🟡 No interrupted task, but the files above are uncommitted: inspect them before a new task and never overwrite them.")
+        elif not audit.get("conflicted_files"):
             lines.append("🟢 No interrupted task detected. Ready for a new task.")
         lines.append("============================================================")
         return "\n".join(lines)
@@ -786,23 +792,6 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     lines.append(f"🚀 Recommended Resumption Phase: Phase {next_phase_num}")
     if audit.get("plan"):
         lines.append(f"🗺️  Plan (Phase 2 checkpoint): {audit['plan']}")
-
-    impact = interrupted.get("impact_assessment")
-    if impact:
-        lines.append("🎯 Pre-Flight Impact Assessment (PRINCIPLE-007):")
-        if impact.get("why"):
-            lines.append(f"   • Why: {impact['why']}")
-        if impact.get("benefits"):
-            lines.append(f"   • Benefits: {impact['benefits']}")
-        if impact.get("risks"):
-            lines.append(f"   • Risks: {impact['risks']}")
-        if impact.get("mitigation"):
-            lines.append(f"   • Mitigation: {impact['mitigation']}")
-
-    if audit.get("modified_files"):
-        lines.append(f"📝 Surviving Modified Files ({len(audit['modified_files'])}):")
-        for f in audit["modified_files"]:
-            lines.append(f"   • {f}")
     if audit.get("dangling_temp_files"):
         lines.append(f"🧹 Action Needed: Purge {len(audit['dangling_temp_files'])} dangling .tmp_* files (run 'python scripts/disruption_recovery.py --clean')")
     lines.append(f"💡 Next Action: Inspect surviving files, run unit tests, and resume at Phase {next_phase_num}")
