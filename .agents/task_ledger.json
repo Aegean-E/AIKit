@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p008-pass2",
+    "task_id": "p009-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189217.6729498,
-    "completed_at": 1792189231.6050363
+    "updated_at": 1792189274.0168772,
+    "completed_at": 1792189311.2035568
   },
   "checkpoints": [
-    {
-      "task_id": "p017-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P017",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188763.2102044,
-      "timestamp_str": "2026-10-17 01:12:43"
-    },
-    {
-      "task_id": "p017-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] parse_principles requires Problem; rewrite P017 R1-R6 (5-section schema incl. audience tags per P000 R7, gate wording, phase order as validated, Tier 1B 1,200 chars); ADR-090",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188791.5815744,
-      "timestamp_str": "2026-10-17 01:13:11",
-      "impact_assessment": {
-        "why": "R1 schema omits Problem and audience tags; R5 'without rigid limits' undecidable; ~ banned; no audience tags",
-        "benefits": "schema rule equals what sync validates",
-        "risks": "contract: sync_principles exits 1 on a principle without Problem; dependency: none; concurrency: none; state: none",
-        "mitigation": "all 20 principles have Problem; unit test with fixture"
-      }
-    },
-    {
-      "task_id": "p017-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188791.7017608,
-      "timestamp_str": "2026-10-17 01:13:11"
-    },
-    {
-      "task_id": "p017-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188914.5536716,
-      "timestamp_str": "2026-10-17 01:15:14"
-    },
-    {
-      "task_id": "p017-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p017-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792188928.5775378,
-      "timestamp_str": "2026-10-17 01:15:28"
-    },
     {
       "task_id": "p018-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189231.6050372,
       "timestamp_str": "2026-10-17 01:20:31"
+    },
+    {
+      "task_id": "p009-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: apply P009 to AIKit's own injected git_status role",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189259.1268663,
+      "timestamp_str": "2026-10-17 01:20:59"
+    },
+    {
+      "task_id": "p009-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P009 pass 2: boundary needs 2+ production implementations (a test double alone does not count, still injected per R4); a one-operation role may be a Callable; ADR-094",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189259.2797186,
+      "timestamp_str": "2026-10-17 01:20:59",
+      "impact_assessment": {
+        "why": "R1 counted a test double as a boundary, demanding four layers in a 1200-line CLI module; R2 required a Protocol for a one-function role",
+        "benefits": "rules give one answer for AIKit's own code",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "pins; cross-principle line"
+      }
+    },
+    {
+      "task_id": "p009-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189259.434987,
+      "timestamp_str": "2026-10-17 01:20:59"
+    },
+    {
+      "task_id": "p009-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189274.0168772,
+      "timestamp_str": "2026-10-17 01:21:14"
+    },
+    {
+      "task_id": "p009-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p009-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189311.2035582,
+      "timestamp_str": "2026-10-17 01:21:51"
     }
   ]
 }

@@ -1138,7 +1138,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
         "PRINCIPLE-009": {
             "rules": 5,
             "present": [
-                "A *pluggable boundary* is a role with two or more implementations",
+                "A *pluggable boundary* is a role with two or more production implementations",
+                "a test double alone does not make one",
+                "when it has exactly one operation, as a `Callable` type",
                 "The layers MAY share one module of at most 300 lines",
                 "No module, at a boundary or not, MAY be named `utils`",
                 "with 1 to 5 methods",

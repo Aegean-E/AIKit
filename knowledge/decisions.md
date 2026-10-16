@@ -1200,3 +1200,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The user-facing agent is level 0 and no sub-agent runs deeper than level 3. A milestone may change more than one layer when its plan entry says why. A revision that would exceed six milestones moves the milestones after the current one into a separate task with its own plan.
 - **Consequences**: Pinned in `TestRewrittenPrincipleWording`; the new pins fail on the previous text.
 - Cross-principle check: PRINCIPLE-003 (no conflict), PRINCIPLE-004 (R1 plan revisions; no conflict), PRINCIPLE-006 (R1 tags stay within 2..6; no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-009 (layers; no conflict).
+
+### ADR-094: PRINCIPLE-009 Second Pass - A Test Double Is Not a Boundary
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Applied to AIKit's own code, the ADR-082 text read two ways. `run_disruption_audit` takes an injected `git_status` function so tests can pass a double; counting "an adapter and its test double" as a pluggable boundary made R1 demand four separated layers in a 1,200-line CLI module and R2 a Protocol for a single function, while a reader who ignored the double reached the opposite answer.
+- **Decision**: A pluggable boundary needs two or more production implementations (in the repository or the plan); a test double alone does not make one, though it is still injected through R4's constructor or parameter default. A role with exactly one operation MAY be declared as a `Callable` type instead of a Protocol.
+- **Consequences**: AIKit's injected `git_status` follows R2 and R4 as written; no layering refactor is required. Pinned in `TestRewrittenPrincipleWording`.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-010 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-012 (R7's single-implementation ABC rule cites R1's boundary, which now excludes test doubles; no conflict), PRINCIPLE-014 (test doubles injected per R4; no conflict).
