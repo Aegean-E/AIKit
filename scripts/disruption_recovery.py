@@ -308,10 +308,17 @@ def prune_checkpoints(
     return sorted(combined, key=lambda x: x.get("timestamp", 0))
 
 
+PLAN_MARKER = "[1/"
+
+
 def task_plan_checkpoint(task_checkpoints: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """The task's plan: its earliest Phase 2 checkpoint (PRINCIPLE-004 R1), or None."""
-    for cp in task_checkpoints:
-        if cp.get("phase_num") == 2:
+    """
+    The task's plan (PRINCIPLE-004 R1): its latest Phase 2 checkpoint whose description starts
+    with `[1/`, the first milestone. Latest, so a revised plan replaces the old one; marker, so a
+    user's answer recorded in Phase 2 is not mistaken for the plan. None when no plan exists.
+    """
+    for cp in reversed(task_checkpoints):
+        if cp.get("phase_num") == 2 and str(cp.get("description", "")).startswith(PLAN_MARKER):
             return cp
     return None
 
@@ -500,13 +507,18 @@ def record_checkpoint(
     return checkpoint_entry
 
 
-def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> None:
-    """Mark the active task as successfully completed in the ledger (locked, PRINCIPLE-013 R3)."""
+def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> bool:
+    """
+    Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,
+    when `task_id` is not the active task: a mistyped id used to print [OK] and leave the task
+    in progress, so the next `--resume` reopened finished work.
+    """
     with locked_ledger(ledger_file) as ledger:
-        if ledger.get("active_task", {}).get("task_id") == task_id:
-            ledger["active_task"]["status"] = "completed"
-            ledger["active_task"]["active_phase"] = 5
-            ledger["active_task"]["completed_at"] = time.time()
+        if ledger.get("active_task", {}).get("task_id") != task_id:
+            return False
+        ledger["active_task"]["status"] = "completed"
+        ledger["active_task"]["active_phase"] = 5
+        ledger["active_task"]["completed_at"] = time.time()
 
         # Also record completion checkpoint
         ledger.setdefault("checkpoints", []).append({
@@ -518,6 +530,7 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> Non
             "timestamp": time.time(),
             "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         })
+    return True
 
 
 def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None) -> Optional[Dict[str, Any]]:
@@ -1005,10 +1018,28 @@ def validate_argv(argv: List[str]) -> List[str]:
         if token.startswith("-"):
             if token not in KNOWN_FLAGS:
                 unknown.append(token)
-            elif token in VALUE_FLAGS:
-                i += 1  # consume this flag's value, whatever it looks like
+            elif token in VALUE_FLAGS and i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+                i += 1  # consume this flag's value; a `--` token is a flag, never a value
         i += 1
     return unknown
+
+
+def argv_value_errors(argv: List[str]) -> List[str]:
+    """
+    Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to
+    fall back silently: `--checkpoint --task-id x` recorded task 'task', `--phase-num six` was
+    dropped, `--complete` with no id completed nothing and still printed [OK].
+    """
+    errors: List[str] = []
+    for i, token in enumerate(argv):
+        if token not in VALUE_FLAGS or token == "--reset":  # --reset [reason] is optional
+            continue
+        value = argv[i + 1] if i + 1 < len(argv) else None
+        if value is None or value.startswith("--"):
+            errors.append(f"{token} requires a value")
+        elif token == "--phase-num" and value not in {"1", "2", "3", "4", "5"}:
+            errors.append(f"--phase-num must be 1-5, got '{value}'")
+    return errors
 
 
 if __name__ == "__main__":
@@ -1021,6 +1052,12 @@ if __name__ == "__main__":
         print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(_unknown)}", file=sys.stderr)
         print("Why: the requested action is not part of this tool's CLI contract.", file=sys.stderr)
         print("Fix: run 'python scripts/disruption_recovery.py --help' to list valid actions.", file=sys.stderr)
+        sys.exit(2)
+    _value_errors = argv_value_errors(sys.argv[1:])
+    if _value_errors:
+        print(f"[INVALID USAGE] {'; '.join(_value_errors)}", file=sys.stderr)
+        print("Why: a missing value used to be replaced by a silent default.", file=sys.stderr)
+        print("Fix: e.g. --checkpoint <task_id> --phase-num 2 --desc \"<text>\"", file=sys.stderr)
         sys.exit(2)
 
     # Resolve the target workspace once. Default stays repository-anchored so an agent in a
@@ -1054,7 +1091,7 @@ if __name__ == "__main__":
             sys.exit(1)
     elif "--checkpoint" in sys.argv:
         idx = sys.argv.index("--checkpoint")
-        task_id = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "task"
+        task_id = sys.argv[idx + 1]  # presence and shape checked by argv_value_errors
         
         phase = "in_progress"
         if "--phase" in sys.argv:
@@ -1119,8 +1156,12 @@ if __name__ == "__main__":
         print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
-        tid = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "active"
-        mark_task_completed(tid, ledger_file=_ledger)
+        tid = sys.argv[idx + 1]
+        if not mark_task_completed(tid, ledger_file=_ledger):
+            print(f"[NOT COMPLETED] Task '{tid}' is not the active task.", file=sys.stderr)
+            print("Why: only the active task can be completed; nothing was changed.", file=sys.stderr)
+            print("Fix: run --resume to see the active task id, then --complete <that id>.", file=sys.stderr)
+            sys.exit(1)
         print(f"[OK] Task '{tid}' marked as completed.")
     elif "--reset" in sys.argv:
         idx = sys.argv.index("--reset")

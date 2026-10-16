@@ -101,7 +101,7 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 ---
 
 ## 🧠 Attentional Drift Prevention & State Externalization
-- **Disk-Anchored Memory & Living Plan SSOT**: In-flight state, task checkpoints, and architectural rationale are externalized immediately to `.agents/task_ledger.json` and `knowledge/decisions.md`, eliminating dependence on volatile conversational context. Multi-step plans are updated in-place on disk rather than reprinting bloat into conversation history (**PRINCIPLE-004**).
+- **Disk-Anchored Memory & Living Plan SSOT**: In-flight state, task checkpoints, and architectural rationale are externalized immediately to `.agents/task_ledger.json` and `knowledge/decisions.md`, eliminating dependence on volatile conversational context. The plan is the latest Phase 2 checkpoint whose description starts with `[1/`; a revision is recorded as a new such checkpoint, `--resume` prints it, and pruning never drops it, so plans are never reprinted into the conversation (**PRINCIPLE-004**, ADR-060).
 - **Bounded Rolling Ledger Window**: `scripts/disruption_recovery.py` auto-prunes historical checkpoints to maintain a bounded rolling memory window (active task + recent history), preventing the ledger itself from becoming a context bloat trap.
 - **Compaction Resumption & Anti-Repetition Invariant**: Upon compaction or cold restart, agents execute a 3-step audit (Ledger `active_phase` check $\rightarrow$ Working tree check $\rightarrow$ Monotonic resumption). Disk state is authoritative over truncated dialogue history; once a choice is recorded, the agent never re-prompts the user to re-decide.
 - **AST-First & Slice-Capped Retrieval**: Code examination prioritizes AST symbol maps (`knowledge/codebase_map.md`) and slice views (<100 lines) to preserve token budgets and prevent premature context compaction.
@@ -323,7 +323,7 @@ Rules live only in `GUIDELINES.md`; see **PRINCIPLE-001** there (R1 tiers and pr
   - *Bottom-Up Execution*: Implements code upward starting from foundational primitives and models, moving to domain services, and finally to presentation/CLI and integration tests. Guarantees every referenced class and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
 - **Bounded Milestone Horizon & Indexing Contract ($N/M$)**: Decomposed plans must avoid both monolithic mega-diffs and micro-task proliferation ($2 \le M \le 6$). Leaf units directly define the milestone count ($M$) and index ($N$) logged in `.agents/task_ledger.json` and committed via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
 - **Single-Domain Leaf Atomicity & Verifiability**: Each leaf unit targets a single architectural layer, compiles cleanly, and passes isolated tests without breaking repository stability.
-- **Dynamic Re-Decomposition Protocol**: When unanticipated blockers or gaps emerge during execution, agents pause forward progression, update the active plan on disk (`task_ledger.json`), adjust $M'$, and resume monotonically without discarding completed progress.
+- **Dynamic Re-Decomposition Protocol**: When unanticipated blockers or gaps emerge during execution, agents pause forward progression, record the revised plan as a new `[1/M']` Phase 2 checkpoint in `task_ledger.json` (PRINCIPLE-004 R1), and resume monotonically without discarding completed progress.
 
 ---
 

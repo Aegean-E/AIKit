@@ -81,6 +81,9 @@ from scripts.disruption_recovery import (
     validate_conventional_commit,
     classify_track,
     resolve_phase_num,
+    task_plan_checkpoint,
+    validate_argv,
+    argv_value_errors,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -938,8 +941,9 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
 
     def test_every_kind_of_state_has_one_home(self):
         for definition in (
-            "the plan is the `--desc` text of the task's Phase 2 checkpoint",
-            "MUST record a new checkpoint with the full revised plan",
+            "the plan is the `--desc` text of the task's latest Phase 2 checkpoint",
+            "whose `--desc` starts with `[1/`",
+            "MUST record a new `--phase-num 2` checkpoint with the full revised plan",
             "a deliverable the user asked for (an analysis, a report) is not a progress message",
             "MUST run `python scripts/disruption_recovery.py --resume` before any other action",
             "A user who changes a recorded decision is followed",
@@ -984,6 +988,40 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
         record_checkpoint("t", "implementation", "building", phase_num=3, ledger_file=ledger)
         report = format_resume_report(run_disruption_audit(workspace, git_status=not_a_git_repo))
         self.assertIn("Plan (Phase 2 checkpoint): [1/2] model; [2/2] cli", report)
+
+    def test_revised_plan_replaces_the_old_one_and_answers_do_not(self):
+        # Red-green pin (second R1 pass): the earliest Phase 2 checkpoint was returned, so a
+        # revised plan never reached --resume, and any Phase 2 note could count as the plan.
+        history = [
+            {"task_id": "t", "phase_num": 2, "description": "[1/2] model; [2/2] cli"},
+            {"task_id": "t", "phase_num": 2, "description": "[1/3] model; [2/3] service; [3/3] cli"},
+            {"task_id": "t", "phase_num": 2, "description": "User chose option 2: keep JSON"},
+            {"task_id": "t", "phase_num": 3, "description": "[1/3] done"},
+        ]
+        self.assertEqual(task_plan_checkpoint(history)["description"],
+                         "[1/3] model; [2/3] service; [3/3] cli")
+        self.assertIsNone(task_plan_checkpoint(history[2:3]))
+
+    def test_cli_never_replaces_a_missing_value_with_a_default(self):
+        # Red-green pin: `--checkpoint --task-id x` recorded task 'task' and printed [OK];
+        # `--complete` with no id completed nothing and printed [OK].
+        self.assertEqual(validate_argv(["--checkpoint", "--task-id", "x"]), ["--task-id"])
+        self.assertEqual(argv_value_errors(["--complete"]), ["--complete requires a value"])
+        self.assertEqual(argv_value_errors(["--checkpoint", "t", "--phase-num", "six"]),
+                         ["--phase-num must be 1-5, got 'six'"])
+        self.assertEqual(argv_value_errors(["--reset"]), [])  # its reason is optional
+        self.assertEqual(argv_value_errors(["--checkpoint", "t", "--phase-num", "2", "--desc", "d"]), [])
+
+    def test_completing_a_task_that_is_not_active_changes_nothing(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_complete_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        record_checkpoint("real", "implementation", "x", phase_num=3, ledger_file=ledger)
+        self.assertFalse(mark_task_completed("typo", ledger_file=ledger))
+        after = load_ledger(ledger)
+        self.assertEqual(after["active_task"]["status"], "in_progress")
+        self.assertEqual(len(after["checkpoints"]), 1)
+        self.assertTrue(mark_task_completed("real", ledger_file=ledger))
 
 
 class TestLifecycleToolSemantics(unittest.TestCase):
