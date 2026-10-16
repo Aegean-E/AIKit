@@ -1,40 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "subagent-tiered-governance",
+    "task_id": "opencode-v2-native-config",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792190871.170021,
+    "updated_at": 1792191297.9888086,
     "impact_assessment": {
-      "why": "Empower AI agents to offload token-heavy bulk operations to free or local subagent models safely without context burnout or state corruption",
-      "benefits": "Enables zero-token background audits, provider-agnostic subagent execution, and strict parent verification gates",
-      "risks": "contract: none dependency: none concurrency: none state: none",
-      "mitigation": "none"
+      "why": "Integrate native OpenCode v2 agent definition and provider configuration into AIKit",
+      "benefits": "Enables native OpenCode v2 headless execution with built-in permissions denying writes to ledger, step limits, and free/local model offloading",
+      "risks": "contract: zero; dependency: opencode cli already installed; concurrency: standalone mode avoids daemon conflicts; state: permissions hard-block ledger writes",
+      "mitigation": "opencode.jsonc and worker.md explicitly deny edits to .agents/** and verify via test gates"
     },
-    "completed_at": 1792191106.6434247
+    "completed_at": 1792191346.4300346
   },
   "checkpoints": [
-    {
-      "task_id": "p013-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189588.371761,
-      "timestamp_str": "2026-10-17 01:26:28"
-    },
-    {
-      "task_id": "p013-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189611.1215765,
-      "timestamp_str": "2026-10-17 01:26:51"
-    },
     {
       "task_id": "p013-pass2",
       "phase": "completed",
@@ -232,6 +212,31 @@
       "status": "completed",
       "timestamp": 1792191106.6434264,
       "timestamp_str": "2026-10-17 01:51:46"
+    },
+    {
+      "task_id": "opencode-v2-native-config",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Deliver OpenCode v2 native subagent profile and configuration",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792191297.9888086,
+      "timestamp_str": "2026-10-17 01:54:57",
+      "impact_assessment": {
+        "why": "Integrate native OpenCode v2 agent definition and provider configuration into AIKit",
+        "benefits": "Enables native OpenCode v2 headless execution with built-in permissions denying writes to ledger, step limits, and free/local model offloading",
+        "risks": "contract: zero; dependency: opencode cli already installed; concurrency: standalone mode avoids daemon conflicts; state: permissions hard-block ledger writes",
+        "mitigation": "opencode.jsonc and worker.md explicitly deny edits to .agents/** and verify via test gates"
+      }
+    },
+    {
+      "task_id": "opencode-v2-native-config",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'opencode-v2-native-config' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792191346.4300363,
+      "timestamp_str": "2026-10-17 01:55:46"
     }
   ]
 }

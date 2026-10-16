@@ -51,30 +51,35 @@ python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num 2 --des
 
 ---
 
-## 🤖 Token-Frugal Subagent Offloading (OpenCode Integration)
+## 🤖 Token-Frugal Subagent Offloading (OpenCode v2 Integration)
 
-To prevent context exhaustion and preserve primary model quota (**PRINCIPLE-012**), delegate token-heavy exploratory and repetitive tasks to worker subagents running free or local models:
+To prevent context exhaustion and preserve primary model quota (**PRINCIPLE-012 R8**), delegate token-heavy exploratory and repetitive tasks to worker subagents running free or local models:
 
 ### 1. Headless CLI Delegation (PRINCIPLE-011 R2/R5)
-Always invoke OpenCode in non-interactive headless mode (`opencode run`):
+Always invoke OpenCode in non-interactive headless mode with `--standalone` for RAII process isolation (PRINCIPLE-015):
 ```bash
-# Analyze target file(s) and return structured JSON:
-opencode run --format json --file <path> "<prompt>"
+# Target file audit & drafting using native worker subagent (.opencode/agents/worker.md):
+opencode run --standalone --format json --agent worker --file <path> "<prompt>"
 
-# Scan codebase with auto-approved permissions:
-opencode run --format json --auto "<prompt>"
+# Built-in read-only zero-token code search & exploration:
+opencode run --standalone --format json --agent explore "<search_prompt>"
 
-# Target a free or local model:
-opencode run --model <provider/model> --format json "<prompt>"
+# Automated analysis using OpenCode free tier models:
+opencode run --standalone --format json --agent worker --model opencode/deepseek-v4.1-flash-free --auto "<prompt>"
+
+# Offline local model execution (Ollama via opencode.jsonc):
+opencode run --standalone --format json --agent worker --model ollama/qwen2.5-coder:latest --auto "<prompt>"
 ```
 
-### 2. Free Model Configuration Options
-- **Local (Ollama)**: `ollama/qwen2.5-coder:7b`, `ollama/deepseek-coder-v2` (100% free, offline, zero token usage).
-- **Free Cloud Tiers**: Google AI Studio (`gemini-2.0-flash`), OpenRouter (`:free` endpoints), or Groq.
+### 2. Model & Provider Options (opencode.jsonc)
+- **Local (Ollama)**: `ollama/qwen2.5-coder:latest`, `ollama/deepseek-r1:latest` configured via `@opencode/ai/providers/openai-compatible`.
+- **OpenCode Free Tier**: `opencode/deepseek-v4.1-flash-free`, `opencode/glm-5.3-flash-free`, `opencode/beam-free` (built-in zero-cost coding models).
+- **Custom / Cloud**: Connect via `opencode auth login` or customize `opencode.jsonc`.
 
 ### 3. Subagent Boundaries & Safety
-- **Ledger Protection (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`.
+- **Ledger Invariant (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`. Mechanically denied by `opencode.jsonc` and `.opencode/agents/worker.md`.
 - **Regression Shield Gate (PRINCIPLE-014)**: All code proposed by subagents must pass unit tests and read-only gates before staging.
+
 
 ---
 

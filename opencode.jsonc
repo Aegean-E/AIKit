@@ -1,0 +1,33 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "providers": {
+    "ollama": {
+      "name": "Ollama (Local)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://127.0.0.1:11434/v1"
+      },
+      "models": {
+        "qwen2.5-coder:latest": {
+          "name": "Qwen 2.5 Coder (Local)"
+        },
+        "deepseek-r1:latest": {
+          "name": "DeepSeek R1 (Local)"
+        }
+      }
+    }
+  },
+  "permissions": [
+    {
+      "action": "edit",
+      "resource": ".agents/task_ledger.json",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git push*",
+      "effect": "deny"
+    }
+  ]
+}

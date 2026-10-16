@@ -1273,5 +1273,14 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**: Pinned by `TestRewrittenPrincipleWording` in `tests/test_kit.py` under PRINCIPLE-008 and PRINCIPLE-012 (rules count 8).
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-002 (cognitive flow and lifecycle gates; no conflict), PRINCIPLE-003 (R1/R2 verify-before-execution and symbol reality; no conflict), PRINCIPLE-004 (R4 ADR record and living docs; no conflict), PRINCIPLE-006 (ledger writes stay with the parent; no conflict), PRINCIPLE-007 (assessment covers in-scope delegation; no conflict), PRINCIPLE-008 (bounds, non-interactive stdin, parent verification; no conflict), PRINCIPLE-009 (subagent interfaces follow pluggable boundaries; no conflict), PRINCIPLE-011 (R5 closed stdin mandated for subagent processes; resolves headless contract), PRINCIPLE-012 (tiered offloading bounds; no conflict), PRINCIPLE-015 (subagent testing obeys process tree teardown; no conflict), PRINCIPLE-018 (parent verify gates before staging; no conflict).
 
+### ADR-103: OpenCode v2 Configuration and Native Subagent Integration
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: OpenCode v2 introduces a native agent profile format (`.opencode/agents/<name>.md`), a centralized configuration schema (`opencode.jsonc`), and built-in free tier models alongside local model providers. While AIKit added governance principles (ADR-102) and an Antigravity agent spec, OpenCode CLI invocations require native permissions configuration to mechanically enforce ledger protection, step bounds, and headless execution.
+- **Decision**: Added native `.opencode/agents/worker.md` with explicit permissions denying edits to `.agents/**` and restricting shell operations, capped at 10 steps. Created `opencode.jsonc` pre-configured for local Ollama providers (`@opencode/ai/providers/openai-compatible`) and global ledger write denials. Updated `.agents/agents/opencode_worker.md` and `.agents/skills/aikit/SKILL.md` to document OpenCode v2 headless invocations (`--standalone`, `--agent explore`, `--agent worker`, `--format json`, `--auto`).
+- **Consequences**: Enables zero-token, headless, and mechanically contained subagent execution across both Antigravity and OpenCode CLI environments.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-003 (symbol reality and tool verified against active v2 CLI; no conflict), PRINCIPLE-004 (ADR recorded; no conflict), PRINCIPLE-008 (bounds and mechanical ledger protection via permissions; no conflict), PRINCIPLE-011 (headless execution with closed stdin; no conflict), PRINCIPLE-012 (tiered offloading to free and local models; no conflict), PRINCIPLE-015 (process isolation via --standalone; no conflict), PRINCIPLE-018 (commit and push; no conflict), PRINCIPLE-019 (zero credentials in configuration files; no conflict).
+
+
 
 
