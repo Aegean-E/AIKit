@@ -1,7 +1,6 @@
 # Codebase Knowledge Base 🧠
 
-> **MANDATORY FIRST STEP FOR AI ASSISTANTS (PRINCIPLE-010):**
-> Before designing, refactoring, or editing code, read this index and relevant documents below to achieve full architectural grounding.
+> **For AI assistants (PRINCIPLE-016):** find code through `codebase_map.md` or a whole-word search (PRINCIPLE-004 R3); open the document below whose purpose matches the change you are making.
 
 ---
 

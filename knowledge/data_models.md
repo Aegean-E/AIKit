@@ -1,20 +1,7 @@
 # Domain Data Models & Schemas
 
 ## 📦 Data Structures
-Document core domain models, configuration schemas, and data transfer objects here.
-
-### Example Schema Pattern
-```python
-from dataclasses import dataclass, field
-from typing import List, Optional
-
-@dataclass
-class AppConfig:
-    """Application configuration schema."""
-    version: str = "1.0.0"
-    debug_mode: bool = False
-    options: List[str] = field(default_factory=list)
-```
+The single home of every schema in this repository (**PRINCIPLE-016** R5).
 
 ### Task Ledger (`.agents/task_ledger.json`)
 Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013).
@@ -28,5 +15,6 @@ Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013)
 `status` values: `in_progress` (recorded by `--checkpoint`), `completed` (`--complete`), `abandoned` (`--reset`), `superseded` (written for the previous task when `--checkpoint` names a different task while it was still `in_progress`; ADR-077). The plan is the latest `phase_num` 2 checkpoint whose `description` starts with `[1/` (PRINCIPLE-004 R1).
 
 ## 🛡️ Model Invariants
-1. Models must be type-annotated and deterministic.
-2. Configuration models must support sensible default values for zero-install immediate execution (**PRINCIPLE-008**).
+1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
+2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).
+3. A persisted model carries a version key (`version` in the ledger) and a migration function that fills missing keys (**PRINCIPLE-013** R4).

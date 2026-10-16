@@ -1,10 +1,11 @@
 # State Management & Presentation Layer
 
 ## 🎨 Presentation Architecture
-Document how presentation state, user input, and event handling work.
+Not applicable to AIKit: it has no graphical or web interface. Its presentation layer is each CLI's argument parsing and terminal output, described in `services.md` and `README.md`.
 
 ## 🔄 State Lifecycle
-1. **Initialization**: Load persistent configuration safely using atomic readers with self-healing recovery (**PRINCIPLE-012**).
-2. **User Interaction**: Trigger actions asynchronously; never block the main loop with synchronous network/disk calls (**PRINCIPLE-007**).
-3. **Feedback**: Provide immediate visual indicators, progress bars, or activity logs to keep the user informed.
-4. **Shutdown / Checkpoint**: Persist state atomically to disk upon meaningful events or user exits.
+AIKit's only state file is `.agents/task_ledger.json` (schema in `data_models.md`).
+1. **Load**: parse, quarantine a corrupt file, fall back to `.bak`, migrate the schema (**PRINCIPLE-013** R4).
+2. **Change**: every read-modify-write holds the advisory lock (**PRINCIPLE-013** R3).
+3. **Write**: headroom check, temp file, fsync, retried `os.replace`, directory fsync (**PRINCIPLE-013** R1, R2).
+4. **Resume**: `disruption_recovery.py --resume` reports the active task, its plan and the phase to continue (**PRINCIPLE-004** R2).

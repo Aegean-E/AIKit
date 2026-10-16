@@ -1208,6 +1208,19 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             ],
             "gone": ["remain concise", "(<15 lines)", "strictly prohibited", "bit-for-bit clean"],
         },
+        "PRINCIPLE-016": {
+            "rules": 6,
+            "present": [
+                "a section that does not apply says \"Not applicable\" and why, never template text",
+                "`architecture.md` when a module, layer or process boundary is added, removed or moved",
+                "`codebase_map.md` is never edited by hand",
+                "An ADR MAY be edited until the commit that adds it; after that its text is fixed",
+                "The one exception is a heading ID that `python scripts/update_knowledge_base.py` reports as duplicate or skipped",
+                "A persisted schema has a version key (`version` in the ledger)",
+                "read in slices (PRINCIPLE-004 R3)",
+            ],
+            "gone": ["high-density", "instant cold-start", "`schema_version`", "`view_file`", "strictly prohibited"],
+        },
         "PRINCIPLE-000": {
             "rules": 7,
             "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires"],
