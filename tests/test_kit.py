@@ -1241,6 +1241,20 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["~300 tokens", "plus an optional `- **Problem**:`", "without rigid hardcoded range limits",
                      "strictly prohibited"],
         },
+        "PRINCIPLE-018": {
+            "rules": 6,
+            "present": [
+                "unless the user said not to commit; then it stops after Phase 4",
+                "MUST pass before the commit",
+                "It MUST NOT run `git add .`, `git add -A`, `git add --all`, `git add -u` or `git commit -a`",
+                "No hook enforces this; the agent MUST NOT commit until all three hold",
+                "it runs `git rebase --abort` and asks the user",
+                "to undo a pushed commit, `git revert <hash>`",
+                "says whether it was pushed",
+            ],
+            "gone": ["mechanically locked", "concise status summary", "(<10 lines)",
+                     "always use non-destructive rollbacks"],
+        },
         "PRINCIPLE-000": {
             "rules": 7,
             "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires"],
