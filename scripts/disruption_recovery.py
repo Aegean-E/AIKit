@@ -808,13 +808,99 @@ def validate_conventional_commit(message: str) -> Tuple[bool, str]:
 
 
 # Flags that consume the following argv token as their value.
+# ---------------------------------------------------------------------------------------------
+# Lifecycle track classification (PRINCIPLE-002 R3). Computed from the actual change set so every
+# agent assigns the same track: the word lists it replaced ("typo fixes", "comment updates",
+# "executable code") put the same comment-only edit in Track B for one model and C for another.
+# ---------------------------------------------------------------------------------------------
+TRACK_B_SUFFIXES = frozenset({".md", ".txt", ".rst"})
+# Text files that are nevertheless rule text or generated from it: editing them changes how every
+# agent behaves, so they are never "trivial".
+TRACK_C_DOC_NAMES = frozenset({
+    "GUIDELINES.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules",
+    "copilot-instructions.md", "principles.md", "domain.md",
+})
+
+
+def _ast_without_docstrings(source: str) -> str:
+    """AST dump with docstrings removed; comments and formatting never reach the AST."""
+    import ast  # lazy: keeps `--help` inside the startup budget (PRINCIPLE-010 R5)
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if (isinstance(body, list) and body and isinstance(body[0], ast.Expr)
+                and isinstance(getattr(body[0], "value", None), ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            node.body = body[1:] or [ast.Pass()]
+    return ast.dump(tree)
+
+
+def classify_change(path: str, old: Optional[str], new: Optional[str]) -> Tuple[str, str]:
+    """Return (track, reason) for one changed file. Pure: no I/O."""
+    name = Path(path).name
+    suffix = Path(path).suffix.lower()
+    if name in TRACK_C_DOC_NAMES:
+        return "C", "rule text or a file generated from it"
+    if suffix in TRACK_B_SUFFIXES:
+        return "B", "documentation"
+    if suffix == ".py" and old is not None and new is not None:
+        try:
+            same = _ast_without_docstrings(old) == _ast_without_docstrings(new)
+        except SyntaxError:
+            return "C", "Python that does not parse"
+        return ("B", "comments/docstrings/formatting only") if same else ("C", "code change")
+    if suffix == ".py":
+        return "C", "Python file added or deleted"
+    return "C", "code, config, schema or test file"
+
+
+def classify_track(changes: List[Tuple[str, Optional[str], Optional[str]]]) -> Tuple[str, List[str]]:
+    """
+    Classify a change set into Track A, B or C (PRINCIPLE-002 R3). Pure: no I/O.
+
+    `changes` holds (path, old_text_or_None, new_text_or_None). No changes is Track A; the task's
+    track is the highest track of any file; the reasons list one line per file.
+    """
+    if not changes:
+        return "A", []
+    reasons = []
+    track = "B"
+    for path, old, new in changes:
+        file_track, reason = classify_change(path, old, new)
+        reasons.append(f"{file_track}  {path}  ({reason})")
+        if file_track == "C":
+            track = "C"
+    return track, reasons
+
+
+def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], Optional[str]]]:
+    """Read every changed, staged or untracked file versus HEAD (git adapter for --track)."""
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=str(workspace), capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=10)
+    listing = git("status", "--porcelain", "--untracked-files=all")
+    if listing.returncode != 0:
+        raise RuntimeError(listing.stderr.strip() or "not a git repository")
+    changes = []
+    for raw in listing.stdout.splitlines():
+        if len(raw) < 4:
+            continue
+        path = raw[3:].strip().split(" -> ")[-1].strip('"')
+        head = git("show", f"HEAD:{path}")
+        old = head.stdout if head.returncode == 0 else None
+        target = workspace / path
+        new = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
+        changes.append((path, old, new))
+    return changes
+
+
 VALUE_FLAGS = {
     "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
     "--why", "--benefits", "--benefit", "--risks", "--mitigation",
     "--complete", "--reset", "--workspace",
 }
 # Standalone action flags.
-ACTION_FLAGS = {"--clean", "--resume", "--audit", "--help", "-h"}
+ACTION_FLAGS = {"--clean", "--resume", "--audit", "--track", "--help", "-h"}
 KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS
 
 HELP_TEXT = """AIKit Disruption Recovery & Task Ledger (PRINCIPLE-006, PRINCIPLE-013)
@@ -830,6 +916,7 @@ Actions (default: --audit):
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task
   --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
+  --track                    Print the lifecycle track (A/B/C) of the current changes (PRINCIPLE-002 R3)
 
 Workspace:
   --workspace <dir>          Operate on <dir>/.agents/task_ledger.json instead of this
@@ -996,6 +1083,17 @@ if __name__ == "__main__":
     elif "--resume" in sys.argv:
         report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_resume_report(report))
+    elif "--track" in sys.argv:
+        try:
+            _track, _reasons = classify_track(collect_working_changes(_audit_root or ROOT_DIR))
+        except (RuntimeError, OSError, subprocess.SubprocessError) as _e:
+            print(f"[TRACK UNKNOWN] {_e}", file=sys.stderr)
+            print("Why: the track is computed from git changes versus HEAD.", file=sys.stderr)
+            print("Fix: run inside a git repository, or pass --workspace <repo>.", file=sys.stderr)
+            sys.exit(1)
+        print(f"Track {_track}")
+        for _r in _reasons:
+            print(f"  {_r}")
     elif "--audit" in sys.argv:
         report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_audit_report(report))

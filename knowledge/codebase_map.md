@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `21`
-- **Total Functions / Methods**: `74`
-- **Total Source Lines**: `5249`
+- **Total Classes**: `24`
+- **Total Functions / Methods**: `78`
+- **Total Source Lines**: `5492`
 
 ---
 
@@ -54,7 +54,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1005` lines (`41182` bytes)
+**Size**: `1103` lines (`45921` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -79,6 +79,10 @@
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
 - `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
+- `def _ast_without_docstrings(source)` - *AST dump with docstrings removed; comments and formatting never reach the AST.*
+- `def classify_change(path, old, new)` - *Return (track, reason) for one changed file. Pure: no I/O.*
+- `def classify_track(changes)` - *Classify a change set into Track A, B or C (PRINCIPLE-002 R3). Pure: no I/O.*
+- `def collect_working_changes(workspace)` - *Read every changed, staged or untracked file versus HEAD (git adapter for --track).*
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 
 ---
@@ -145,7 +149,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `486` lines (`22170` bytes)
+**Size**: `519` lines (`23891` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -186,6 +190,8 @@
   - Method `.test_lists_involved_principles_one_per_line()`
   - Method `.test_text_after_involved_is_never_parsed_as_options()`
   - Method `.test_missing_text_is_misuse()`
+- `class TestTrackCli` - *`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3).*
+  - Method `.test_track_follows_the_actual_diff()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
@@ -198,7 +204,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1728` lines (`90712` bytes)
+**Size**: `1840` lines (`96576` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -240,6 +246,23 @@
   - Method `.test_common_words_do_not_involve_principles()`
   - Method `.test_single_id_placeholder()`
   - Method `.test_tool_neutral_retrieval()`
+- `class TestPrinciple002Unambiguity` - *PRINCIPLE-002 must give every model the same track, the same phase gates and the same*
+  - Method `.setUpClass()`
+  - Method `._rule(pid, number)`
+  - Method `.test_rules_contain_no_hedge_words()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_open_decisions_are_defined()`
+  - Method `.test_cross_references_resolve()`
+  - Method `.test_p001_precedence_points_at_this_r5()`
+  - Method `.test_checklists_are_in_principle_order()`
+- `class TestTrackClassification` - *PRINCIPLE-002 R3: the track is computed, so every model assigns the same one.*
+  - Method `.test_no_changes_is_track_a()`
+  - Method `.test_documentation_is_track_b()`
+  - Method `.test_comment_and_docstring_edits_are_track_b()`
+  - Method `.test_logic_change_is_track_c()`
+  - Method `.test_rule_text_and_generated_files_are_track_c()`
+  - Method `.test_config_tests_and_new_python_are_track_c()`
+  - Method `.test_highest_track_wins()`
 - `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*
   - Method `.setUp()`
   - Method `._sync(check_only)`

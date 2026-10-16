@@ -408,6 +408,39 @@ class TestInvolvedCli(unittest.TestCase):
         self.assertIn("Fix:", res.stderr)
 
 
+class TestTrackCli(unittest.TestCase):
+    """`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3)."""
+
+    def test_track_follows_the_actual_diff(self):
+        repo = Path(tempfile.mkdtemp(prefix="test_track_"))
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        git = ["git", "-c", "user.email=t@example.com", "-c", "user.name=T",
+               "-c", "commit.gpgsign=false"]
+        code = "def f(x):\n    return x + 1\n"
+        (repo / "README.md").write_text("# r\n", encoding="utf-8")
+        (repo / "m.py").write_text(code, encoding="utf-8")
+        subprocess.run(["git", "init", "-q", "."], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        subprocess.run([*git, "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        subprocess.run([*git, "commit", "-qm", "base"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+
+        def track():
+            res = subprocess.run(
+                [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"),
+                 "--workspace", str(repo), "--track"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+            )
+            self.assertEqual(res.returncode, 0, res.stderr)
+            return res.stdout.splitlines()[0]
+
+        self.assertEqual(track(), "Track A")
+        (repo / "m.py").write_text("# comment only\n" + code, encoding="utf-8")
+        (repo / "README.md").write_text("# r, typo fixed\n", encoding="utf-8")
+        self.assertEqual(track(), "Track B")
+        (repo / "m.py").write_text(code.replace("+ 1", "+ 2"), encoding="utf-8")
+        self.assertEqual(track(), "Track C")
+
+
 class TestRepositorySecretHygiene(unittest.TestCase):
     """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
 

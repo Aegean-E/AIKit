@@ -59,6 +59,7 @@ from scripts.disruption_recovery import (
     check_disk_headroom,
     migrate_ledger_schema,
     validate_conventional_commit,
+    classify_track,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -623,6 +624,117 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
         # IDE-specific tool names make other agents guess an equivalent.
         for tool_name in ("view_file", "grep_search", "Query="):
             self.assertNotIn(tool_name, self.section, f"tool-specific term '{tool_name}' in P001")
+
+
+class TestPrinciple002Unambiguity(unittest.TestCase):
+    """
+    PRINCIPLE-002 must give every model the same track, the same phase gates and the same
+    answer to "commit now, skip the tests". Its cross-references must point at text that exists.
+    """
+
+    HEDGES = TestPrinciple001Unambiguity.HEDGES + ("$\\rightarrow$", "zero-friction", "instantly")
+
+    @classmethod
+    def setUpClass(cls):
+        text = SSOT_MD.read_text(encoding="utf-8")
+        cls.text = text
+        cls.section = text[text.index("### PRINCIPLE-002:"):text.index("\n### PRINCIPLE-003:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def _rule(self, pid, number):
+        start = self.text.index(f"### {pid}:")
+        end = self.text.index("\n### PRINCIPLE-", start + 5)
+        match = re.search(rf"^  {number}\. \*\*([^*]+)\*\*(.*?)(?=^  \d+\. \*\*|\Z)",
+                          self.text[start:end], re.M | re.S)
+        self.assertIsNotNone(match, f"{pid} R{number} not found")
+        return match.group(1), match.group(2)
+
+    def test_rules_contain_no_hedge_words(self):
+        found = [h for h in self.HEDGES if h in self.section.lower() or h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-002 contains open-ended wording: {found}")
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 7, "PRINCIPLE-002 must keep rules R1-R7 (cited elsewhere)")
+        for number, title, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_open_decisions_are_defined(self):
+        for definition in (
+            "`python scripts/disruption_recovery.py --track`",       # track is computed
+            "Phase 2 is skipped",                                     # Track B phases
+            "Phase 4 is the same full gate set for Track B and Track C",
+            "when the fix adds, removes or renames a public contract",  # recoil target
+            "run every Phase 4 command again, not only the one that failed",
+            "any file edit after Phase 4 passed requires running Phase 4 again",
+            "`Unverified: <the gates named>`",                        # informed override
+            "--phase-num <1-5>",                                      # how phase is recorded
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_cross_references_resolve(self):
+        # Every rule P002 leans on must exist and say what P002 assumes it says.
+        _, p018_r3 = self._rule("PRINCIPLE-018", 3)
+        self.assertIn("(1)", p018_r3)
+        self.assertIn("(2)", p018_r3)
+        title, p014_r2 = self._rule("PRINCIPLE-014", 2)
+        self.assertIn("Test Sanctity", title)
+        title, _ = self._rule("PRINCIPLE-001", 3)
+        self.assertIn("Retrieval Triggers", title)
+        _, p001_r8 = self._rule("PRINCIPLE-001", 8)
+        self.assertIn("Track C", p001_r8)  # Pre-Flight = Phase 2, which only Track C runs
+        self.assertIn("Track A tasks evaluate neither", p001_r8)
+
+    def test_p001_precedence_points_at_this_r5(self):
+        # PRINCIPLE-001 R1 defers user-vs-principle conflicts to PRINCIPLE-002 R5 by number.
+        title, body = self._rule("PRINCIPLE-002", 5)
+        self.assertIn("Immunity to Late-Stage User Priming", title)
+        self.assertIn("explicitly instructs it to commit anyway", body)
+
+    def test_checklists_are_in_principle_order(self):
+        # R6: checklist items appear in ascending principle-ID order.
+        for heading in ("Pre-Flight Checklist", "Post-Flight Checklist"):
+            start = re.search(rf"^###[^\n]*{heading}", self.text, re.M).end()
+            nxt = re.search(r"^(#|---)", self.text[start:], re.M)  # next heading or rule
+            block = self.text[start:start + nxt.start()] if nxt else self.text[start:]
+            ids = re.findall(r"PRINCIPLE-(\d{3})", block)
+            with self.subTest(checklist=heading):
+                self.assertEqual(ids, sorted(ids), f"{heading} items are out of principle order")
+
+
+class TestTrackClassification(unittest.TestCase):
+    """PRINCIPLE-002 R3: the track is computed, so every model assigns the same one."""
+
+    CODE = "def f(x):\n    return x + 1\n"
+
+    def test_no_changes_is_track_a(self):
+        self.assertEqual(classify_track([]), ("A", []))
+
+    def test_documentation_is_track_b(self):
+        self.assertEqual(classify_track([("README.md", "a", "b"), ("docs/x.txt", None, "new")])[0], "B")
+
+    def test_comment_and_docstring_edits_are_track_b(self):
+        edited = '# a comment\ndef f(x):\n    """Docstring."""\n    return x + 1  # inline\n'
+        self.assertEqual(classify_track([("m.py", self.CODE, edited)])[0], "B")
+
+    def test_logic_change_is_track_c(self):
+        self.assertEqual(classify_track([("m.py", self.CODE, self.CODE.replace("+ 1", "+ 2"))])[0], "C")
+
+    def test_rule_text_and_generated_files_are_track_c(self):
+        for path in ("GUIDELINES.md", "CLAUDE.md", "AGENTS.md", ".agents/rules/domain.md"):
+            with self.subTest(path=path):
+                self.assertEqual(classify_track([(path, "a", "b")])[0], "C")
+
+    def test_config_tests_and_new_python_are_track_c(self):
+        for change in ((".github/workflows/ci.yml", "a", "b"), ("tests/test_x.py", None, self.CODE),
+                       ("old.py", self.CODE, None), ("bad.py", self.CODE, "def (:\n")):
+            with self.subTest(path=change[0]):
+                self.assertEqual(classify_track([change])[0], "C")
+
+    def test_highest_track_wins(self):
+        self.assertEqual(classify_track([("README.md", "a", "b"), ("m.py", self.CODE, "x = 1\n")])[0], "C")
 
 
 class TestSyncWriteSafety(unittest.TestCase):

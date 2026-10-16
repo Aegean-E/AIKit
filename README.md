@@ -28,6 +28,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
+| **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Disruption recovery guidance & surviving files |
 | **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
@@ -141,7 +142,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Core Concept |
 |---|---|---|
 | **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,500 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
-| **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate (Phase 4 test pass required before Phase 5); adaptive task pathing (Query/Doc/Eng); late-stage priming immunity. |
+| **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase gate (Phase 4 passes before delivery); Track A/B/C computed by `--track`; urgency never skips gates. |
 | **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness & call-site check; manifest dependency grounding; platform parity; strict AST gate. |
 | **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Bounded ledger (`task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first retrieval. |
 
