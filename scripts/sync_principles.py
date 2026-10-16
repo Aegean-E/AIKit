@@ -507,8 +507,9 @@ def sync_all(
             sys.exit(1)
         return mismatches
 
-    print(f"\nAll {len(targets)} AI guideline targets are synchronized successfully "
-          f"({mismatches} updated).")
+    readme_note = " and the README principle table" if len(written) > len(targets) else ""
+    print(f"\nAll {len(targets)} AI guideline targets{readme_note} are synchronized successfully "
+          f"({mismatches} file(s) updated).")
     # The return value always counts PROBLEMS, so 0 means success in every mode. It previously
     # returned the number of files updated in write mode, making a successful sync look like a
     # failure to any programmatic caller.

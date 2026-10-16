@@ -581,13 +581,21 @@ def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional
     return active
 
 
-def clean_dangling_temp_files(workspace_dir: Optional[Path] = None) -> List[str]:
-    """Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013)."""
+TEMP_STALE_SECONDS = 60
+
+
+def clean_dangling_temp_files(workspace_dir: Optional[Path] = None, min_age_seconds: float = TEMP_STALE_SECONDS) -> List[str]:
+    """
+    Purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006 R6, PRINCIPLE-013).
+    Only files older than `min_age_seconds`: an atomic write lives milliseconds, and deleting a
+    younger buffer could destroy a write a parallel agent or sync run is making right now.
+    """
     ws = workspace_dir or ROOT_DIR
     deleted = []
+    now = time.time()
     try:
         for p in ws.rglob("*.tmp_*"):
-            if ".git" not in str(p) and p.is_file():
+            if ".git" not in str(p) and p.is_file() and now - p.stat().st_mtime >= min_age_seconds:
                 try:
                     rel = str(p.relative_to(ws))
                     p.unlink()
@@ -1004,7 +1012,8 @@ Usage:
 Actions (default: --audit):
   --audit                    Report working-tree drift, dangling buffers, and ledger state
   --resume                   Print the resumption report for an interrupted task
-  --clean                    Purge orphaned temporary buffers (*.tmp_*)
+  --clean                    Purge orphaned temporary buffers (*.tmp_*) older than 60 s; younger
+                             ones may belong to a write in progress and are kept
   --checkpoint <task_id>     Record a task checkpoint in .agents/task_ledger.json
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task

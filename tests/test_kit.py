@@ -13,6 +13,7 @@ import json
 import shutil
 import subprocess  # imported only to refuse process spawns; see setUpModule
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -231,14 +232,16 @@ class TestPrincipleSync(unittest.TestCase):
                 self.assertIn(mechanism, p5["invariant"].lower())
 
     def test_principle_006_disruption_capsule(self):
-        # Enforces PRINCIPLE-006: verified invariant capsule with atomic micro-commits, audit, and CLI ledger
+        # Enforces PRINCIPLE-006: the capsule states when to commit and how a task ends
         principles = parse_principles(SSOT_MD)
         p6 = next((p for p in principles if p["id"] == "PRINCIPLE-006"), None)
         self.assertIsNotNone(p6)
-        self.assertIn("incremental atomic micro-commits", p6["invariant"].lower())
-        self.assertIn("pre-flight disruption audit", p6["invariant"].lower())
-        self.assertIn("disruption_recovery.py", p6["invariant"].lower())
-        self.assertIn("explicit micro-staging", p6["invariant"].lower())
+        # Mechanisms, not labels (ADR-078).
+        for mechanism in ("commit each `[milestone n/m]` once phase 4 passes",
+                          "failing work stays uncommitted, described by `--checkpoint`",
+                          "`--complete` or `--reset` before switching tasks", "`--clean` stale `.tmp_*`"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, p6["invariant"].lower())
 
     def test_principle_014_regression_shield_capsule(self):
         # Enforces PRINCIPLE-014: verified invariant capsule with 100% test pass gate, sub-second execution, test sanctity, RAII fixture reversion, anti-tautology, and negative path coverage
@@ -853,6 +856,55 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
             if int(number) >= 70 and "PRINCIPLE-" in title:
                 with self.subTest(adr=number):
                     self.assertIn("Cross-principle check:", body)
+
+
+class TestPrinciple006Unambiguity(unittest.TestCase):
+    """PRINCIPLE-006 must say the same thing to every model: when to commit, what to do with failing work."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-006:"):cls.text.index("\n### PRINCIPLE-007:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        # Red-green pin (ADR-078): R1 used "e.g." and "$\rightarrow$", banned by PRINCIPLE-000 R7.
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES if h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-006 contains banned words: {found}")
+        for vague in ("non-trivial", "logical, verified sub-task", "cleanly"):
+            with self.subTest(phrase=vague):
+                self.assertNotIn(vague, self.section)
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 6, "PRINCIPLE-006 must keep rules R1-R6 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_every_duty_is_defined(self):
+        for definition in (
+            "the agent MUST commit once per milestone, as soon as that milestone's Phase 4 commands pass",
+            "A plan with one milestone is committed once, without a tag",
+            "unless the informed override of PRINCIPLE-002 R5 applies",
+            "the ledger holds the description, never the code",
+            "--phase-num <1-5> --desc <text>",
+            "A task is *abandoned* when the user cancels it",
+            "that warning means this rule was skipped",
+            "Staging follows PRINCIPLE-018 R2",
+            "`--clean` deletes only buffers older than 60 seconds",
+            "MUST write it as PRINCIPLE-013 R1 specifies",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_no_second_home_for_rules_owned_elsewhere(self):
+        # Red-green pin: R4 required only unit tests (P002 R1 requires every Phase 4 gate) and
+        # forbade the commit P002 R5 allows; R3 restated P013 without fsync; R5 used --phase.
+        for stale in ("passing unit tests (`PRINCIPLE-014`)", "buffer it in `.agents/task_ledger.json`",
+                      "--phase <phase>", "never execute blind"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, self.rules)
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):
@@ -2178,11 +2230,17 @@ class TestDisruptionRecovery(unittest.TestCase):
         # Enforces PRINCIPLE-006: safe automated purging of orphaned *.tmp_* buffers
         tmp_file = self.test_dir / "model.py.tmp_8888_7777"
         tmp_file.write_text("corrupted buffer", encoding="utf-8")
-        self.assertTrue(tmp_file.exists())
-        
+        old = time.time() - 120
+        os.utime(tmp_file, (old, old))
+        # Red-green pin (ADR-078): a buffer younger than 60 s may belong to a write in progress
+        # (a parallel agent, a sync run); --clean used to delete it too.
+        live = self.test_dir / "state.json.tmp_1_2"
+        live.write_text("being written", encoding="utf-8")
+
         purged = clean_dangling_temp_files(workspace_dir=self.test_dir)
-        self.assertIn("model.py.tmp_8888_7777", [Path(p).name for p in purged])
+        self.assertEqual([Path(p).name for p in purged], ["model.py.tmp_8888_7777"])
         self.assertFalse(tmp_file.exists())
+        self.assertTrue(live.exists())
 
     def test_non_git_workspace_detection(self):
         # In isolated test_dir (not a git repo), audit must detect missing git tracking

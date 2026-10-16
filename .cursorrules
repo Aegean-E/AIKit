@@ -10,7 +10,7 @@
 - PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness; `git grep -w -e` call-site check; deps only if declared; platform parity; ask on intent ambiguity; strict AST syntax gate.
 - PRINCIPLE-004 Attentional Drift Prevention & Compaction Resilience: Plan = latest `[1/` Phase 2 `--desc` in `task_ledger.json`; cold start `--resume`; never re-ask recorded answers; ADR before commit; reads/output <=100 lines.
 - PRINCIPLE-005 AI Cold-Start Readiness & Living Documentation: README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it.
-- PRINCIPLE-006 Incremental Progress Checkpointing & Disruption Recovery: Incremental atomic micro-commits; pre-flight disruption audit; ledger CLI `scripts/disruption_recovery.py`; explicit micro-staging.
+- PRINCIPLE-006 Incremental Progress Checkpointing & Disruption Recovery: Commit each `[milestone N/M]` once Phase 4 passes; failing work stays uncommitted, described by `--checkpoint`; `--complete` or `--reset` before switching tasks; `--clean` stale `.tmp_*`.
 - PRINCIPLE-007 Pre-flight Impact & Quality Checklist: Track C pre-edit gate: why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, reversibility.
 - PRINCIPLE-008 Hierarchical Problem & Task Decomposition: Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable.
 - PRINCIPLE-009 Modularity & Pluggable Architecture: 4 layers (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs.

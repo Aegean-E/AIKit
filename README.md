@@ -35,7 +35,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num <1-5> --desc <text>` | Appends atomic milestone to task ledger (PRINCIPLE-002 R4) |
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
-| **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
+| **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress |
 | **Secret Scan Gate** | `python scripts/check_secrets.py --staged` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
@@ -154,7 +154,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
-| **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Incremental atomic micro-commits; pre-flight disruption audit; ledger CLI `scripts/disruption_recovery.py`; explicit micro-staging. |
+| **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit each `[milestone N/M]` once Phase 4 passes; failing work stays uncommitted, described by `--checkpoint`; `--complete` or `--reset` before switching tasks; `--clean` stale `.tmp_*`. |
 | **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C pre-edit gate: why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, reversibility. |
 | **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable. |
 
