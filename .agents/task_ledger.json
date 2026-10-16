@@ -1,60 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p005-pass2",
+    "task_id": "p000-pass1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792184709.0199084,
-    "completed_at": 1792184725.8742518
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792185034.5530431
   },
   "checkpoints": [
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Phase 2: Move PRINCIPLE-020 to PRINCIPLE-000 in Phase 1 and update checklists",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176401.7604039,
-      "timestamp_str": "2026-10-16 21:46:41",
-      "impact_assessment": {
-        "why": "Move meta-principle from PRINCIPLE-020 (Phase 5) to PRINCIPLE-000 (Phase 1) for cognitive primacy and meta-governance grounding",
-        "benefits": "Places overarching integrity and code quality rules at top of context before operational rules, aligns with Phase 1 Meta-Governance",
-        "risks": "Checklist ordering drift, test range failure, target desync",
-        "mitigation": "Update test ranges to 000..019, checklists with 000 first, run full test suite and read-only gates"
-      }
-    },
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[1/3] Phase 3: Relocate meta-principle to PRINCIPLE-000 under Phase 1 in GUIDELINES.md",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176405.9324121,
-      "timestamp_str": "2026-10-16 21:46:45"
-    },
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/3] Phase 3: Update test_kit.py and README.md for PRINCIPLE-000",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176469.0794134,
-      "timestamp_str": "2026-10-16 21:47:49"
-    },
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[3/3] Phase 3: Regenerate Tier 1 targets with sync_principles.py and append ADR-065",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176520.7828853,
-      "timestamp_str": "2026-10-16 21:48:40"
-    },
     {
       "task_id": "p000-zeroth-law",
       "phase": "in_progress",
@@ -220,6 +173,49 @@
       "status": "completed",
       "timestamp": 1792184725.8742528,
       "timestamp_str": "2026-10-17 00:05:25"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P000 and its enforcement",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792184888.092125,
+      "timestamp_str": "2026-10-17 00:08:08"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] ADR register gate (unique, consecutive IDs) in update_knowledge_base.py; renumber my colliding ADR-064/065 to 067/068; [2/2] rewrite P000 R1-R7 falsifiably (conflict definition, R6 total order + tie rule + P001 R1 boundary, R3 grep + ADR Cross-principle line, R4 ask-don't-deviate, R5 closed list, R7 word list), capsule, README row, pins, ADR-069",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792184968.7748466,
+      "timestamp_str": "2026-10-17 00:09:28",
+      "impact_assessment": {
+        "why": "P000 fails its own R7; R4 and capsule license skipping rules; R6 partial order; ADR IDs collided"
+      }
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792184968.8977349,
+      "timestamp_str": "2026-10-17 00:09:28"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185034.5530431,
+      "timestamp_str": "2026-10-17 00:10:34"
     }
   ]
 }

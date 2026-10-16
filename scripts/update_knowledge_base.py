@@ -313,6 +313,21 @@ def validate_knowledge_links(knowledge_dir: Path) -> List[str]:
     return broken
 
 
+def audit_adr_register(decisions: str) -> List[str]:
+    """
+    ADR IDs must be unique and consecutive (PRINCIPLE-016 R3, PRINCIPLE-000 R3). Two sessions that
+    picked "the next number" from memory wrote ADR-064 and ADR-065 twice; nothing noticed.
+    """
+    errors: List[str] = []
+    previous = None
+    for number in (int(n) for n in re.findall(r"^### ADR-(\d+):", decisions, re.M)):
+        if previous is not None and number != previous + 1:
+            kind = "duplicates or precedes" if number <= previous else "skips after"
+            errors.append(f"ADR-{number:03d} {kind} ADR-{previous:03d}; the next ID must be ADR-{previous + 1:03d}")
+        previous = number if previous is None else max(previous, number)
+    return errors
+
+
 def check_codebase_map_freshness(knowledge_dir: Optional[Path] = None, strict: bool = True) -> bool:
     """
     Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).
@@ -380,6 +395,17 @@ def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = Tru
         print(f"[WARN] {msg}")
     else:
         print(f"[OK] Verified link integrity in {k_dir.name}/INDEX.md")
+
+    # 4. ADR IDs unique and consecutive (PRINCIPLE-016 R3)
+    decisions = k_dir / "decisions.md"
+    adr_errors = audit_adr_register(decisions.read_text(encoding="utf-8")) if decisions.exists() else []
+    if adr_errors:
+        msg = f"ADR register out of order in {k_dir.name}/decisions.md: {'; '.join(adr_errors)}"
+        if strict:
+            raise ValueError(f"[PRINCIPLE-016 ADR REGISTER] {msg}")
+        print(f"[WARN] {msg}")
+    else:
+        print(f"[OK] Verified ADR IDs are unique and consecutive in {k_dir.name}/decisions.md")
 
 
 README_MAX_CHARS = 20_000
@@ -540,7 +566,8 @@ Usage:
 Options:
   --check     Verify, without writing, that codebase_map.md matches the AST and that README.md
               passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
-              commands); exits 1 on any drift
+              commands) and that ADR IDs in knowledge/decisions.md are unique and
+              consecutive; exits 1 on any drift
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 
@@ -573,7 +600,13 @@ if __name__ == "__main__":
             else:
                 print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
             readme_ok = report_readme(check_readme())
-            sys.exit(0 if fresh and readme_ok else 1)
+            adr_errors = audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")) \
+                if (KNOWLEDGE_DIR / "decisions.md").exists() else []
+            for adr_error in adr_errors:
+                print(f"[FAIL] knowledge/decisions.md: {adr_error} (PRINCIPLE-016 R3)")
+            if not adr_errors:
+                print("[OK] knowledge/decisions.md: ADR IDs are unique and consecutive.")
+            sys.exit(0 if fresh and readme_ok and not adr_errors else 1)
         except Exception as e:
             print(f"[FAIL] Error checking codebase map freshness: {e}")
             sys.exit(1)

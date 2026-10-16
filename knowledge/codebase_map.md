@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `32`
-- **Total Functions / Methods**: `93`
-- **Total Source Lines**: `6419`
+- **Total Classes**: `33`
+- **Total Functions / Methods**: `94`
+- **Total Source Lines**: `6476`
 
 ---
 
@@ -137,7 +137,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `594` lines (`23789` bytes)
+**Size**: `627` lines (`25609` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -147,6 +147,7 @@
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
+- `def audit_adr_register(decisions)` - *ADR IDs must be unique and consecutive (PRINCIPLE-016 R3, PRINCIPLE-000 R3). Two sessions that*
 - `def check_codebase_map_freshness(knowledge_dir, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
 - `def update_and_validate(knowledge_dir, strict)`
 - `def quick_reference_errors(readme)` - *The structure PRINCIPLE-005 R1 states, not just its words: a heading, then inside its section*
@@ -222,7 +223,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2423` lines (`132097` bytes)
+**Size**: `2447` lines (`133134` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -264,6 +265,12 @@
   - Method `.test_a_prose_mention_is_not_the_tree_heading()`
   - Method `.test_quick_reference_is_checked_by_structure_not_words()`
   - Method `.test_the_adopter_template_fails_unfilled_and_passes_filled()`
+- `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
+  - Method `.register(*numbers)`
+  - Method `.test_consecutive_ids_pass()`
+  - Method `.test_a_duplicate_fails()`
+  - Method `.test_a_gap_fails()`
+  - Method `.test_this_register_is_clean()`
 - `class TestPrinciple005Unambiguity` - *PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes.*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

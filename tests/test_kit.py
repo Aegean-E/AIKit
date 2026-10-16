@@ -112,6 +112,7 @@ from scripts.update_knowledge_base import (
     README_MAX_CHARS,
     README_TEMPLATE,
     audit_readme,
+    audit_adr_register,
     parse_readme_tree,
 )
 
@@ -617,6 +618,29 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         self.assertEqual(audit(filled), [])
 
 
+class TestAdrRegister(unittest.TestCase):
+    """PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069)."""
+
+    @staticmethod
+    def register(*numbers):
+        return "".join(f"### ADR-{n:03d}: t\n- body\n" for n in numbers)
+
+    def test_consecutive_ids_pass(self):
+        self.assertEqual(audit_adr_register(self.register(1, 2, 3)), [])
+
+    def test_a_duplicate_fails(self):
+        # Red-green pin: two sessions each appended ADR-064 and ADR-065 after ADR-066.
+        self.assertEqual(audit_adr_register(self.register(64, 65, 66, 64)),
+                         ["ADR-064 duplicates or precedes ADR-066; the next ID must be ADR-067"])
+
+    def test_a_gap_fails(self):
+        self.assertEqual(audit_adr_register(self.register(1, 3)),
+                         ["ADR-003 skips after ADR-001; the next ID must be ADR-002"])
+
+    def test_this_register_is_clean(self):
+        self.assertEqual(audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")), [])
+
+
 class TestPrinciple005Unambiguity(unittest.TestCase):
     """PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes."""
 
@@ -655,7 +679,7 @@ class TestPrinciple005Unambiguity(unittest.TestCase):
             "a directory shown with none is collapsed and exempt",
             "The R1 check compares the tree with `git ls-files`",
             "MUST NOT restate the rules of one",
-            # Second pass (ADR-065): "under it" had two readings, and the adopter had none.
+            # Second pass (ADR-068): "under it" had two readings, and the adopter had none.
             "inside the section it opens (up to the next heading of the same or a higher level)",
             "No `<FILL:` placeholder from the R6 template may remain",
             "MUST start its Quick Reference and tree from `.agents/rules/readme_quickref.md.template`",

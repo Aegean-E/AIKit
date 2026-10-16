@@ -990,16 +990,23 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - Rule 7: Mechanical Falsifiability & Anti-Vagueness (requiring all added rules to define observable, falsifiable conditions or automated verification tools).
 - **Consequences**: Strengthens meta-governance against loophole exploitation and agent degradation. Preserves the Tier 1 invariant capsule and context budget without target bloat. Verified through full unit and integration test suites.
 
-### ADR-064: PRINCIPLE-005 Second Pass - Adopter Template and a Structural Quick Reference Check
+### ADR-067: PRINCIPLE-005 Second Pass - Adopter Template and a Structural Quick Reference Check
 - **Date**: 2026-10-17
 - **Status**: Accepted
 - **Context**: Following README's Option B literally in a scratch adopter repository showed: (1) "paste the Quick Reference section" has two readings; pasting all of it imports AIKit-only lines (`tests.test_kit`, `tests.test_integration`, "both tiers, ~5s", "Standard Library only"), of which the gate caught only the two test modules. (2) The gate checked R1's labels as substrings, so a README that only mentioned them in prose passed, though R1 requires a heading, a prerequisites line naming versions and a fenced test command. (3) A template placeholder left unfilled would have satisfied every label check, the loophole PRINCIPLE-000 R5 forbids.
 - **Decision**: AIKit ships `.agents/rules/readme_quickref.md.template` (copied by Option B with `.agents/rules`): the Quick Reference heading, the two labels with `<FILL:` placeholders, AIKit's gate commands and a tree skeleton listing the generated files; nothing AIKit-specific. The adoption step names it instead of "paste the section". `quick_reference_errors` checks R1 structurally inside the Quick Reference section: a heading, a `- **Runtime Prerequisites**:` line containing a version number, and a fenced command directly after `**Canonical Regression Shield Gate**:`. Any `<FILL:` left in README.md fails the gate.
 - **Consequences**: The adopter simulation now fails with five exact lines while placeholders remain and passes once they are filled. A unit test audits the shipped template both ways, so the template cannot drift from the gate.
 
-### ADR-065: PRINCIPLE-005 R1 and R6 Name the Section and the Template
+### ADR-068: PRINCIPLE-005 R1 and R6 Name the Section and the Template
 - **Date**: 2026-10-17
 - **Status**: Accepted
-- **Context**: After ADR-064, R1 still said the labels sit "under" the Quick Reference heading (anywhere after it, or only inside its section?) and that the gate checks "the size, the labels and the tree" while it now checks structure and placeholders too. R6 told non-Python projects what to fill but no adopter where to start, and "lists its build and run commands" had no answer for a project without a build step.
+- **Context**: After ADR-067, R1 still said the labels sit "under" the Quick Reference heading (anywhere after it, or only inside its section?) and that the gate checks "the size, the labels and the tree" while it now checks structure and placeholders too. R6 told non-Python projects what to fill but no adopter where to start, and "lists its build and run commands" had no answer for a project without a build step.
 - **Decision**: R1 defines the section as running to the next heading of the same or a higher level (what `quick_reference_errors` uses), forbids a remaining `<FILL:` placeholder and says the gate checks every requirement of the rule. R6 requires every adopter to start from `.agents/rules/readme_quickref.md.template`, forbids copying AIKit's own Quick Reference, and asks for the build and run commands the project has.
 - **Consequences**: Rule, template and gate now describe the same README. Pinned in `TestPrinciple005Unambiguity`; the five new pins fail on the previous text.
+
+### ADR-069: ADR IDs Gated as Unique and Consecutive; Two Colliding IDs Renumbered
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: While the PRINCIPLE-000 work wrote ADR-064 to ADR-066, a parallel PRINCIPLE-005 pass appended two more ADRs numbered ADR-064 and ADR-065 from its own memory of the register instead of reading it. The register then held two duplicate IDs out of order, against PRINCIPLE-016 R3's monotonic register, and every gate passed. The defect is the one PRINCIPLE-000 R3 exists to prevent: a change made without checking what other work had already changed.
+- **Decision**: `audit_adr_register` requires every `### ADR-NNN:` ID to be exactly one more than the previous one; `update_knowledge_base.py` runs it in both modes and in `--check`. The two later headings were renumbered ADR-067 (PRINCIPLE-005 adopter template) and ADR-068 (PRINCIPLE-005 R1/R6 wording), with the one internal reference and one test comment updated. The renumbering corrects an identifier, not a decision's content; commits fea5691 and bc05769 still cite the old numbers in their messages, where ADR-064 and ADR-065 mean ADR-067 and ADR-068.
+- **Consequences**: A duplicate or skipped ADR ID now fails Phase 4 with the ID it expected. Cross-principle check: PRINCIPLE-016 (owns the register; no conflict, the gate enforces its R3), PRINCIPLE-004 R4 (ADR before commit; no conflict), PRINCIPLE-018 R3 (the gate runs inside its existing `--check` command; no new command).
