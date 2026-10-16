@@ -62,11 +62,11 @@ The principles are strictly ordered according to the **5 Chronological Execution
     2. *Failure & Regression Trigger*: Encountering any test failure, build breakage, or runtime exception.
     3. *Ambiguity Trigger*: Addressing underspecified domain requirements or missing schema models.
   - **Universal vs. Domain Rule Partitioning (Adopter Ready)**: When deploying AIKit to govern external projects, maintain a strict 3-tier boundary:
-    - *Tier 1A (Universal AI Governance)*: AIKit's immutable 18 engineering invariants (<1,000 tokens).
+    - *Tier 1A (Universal AI Governance)*: AIKit's universal engineering invariants, bounded by what they must leave free: with no domain rules loaded, every Tier 1 target must still fit a full Tier 1B block inside the total budget.
     - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
     - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
   - **Deterministic Grep Anchor Contract**: All Tier 2 guideline sections must use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers must instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
-  - **Strict Injected Context Budget & Automated Gate**: Enforce a strict token budget for always-injected IDE rule files (target <1,500 tokens / <8,000 chars total overhead). `scripts/sync_principles.py` must track, report, and mechanically guard against rule footprint creep.
+  - **Strict Injected Context Budget & Automated Gate**: Every always-injected Tier 1 target stays within 1,500 estimated tokens *including* any Tier 1B block, and with no domain rules loaded must still leave room for a full ~300-token Tier 1B block. Tokens are estimated as chars/4, calibrated against real tokenizers to err conservative. `scripts/sync_principles.py` blocks on either breach; its 90% advisory warning is evaluated only after both blocking checks.
   - **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
   - **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
   - **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.

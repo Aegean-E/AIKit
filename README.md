@@ -23,7 +23,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~1.2s) |
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
-| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | Context budget gate (<8,000 chars / <1,500 tokens) |
+| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |

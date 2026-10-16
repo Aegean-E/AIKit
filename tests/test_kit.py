@@ -30,6 +30,11 @@ from scripts.sync_principles import (
     GUIDELINES_MD,
     README_MD,
     TARGET_TOKEN_BUDGET,
+    TIER1_TARGETS,
+    SSOT_MD,
+    audit_tier1_budget,
+    estimate_tokens,
+    render_tier1_target,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -118,24 +123,27 @@ class TestPrincipleSync(unittest.TestCase):
             ROOT_DIR / ".cursorrules",
             ROOT_DIR / ".github" / "copilot-instructions.md",
         ]
-        MAX_ALLOWED_CHARS = 8000  # <2,000 tokens per target file
         for target in targets:
             self.assertTrue(target.exists(), f"Target file missing: {target}")
             content = target.read_text(encoding="utf-8")
-            self.assertIn("PRINCIPLE-001", content, f"PRINCIPLE-001 missing from {target.name}")
-            self.assertIn("PRINCIPLE-002", content, f"PRINCIPLE-002 missing from {target.name}")
-            self.assertIn("PRINCIPLE-003", content, f"PRINCIPLE-003 missing from {target.name}")
-            self.assertIn("PRINCIPLE-004", content, f"PRINCIPLE-004 missing from {target.name}")
-            self.assertIn("PRINCIPLE-005", content, f"PRINCIPLE-005 missing from {target.name}")
-            self.assertIn("PRINCIPLE-006", content, f"PRINCIPLE-006 missing from {target.name}")
-            self.assertIn("PRINCIPLE-017", content, f"PRINCIPLE-017 missing from {target.name}")
-            self.assertIn("PRINCIPLE-018", content, f"PRINCIPLE-018 missing from {target.name}")
-            self.assertIn("Deterministic Grep Anchor", content, f"Grep anchor missing from {target.name}")
-            # Assert context budget cap
+            # Every principle, not a sample of them.
+            for p in principles:
+                self.assertIn(p["id"], content, f"{p['id']} missing from {target.name}")
+            # The deterministic grep contract itself (PRINCIPLE-001 R5), not a label naming it.
+            self.assertIn("### PRINCIPLE-XXX:", content, f"Grep anchor missing from {target.name}")
+            self.assertIn("GUIDELINES.md", content, f"Tier 2 pointer missing from {target.name}")
+            # PRINCIPLE-001 R3 lives in the header now that it is no longer duplicated in a capsule;
+            # this is what stops the retrieval-trigger protocol from silently vanishing.
+            for trigger in ("boundary", "failure", "ambiguity"):
+                self.assertIn(trigger, content, f"R3 '{trigger}' trigger missing from {target.name}")
+            self.assertIn("never load it whole", content,
+                          f"{target.name} no longer forbids loading Tier 2 wholesale")
+            self.assertIn("Generated from", content,
+                          f"{target.name} is not marked as generated; hand edits would be lost")
+            # The enforced token budget, which is stricter than the old 8,000-char cap.
             self.assertLessEqual(
-                len(content),
-                MAX_ALLOWED_CHARS,
-                f"Governance bloat detected in {target.name}: {len(content)} chars > {MAX_ALLOWED_CHARS}"
+                len(content) // 4, TARGET_TOKEN_BUDGET,
+                f"Governance bloat in {target.name}: ~{len(content) // 4} tokens > {TARGET_TOKEN_BUDGET}",
             )
 
     def test_principle_003_anti_hallucination_capsule(self):
@@ -434,8 +442,68 @@ class TestTier1ContextBudget(unittest.TestCase):
             result = sync_all(check_only=True, exit_on_mismatch=False)
         self.assertGreater(result, 0, "token overage did not block the gate")
         self.assertIn("TOKEN EXCEEDED", buffer.getvalue())
-        self.assertIn("Fix: condense invariant capsules", buffer.getvalue(),
+        self.assertIn("Fix: condense capsule narrative", buffer.getvalue(),
                       "budget failure lacks a remediation step (PRINCIPLE-011 R6)")
+        self.assertIn("never mechanisms", buffer.getvalue(),
+                      "remediation does not protect mechanisms from compression (PRINCIPLE-001 R2)")
+
+    def test_shipped_domain_template_syncs_within_budget(self):
+        # Red-green pin. Once the token target became enforced, copying the shipped template to
+        # domain.md - exactly what PRINCIPLE-017 R6 instructs adopters to do - blocked sync on all
+        # five targets. The universal rules must leave the full Tier 1B allowance free.
+        template = ROOT_DIR / ".agents" / "rules" / "domain.md.template"
+        domain = load_tier_1b_domain_rules(template)
+        self.assertTrue(domain, "shipped template is empty")
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            violations = audit_tier1_budget(parse_principles(SSOT_MD), domain)
+        self.assertEqual(
+            violations, 0,
+            f"Adopters cannot use the shipped Tier 1B template:\n{buffer.getvalue()}",
+        )
+
+    def test_universal_rules_reserve_full_tier1b_headroom(self):
+        # The check that would have caught the regression above before any adopter hit it.
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            violations = audit_tier1_budget(parse_principles(SSOT_MD), "")
+        self.assertEqual(violations, 0, f"Tier 1B headroom breached:\n{buffer.getvalue()}")
+        self.assertNotIn("TIER 1B HEADROOM", buffer.getvalue())
+
+    def test_headroom_breach_is_detected(self):
+        # Prove the reservation check bites: shrink the budget until universal rules fit but a
+        # full Tier 1B block would not.
+        principles = parse_principles(SSOT_MD)
+        tier1a = max(len(render_tier1_target(h, principles)) for h in TIER1_TARGETS.values()) // 4
+        original = sync_principles_module.TARGET_TOKEN_BUDGET
+        self.addCleanup(setattr, sync_principles_module, "TARGET_TOKEN_BUDGET", original)
+        sync_principles_module.TARGET_TOKEN_BUDGET = tier1a + 50  # fits 1A, not 1A + 300-token 1B
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            violations = audit_tier1_budget(principles, "")
+        self.assertGreater(violations, 0, "reservation check did not detect a Tier 1B shortfall")
+        self.assertIn("TIER 1B HEADROOM", buffer.getvalue())
+
+    def test_advisory_warning_cannot_shadow_a_violation(self):
+        # Red-green pin. A 7,200-char "warn" branch sat ahead of the token check in an if/elif
+        # chain, so a ~1,860-token target printed BUDGET WARN and passed.
+        principles = parse_principles(SSOT_MD)
+        principles[0] = dict(principles[0], invariant=principles[0]["invariant"] + " " + "x" * 2700)
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            violations = audit_tier1_budget(principles, "")
+        self.assertEqual(violations, len(TIER1_TARGETS),
+                         "an over-budget target must be exactly one violation per target")
+        self.assertNotIn("BUDGET WARN", buffer.getvalue(),
+                         "an over-budget target was downgraded to an advisory warning")
+
+    def test_token_estimate_is_conservative(self):
+        # chars // 4 was calibrated at ~4.2 chars/token against cl100k_base and o200k_base on this
+        # corpus, i.e. it over-counts. Pin the ratio so a future estimator cannot under-count.
+        sample = "x" * 4200
+        self.assertEqual(estimate_tokens(sample), 1050)
+        self.assertGreaterEqual(estimate_tokens(sample), 4200 / 4.2,
+                                "estimator under-counts relative to the measured ratio")
 
     def test_grep_anchor_contract_survives_in_every_target(self):
         # Per-principle markdown anchors were removed to pay down the budget; the deterministic

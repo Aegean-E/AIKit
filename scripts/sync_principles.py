@@ -19,10 +19,28 @@ GUIDELINES_MD = ROOT_DIR / "GUIDELINES.md"
 README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 
-MAX_TARGET_CHARS = 8000  # Hard ceiling per target file (PRINCIPLE-001)
-WARN_TARGET_CHARS = 7200  # 90% of MAX_TARGET_CHARS (early warning threshold)
-TARGET_TOKEN_BUDGET = 1500  # Tier 1 token target (PRINCIPLE-001); ~4 chars/token estimate
-MAX_DOMAIN_CHARS = 1200  # ~300 tokens for Tier 1B domain rules (PRINCIPLE-001 Rule 4)
+# Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
+# thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
+# chain and let ~1,860-token targets through with only a warning.
+TARGET_TOKEN_BUDGET = 1500  # per target, INCLUDING any Tier 1B block
+WARN_TOKEN_RATIO = 0.9  # advisory early warning, checked only after every violation
+MAX_DOMAIN_CHARS = 1200  # Tier 1B allowance (~300 tokens) that universal rules must leave free
+# Floor that catches a truncated or mis-parsed SSOT; raise it whenever a principle is added.
+MIN_PRINCIPLES = 19
+
+# Single source of truth for the principle corpus; every Tier 1 target is generated from it.
+SSOT_MD = AGENTS_MD
+
+
+def estimate_tokens(text: str) -> int:
+    """
+    Estimate tokens as chars // 4.
+
+    Calibrated rather than assumed: against OpenAI's cl100k_base and o200k_base tokenizers this
+    corpus measures ~4.2 chars/token, so the estimate over-counts by ~6% and errs conservative.
+    Other vendors' tokenizers vary; the margin is the reason a simple ratio is acceptable.
+    """
+    return len(text) // 4
 
 
 def fsync_dir(dir_path: Path) -> None:
@@ -135,8 +153,8 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
 
     # Continuous Sequence Audit: validate monotonic lifecycle progression (PRINCIPLE-002)
     if strict:
-        if len(principles) < 18:
-            raise ValueError(f"[PRINCIPLE-002 VIOLATION] Expected at least 18 principles, found {len(principles)}.")
+        if len(principles) < MIN_PRINCIPLES:
+            raise ValueError(f"[PRINCIPLE-002 VIOLATION] Expected at least {MIN_PRINCIPLES} principles, found {len(principles)}.")
 
         current_phase = 1
         for p in principles:
@@ -183,98 +201,96 @@ def validate_triad_consistency(
     return errors
 
 
-def generate_gemini_content(principles: List[Dict], domain_rules: str = "") -> str:
+# Every always-injected Tier 1 target: repo-relative path -> heading. One renderer keeps all
+# targets in lock-step; five near-identical generators previously had to be edited in parallel,
+# and the header text they shared had drifted into contradicting PRINCIPLE-001.
+TIER1_TARGETS: Dict[str, str] = {
+    "GEMINI.md": "# Gemini Instructions (Tier 1)",
+    ".agents/rules/principles.md": "# Workspace Agent Rules (Tier 1)",
+    "CLAUDE.md": "# Claude Instructions (Tier 1)",
+    ".cursorrules": "# Cursor Rules (Tier 1)",
+    ".github/copilot-instructions.md": "# Copilot Instructions (Tier 1)",
+}
+
+
+def tier1_title(title: str) -> str:
+    """Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", title).strip()
+
+
+def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str = "") -> str:
+    """
+    Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).
+
+    The header deliberately says *when* to read Tier 2, not merely *that* it exists. The former
+    "Strictly follow all principles defined in AGENTS.md and GUIDELINES.md" invited agents to
+    load ~27k tokens of Tier 2 up front - the exact bloat PRINCIPLE-001 exists to prevent. It also
+    marks the file as generated, so a hand edit is not silently overwritten by the next sync.
+    """
     lines = [
-        "# AI Guidelines & Project Principles",
+        heading,
         "",
-        "See full specification in [AGENTS.md](AGENTS.md) and [GUIDELINES.md](GUIDELINES.md).",
-        "Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
+        f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; edit the source, not this file.",
+        "> Capsules are binding. On a boundary, failure or ambiguity, slice-view `GUIDELINES.md` "
+        "(grep `### PRINCIPLE-XXX:`); never load it whole.",
         "",
-        "## Core Principles Summary (Tier 1 Invariants):"
+        "## Core Principles",
     ]
-    for i, p in enumerate(principles, 1):
+    for p in principles:
+        label = f"{p['id']} {tier1_title(p['title'])}"
         summary = p.get("invariant") or p.get("concept")
-        lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary}")
+        # Plain labels: bold markers are decoration (PRINCIPLE-001 R7), ~4 chars x every line.
+        lines.append(f"- {label}: {summary}")
     lines.append("")
     append_domain_rules(lines, domain_rules)
     return "\n".join(lines)
 
 
-def generate_agents_rule_content(principles: List[Dict], domain_rules: str = "") -> str:
-    lines = [
-        "# Workspace AI Principles & Guidelines",
-        "",
-        "This rule is automatically loaded from the workspace customizations root (`.agents/rules/`).",
-        "",
-        "> **MANDATORY FOR ALL AI AGENTS:**",
-        "> Strictly follow the core principles defined in [AGENTS.md](../../AGENTS.md) and [GUIDELINES.md](../../GUIDELINES.md).",
-        "> Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
-        "",
-        "## Core Principles (Tier 1 Invariants):"
-    ]
-    for i, p in enumerate(principles, 1):
-        summary = p.get("invariant") or p.get("concept")
-        lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary}")
-    lines.append("")
-    append_domain_rules(lines, domain_rules)
-    return "\n".join(lines)
+def audit_tier1_budget(principles: List[Dict], domain_rules: str = "") -> int:
+    """
+    Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).
 
+    Two blocking checks, evaluated BEFORE the advisory warning so a warning can never shadow a
+    violation:
+      1. Total: the rendered target, including any Tier 1B block, must fit TARGET_TOKEN_BUDGET.
+      2. Tier 1B headroom: with no domain rules loaded, the universal rules must still leave room
+         for a FULL MAX_DOMAIN_CHARS block. Without this, the kit can grow until an adopter who
+         follows PRINCIPLE-017 R6 and copies the shipped template is blocked by AIKit's own
+         footprint - which is exactly what happened once the token target became enforced.
 
-def generate_claude_content(principles: List[Dict], domain_rules: str = "") -> str:
-    lines = [
-        "# Claude AI Assistant Guidelines",
-        "",
-        "> **MANDATORY FOR CLAUDE CODE & CLAUDE ASSISTANTS:**",
-        "> Strictly follow all principles and guidelines defined in [AGENTS.md](AGENTS.md) and [GUIDELINES.md](GUIDELINES.md).",
-        "> Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
-        "",
-        "## Core Principles (Tier 1 Invariants):"
-    ]
-    for i, p in enumerate(principles, 1):
-        summary = p.get("invariant") or p.get("concept")
-        lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary}")
-    lines.append("")
-    append_domain_rules(lines, domain_rules)
-    return "\n".join(lines)
+    Returns the number of violations; each carries a What/Why/Fix diagnostic.
+    """
+    violations = 0
+    warn_at = int(TARGET_TOKEN_BUDGET * WARN_TOKEN_RATIO)
+    full_tier1b = "x" * MAX_DOMAIN_CHARS
+    print("\n--- Context Budget Audit (PRINCIPLE-001) ---")
+    for rel, heading in TIER1_TARGETS.items():
+        name = Path(rel).name
+        tokens = estimate_tokens(render_tier1_target(heading, principles, domain_rules))
+        reserved = estimate_tokens(render_tier1_target(heading, principles, full_tier1b))
+        # Tokens a Tier 1B block could still use once the universal rules are in place.
+        tier1b_room = TARGET_TOKEN_BUDGET - reserved + MAX_DOMAIN_CHARS // 4
+        if tokens > TARGET_TOKEN_BUDGET:
+            violations += 1
+            print(f"[TOKEN EXCEEDED] {name}: ~{tokens} tokens > {TARGET_TOKEN_BUDGET}-token Tier 1 budget")
+        elif not domain_rules and reserved > TARGET_TOKEN_BUDGET:
+            violations += 1
+            print(f"[TIER 1B HEADROOM] {name}: ~{tokens} tokens leaves room for only "
+                  f"~{max(tier1b_room, 0)} of the promised ~{MAX_DOMAIN_CHARS // 4} Tier 1B tokens")
+        elif tokens >= warn_at:
+            print(f"[BUDGET WARN] {name}: ~{tokens} tokens >= {warn_at} ({int(WARN_TOKEN_RATIO * 100)}% of budget)")
+        else:
+            print(f"[BUDGET PASS] {name}: ~{tokens} tokens (Tier 1B room: ~{tier1b_room} tokens)")
 
-
-def generate_cursorrules_content(principles: List[Dict], domain_rules: str = "") -> str:
-    lines = [
-        "# Cursor AI Assistant Guidelines",
-        "",
-        "Strictly read, respect, and enforce all principles defined in AGENTS.md and GUIDELINES.md.",
-        "Deterministic Grep Anchor: Query='### PRINCIPLE-XXX:' in GUIDELINES.md.",
-        "",
-        "## Core Principles Summary (Tier 1 Invariants):"
-    ]
-    for i, p in enumerate(principles, 1):
-        summary = p.get("invariant") or p.get("concept")
-        lines.append(f"{i}. {p['id']}: {p['title']}")
-        lines.append(f"   - {summary}")
-    lines.append("")
-    append_domain_rules(lines, domain_rules)
-    return "\n".join(lines)
-
-
-def generate_copilot_content(principles: List[Dict], domain_rules: str = "") -> str:
-    lines = [
-        "# GitHub Copilot Instructions",
-        "",
-        "All GitHub Copilot interactions in this repository must align with the architectural rules in `AGENTS.md` and `GUIDELINES.md`.",
-        "Deterministic Grep Anchor: `Query='### PRINCIPLE-XXX:'` in `GUIDELINES.md`.",
-        "",
-        "## Core Principles Summary (Tier 1 Invariants):"
-    ]
-    for i, p in enumerate(principles, 1):
-        summary = p.get("invariant") or p.get("concept")
-        lines.append(f"{i}. **{p['id']}: {p['title']}**:")
-        lines.append(f"   - {summary}")
-    lines.append("")
-    append_domain_rules(lines, domain_rules)
-    return "\n".join(lines)
+    if violations:
+        sys.stderr.write(
+            f"\n[ERROR] {violations} target(s) breach the Tier 1 context budget (PRINCIPLE-001).\n"
+            f"Why: always-injected rules cost context on every turn in every IDE, and universal "
+            f"rules must leave the full ~{MAX_DOMAIN_CHARS // 4}-token Tier 1B allowance free.\n"
+            f"Fix: condense capsule narrative (never mechanisms, numbers or tool names) until each "
+            f"target is <= {TARGET_TOKEN_BUDGET} est. tokens including a full Tier 1B block.\n"
+        )
+    return violations
 
 
 def sync_all(
@@ -284,15 +300,15 @@ def sync_all(
     guidelines_file: Path = GUIDELINES_MD,
     readme_file: Path = README_MD,
 ) -> int:
-    """Synchronize master specification from AGENTS.md across all IDE prompt targets."""
-    if not AGENTS_MD.exists():
-        print(f"Error: Master file {AGENTS_MD} not found.")
+    """Synchronize the principle SSOT across every always-injected Tier 1 target."""
+    if not SSOT_MD.exists():
+        print(f"Error: Master file {SSOT_MD} not found.")
         if exit_on_mismatch:
             sys.exit(1)
         return 1
 
-    principles = parse_principles(AGENTS_MD, strict=True)
-    print(f"Parsed {len(principles)} active principles from AGENTS.md:")
+    principles = parse_principles(SSOT_MD, strict=True)
+    print(f"Parsed {len(principles)} active principles from {SSOT_MD.name}:")
     for p in principles:
         print(f" - {p['id']}: {p['title']}")
 
@@ -312,42 +328,12 @@ def sync_all(
         print(f"[LOADED] Injected Tier 1B domain rules ({len(domain_rules)} chars)")
 
     targets = {
-        ROOT_DIR / "GEMINI.md": generate_gemini_content(principles, domain_rules),
-        ROOT_DIR / ".agents" / "rules" / "principles.md": generate_agents_rule_content(principles, domain_rules),
-        ROOT_DIR / "CLAUDE.md": generate_claude_content(principles, domain_rules),
-        ROOT_DIR / ".cursorrules": generate_cursorrules_content(principles, domain_rules),
-        ROOT_DIR / ".github" / "copilot-instructions.md": generate_copilot_content(principles, domain_rules),
+        ROOT_DIR / rel: render_tier1_target(heading, principles, domain_rules)
+        for rel, heading in TIER1_TARGETS.items()
     }
 
-    # Governance Frugality & Context Budget Check (PRINCIPLE-001)
-    budget_violations = 0
-    print("\n--- Context Budget Audit (PRINCIPLE-001) ---")
-    for target_path, expected_content in targets.items():
-        char_len = len(expected_content)
-        est_tokens = char_len // 4
-        if char_len > MAX_TARGET_CHARS:
-            budget_violations += 1
-            print(f"[BUDGET EXCEEDED] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {MAX_TARGET_CHARS} cap")
-        elif char_len >= WARN_TARGET_CHARS:
-            print(f"[BUDGET WARN] {target_path.name}: {char_len} chars (~{est_tokens} tokens) >= {WARN_TARGET_CHARS} (90% capacity)")
-        elif est_tokens > TARGET_TOKEN_BUDGET:
-            # Enforced, not advisory. PRINCIPLE-001 R9 requires that adding a principle be paid
-            # for by condensing existing capsules, so overage must block rather than warn: an
-            # advisory warning is exactly how this target came to be silently breached.
-            budget_violations += 1
-            print(f"[TOKEN EXCEEDED] {target_path.name}: {char_len} chars (~{est_tokens} tokens) > {TARGET_TOKEN_BUDGET}-token Tier 1 target")
-        else:
-            print(f"[BUDGET PASS] {target_path.name}: {char_len} chars (~{est_tokens} tokens)")
-
+    budget_violations = audit_tier1_budget(principles, domain_rules)
     if budget_violations > 0:
-        sys.stderr.write(
-            f"\n[ERROR] {budget_violations} target file(s) exceed the Tier 1 context budget "
-            f"(PRINCIPLE-001).\n"
-            f"Why: always-injected rules consume context on every turn in every IDE.\n"
-            f"Fix: condense invariant capsules (narrative only - never mechanisms, numbers or "
-            f"tool names) until every target is under {TARGET_TOKEN_BUDGET} tokens / "
-            f"{MAX_TARGET_CHARS} chars.\n"
-        )
         if exit_on_mismatch:
             sys.exit(1)
         return budget_violations
@@ -377,7 +363,7 @@ def sync_all(
             print(f"[UPDATED]: {target_path.relative_to(ROOT_DIR)}")
 
     if check_only and mismatches > 0:
-        print(f"\n{mismatches} file(s) out of sync with AGENTS.md.")
+        print(f"\n{mismatches} file(s) out of sync with {SSOT_MD.name}.")
         if exit_on_mismatch:
             sys.exit(1)
         return mismatches

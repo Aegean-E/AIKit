@@ -133,9 +133,9 @@ See [ADR-046](decisions.md).
 
 | Ceiling | Value | Enforcement |
 |---|---|---|
-| Hard character cap | 8,000 chars | `[BUDGET EXCEEDED]` blocks sync |
-| 90% early warning | 7,200 chars | `[BUDGET WARN]` advisory |
-| Tier 1 token target | 1,500 est. tokens | `[TOKEN EXCEEDED]` blocks sync |
+| Total per target (incl. Tier 1B) | 1,500 est. tokens | `[TOKEN EXCEEDED]` blocks sync |
+| Tier 1B reservation (no domain rules loaded) | full 1,200-char block must still fit | `[TIER 1B HEADROOM]` blocks sync |
+| Early warning | 90% of budget | `[BUDGET WARN]` advisory, evaluated only after both blocking checks |
 
 - **Structural paydown, not semantic**: budget is reclaimed by deleting duplication, never by
   compressing mechanisms. **PRINCIPLE-001** R2 forbids compressing hard constraints, so capsules
@@ -266,7 +266,7 @@ Every entrypoint in `scripts/` implements one uniform contract, enforced mechani
   - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
   - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
 - **Deterministic Grep Anchor Contract**: All Tier 2 sections use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
-- **Context Overhead Guardrails**: `scripts/sync_principles.py` automatically measures and mechanically enforces character/token budgets (<8,000 chars / ~1,500 tokens) across all generated AI rules, preventing instruction bloat.
+- **Context Overhead Guardrails**: `scripts/sync_principles.py` mechanically enforces a 1,500 est.-token budget per generated target, including a reserved full Tier 1B block, preventing instruction bloat (ADR-047).
 
 ---
 
@@ -337,7 +337,7 @@ Every entrypoint in `scripts/` implements one uniform contract, enforced mechani
 - **Deterministic Auto-Sync Freshness Gate**: Automated unit tests assert `sync_all(check_only=True) == 0`, preventing any pull request or commit from shipping with stale or desynchronized IDE rule files.
 - **Triad Documentation Consistency & Exact Title Parity**: Programmatically verifies that all principle IDs and exact heading titles in `AGENTS.md` match across `GUIDELINES.md` and `README.md`.
 - **Dynamic Monotonic Phase Progression**: Tracks lifecycle phases (Phases 1 through 5) dynamically without rigid range bounds, ensuring non-decreasing execution order ($Phase_i \ge Phase_{i-1}$).
-- **Tier 1B Domain Rules Blueprint & Proactive Budget Warnings**: Adopter repositories define project-specific conventions in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all targets and emits proactive warnings if prompt files exceed 90% capacity (>7,200 chars).
+- **Tier 1B Domain Rules Blueprint & Proactive Budget Warnings**: Adopter repositories define project-specific conventions in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all targets and emits an advisory warning at 90% of the token budget, evaluated only after the blocking checks.
 
 ---
 

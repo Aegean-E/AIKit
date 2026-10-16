@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `17`
-- **Total Functions / Methods**: `71`
-- **Total Source Lines**: `4688`
+- **Total Functions / Methods**: `70`
+- **Total Source Lines**: `4742`
 
 ---
 
@@ -104,20 +104,19 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `436` lines (`18089` bytes)
+**Size**: `422` lines (`17840` bytes)
 
 **Functions:**
+- `def estimate_tokens(text)` - *Estimate tokens as chars // 4.*
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
 - `def load_tier_1b_domain_rules(domain_path)` - *Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017).*
 - `def append_domain_rules(lines, domain_rules)` - *Helper to append Tier 1B domain rules to prompt targets.*
 - `def parse_principles(agents_file, strict)` - *Parse AGENTS.md, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
 - `def validate_triad_consistency(principles, guidelines_file, readme_file)` - *Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md with matching titles (PRINCIPLE-017).*
-- `def generate_gemini_content(principles, domain_rules)`
-- `def generate_agents_rule_content(principles, domain_rules)`
-- `def generate_claude_content(principles, domain_rules)`
-- `def generate_cursorrules_content(principles, domain_rules)`
-- `def generate_copilot_content(principles, domain_rules)`
-- `def sync_all(check_only, exit_on_mismatch, domain_path, guidelines_file, readme_file)` - *Synchronize master specification from AGENTS.md across all IDE prompt targets.*
+- `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
+- `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
+- `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
+- `def sync_all(check_only, exit_on_mismatch, domain_path, guidelines_file, readme_file)` - *Synchronize the principle SSOT across every always-injected Tier 1 target.*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
@@ -188,7 +187,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1357` lines (`68589` bytes)
+**Size**: `1425` lines (`72704` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -213,6 +212,11 @@
 - `class TestTier1ContextBudget` - *PRINCIPLE-001 R6/R9. Always-injected rules cost context on every turn in every IDE, so the*
   - Method `.test_every_target_is_within_the_token_target()`
   - Method `.test_token_overage_blocks_rather_than_warns()`
+  - Method `.test_shipped_domain_template_syncs_within_budget()`
+  - Method `.test_universal_rules_reserve_full_tier1b_headroom()`
+  - Method `.test_headroom_breach_is_detected()`
+  - Method `.test_advisory_warning_cannot_shadow_a_violation()`
+  - Method `.test_token_estimate_is_conservative()`
   - Method `.test_grep_anchor_contract_survives_in_every_target()`
   - Method `.test_capsules_retain_their_mechanisms_after_condensation()`
 - `class TestSecretHygieneScanner` - *PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner*
