@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `41`
+- **Total Classes**: `42`
 - **Total Functions / Methods**: `112`
-- **Total Source Lines**: `7612`
+- **Total Source Lines**: `7655`
 
 ---
 
@@ -115,7 +115,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `716` lines (`34947` bytes)
+**Size**: `722` lines (`35498` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -242,7 +242,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3109` lines (`171895` bytes)
+**Size**: `3146` lines (`174146` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -298,6 +298,9 @@
   - Method `.test_untimed_subprocess_and_unmanaged_open_fail()`
   - Method `.test_raw_environ_reads_fail_and_writes_and_getenv_pass()`
   - Method `.test_focused_names_narrow_roles_and_one_way_imports_pass()`
+- `class TestSecretBaselineAndRuleSchema` - *PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092).*
+  - Method `.test_gitignore_holds_every_baseline_pattern_the_rule_lists()`
+  - Method `.test_a_rule_without_audience_is_rejected()`
 - `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite.*
   - Method `.test_every_named_fault_has_a_test()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*

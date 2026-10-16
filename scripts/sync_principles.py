@@ -163,6 +163,12 @@ def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Invariant**:' capsule.")
             if not rules_match:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Rules**:' section with numbered rules.")
+            # PRINCIPLE-000 R7 / PRINCIPLE-017 R1: every numbered rule names who it binds.
+            untagged = [n for n, rest in re.findall(r"^  (\d+)\. \*\*[^*]+\*\*([^\n]*)", block, re.M)
+                        if not re.search(r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*", rest)]
+            if untagged:
+                raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} rule(s) {', '.join('R' + n for n in untagged)} "
+                                 "name no audience; add *[Agent]*, *[Maintainer]* or *[Agent + Maintainer]*.")
         else:
             seen_pids.add(pid)
 

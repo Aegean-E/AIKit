@@ -764,6 +764,29 @@ class TestArchitectureGate(unittest.TestCase):
         self.assertEqual(audit_architecture(modules), [])
 
 
+class TestSecretBaselineAndRuleSchema(unittest.TestCase):
+    """PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092)."""
+
+    def test_gitignore_holds_every_baseline_pattern_the_rule_lists(self):
+        # Red-green pin: R2 listed `credentials*`/`secrets*` while .gitignore shipped other patterns.
+        section = principle_sections(SSOT_MD.read_text(encoding="utf-8"))["PRINCIPLE-019"]
+        rule = next(line for line in section.splitlines() if "**Ignore-List Baseline" in line)
+        listed = rule.split("before any such file exists:")[1].split("A unit test")[0]
+        patterns = re.findall(r"`([^`]+)`", listed)
+        ignored = set((ROOT_DIR / ".gitignore").read_text(encoding="utf-8").split())
+        self.assertGreater(len(patterns), 10)
+        self.assertEqual([p for p in patterns if p not in ignored], [])
+
+    def test_a_rule_without_audience_is_rejected(self):
+        doc = Path(tempfile.mkdtemp(prefix="test_tags_")) / "ssot.md"
+        self.addCleanup(shutil.rmtree, doc.parent, ignore_errors=True)
+        doc.write_text("## Phase 5: X\n### PRINCIPLE-001: T\n- **Problem**: P\n- **Concept**: C\n- **Invariant**: I\n"
+                       "- **Rules**:\n  1. **Tagged** *[Agent]*: a.\n  2. **Untagged**: b.\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as ctx:
+            parse_principles(doc, strict=True)
+        self.assertIn("PRINCIPLE-001 rule(s) R2 name no audience", str(ctx.exception))
+
+
 class TestChaosCoverage(unittest.TestCase):
     """PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite."""
 
@@ -1254,6 +1277,20 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             ],
             "gone": ["mechanically locked", "concise status summary", "(<10 lines)",
                      "always use non-destructive rollbacks"],
+        },
+        "PRINCIPLE-019": {
+            "rules": 7,
+            "present": [
+                "Credentials live only in the environment or a secret store",
+                "A unit test checks that each is present",
+                "MUST NOT contain its value, an authorization header or a raw provider response",
+                "shows at most its first 4 characters followed by `***`",
+                "A false positive is allowed only by a `# aikit:allow-secret` comment",
+                "It MUST NOT present `git reset`, a force-push or a deleted file as the remedy",
+                "A step that only reads uses a read-only credential",
+            ],
+            "gone": ["`credentials*`", "`secrets*`", "cloud CLI config directories", "prefer read-only",
+                     "narrowest scope"],
         },
         "PRINCIPLE-000": {
             "rules": 7,

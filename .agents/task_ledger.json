@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p018-pass1",
+    "task_id": "p019-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189007.6335464,
-    "completed_at": 1792189055.196804
+    "updated_at": 1792189153.3508532,
+    "completed_at": 1792189167.2432747
   },
   "checkpoints": [
-    {
-      "task_id": "p015-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P015",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188489.4090533,
-      "timestamp_str": "2026-10-17 01:08:09"
-    },
-    {
-      "task_id": "p015-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] rewrite P015 R1-R8: whose runner (AIKit dogfood.py vs project's own), when (P018 R3 gate), link duplicates to P011/P004/P012, one line limit (15, P004 R5), domain contracts as numbers; ADR-088",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188527.8205707,
-      "timestamp_str": "2026-10-17 01:08:47",
-      "impact_assessment": {
-        "why": "P015 linked to no principle; R3/R7/R8 restate P011/P004/P012 with different numbers; runner ownership undefined",
-        "benefits": "one reading; duplicates become pointers",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "pins; cross-principle ADR line"
-      }
-    },
-    {
-      "task_id": "p015-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188527.9623773,
-      "timestamp_str": "2026-10-17 01:08:47"
-    },
-    {
-      "task_id": "p015-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188575.866018,
-      "timestamp_str": "2026-10-17 01:09:35"
-    },
-    {
-      "task_id": "p015-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p015-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792188589.7609189,
-      "timestamp_str": "2026-10-17 01:09:49"
-    },
     {
       "task_id": "p016-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189055.1968055,
       "timestamp_str": "2026-10-17 01:17:35"
+    },
+    {
+      "task_id": "p019-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P019",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189064.1179128,
+      "timestamp_str": "2026-10-17 01:17:44"
+    },
+    {
+      "task_id": "p019-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] rewrite P019 R1-R7 (Concept distinct from Problem, R2 list = shipped .gitignore + test, pragma named, decidable least-privilege), generator rejects untagged rules (P000 R7, P017 R1); ADR-092",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189080.0561042,
+      "timestamp_str": "2026-10-17 01:18:00",
+      "impact_assessment": {
+        "why": "P019 R2 list differs from .gitignore; Concept duplicates Problem; prefer/vague; audience tags now complete so the generator can enforce them",
+        "benefits": "rule equals the shipped baseline; tag rule enforced for every future principle",
+        "risks": "contract: sync_principles exits 1 on an untagged rule; dependency: none; concurrency: none; state: none",
+        "mitigation": "all principles tagged after this change; fixture test"
+      }
+    },
+    {
+      "task_id": "p019-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189080.1820965,
+      "timestamp_str": "2026-10-17 01:18:00"
+    },
+    {
+      "task_id": "p019-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189153.3508532,
+      "timestamp_str": "2026-10-17 01:19:13"
+    },
+    {
+      "task_id": "p019-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p019-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189167.2432766,
+      "timestamp_str": "2026-10-17 01:19:27"
     }
   ]
 }
