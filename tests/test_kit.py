@@ -752,6 +752,13 @@ class TestArchitectureGate(unittest.TestCase):
             "m:3: open() outside a with statement (PRINCIPLE-010 R4)",
         ])
 
+    def test_method_style_open_outside_with_fails_and_os_open_passes(self):
+        # PRINCIPLE-010 R4 second pass (ADR-095): Path.open() escaped the builtin-only check.
+        source = ("import os\nfrom pathlib import Path\nf = Path('a').open('w')\n"
+                  "with Path('b').open() as g:\n    pass\nfd = os.open('c', os.O_RDONLY)\n")
+        self.assertEqual(audit_architecture({"m": source}),
+                         ["m:3: open() outside a with statement (PRINCIPLE-010 R4)"])
+
     def test_raw_environ_reads_fail_and_writes_and_getenv_pass(self):
         # PRINCIPLE-011 R3 (ADR-084).
         source = "import os\nx = os.environ['K']\nos.environ['K'] = 'v'\ny = os.getenv('K', 'd')\n"
@@ -1164,6 +1171,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "one fsync per file written is PRINCIPLE-013 R1, not a violation",
                 "in under 200ms as a fresh process, interpreter start included",
                 "MUST state its before and after measurement",
+                "`open()` and `Path.open()` run only as a `with` item",
+                "measured on the machine that runs Phase 4, and a breach there is fixed before the commit",
             ],
             "gone": ["<100ms", "under 20ms", "genuinely", "High-frequency", "tight loops", "(`timeout=30`)",
                      "without measurable profiling justification"],

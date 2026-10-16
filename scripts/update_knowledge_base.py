@@ -537,7 +537,11 @@ def audit_architecture(modules: Dict[str, str]) -> List[str]:
                 if (owner == "subprocess" and getattr(func, "attr", "") in SUBPROCESS_BLOCKING
                         and not any(k.arg == "timeout" for k in node.keywords)):
                     errors.append(f"{name}:{node.lineno}: subprocess.{func.attr} without timeout= (PRINCIPLE-010 R3)")
-                if isinstance(func, ast.Name) and func.id == "open" and id(node) not in managed:
+                # Builtin open() and method-style Path.open(); os.open returns a raw descriptor that
+                # R4 covers with try/finally instead.
+                is_open = ((isinstance(func, ast.Name) and func.id == "open")
+                           or (isinstance(func, ast.Attribute) and func.attr == "open" and owner != "os"))
+                if is_open and id(node) not in managed:
                     errors.append(f"{name}:{node.lineno}: open() outside a with statement (PRINCIPLE-010 R4)")
             if (isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load)
                     and isinstance(node.value, ast.Attribute) and node.value.attr == "environ"

@@ -1208,3 +1208,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: A pluggable boundary needs two or more production implementations (in the repository or the plan); a test double alone does not make one, though it is still injected through R4's constructor or parameter default. A role with exactly one operation MAY be declared as a `Callable` type instead of a Protocol.
 - **Consequences**: AIKit's injected `git_status` follows R2 and R4 as written; no layering refactor is required. Pinned in `TestRewrittenPrincipleWording`.
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-010 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-012 (R7's single-implementation ABC rule cites R1's boundary, which now excludes test doubles; no conflict), PRINCIPLE-014 (test doubles injected per R4; no conflict).
+
+### ADR-095: PRINCIPLE-010 Second Pass - Where Limits Are Measured; Method-Style `open()`
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Two scenarios still had two answers after ADR-083. The time limits (unit tier 1s, integration 5s, `--help` 200ms) named no machine, so a slow CI runner and a fast laptop could each claim compliance or breach. R4 limited `open()` to `with` statements, but `Path('x').open('w')` outside a `with` was neither clearly covered nor caught by the gate, which matched only the builtin.
+- **Decision**: Every time limit is measured on the machine that runs Phase 4, and a breach there is fixed before the commit. R4 covers `open()` and `Path.open()`; a raw descriptor from `os.open` is closed in `try`/`finally`. The gate now also rejects method-style `.open(` outside a `with`, except `os.open`.
+- **Consequences**: AIKit passes unchanged. README's code-structure row and `--help` already describe the check. Pinned by a gate fixture and the P010 table entry.
+- Cross-principle check: PRINCIPLE-007 (`concurrency:` dimension; no conflict), PRINCIPLE-013 (state writes use temp files in `with`; no conflict), PRINCIPLE-014 (tier limits measured where Phase 4 runs; no conflict).
