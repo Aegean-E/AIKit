@@ -93,6 +93,7 @@ from scripts.disruption_recovery import (
     validate_argv,
     argv_value_errors,
     impact_errors,
+    RISK_DIMENSIONS,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -876,7 +877,7 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
         self.assertEqual(citing_principles(text, "PRINCIPLE-001"), ["PRINCIPLE-002", "PRINCIPLE-003"])
         self.assertEqual(citing_principles(text, "PRINCIPLE-002"), ["PRINCIPLE-001"])  # checklist ignored
         self.assertEqual(citing_principles(self.text, "PRINCIPLE-000"),
-                         ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-009",
+                         ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-007", "PRINCIPLE-009",
                           "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-019"])
 
     def test_r3_completeness_is_decided_by_the_gate(self):
@@ -965,6 +966,61 @@ class TestPrinciple006Unambiguity(unittest.TestCase):
                       "--phase <phase>", "never execute blind"):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, self.rules)
+
+
+class TestPrinciple007Unambiguity(unittest.TestCase):
+    """PRINCIPLE-007 must say the same thing to every model: fixed fields, fixed labels, a scope test."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-007:"):cls.text.index("\n### PRINCIPLE-008:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES if h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-007 contains banned words: {found}")
+        # Red-green pin (ADR-080): undefined or unfalsifiable phrases of the previous text.
+        for vague in ("4-quadrant", "micro-sanity", "non-trivial", "polished UI", "ultra-terse", "strictly bounded"):
+            with self.subTest(phrase=vague):
+                self.assertNotIn(vague, self.section)
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 6, "PRINCIPLE-007 must keep rules R1-R6 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_rules_match_the_checks(self):
+        for label in RISK_DIMENSIONS:
+            with self.subTest(label=label):
+                self.assertIn(f"`{label}`", self.rules)
+        for definition in (
+            "The *impact assessment* is four fields: why, benefits, risks and mitigation",
+            "every concrete risk MUST have an entry in the mitigation field",
+            "unless it is abstract, an overload, or declared in a Protocol or ABC",
+            "`python scripts/update_knowledge_base.py` fails on each of them",
+            "A change is *in scope* when a milestone of the recorded plan needs it",
+            "it lists each one to the user as a suggestion in its final message",
+            "--phase-num 2 --desc \"[1/M] ...\"",
+            "The command exits 2 while a field or a risk verdict is missing",
+            "at most 4 lines, one per field",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_no_ban_contradicts_principle_000_r5(self):
+        # Red-green pin: R3 banned every `pass`, including the cleanup blocks P000 R5 allows.
+        self.assertNotIn("`pass`, or mock placeholders in production code paths", self.rules)
+
+    def test_capsule_states_the_mechanisms(self):
+        capsule = re.search(r"- \*\*Invariant\*\*: ([^\n]*)", self.section).group(1)
+        for mechanism in ("first plan checkpoint carries --why --benefits --risks",
+                          "(contract, dependency, concurrency, state) --mitigation",
+                          "no todo or stub", "no change outside the plan"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, capsule.lower())
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):

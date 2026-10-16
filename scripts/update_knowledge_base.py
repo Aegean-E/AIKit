@@ -117,6 +117,18 @@ def render_signature(node: Any, drop_self: bool = False) -> List[str]:
 # copy so mutating a result cannot leak. Bounded to the files of one repository scan.
 _SYMBOL_CACHE: Dict[tuple, Dict[str, Any]] = {}
 _SYMBOL_CACHE_MAX = 256
+# Parsed trees keyed by content, shared by the codebase map and the lazy-code gate so each file is
+# parsed once per run; trees are only read, never mutated.
+_TREE_CACHE: Dict[str, ast.Module] = {}
+
+
+def parse_source(content: str, filename: str) -> ast.Module:
+    """`ast.parse` at the minimum supported grammar (PRINCIPLE-003 R7), cached by content."""
+    if content not in _TREE_CACHE:
+        if len(_TREE_CACHE) >= _SYMBOL_CACHE_MAX:
+            _TREE_CACHE.clear()
+        _TREE_CACHE[content] = ast.parse(content, filename=filename, feature_version=MIN_PYTHON)
+    return _TREE_CACHE[content]
 
 
 def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, Any]:
@@ -141,7 +153,7 @@ def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, A
 def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Dict[str, Any]:
     """AST extraction proper; see extract_python_symbols()."""
     try:
-        tree = ast.parse(content, filename=str(file_path), feature_version=MIN_PYTHON)
+        tree = parse_source(content, str(file_path))
     except Exception as e:
         if strict:
             raise ValueError(f"[PRINCIPLE-003 AST FAILURE] Syntax error in {file_path}: {e}") from e
@@ -423,6 +435,7 @@ _FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 _LAZY_MARKER = re.compile(r"#\s*(TODO|FIXME|XXX|HACK)\b")
 _UNNAMED_SUPPRESSION = re.compile(r"#\s*(type:\s*ignore(?!\[)|noqa(?!\s*:))")
+_LAZY_WORDS = re.compile(r"TODO|FIXME|XXX|HACK|type:\s*ignore|noqa")
 _EXEMPT_DECORATORS = {"abstractmethod", "overload"}
 _EXEMPT_BASES = {"Protocol", "ABC"}
 
@@ -440,41 +453,54 @@ def audit_lazy_code(source: str, rel: str) -> List[str]:
     or `raise NotImplementedError` - unless it is abstract, an overload, or declared in a
     Protocol or ABC. The rule listed these acts for years with nothing checking them.
     """
-    import io
-    import tokenize
     errors: List[str] = []
+    # Tokenizing is the slow part; a file without any marker word cannot hold a marker comment.
+    if _LAZY_WORDS.search(source):
+        import io
+        import tokenize
+        try:
+            for token in tokenize.generate_tokens(io.StringIO(source).readline):
+                if token.type != tokenize.COMMENT:
+                    continue
+                if _LAZY_MARKER.match(token.string):
+                    errors.append(f"{rel}:{token.start[0]}: '{token.string.strip()[:40]}' marks unfinished code")
+                if _UNNAMED_SUPPRESSION.search(token.string):
+                    errors.append(f"{rel}:{token.start[0]}: suppression names no error code")
+        except (tokenize.TokenError, IndentationError, SyntaxError):
+            pass  # the AST gate (PRINCIPLE-003 R7) reports unparsable files with file and line
     try:
-        for token in tokenize.generate_tokens(io.StringIO(source).readline):
-            if token.type != tokenize.COMMENT:
-                continue
-            if _LAZY_MARKER.match(token.string):
-                errors.append(f"{rel}:{token.start[0]}: '{token.string.strip()[:40]}' marks unfinished code")
-            if _UNNAMED_SUPPRESSION.search(token.string):
-                errors.append(f"{rel}:{token.start[0]}: suppression names no error code")
-    except (tokenize.TokenError, IndentationError, SyntaxError):
-        pass  # the AST gate (PRINCIPLE-003 R7) reports unparsable files with file and line
-    try:
-        tree = ast.parse(source)
+        tree = parse_source(source, rel)
     except SyntaxError:
         return errors
-    exempt = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and _names(node.bases) & _EXEMPT_BASES:
-            exempt |= {id(f) for f in node.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or id(node) in exempt:
-            continue
-        if _names(node.decorator_list) & _EXEMPT_DECORATORS:
-            continue
-        body = node.body[1:] if ast.get_docstring(node) is not None else node.body
-        stub = len(body) == 1 and (
-            isinstance(body[0], ast.Pass)
-            or (isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant)
-                and body[0].value.value is Ellipsis)
-            or (isinstance(body[0], ast.Raise) and "NotImplementedError" in ast.dump(body[0])))
-        if stub:
-            errors.append(f"{rel}:{node.lineno}: function '{node.name}' is a stub")
-    return errors
+    # One walk; `in_contract` marks the direct members of a Protocol or ABC class.
+    stack = [(tree, False)]
+    while stack:
+        node, in_contract = stack.pop()
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.ClassDef):
+                stack.append((child, bool(_names(child.bases) & _EXEMPT_BASES)))
+                continue
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not in_contract and not _names(child.decorator_list) & _EXEMPT_DECORATORS and _is_stub(child):
+                    errors.append(f"{rel}:{child.lineno}: function '{child.name}' is a stub")
+            stack.append((child, False))
+    return sorted(errors, key=lambda e: int(e.split(":")[1]))
+
+
+def _is_stub(fn: ast.AST) -> bool:
+    """A body (after any docstring) that is only `pass`, `...` or `raise NotImplementedError`."""
+    body = fn.body[1:] if ast.get_docstring(fn) is not None else fn.body
+    if len(body) != 1:
+        return False
+    stmt = body[0]
+    if isinstance(stmt, ast.Pass):
+        return True
+    if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
+        return stmt.value.value is Ellipsis
+    if isinstance(stmt, ast.Raise) and stmt.exc is not None:
+        exc = stmt.exc.func if isinstance(stmt.exc, ast.Call) else stmt.exc
+        return getattr(exc, "id", None) == "NotImplementedError"
+    return False
 
 
 def check_lazy_code(root: Path = ROOT_DIR) -> List[str]:

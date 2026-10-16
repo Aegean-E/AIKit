@@ -443,15 +443,14 @@ class TestTrackCli(unittest.TestCase):
             self.assertEqual(res.returncode, 0, res.stderr)
             return res.stdout.splitlines()[0]
 
-        self.assertEqual(track(), "Track A")
-        # Bookkeeping that PRINCIPLE-002 R4 itself requires must not move the track.
+        # Three spawns, each proving what only real git can (ADR-080): a clean tree plus the
+        # bookkeeping PRINCIPLE-002 R4 requires is Track A; a comment edit to a non-ASCII-named
+        # file is read, not misreported as deleted; a logic edit is Track C. Which edits count as
+        # B or C is pinned in-process by TestTrackClassification.
         (repo / ".agents").mkdir()
         (repo / ".agents" / "task_ledger.json").write_text("{}", encoding="utf-8")
         self.assertEqual(track(), "Track A")
-        # A comment edit to a non-ASCII-named file must be read, not misreported as deleted.
         (repo / "modül.py").write_text("# comment only\n" + code, encoding="utf-8")
-        self.assertEqual(track(), "Track B")
-        (repo / "m.py").write_text("# comment only\n" + code, encoding="utf-8")
         (repo / "README.md").write_text("# r, typo fixed\n", encoding="utf-8")
         self.assertEqual(track(), "Track B")
         (repo / "m.py").write_text(code.replace("+ 1", "+ 2"), encoding="utf-8")

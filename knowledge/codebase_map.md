@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `37`
-- **Total Functions / Methods**: `107`
-- **Total Source Lines**: `7161`
+- **Total Classes**: `38`
+- **Total Functions / Methods**: `109`
+- **Total Source Lines**: `7246`
 
 ---
 
@@ -96,7 +96,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `462` lines (`19997` bytes)
+**Size**: `466` lines (`20405` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -146,11 +146,12 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `718` lines (`30274` bytes)
+**Size**: `744` lines (`31529` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
 - `def render_signature(node, drop_self)` - *Render a complete call signature from an AST function node (PRINCIPLE-003, PRINCIPLE-016).*
+- `def parse_source(content, filename)` - *`ast.parse` at the minimum supported grammar (PRINCIPLE-003 R7), cached by content.*
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
 - `def _extract_symbols_uncached(file_path, content, strict)` - *AST extraction proper; see extract_python_symbols().*
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
@@ -161,6 +162,7 @@
 - `def update_and_validate(knowledge_dir, strict)`
 - `def _names(nodes)` - *Bare names of decorators or base classes (`abc.abstractmethod` -> `abstractmethod`).*
 - `def audit_lazy_code(source, rel)` - *PRINCIPLE-007 R3 as a gate: a `TODO`/`FIXME`/`XXX`/`HACK` comment marker, a `# type: ignore`*
+- `def _is_stub(fn)` - *A body (after any docstring) that is only `pass`, `...` or `raise NotImplementedError`.*
 - `def check_lazy_code(root)` - *`audit_lazy_code` over every Python file the codebase map covers.*
 - `def report_lazy_code(errors)` - *Print lazy-code findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
 - `def quick_reference_errors(readme)` - *The structure PRINCIPLE-005 R1 states, not just its words: a heading, then inside its section*
@@ -175,7 +177,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `558` lines (`26054` bytes)
+**Size**: `557` lines (`26059` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -237,7 +239,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2784` lines (`153036` bytes)
+**Size**: `2840` lines (`156196` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -318,6 +320,13 @@
   - Method `.test_every_rule_names_its_audience()`
   - Method `.test_every_duty_is_defined()`
   - Method `.test_no_second_home_for_rules_owned_elsewhere()`
+- `class TestPrinciple007Unambiguity` - *PRINCIPLE-007 must say the same thing to every model: fixed fields, fixed labels, a scope test.*
+  - Method `.setUpClass()`
+  - Method `.test_rules_contain_no_hedge_words()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_rules_match_the_checks()`
+  - Method `.test_no_ban_contradicts_principle_000_r5()`
+  - Method `.test_capsule_states_the_mechanisms()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

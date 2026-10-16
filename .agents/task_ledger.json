@@ -3,40 +3,12 @@
   "active_task": {
     "task_id": "p007-pass1",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792186930.9119737
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792187103.3238952,
+    "completed_at": 1792187359.527925
   },
   "checkpoints": [
-    {
-      "task_id": "p000-pass3",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185712.5304668,
-      "timestamp_str": "2026-10-17 00:21:52"
-    },
-    {
-      "task_id": "p000-pass3",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p000-pass3' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792185733.5758235,
-      "timestamp_str": "2026-10-17 00:22:13"
-    },
-    {
-      "task_id": "p005-pass3",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: audit history against P005 R2; --citing PRINCIPLE-005",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185832.8214955,
-      "timestamp_str": "2026-10-17 00:23:52"
-    },
     {
       "task_id": "p005-pass3",
       "phase": "in_progress",
@@ -216,6 +188,35 @@
       "status": "in_progress",
       "timestamp": 1792186930.9119737,
       "timestamp_str": "2026-10-17 00:42:10"
+    },
+    {
+      "task_id": "p007-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187029.4751115,
+      "timestamp_str": "2026-10-17 00:43:49"
+    },
+    {
+      "task_id": "p007-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187103.3238952,
+      "timestamp_str": "2026-10-17 00:45:03"
+    },
+    {
+      "task_id": "p007-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p007-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792187359.5279264,
+      "timestamp_str": "2026-10-17 00:49:19"
     }
   ]
 }

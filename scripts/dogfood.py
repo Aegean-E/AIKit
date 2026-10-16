@@ -306,8 +306,12 @@ def track_readonly_gates(jail: Path, log: List[str]) -> Tuple[bool, str]:
         ("reach", REACH_CLI, []),
         ("secrets", SECRETS_CLI, ["--all"]),
     )
-    for name, script, args in gates:
-        code, out, err = run_cli(script, args, jail)
+    # The gates are independent read-only processes, so they run concurrently: run one after
+    # another they took ~1s and pushed the integration tier past its 5s budget (ADR-080).
+    from concurrent.futures import ThreadPoolExecutor  # lazy: --help stays fast (PRINCIPLE-010)
+    with ThreadPoolExecutor(max_workers=len(gates)) as pool:
+        results = list(pool.map(lambda gate: run_cli(gate[1], gate[2], jail), gates))
+    for (name, script, args), (code, out, err) in zip(gates, results):
         label = f"{name} {' '.join(args)}".strip()
         log.append(f"[gate:{name}] rc={code} out={out.strip()[-160:]}")
         if code != 0:
