@@ -4,7 +4,7 @@
   "model": "opencode/deepseek-v4.1-flash-free",
   "providers": {
     "ollama": {
-      "name": "Ollama (Local)",
+      "name": "Ollama (Local Free)",
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "baseURL": "http://127.0.0.1:11434/v1"
@@ -16,6 +16,34 @@
         "deepseek-r1:latest": {
           "name": "DeepSeek R1 (Local)"
         }
+      }
+    },
+    "openrouter": {
+      "name": "OpenRouter (Free Models)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "env": [
+        "OPENROUTER_API_KEY"
+      ],
+      "settings": {
+        "baseURL": "https://openrouter.ai/api/v1"
+      },
+      "models": {
+        "deepseek/deepseek-r1:free": {
+          "name": "DeepSeek R1 (Free)"
+        },
+        "meta-llama/llama-3.3-70b-instruct:free": {
+          "name": "Llama 3.3 70B (Free)"
+        },
+        "qwen/qwen-2.5-coder-32b-instruct:free": {
+          "name": "Qwen 2.5 Coder 32B (Free)"
+        }
+      }
+    },
+    "lmstudio": {
+      "name": "LM Studio (Local Free)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://127.0.0.1:1234/v1"
       }
     }
   },

@@ -72,9 +72,12 @@ opencode run --standalone --format json --agent worker --model ollama/qwen2.5-co
 ```
 
 ### 2. Model & Provider Options (opencode.jsonc)
-- **Local (Ollama)**: `ollama/qwen2.5-coder:latest`, `ollama/deepseek-r1:latest` configured via `@opencode/ai/providers/openai-compatible`.
-- **OpenCode Free Tier**: `opencode/deepseek-v4.1-flash-free`, `opencode/glm-5.3-flash-free`, `opencode/beam-free` (built-in zero-cost coding models).
-- **Custom / Cloud**: Connect via `opencode auth login` or customize `opencode.jsonc`.
+- **OpenCode Free Tier**: `opencode/deepseek-v4.1-flash-free` (default), `opencode/glm-5.3-flash-free`, `opencode/mimo-v2.6-flash-free`, `opencode/beam-free` (built-in zero-cost coding models).
+- **OpenRouter Free Tier**: `openrouter/qwen/qwen-2.5-coder-32b-instruct:free`, `openrouter/meta-llama/llama-3.3-70b-instruct:free`, etc. (requires free `OPENROUTER_API_KEY`).
+- **Local Offline (Zero Network)**:
+  - **Ollama**: `ollama/qwen2.5-coder:latest`, `ollama/deepseek-r1:latest`.
+  - **LM Studio**: `lmstudio/<model_name>` at `http://127.0.0.1:1234/v1`.
+
 
 ### 3. Subagent Boundaries & Safety
 - **Ledger Invariant (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`. Mechanically denied by `opencode.jsonc` and `.opencode/agents/worker.md`.
