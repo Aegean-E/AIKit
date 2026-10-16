@@ -419,6 +419,7 @@ class TestTrackCli(unittest.TestCase):
         code = "def f(x):\n    return x + 1\n"
         (repo / "README.md").write_text("# r\n", encoding="utf-8")
         (repo / "m.py").write_text(code, encoding="utf-8")
+        (repo / "modül.py").write_text(code, encoding="utf-8")  # git quotes this path without -z
         subprocess.run(["git", "init", "-q", "."], cwd=repo, check=True, timeout=PROC_TIMEOUT)
         subprocess.run([*git, "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
         subprocess.run([*git, "commit", "-qm", "base"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
@@ -434,6 +435,13 @@ class TestTrackCli(unittest.TestCase):
             return res.stdout.splitlines()[0]
 
         self.assertEqual(track(), "Track A")
+        # Bookkeeping that PRINCIPLE-002 R4 itself requires must not move the track.
+        (repo / ".agents").mkdir()
+        (repo / ".agents" / "task_ledger.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(track(), "Track A")
+        # A comment edit to a non-ASCII-named file must be read, not misreported as deleted.
+        (repo / "modül.py").write_text("# comment only\n" + code, encoding="utf-8")
+        self.assertEqual(track(), "Track B")
         (repo / "m.py").write_text("# comment only\n" + code, encoding="utf-8")
         (repo / "README.md").write_text("# r, typo fixed\n", encoding="utf-8")
         self.assertEqual(track(), "Track B")

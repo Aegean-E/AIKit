@@ -822,6 +822,12 @@ TRACK_C_DOC_NAMES = frozenset({
 })
 
 
+# Bookkeeping written by AIKit's own lifecycle commands. PRINCIPLE-002 R4 requires these writes,
+# so they must not move the track: before this, recording the mandated checkpoint alone turned a
+# documentation-only task into Track C.
+TRACK_NEUTRAL_PATHS = frozenset({".agents/task_ledger.json"})
+
+
 def _ast_without_docstrings(source: str) -> str:
     """AST dump with docstrings removed; comments and formatting never reach the AST."""
     import ast  # lazy: keeps `--help` inside the startup budget (PRINCIPLE-010 R5)
@@ -878,14 +884,24 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
     def git(*args):
         return subprocess.run(["git", *args], cwd=str(workspace), capture_output=True,
                               text=True, encoding="utf-8", errors="replace", timeout=10)
-    listing = git("status", "--porcelain", "--untracked-files=all")
+    # -z: NUL-separated and never quoted. Without it git octal-escapes non-ASCII paths, the file is
+    # then "missing", and a comment-only edit to such a .py file was misread as a deletion (Track C).
+    listing = git("status", "--porcelain", "-z", "--untracked-files=all")
     if listing.returncode != 0:
         raise RuntimeError(listing.stderr.strip() or "not a git repository")
     changes = []
-    for raw in listing.stdout.splitlines():
+    entries = listing.stdout.split("\0")
+    i = 0
+    while i < len(entries):
+        raw = entries[i]
+        i += 1
         if len(raw) < 4:
             continue
-        path = raw[3:].strip().split(" -> ")[-1].strip('"')
+        xy, path = raw[:2], raw[3:]
+        if "R" in xy or "C" in xy:
+            i += 1  # -z puts the rename/copy source in the next field; we classify the new path
+        if path in TRACK_NEUTRAL_PATHS:
+            continue
         head = git("show", f"HEAD:{path}")
         old = head.stdout if head.returncode == 0 else None
         target = workspace / path

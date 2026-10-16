@@ -670,6 +670,11 @@ class TestPrinciple002Unambiguity(unittest.TestCase):
             "any file edit after Phase 4 passed requires running Phase 4 again",
             "`Unverified: <the gates named>`",                        # informed override
             "--phase-num <1-5>",                                      # how phase is recorded
+            "are bookkeeping: they never require re-running Phase 4",  # no ledger loop
+            "or when `--track` now reports a higher track",           # recoil is checkable
+            "on a Track B task, one checkpoint on entering Phase 3",   # proportionate
+            "--complete <task_id>",                                   # task is closed
+            "R2 applies and the agent reports the failure",           # failure under pressure
         ):
             with self.subTest(definition=definition):
                 self.assertIn(definition, self.rules)
@@ -691,7 +696,8 @@ class TestPrinciple002Unambiguity(unittest.TestCase):
         # PRINCIPLE-001 R1 defers user-vs-principle conflicts to PRINCIPLE-002 R5 by number.
         title, body = self._rule("PRINCIPLE-002", 5)
         self.assertIn("Immunity to Late-Stage User Priming", title)
-        self.assertIn("explicitly instructs it to commit anyway", body)
+        self.assertIn("explicitly instructs it to deliver anyway", body)
+        self.assertIn("MAY commit and push", body)  # push is covered, not left open
 
     def test_checklists_are_in_principle_order(self):
         # R6: checklist items appear in ascending principle-ID order.
@@ -732,6 +738,11 @@ class TestTrackClassification(unittest.TestCase):
                        ("old.py", self.CODE, None), ("bad.py", self.CODE, "def (:\n")):
             with self.subTest(path=change[0]):
                 self.assertEqual(classify_track([change])[0], "C")
+
+    def test_unplanned_files_criterion_is_gone(self):
+        # "a file outside the Phase 2 plan" was uncheckable (and meaningless on Track B).
+        section = SSOT_MD.read_text(encoding="utf-8")
+        self.assertNotIn("outside the Phase 2 plan", section)
 
     def test_highest_track_wins(self):
         self.assertEqual(classify_track([("README.md", "a", "b"), ("m.py", self.CODE, "x = 1\n")])[0], "C")

@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `24`
 - **Total Functions / Methods**: `78`
-- **Total Source Lines**: `5492`
+- **Total Source Lines**: `5527`
 
 ---
 
@@ -54,7 +54,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1103` lines (`45921` bytes)
+**Size**: `1119` lines (`46671` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -149,7 +149,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `519` lines (`23891` bytes)
+**Size**: `527` lines (`24461` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -204,7 +204,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1840` lines (`96576` bytes)
+**Size**: `1851` lines (`97372` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -262,6 +262,7 @@
   - Method `.test_logic_change_is_track_c()`
   - Method `.test_rule_text_and_generated_files_are_track_c()`
   - Method `.test_config_tests_and_new_python_are_track_c()`
+  - Method `.test_unplanned_files_criterion_is_gone()`
   - Method `.test_highest_track_wins()`
 - `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*
   - Method `.setUp()`
