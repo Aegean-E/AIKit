@@ -45,6 +45,10 @@ from scripts.sync_principles import (
     citing_principles,
     changed_principles,
     cross_check_errors,
+    render_readme_table,
+    sync_readme_table,
+    README_TABLE_BEGIN,
+    README_TABLE_END,
     sync_all,
     validate_triad_consistency,
     load_tier_1b_domain_rules,
@@ -623,6 +627,35 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         self.assertEqual(audit(filled), [])
 
 
+class TestGeneratedReadmeTable(unittest.TestCase):
+    """PRINCIPLE-005 R4 / PRINCIPLE-017 R4: README's principle table is generated (ADR-076)."""
+
+    PRINCIPLES = [
+        {"id": "PRINCIPLE-000", "title": "Meta (Sub)", "invariant": "a | b", "phase_name": "Phase 1: X"},
+        {"id": "PRINCIPLE-001", "title": "One", "invariant": "c", "phase_name": "Phase 1: X"},
+        {"id": "PRINCIPLE-002", "title": "Two", "invariant": "d", "phase_name": "Phase 2: Y"},
+    ]
+
+    def test_table_groups_by_phase_and_escapes_cells(self):
+        self.assertEqual(render_readme_table(self.PRINCIPLES), "\n".join([
+            "### Phase 1: X", "| Principle | Title | Capsule |", "|---|---|---|",
+            "| **PRINCIPLE-000** | Meta | a \\| b |", "| **PRINCIPLE-001** | One | c |", "",
+            "### Phase 2: Y", "| Principle | Title | Capsule |", "|---|---|---|",
+            "| **PRINCIPLE-002** | Two | d |"]))
+
+    def test_only_the_block_between_markers_is_rewritten(self):
+        readme = f"intro\n{README_TABLE_BEGIN}\nstale row\n{README_TABLE_END}\noutro\n"
+        refreshed = sync_readme_table(readme, self.PRINCIPLES)
+        self.assertTrue(refreshed.startswith("intro\n") and refreshed.endswith(f"{README_TABLE_END}\noutro\n"))
+        self.assertNotIn("stale row", refreshed)
+        self.assertIsNone(sync_readme_table("an adopter README\n", self.PRINCIPLES))
+
+    def test_this_readme_table_is_generated_and_fresh(self):
+        # Red-green pin: the hand-written rows differed from 19 of 20 capsules.
+        readme = README_MD.read_text(encoding="utf-8")
+        self.assertEqual(sync_readme_table(readme, parse_principles(SSOT_MD)), readme)
+
+
 class TestAdrRegister(unittest.TestCase):
     """PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069)."""
 
@@ -683,7 +716,13 @@ class TestPrinciple005Unambiguity(unittest.TestCase):
             "the agent MUST run it, in a temporary directory when it copies, moves or deletes files",
             "a directory shown with none is collapsed and exempt",
             "The R1 check compares the tree with `git ls-files`",
-            "MUST NOT restate the rules of one",
+            "`README.md` MUST NOT restate a principle's rules anywhere",
+            # Third pass (ADR-076): a changed exit condition matched no trigger, and the
+            # hand-written principle table had drifted from 19 of 20 capsules.
+            "changes what a command documented in `README.md` checks, writes or prints, or a condition under which it exits non-zero",
+            "the same commit also updates that script's `--help`",
+            "README's principle table needs no hand edit",
+            "`--check` fails while that table is stale",
             # Second pass (ADR-068): "under it" had two readings, and the adopter had none.
             "inside the section it opens (up to the next heading of the same or a higher level)",
             "No `<FILL:` placeholder from the R6 template may remain",

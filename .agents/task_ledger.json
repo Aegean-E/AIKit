@@ -3,40 +3,12 @@
   "active_task": {
     "task_id": "p005-pass3",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792185931.0257554
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792186142.3149989,
+    "completed_at": 1792186163.4475956
   },
   "checkpoints": [
-    {
-      "task_id": "p000-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185201.1277921,
-      "timestamp_str": "2026-10-17 00:13:21"
-    },
-    {
-      "task_id": "p000-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p000-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792185221.2444024,
-      "timestamp_str": "2026-10-17 00:13:41"
-    },
-    {
-      "task_id": "p000-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: apply P000 R3/R5/R6 to the repository",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185274.818525,
-      "timestamp_str": "2026-10-17 00:14:34"
-    },
     {
       "task_id": "p000-pass2",
       "phase": "in_progress",
@@ -213,6 +185,35 @@
       "status": "in_progress",
       "timestamp": 1792185931.0257554,
       "timestamp_str": "2026-10-17 00:25:31"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186085.687118,
+      "timestamp_str": "2026-10-17 00:28:05"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186142.3149989,
+      "timestamp_str": "2026-10-17 00:29:02"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p005-pass3' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792186163.447597,
+      "timestamp_str": "2026-10-17 00:29:23"
     }
   ]
 }

@@ -206,6 +206,33 @@ def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
     return principles
 
 
+README_TABLE_BEGIN = "<!-- principles:begin (generated from GUIDELINES.md by scripts/sync_principles.py; do not edit) -->"
+README_TABLE_END = "<!-- principles:end -->"
+
+
+def render_readme_table(principles: List[Dict]) -> str:
+    """One table per lifecycle phase: ID, title and capsule, exactly as `GUIDELINES.md` states them."""
+    lines: List[str] = []
+    phase = None
+    for p in principles:
+        if p["phase_name"] != phase:
+            phase = p["phase_name"]
+            lines += ([""] if lines else []) + [f"### {phase}", "| Principle | Title | Capsule |", "|---|---|---|"]
+        title = re.sub(r"\s*\([^)]*\)$", "", p["title"])  # the subtitle costs README's 20,000-char budget
+        cells = [c.replace("|", "\\|") for c in (title, p["invariant"])]
+        lines.append(f"| **{p['id']}** | {cells[0]} | {cells[1]} |")
+    return "\n".join(lines)
+
+
+def sync_readme_table(readme_text: str, principles: List[Dict]) -> Optional[str]:
+    """`readme_text` with its generated table refreshed, or None when it has no markers."""
+    begin, end = readme_text.find(README_TABLE_BEGIN), readme_text.find(README_TABLE_END)
+    if begin < 0 or end < begin:
+        return None
+    return (readme_text[:begin + len(README_TABLE_BEGIN)] + "\n" + render_readme_table(principles)
+            + "\n" + readme_text[end:])
+
+
 def validate_triad_consistency(
     principles: List[Dict],
     readme_file: Path = README_MD,
@@ -224,6 +251,8 @@ def validate_triad_consistency(
         return errors
 
     r_content = readme_file.read_text(encoding="utf-8")
+    if README_TABLE_BEGIN in r_content:
+        return []  # a generated table lists every principle by construction; sync checks its freshness
     listed = [p["id"] for p in principles if p["id"] in r_content]
     # A README that documents no principles at all is an adopter's product README, not drift:
     # forcing every adopting project to list AIKit's principle IDs blocked their first sync.
@@ -437,8 +466,19 @@ def sync_all(
             sys.exit(1)
         return len(foreign)
 
+    # README's principle table is generated between markers (PRINCIPLE-005 R4, PRINCIPLE-017 R4):
+    # the hand-written rows had drifted from the capsules for 19 of 20 principles. Only the block
+    # between the markers is rewritten; a README without them (an adopter's) is left alone.
+    written = dict(targets)
+    # Only the README of the repository being synced: a README outside ROOT_DIR (a test sandbox
+    # reading the real one) is never written (PRINCIPLE-015 R4).
+    if readme_file.exists() and readme_file.resolve().is_relative_to(ROOT_DIR.resolve()):
+        readme_expected = sync_readme_table(readme_file.read_text(encoding="utf-8"), principles)
+        if readme_expected is not None:
+            written[readme_file] = readme_expected
+
     mismatches = 0
-    for target_path, expected_content in targets.items():
+    for target_path, expected_content in written.items():
         if not check_only:
             target_path.parent.mkdir(parents=True, exist_ok=True)
         if target_path.exists():

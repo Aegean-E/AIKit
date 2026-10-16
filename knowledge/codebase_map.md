@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `34`
-- **Total Functions / Methods**: `100`
-- **Total Source Lines**: `6756`
+- **Total Classes**: `35`
+- **Total Functions / Methods**: `102`
+- **Total Source Lines**: `6835`
 
 ---
 
@@ -114,7 +114,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `672` lines (`32342` bytes)
+**Size**: `712` lines (`34566` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -124,6 +124,8 @@
 - `def append_domain_rules(lines, domain_rules)` - *Helper to append Tier 1B domain rules to prompt targets.*
 - `def parse_principles(agents_file, strict)` - *Parse the principle SSOT, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
 - `def _parse_principles_uncached(content, strict)` - *Parsing and validation proper; see parse_principles().*
+- `def render_readme_table(principles)` - *One table per lifecycle phase: ID, title and capsule, exactly as `GUIDELINES.md` states them.*
+- `def sync_readme_table(readme_text, principles)` - *`readme_text` with its generated table refreshed, or None when it has no markers.*
 - `def validate_triad_consistency(principles, readme_file)` - *Verify the documentation triad's public leg: README.md lists every principle (PRINCIPLE-017).*
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
@@ -230,7 +232,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2580` lines (`141594` bytes)
+**Size**: `2619` lines (`143857` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -272,6 +274,10 @@
   - Method `.test_a_prose_mention_is_not_the_tree_heading()`
   - Method `.test_quick_reference_is_checked_by_structure_not_words()`
   - Method `.test_the_adopter_template_fails_unfilled_and_passes_filled()`
+- `class TestGeneratedReadmeTable` - *PRINCIPLE-005 R4 / PRINCIPLE-017 R4: README's principle table is generated (ADR-076).*
+  - Method `.test_table_groups_by_phase_and_escapes_cells()`
+  - Method `.test_only_the_block_between_markers_is_rewritten()`
+  - Method `.test_this_readme_table_is_generated_and_fresh()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
   - Method `.test_consecutive_ids_pass()`

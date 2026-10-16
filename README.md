@@ -140,46 +140,47 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 
 The principles are strictly organized across **5 chronological execution phases**:
 
+<!-- principles:begin (generated from GUIDELINES.md by scripts/sync_principles.py; do not edit) -->
 ### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
-| Principle | Title | Core Concept |
+| Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-000** | Meta-Principle Integrity & Mutual Alignment | Every rule binds; conflicts follow R6 order; rule edits re-check every citing principle; gaming a gate is a violation; quality doubts go to the user. |
-| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,600 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
-| **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase gate (Phase 4 passes before delivery); Track A/B/C computed by `--track`; urgency never skips gates. |
-| **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness & call-site check; manifest dependency grounding; platform parity; strict AST gate. |
-| **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Bounded ledger (`task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first retrieval. |
+| **PRINCIPLE-001** | Progressive Rule Disclosure & Governance Frugality | Pre-Flight checklist before the first Track C edit; Post-Flight checklist before any Track B or C commit; report only failed items (R8). |
+| **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering & Attentional Priming | Track via `disruption_recovery.py --track` (A none, B docs/comments but not rule files, C rest); urgency alone never skips P018 gates (R5). |
+| **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination Invariant | Read-before-write slice freshness; `git grep -w -e` call-site check; deps only if declared; platform parity; ask on intent ambiguity; strict AST syntax gate. |
+| **PRINCIPLE-004** | Attentional Drift Prevention & Compaction Resilience | Plan = latest `[1/` Phase 2 `--desc` in `task_ledger.json`; cold start `--resume`; never re-ask recorded answers; ADR before commit; reads/output <=100 lines. |
 
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
-| Principle | Title | Core Concept |
+| Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & README Sync | Self-describing repo; 30s cold-start orientation (<20k chars); material surface sync; executable command parity; whole-tree drift shield. |
-| **PRINCIPLE-006** | Incremental Checkpointing & Disruption Recovery | Zero progress loss from power outages; micro-milestone commits; disruption CLI (`scripts/disruption_recovery.py`); explicit micro-staging. |
-| **PRINCIPLE-007** | Pre-Flight Impact & Quality Checklist | Track C gate: why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing quality. |
-| **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Dual-pillar decomposition: top-down plan, bottom-up execution, bounded milestones ($2 \le M \le 6$), and leaf verifiability. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
+| **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Incremental atomic micro-commits; pre-flight disruption audit; ledger CLI `scripts/disruption_recovery.py`; explicit micro-staging. |
+| **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C pre-edit gate: why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, reversibility. |
+| **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable. |
 
 ### 🏗️ Phase 3: Architecture & Lean Implementation
-| Principle | Title | Core Concept |
+| Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-009** | Modularity & Pluggable Architecture | 4-layer architecture (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Algorithmic stream efficiency ($O(1)$ memory); non-blocking I/O; subprocess timeout gate; batch write coalescing; sub-second tests (<1s). |
-| **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Pure-stdlib clone-and-run; auto-init; mode transparency; cross-platform parity; deterministic exit codes. |
-| **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Prompt cache alignment (>=80% hits); bounded diffs; terse schema generation; runaway circuit breakers; lean code. |
+| **PRINCIPLE-009** | Modularity & Pluggable Architecture | 4 layers (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | O(1)-memory streaming; non-blocking event loops; subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms `--help`); <1s unit test tier. |
+| **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes (0/1/2); remediation triad. |
+| **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Prompt cache prefix alignment (>=80% hits); bounded tool output & diffs; terse schema output; token circuit breakers; lean syntactic density. |
 
 ### 🛡️ Phase 4: Operational Verification & Resilience
-| Principle | Title | Core Concept |
+| Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-013** | Crash Resilience & State Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **PRINCIPLE-014** | Automated Test Verification (Regression Shield) | 100% test pass gate (<1s unit tier, <5s integration tier); test sanctity; RAII fixture reversion; anti-tautology; negative paths. |
-| **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding; portable process teardown; stdin parity; chaos perturbation. |
+| **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | Atomic writes: flush + os.fsync + retried os.replace + parent-dir fsync; advisory locking on read-modify-write; .bak shadow backups; schema migration; signal-drain flush; read-only fallback. |
+| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate (<1s unit tier, <5s integration tier); test sanctity invariant (never weaken); RAII fixture reversion; anti-tautological observable contracts; hostile & negative path coverage; reachability shield (`scripts/check_reachability.py`). |
+| **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding (GUI/CLI/web/API) via `scripts/dogfood.py`; portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
-| Principle | Title | Core Concept |
+| Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-016** | AI Knowledge Base & Continuous Sync | Modular `knowledge/` sync; atomic code-doc pairing; append-only ADRs; AST freshness gate; link shield. |
-| **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Multi-IDE rule sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
-| **PRINCIPLE-018** | Automatic Git Workflow | Conventional Commits; explicit staging (zero blind add); pre-commit triad; adaptive push. |
-| **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; ignore-list baseline; pre-commit secret scan; rotate-not-revert. |
-
+| **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
+| **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (P001); schema compliance; freshness test gate; Tier 1B domain rules injection. |
+| **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (feat\|fix\|refactor\|docs\|chore\|test\|perf\|build\|ci) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil. |
+| **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
+<!-- principles:end -->
 ---
 
 ## ⚡ Disruption Recovery & Power-Loss Protection
