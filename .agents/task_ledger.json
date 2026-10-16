@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p019-pass1",
+    "task_id": "p008-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189153.3508532,
-    "completed_at": 1792189167.2432747
+    "updated_at": 1792189217.6729498,
+    "completed_at": 1792189231.6050363
   },
   "checkpoints": [
-    {
-      "task_id": "p016-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P016",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188597.9024246,
-      "timestamp_str": "2026-10-17 01:09:57"
-    },
-    {
-      "task_id": "p016-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] rewrite P016 R1-R6 (which doc per change, ADR immutable once committed + register-gate ID fix exception, version key per data_models, P004 R3 slices); make services.md/state_and_ui.md/data_models.md describe AIKit and fix their stale principle numbers; ADR-089",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188629.5154064,
-      "timestamp_str": "2026-10-17 01:10:29",
-      "impact_assessment": {
-        "why": "R2 names no doc per change; R3 has no moment; R5 contradicts ledger 'version'; three knowledge docs are stale templates citing wrong principles",
-        "benefits": "one reading; AIKit's knowledge base truthful",
-        "risks": "contract: rule text and docs only; dependency: none; concurrency: none; state: none",
-        "mitigation": "link gate; pins; cross-principle ADR line"
-      }
-    },
-    {
-      "task_id": "p016-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188629.6439807,
-      "timestamp_str": "2026-10-17 01:10:29"
-    },
-    {
-      "task_id": "p016-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188733.5179489,
-      "timestamp_str": "2026-10-17 01:12:13"
-    },
-    {
-      "task_id": "p016-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p016-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792188747.421399,
-      "timestamp_str": "2026-10-17 01:12:27"
-    },
     {
       "task_id": "p017-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189167.2432766,
       "timestamp_str": "2026-10-17 01:19:27"
+    },
+    {
+      "task_id": "p008-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: scenario test P008",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189200.172847,
+      "timestamp_str": "2026-10-17 01:20:00"
+    },
+    {
+      "task_id": "p008-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P008 pass 2: define nesting levels (parent = 0, max 3), milestone may span more than one layer only with a stated reason, a revision past 6 milestones splits the rest into a new task; ADR-093",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189200.320672,
+      "timestamp_str": "2026-10-17 01:20:00",
+      "impact_assessment": {
+        "why": "scenarios gave two answers: nesting count origin, three-layer milestone, re-plan to M'>6",
+        "benefits": "one answer per scenario",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "pins; cross-principle ADR line"
+      }
+    },
+    {
+      "task_id": "p008-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189200.4476323,
+      "timestamp_str": "2026-10-17 01:20:00"
+    },
+    {
+      "task_id": "p008-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189217.6729498,
+      "timestamp_str": "2026-10-17 01:20:17"
+    },
+    {
+      "task_id": "p008-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p008-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189231.6050372,
+      "timestamp_str": "2026-10-17 01:20:31"
     }
   ]
 }

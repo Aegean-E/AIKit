@@ -1192,3 +1192,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: R2 lists exactly the shipped baseline, and a unit test checks `.gitignore` holds every listed pattern. The Concept states the mechanism instead of restating the Problem. R4 sets a redaction format (first 4 characters then `***`); R5 names `# aikit:allow-secret` and the two allowlist sets and requires a commit message saying why; R6 makes the agent tell the user to rotate first; R7 is decidable. `parse_principles` now rejects any numbered rule without an audience tag (PRINCIPLE-017 R1, PRINCIPLE-000 R7), so every principle added from here on carries one.
 - **Consequences**: All 20 principles have been rewritten once; the second pass follows.
 - Cross-principle check: PRINCIPLE-000 (R7 audience tags now enforced; no conflict), PRINCIPLE-011 (R3 `os.getenv`, R6 failure message; no conflict), PRINCIPLE-018 (R3 lists the scan as a gate; no conflict).
+
+### ADR-093: PRINCIPLE-008 Second Pass - Scenario Gaps Closed
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Running three scenarios through the ADR-081 text gave two answers each: whether "nested more than 3 levels deep" counts the user-facing agent as level 0 or 1; whether a milestone may change three layers when "its plan entry states why it must change two"; and what R5's re-plan does when the revised plan needs more than R3's six milestones.
+- **Decision**: The user-facing agent is level 0 and no sub-agent runs deeper than level 3. A milestone may change more than one layer when its plan entry says why. A revision that would exceed six milestones moves the milestones after the current one into a separate task with its own plan.
+- **Consequences**: Pinned in `TestRewrittenPrincipleWording`; the new pins fail on the previous text.
+- Cross-principle check: PRINCIPLE-003 (no conflict), PRINCIPLE-004 (R1 plan revisions; no conflict), PRINCIPLE-006 (R1 tags stay within 2..6; no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-009 (layers; no conflict).

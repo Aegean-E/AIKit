@@ -1121,7 +1121,10 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
         "PRINCIPLE-008": {
             "rules": 6,
             "present": [
-                "sub-agents MUST NOT be nested more than 3 levels deep",
+                "the agent the user talks to is level 0",
+                "no sub-agent MAY run at a level deeper than 3",
+                "when it must change more than one layer, its plan entry states why",
+                "When M' would exceed 6, the milestones after the current one become a separate task",
                 "no milestone may use a class, function, flag or file that a later milestone creates",
                 "When the decomposition yields more than 6, the agent MUST split the work into separate tasks",
                 "A milestone changes one PRINCIPLE-009 layer together with its tests and documentation",
