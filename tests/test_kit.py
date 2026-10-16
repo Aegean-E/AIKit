@@ -125,6 +125,7 @@ from scripts.update_knowledge_base import (
     audit_readme,
     audit_adr_register,
     audit_lazy_code,
+    audit_architecture,
     parse_readme_tree,
 )
 
@@ -721,6 +722,26 @@ class TestPrinciple007Tooling(unittest.TestCase):
         self.assertEqual(audit_lazy_code(source, "ok.py"), [])
 
 
+class TestArchitectureGate(unittest.TestCase):
+    """PRINCIPLE-009's checkable parts (ADR-082)."""
+
+    def test_junk_drawers_fat_roles_and_cycles_fail(self):
+        modules = {"pkg.a": "import pkg.b", "pkg.b": "from pkg.a import x", "pkg.utils": "",
+                   "m": "from typing import Protocol\nclass R(Protocol):\n    pass\n",
+                   "n": "import abc\nclass Big(abc.ABC):\n" + "".join(f"    def f{i}(self): ...\n" for i in range(6))}
+        self.assertEqual(sorted(audit_architecture(modules)), sorted([
+            "pkg.utils: 'utils' is a junk-drawer module name; name it after what it holds",
+            "m: role 'R' declares 0 methods; a role declares 1 to 5",
+            "n: role 'Big' declares 6 methods; a role declares 1 to 5",
+            "import cycle: pkg.a -> pkg.b -> pkg.a",
+        ]))
+
+    def test_focused_names_narrow_roles_and_one_way_imports_pass(self):
+        modules = {"app.date_parsing": "", "app.service": "import app.domain",
+                   "app.domain": "from typing import Protocol\nclass Store(Protocol):\n    def get(self) -> str: ...\n"}
+        self.assertEqual(audit_architecture(modules), [])
+
+
 class TestAdrRegister(unittest.TestCase):
     """PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069)."""
 
@@ -1045,6 +1066,21 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             ],
             "gone": ["non-trivial", "Target a bounded", "type(task)", "back to the parent task ledger",
                      "update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks"],
+        },
+        "PRINCIPLE-009": {
+            "rules": 5,
+            "present": [
+                "A *pluggable boundary* is a role with two or more implementations",
+                "The layers MAY share one module of at most 300 lines",
+                "No module, at a boundary or not, MAY be named `utils`",
+                "with 1 to 5 methods",
+                "never by an `if`/`elif` chain on the name",
+                "a constructor parameter that defaults to `None`",
+                "Code MUST NOT assign to another module's or object's `_private` attribute",
+                "fails on a junk-drawer module name, a role outside 1 to 5 methods and an import cycle",
+            ],
+            "gone": ["Anti-Junk-Drawer Invariant", "100% of the declared contract", "e.g. `CliParser`",
+                     "date_utils.py"],
         },
     }
 

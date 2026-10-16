@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `39`
-- **Total Functions / Methods**: `109`
-- **Total Source Lines**: `7295`
+- **Total Classes**: `40`
+- **Total Functions / Methods**: `112`
+- **Total Source Lines**: `7406`
 
 ---
 
@@ -146,7 +146,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `744` lines (`31529` bytes)
+**Size**: `819` lines (`35163` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -163,6 +163,9 @@
 - `def _names(nodes)` - *Bare names of decorators or base classes (`abc.abstractmethod` -> `abstractmethod`).*
 - `def audit_lazy_code(source, rel)` - *PRINCIPLE-007 R3 as a gate: a `TODO`/`FIXME`/`XXX`/`HACK` comment marker, a `# type: ignore`*
 - `def _is_stub(fn)` - *A body (after any docstring) that is only `pass`, `...` or `raise NotImplementedError`.*
+- `def audit_architecture(modules)` - *The parts of PRINCIPLE-009 every module can be checked against: no junk-drawer module name*
+- `def check_architecture(root)` - *`audit_architecture` over every Python file the codebase map covers.*
+- `def report_architecture(errors)` - *Print architecture findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
 - `def check_lazy_code(root)` - *`audit_lazy_code` over every Python file the codebase map covers.*
 - `def report_lazy_code(errors)` - *Print lazy-code findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
 - `def quick_reference_errors(readme)` - *The structure PRINCIPLE-005 R1 states, not just its words: a heading, then inside its section*
@@ -239,7 +242,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2889` lines (`158750` bytes)
+**Size**: `2925` lines (`160776` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -290,6 +293,9 @@
   - Method `.test_only_the_first_plan_checkpoint_is_checked()`
   - Method `.test_lazy_code_markers_stubs_and_unnamed_suppressions_fail()`
   - Method `.test_protocols_abstract_methods_and_named_suppressions_pass()`
+- `class TestArchitectureGate` - *PRINCIPLE-009's checkable parts (ADR-082).*
+  - Method `.test_junk_drawers_fat_roles_and_cycles_fail()`
+  - Method `.test_focused_names_narrow_roles_and_one_way_imports_pass()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
   - Method `.test_consecutive_ids_pass()`

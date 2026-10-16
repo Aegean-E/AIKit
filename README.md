@@ -27,8 +27,8 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Cross-Principle Check Set** | `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>` | Principles a rule change must be checked against (PRINCIPLE-000 R3) |
-| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map; exits 1 on a syntax error (Python 3.10 grammar), README drift, an ADR ID out of order, or unfinished code (PRINCIPLE-007 R3) |
-| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, or unfinished code (PRINCIPLE-007 R3) |
+| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map; exits 1 on a syntax error (Python 3.10 grammar), README drift, an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or an architecture violation (PRINCIPLE-009) |
+| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or an architecture violation (PRINCIPLE-009) |
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase |
@@ -161,7 +161,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🏗️ Phase 3: Architecture & Lean Implementation
 | Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-009** | Modularity & Pluggable Architecture | 4 layers (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs. |
+| **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
 | **PRINCIPLE-010** | Performance & Resource Optimization | O(1)-memory streaming; non-blocking event loops; subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms `--help`); <1s unit test tier. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes (0/1/2); remediation triad. |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Prompt cache prefix alignment (>=80% hits); bounded tool output & diffs; terse schema output; token circuit breakers; lean syntactic density. |

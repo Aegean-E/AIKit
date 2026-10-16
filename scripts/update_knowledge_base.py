@@ -503,6 +503,77 @@ def _is_stub(fn: ast.AST) -> bool:
     return False
 
 
+JUNK_DRAWER_NAMES = {"utils", "util", "helpers", "helper", "common", "misc"}
+ROLE_METHOD_LIMIT = 5
+
+
+def audit_architecture(modules: Dict[str, str]) -> List[str]:
+    """
+    The parts of PRINCIPLE-009 every module can be checked against: no junk-drawer module name
+    (R1), a Protocol or ABC declares 1 to 5 methods (R2), and no import cycle between the
+    repository's own modules (R5). `modules` maps a module's dotted name to its source.
+    """
+    errors: List[str] = []
+    graph: Dict[str, set] = {}
+    by_leaf = {m.rsplit(".", 1)[-1]: m for m in modules}
+    for name, source in modules.items():
+        leaf = name.rsplit(".", 1)[-1]
+        if leaf in JUNK_DRAWER_NAMES:
+            errors.append(f"{name}: '{leaf}' is a junk-drawer module name; name it after what it holds")
+        try:
+            tree = parse_source(source, name)
+        except SyntaxError:
+            continue
+        imported = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported |= {a.name for a in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                imported.add(node.module)
+            elif isinstance(node, ast.ClassDef) and _names(node.bases) & _EXEMPT_BASES:
+                methods = [b for b in node.body if isinstance(b, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                if not 1 <= len(methods) <= ROLE_METHOD_LIMIT:
+                    errors.append(f"{name}: role '{node.name}' declares {len(methods)} methods; "
+                                  f"a role declares 1 to {ROLE_METHOD_LIMIT}")
+        # A dependency is any repository module named by an import, by full or last dotted name.
+        graph[name] = {m for i in imported for m in (i if i in modules else by_leaf.get(i.rsplit(".", 1)[-1]),)
+                       if m and m != name}
+    seen: Dict[str, int] = {}
+    def visit(node: str, path: List[str]) -> None:
+        seen[node] = 1
+        for nxt in sorted(graph.get(node, ())):
+            if seen.get(nxt) == 1:
+                cycle = path[path.index(nxt):] + [nxt]
+                errors.append(f"import cycle: {' -> '.join(cycle)}")
+            elif nxt not in seen:
+                visit(nxt, path + [nxt])
+        seen[node] = 2
+    for start in sorted(graph):
+        if start not in seen:
+            visit(start, [start])
+    return errors
+
+
+def check_architecture(root: Path = ROOT_DIR) -> List[str]:
+    """`audit_architecture` over every Python file the codebase map covers."""
+    modules = {path.relative_to(root).with_suffix("").as_posix().replace("/", "."): path.read_text(encoding="utf-8")
+               for path in find_python_files(root)}
+    return audit_architecture(modules)
+
+
+def report_architecture(errors: List[str]) -> bool:
+    """Print architecture findings with the remediation triad (PRINCIPLE-011 R6); True when clean."""
+    if not errors:
+        print("[OK] No junk-drawer module, oversized role or import cycle (PRINCIPLE-009)")
+        return True
+    print(f"[FAIL] Architecture ({len(errors)}):")
+    for error in errors[:20]:
+        print(f"   - {error}")
+    print("   Why: these couple modules that PRINCIPLE-009 keeps apart (R1, R2, R5).")
+    print("   Fix: rename the module after what it holds, split the role, or break the cycle.")
+    return False
+
+
 def check_lazy_code(root: Path = ROOT_DIR) -> List[str]:
     """`audit_lazy_code` over every Python file the codebase map covers."""
     errors: List[str] = []
@@ -673,7 +744,9 @@ Options:
               passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
               commands), that ADR IDs in knowledge/decisions.md are unique and
               consecutive, and that no Python file holds a TODO/FIXME marker, a stub or
-              an unnamed suppression (PRINCIPLE-007 R3); exits 1 on any of them
+              an unnamed suppression (PRINCIPLE-007 R3), and no module has a junk-drawer
+              name, a role of 0 or more than 5 methods, or an import cycle
+              (PRINCIPLE-009); exits 1 on any of them
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 
@@ -706,7 +779,8 @@ if __name__ == "__main__":
             else:
                 print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
             readme_ok = report_readme(check_readme())
-            readme_ok = report_lazy_code(check_lazy_code()) and readme_ok  # report both, never short-circuit
+            readme_ok = report_lazy_code(check_lazy_code()) and readme_ok  # report all, never short-circuit
+            readme_ok = report_architecture(check_architecture()) and readme_ok
             adr_errors = audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")) \
                 if (KNOWLEDGE_DIR / "decisions.md").exists() else []
             for adr_error in adr_errors:
@@ -739,6 +813,7 @@ if __name__ == "__main__":
         sys.exit(1)
     readme_ok = report_readme(check_readme())
     lazy_ok = report_lazy_code(check_lazy_code())
+    lazy_ok = report_architecture(check_architecture()) and lazy_ok
     if not (readme_ok and lazy_ok) and not is_lenient:
         sys.exit(1)
 
