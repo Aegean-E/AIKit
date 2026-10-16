@@ -173,11 +173,12 @@ def git_output(args: List[str]) -> Optional[str]:
     return res.stdout if res.returncode == 0 else None
 
 
-def scan_staged() -> List[Tuple[str, int, str, str]]:
+def scan_staged(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
     """Scan staged content only - the surface about to become permanent history."""
     diff = git_output(["diff", "--cached", "--unified=0"])
     if diff is None:
-        print("[WARN] git unavailable or not a worktree; staged scan skipped.")
+        if gaps is not None:
+            gaps.append("git diff --cached failed, so the staged changes were not scanned")
         return []
     findings = []
     current = "<staged>"
@@ -192,9 +193,11 @@ def scan_staged() -> List[Tuple[str, int, str, str]]:
     return findings
 
 
-def iter_tracked_files() -> Iterable[Path]:
+def iter_tracked_files(gaps: Optional[List[str]] = None) -> Iterable[Path]:
     listing = git_output(["ls-files"])
     if listing is None:
+        if gaps is not None:
+            gaps.append("git ls-files failed, so no tracked file was scanned")
         return []
     for rel in listing.splitlines():
         rel = rel.strip()
@@ -205,18 +208,19 @@ def iter_tracked_files() -> Iterable[Path]:
             yield path
 
 
-def scan_all() -> List[Tuple[str, int, str, str]]:
+def scan_all(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
     findings = []
-    for path in iter_tracked_files():
+    for path in iter_tracked_files(gaps):
         try:
             findings.extend(scan_text(str(path.relative_to(ROOT_DIR)),
                                       path.read_text(encoding="utf-8", errors="replace")))
-        except OSError:
-            continue
+        except OSError as e:
+            if gaps is not None:
+                gaps.append(f"{path.relative_to(ROOT_DIR)} could not be read: {e}")
     return findings
 
 
-def scan_agent_memory() -> List[Tuple[str, int, str, str]]:
+def scan_agent_memory(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
     """
     PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact
     fields are committed, so a credential quoted while explaining reasoning becomes permanent.
@@ -228,8 +232,9 @@ def scan_agent_memory() -> List[Tuple[str, int, str, str]]:
         try:
             findings.extend(scan_text(f"agent-memory:{path.name}",
                                       path.read_text(encoding="utf-8", errors="replace")))
-        except OSError:
-            continue
+        except OSError as e:
+            if gaps is not None:
+                gaps.append(f"agent memory {path.name} could not be read: {e}")
     return findings
 
 
@@ -240,6 +245,7 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
     print("SECRET & SENSITIVE DATA SCAN (PRINCIPLE-019)")
     print("=" * 58)
 
+    gaps: List[str] = []
     if mode == "file" and target is not None:
         if not target.exists():
             print(f"[FAIL] No such file: {target}", file=sys.stderr)
@@ -248,18 +254,31 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
             label = str(target.resolve().relative_to(ROOT_DIR))
         except ValueError:
             label = target.name
-        findings = scan_text(label, target.read_text(encoding="utf-8", errors="replace"))
+        try:
+            findings = scan_text(label, target.read_text(encoding="utf-8", errors="replace"))
+        except OSError as e:
+            findings, gaps = [], [f"{label} could not be read: {e}"]
         scope = label
     elif mode == "all":
-        findings = scan_all()
+        findings = scan_all(gaps)
         scope = "all tracked text files"
     else:
-        findings = scan_staged()
+        findings = scan_staged(gaps)
         scope = "staged changes"
 
-    memory_findings = scan_agent_memory()
-    findings.extend(memory_findings)
+    findings.extend(scan_agent_memory(gaps))
     print(f"Scope: {scope} + agent working memory")
+
+    # PRINCIPLE-000 R5: a scan that skipped a surface must not report clean. It used to warn,
+    # print [OK] and exit 0 when git failed, so the pre-commit gate passed having scanned nothing.
+    if gaps:
+        print(f"[FAIL] Scan incomplete: {len(gaps)} surface(s) not scanned:")
+        for gap in gaps[:12]:
+            print(f"   - {gap}")
+        print("   Why: an unscanned surface can hold a credential; 'clean' would be unproven.")
+        print("   Fix: run inside the git worktree with `git` on PATH, or fix the file's permissions.")
+        print("=" * 58)
+        return 1
 
     if not findings:
         print("[OK] No credential patterns or high-entropy literals detected.")

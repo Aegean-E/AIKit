@@ -1625,6 +1625,20 @@ class TestSecretHygieneScanner(unittest.TestCase):
     strings - no live secret appears in this repository.
     """
 
+    def test_a_scan_that_skipped_a_surface_never_reports_clean(self):
+        # Red-green pin (PRINCIPLE-000 R5): with git failing, --staged and --all printed [OK] and
+        # exited 0 having scanned nothing, so the pre-commit gate passed blind. git_output is
+        # replaced, so no process is spawned.
+        import scripts.check_secrets as secrets_module
+        original = secrets_module.git_output
+        secrets_module.git_output = lambda args: None
+        self.addCleanup(setattr, secrets_module, "git_output", original)
+        for mode in ("staged", "all"):
+            with self.subTest(mode=mode), contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(run_scan(mode=mode), 1)
+                self.assertIn("[FAIL] Scan incomplete", out.getvalue())
+                self.assertNotIn("[OK]", out.getvalue())
+
     def test_detects_known_credential_shapes(self):
         cases = {
             "AWS access key id": 'AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7NOTREAL"',  # aikit:allow-secret

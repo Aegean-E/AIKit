@@ -216,8 +216,9 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_head
             bak_path = file_path.with_suffix(file_path.suffix + ".bak")
             try:
                 shutil.copy2(file_path, bak_path)
-            except OSError:
-                pass
+            except OSError as e:
+                # The write still proceeds, but losing the PRINCIPLE-013 shadow copy is reported.
+                sys.stderr.write(f"[WARN] Shadow backup {bak_path.name} not written: {e}\n")
 
         # Windows lock-contention retry loop on os.replace
         for attempt in range(max_retries):
@@ -260,8 +261,9 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
         try:
             os.replace(path, corrupt_path)
             sys.stderr.write(f"[WARN] Corrupted task ledger quarantined to {corrupt_name}: {e}\n")
-        except OSError:
-            pass
+        except OSError as move_error:
+            sys.stderr.write(f"[WARN] Corrupted task ledger {path.name} could not be quarantined "
+                             f"({move_error}); it will be read again on the next load.\n")
 
         # Attempt recovery from shadow backup (.bak) before falling back to empty state
         bak_path = path.with_suffix(path.suffix + ".bak")
