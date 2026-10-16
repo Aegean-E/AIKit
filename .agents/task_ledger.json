@@ -1,57 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p000-pass3",
+    "task_id": "p005-pass3",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792185712.5304668,
-    "completed_at": 1792185733.5758219
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792185931.0257554
   },
   "checkpoints": [
-    {
-      "task_id": "p000-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] ADR register gate (unique, consecutive IDs) in update_knowledge_base.py; renumber my colliding ADR-064/065 to 067/068; [2/2] rewrite P000 R1-R7 falsifiably (conflict definition, R6 total order + tie rule + P001 R1 boundary, R3 grep + ADR Cross-principle line, R4 ask-don't-deviate, R5 closed list, R7 word list), capsule, README row, pins, ADR-069",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184968.7748466,
-      "timestamp_str": "2026-10-17 00:09:28",
-      "impact_assessment": {
-        "why": "P000 fails its own R7; R4 and capsule license skipping rules; R6 partial order; ADR IDs collided"
-      }
-    },
-    {
-      "task_id": "p000-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184968.8977349,
-      "timestamp_str": "2026-10-17 00:09:28"
-    },
-    {
-      "task_id": "p000-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185034.5530431,
-      "timestamp_str": "2026-10-17 00:10:34"
-    },
-    {
-      "task_id": "p000-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185080.668038,
-      "timestamp_str": "2026-10-17 00:11:20"
-    },
     {
       "task_id": "p000-pass1",
       "phase": "in_progress",
@@ -214,6 +170,49 @@
       "status": "completed",
       "timestamp": 1792185733.5758235,
       "timestamp_str": "2026-10-17 00:22:13"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: audit history against P005 R2; --citing PRINCIPLE-005",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185832.8214955,
+      "timestamp_str": "2026-10-17 00:23:52"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] fix README rows + --help made stale by 0999588/279cac2/7256be3/d67b640; [2/2] P005 R2 trigger covers changed checks/writes/output/exit conditions of a documented command, pairing README row and --help; pins; ADR-075 with cross-principle line",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185881.6623952,
+      "timestamp_str": "2026-10-17 00:24:41",
+      "impact_assessment": {
+        "why": "history audit: 4 commits changed documented commands' behaviour without README; R2 trigger did not name that case"
+      }
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185881.7750077,
+      "timestamp_str": "2026-10-17 00:24:41"
+    },
+    {
+      "task_id": "p005-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185931.0257554,
+      "timestamp_str": "2026-10-17 00:25:31"
     }
   ]
 }

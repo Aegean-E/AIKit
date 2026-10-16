@@ -580,7 +580,9 @@ Usage:
   python scripts/sync_principles.py [OPTIONS]
 
 Options:
-  --check          Verify that all guideline targets are fresh without modifying files (exits 1 on drift)
+  --check          Verify, without writing, that all guideline targets are fresh and that every principle
+                   changed since the last commit has an ADR naming its --citing set (PRINCIPLE-000 R3);
+                   exits 1 on either
   --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
   --involved TEXT  List the principles TEXT involves (PRINCIPLE-001 R3); must be the first argument,
                    and every later argument is TEXT: paths to change, commands to run, failing output

@@ -24,11 +24,11 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
-| **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
+| **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Cross-Principle Check Set** | `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>` | Principles a rule change must be checked against (PRINCIPLE-000 R3) |
-| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
-| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
+| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map; exits 1 on a syntax error (Python 3.10 grammar), README drift or an ADR ID out of order |
+| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005) or an ADR ID out of order |
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase |
@@ -36,7 +36,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
-| **Secret Scan Gate** | `python scripts/check_secrets.py --staged` | No credential patterns in staged diff or ledger (PRINCIPLE-019) |
+| **Secret Scan Gate** | `python scripts/check_secrets.py --staged` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <100ms, writing nothing |

@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `34`
 - **Total Functions / Methods**: `100`
-- **Total Source Lines**: `6746`
+- **Total Source Lines**: `6756`
 
 ---
 
@@ -35,7 +35,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `368` lines (`15619` bytes)
+**Size**: `368` lines (`15654` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -114,7 +114,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `670` lines (`32201` bytes)
+**Size**: `672` lines (`32342` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -143,7 +143,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `627` lines (`25609` bytes)
+**Size**: `635` lines (`26205` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*

@@ -616,11 +616,19 @@ if __name__ == "__main__":
         update_and_validate(strict=not is_lenient)
     except ValueError as gate_error:
         # PRINCIPLE-003 R7 halts here; PRINCIPLE-011 R6 forbids doing it with a raw traceback.
-        print(f"[AST GATE FAILED] {gate_error}", file=sys.stderr)
-        print("Why: a file that does not parse cannot be catalogued or trusted (PRINCIPLE-003 R7).",
-              file=sys.stderr)
-        print("Fix: correct the syntax error in the file named above, then re-run this script.",
-              file=sys.stderr)
+        # Each failure gets its own Why/Fix: an ADR-ID or link error used to be reported as a
+        # syntax error, sending the reader to a file that parses fine.
+        if "[PRINCIPLE-003" in str(gate_error):
+            print(f"[AST GATE FAILED] {gate_error}", file=sys.stderr)
+            print("Why: a file that does not parse cannot be catalogued or trusted (PRINCIPLE-003 R7).",
+                  file=sys.stderr)
+            print("Fix: correct the syntax error in the file named above, then re-run this script.",
+                  file=sys.stderr)
+        else:
+            print(f"[KNOWLEDGE GATE FAILED] {gate_error}", file=sys.stderr)
+            print("Why: the knowledge base is incomplete or out of order (PRINCIPLE-016).", file=sys.stderr)
+            print("Fix: add the missing document, repair the link or renumber the ADR named above, "
+                  "then re-run this script.", file=sys.stderr)
         sys.exit(1)
     if not report_readme(check_readme()) and not is_lenient:
         sys.exit(1)

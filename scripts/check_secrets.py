@@ -326,7 +326,7 @@ False positives:
   Add a '# aikit:allow-secret' pragma on the line, or extend ALLOWLIST_SUBSTRINGS.
 
 Exit codes:
-  0  clean    1  potential secret found    2  CLI argument misuse
+  0  clean    1  potential secret found, or a surface could not be scanned    2  CLI argument misuse
 """
 
 
