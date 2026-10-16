@@ -293,14 +293,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
     def test_principle_000_meta_principle_capsule(self):
-        # Enforces PRINCIPLE-000: verified invariant capsule with universal adherence, mutual alignment, impact audit, and code quality primacy
+        # Enforces PRINCIPLE-000: the capsule states the five meta-rules as mechanisms
         principles = parse_principles(SSOT_MD)
         p0 = next((p for p in principles if p["id"] == "PRINCIPLE-000"), None)
         self.assertIsNotNone(p0)
-        self.assertIn("universal adherence", p0["invariant"].lower())
-        self.assertIn("mutual alignment", p0["invariant"].lower())
-        self.assertIn("cross-principle impact audit", p0["invariant"].lower())
-        self.assertIn("code quality primacy", p0["invariant"].lower())
+        # Mechanisms, not labels (ADR-070).
+        for mechanism in ("every rule binds", "conflicts follow r6 order",
+                          "rule edits re-check every citing principle",
+                          "gaming a gate is a violation", "quality doubts go to the user"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, p0["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
         # Enforces PRINCIPLE-017: every generated Tier 1 target must be 100% in sync with the SSOT.
@@ -695,6 +697,69 @@ class TestPrinciple005Unambiguity(unittest.TestCase):
         self.assertNotIn("to reflect all changes", self.text)
         self.assertNotIn("reviewed every active principle", self.text)
         self.assertIn("Did every change listed in **PRINCIPLE-005** R2 update **README.md**", self.text)
+
+
+class TestPrinciple000Unambiguity(unittest.TestCase):
+    """PRINCIPLE-000 must pass its own R7: every meta-rule is decidable, none licenses skipping."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-000:"):cls.text.index("\n### PRINCIPLE-001:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+        cls.word_list = re.search(r"It MUST NOT use these words: ([^\n]*)", cls.rules).group(1)
+
+    def test_r7_word_list_is_the_hedge_list(self):
+        # One list, two readers: the rule agents obey and the tests that check every principle.
+        self.assertEqual(tuple(re.findall(r"`([^`]+)`", self.word_list)), TestPrinciple002Unambiguity.HEDGES)
+
+    def test_principle_000_obeys_its_own_r7(self):
+        # Red-green pin: P000 R2/R4 named no decidable condition ("systemic harmony", "degrades
+        # code quality") while R7 forbade exactly that.
+        body = self.section.replace(self.word_list, "")
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES if h in body]
+        self.assertEqual(found, [], f"PRINCIPLE-000 uses its own banned words: {found}")
+        for phrase in ("harmony", "appear in friction", "procedural formalism", "trumps", "craftsmanship, never"):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, self.section)
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 7, "PRINCIPLE-000 must keep rules R1-R7 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_every_meta_rule_is_decidable(self):
+        for definition in (
+            "an agent's own judgment that a rule does not fit is never one (R4)",
+            "Two rules *conflict* when, at the same step, obeying one requires an action the other forbids",
+            "report the conflict to the user in one line naming both rules",
+            "a line starting `Cross-principle check:`",
+            "The ADR's ID is read from the register, never recalled",
+            "Code quality never licenses skipping a rule",
+            "an assertion that cannot fail",
+            "the rule that cites the other rule wins",
+            "decided by PRINCIPLE-001 R1, not by this order",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_capsule_does_not_license_skipping_procedure(self):
+        # Red-green pin: "code quality primacy over procedural formalism" read, alone in Tier 1,
+        # as permission to skip checkpoints and gates (contradicting PRINCIPLE-002 R5).
+        capsule = re.search(r"- \*\*Invariant\*\*: ([^\n]*)", self.section).group(1)
+        self.assertNotIn("formalism", capsule)
+        self.assertIn("quality doubts go to the user", capsule)
+
+    def test_rule_changes_carry_a_cross_principle_check(self):
+        # R3 from ADR-070 on: every ADR whose title names a principle records the check.
+        decisions = (KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")
+        for number, title, body in re.findall(r"^### ADR-(\d+): ([^\n]*)\n(.*?)(?=^### ADR-|\Z)",
+                                              decisions, re.M | re.S):
+            if int(number) >= 70 and "PRINCIPLE-" in title:
+                with self.subTest(adr=number):
+                    self.assertIn("Cross-principle check:", body)
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):

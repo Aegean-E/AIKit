@@ -3,40 +3,12 @@
   "active_task": {
     "task_id": "p000-pass1",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792185034.5530431
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792185201.1277921,
+    "completed_at": 1792185221.2444012
   },
   "checkpoints": [
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "Phase 4 Verification: Run complete test suite and read-only gates for PRINCIPLE-000",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176558.2576773,
-      "timestamp_str": "2026-10-16 21:49:18"
-    },
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "Phase 5 Delivery: Stage, commit, and push PRINCIPLE-000 relocation",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792176626.7156353,
-      "timestamp_str": "2026-10-16 21:50:26"
-    },
-    {
-      "task_id": "p000-zeroth-law",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p000-zeroth-law' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792176662.9405003,
-      "timestamp_str": "2026-10-16 21:51:02"
-    },
     {
       "task_id": "p000-meta-enrichment",
       "phase": "in_progress",
@@ -216,6 +188,35 @@
       "status": "in_progress",
       "timestamp": 1792185034.5530431,
       "timestamp_str": "2026-10-17 00:10:34"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185080.668038,
+      "timestamp_str": "2026-10-17 00:11:20"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185201.1277921,
+      "timestamp_str": "2026-10-17 00:13:21"
+    },
+    {
+      "task_id": "p000-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p000-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792185221.2444024,
+      "timestamp_str": "2026-10-17 00:13:41"
     }
   ]
 }

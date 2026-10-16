@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `33`
+- **Total Classes**: `34`
 - **Total Functions / Methods**: `94`
-- **Total Source Lines**: `6476`
+- **Total Source Lines**: `6541`
 
 ---
 
@@ -223,7 +223,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2447` lines (`133134` bytes)
+**Size**: `2512` lines (`136870` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -278,6 +278,14 @@
   - Method `.test_rule_labels_are_the_ones_the_gate_checks()`
   - Method `.test_every_trigger_and_home_is_defined()`
   - Method `.test_checklists_match_the_rules()`
+- `class TestPrinciple000Unambiguity` - *PRINCIPLE-000 must pass its own R7: every meta-rule is decidable, none licenses skipping.*
+  - Method `.setUpClass()`
+  - Method `.test_r7_word_list_is_the_hedge_list()`
+  - Method `.test_principle_000_obeys_its_own_r7()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_every_meta_rule_is_decidable()`
+  - Method `.test_capsule_does_not_license_skipping_procedure()`
+  - Method `.test_rule_changes_carry_a_cross_principle_check()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

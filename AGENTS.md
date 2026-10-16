@@ -4,7 +4,7 @@
 > Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read the `### PRINCIPLE-NNN:` section of each principle `sync_principles.py --involved` lists; never the whole file unless asked.
 
 ## Core Principles
-- PRINCIPLE-000 Meta-Principle Integrity & Mutual Alignment: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
+- PRINCIPLE-000 Meta-Principle Integrity & Mutual Alignment: Every rule binds; conflicts follow R6 order; rule edits re-check every citing principle; gaming a gate is a violation; quality doubts go to the user.
 - PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Pre-Flight checklist before the first Track C edit; Post-Flight checklist before any Track B or C commit; report only failed items (R8).
 - PRINCIPLE-002 Lifecycle-Aligned Instruction Ordering & Attentional Priming: Track via `disruption_recovery.py --track` (A none, B docs/comments but not rule files, C rest); urgency alone never skips P018 gates (R5).
 - PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness; `git grep -w -e` call-site check; deps only if declared; platform parity; ask on intent ambiguity; strict AST syntax gate.
