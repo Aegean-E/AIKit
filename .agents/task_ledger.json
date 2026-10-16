@@ -4,19 +4,11 @@
     "task_id": "p000-meta-enrichment",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792183034.9080987
+    "status": "completed",
+    "updated_at": 1792183034.9080987,
+    "completed_at": 1792183138.2418053
   },
   "checkpoints": [
-    {
-      "task_id": "p005-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p005-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792174520.2975283,
-      "timestamp_str": "2026-10-16 21:15:20"
-    },
     {
       "task_id": "meta-principle-020",
       "phase": "in_progress",
@@ -222,6 +214,15 @@
       "status": "in_progress",
       "timestamp": 1792183034.9080987,
       "timestamp_str": "2026-10-16 23:37:14"
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p000-meta-enrichment' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792183138.2418072,
+      "timestamp_str": "2026-10-16 23:38:58"
     }
   ]
 }
