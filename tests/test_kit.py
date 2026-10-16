@@ -736,6 +736,15 @@ class TestArchitectureGate(unittest.TestCase):
             "import cycle: pkg.a -> pkg.b -> pkg.a",
         ]))
 
+    def test_untimed_subprocess_and_unmanaged_open_fail(self):
+        # PRINCIPLE-010 R3/R4 (ADR-083): both rules existed with nothing checking them.
+        source = ("import subprocess\nsubprocess.run(['x'])\nf = open('a')\n"
+                  "with open('b') as g:\n    pass\nsubprocess.check_output(['y'], timeout=5)\n")
+        self.assertEqual(audit_architecture({"m": source}), [
+            "m:2: subprocess.run without timeout= (PRINCIPLE-010 R3)",
+            "m:3: open() outside a with statement (PRINCIPLE-010 R4)",
+        ])
+
     def test_focused_names_narrow_roles_and_one_way_imports_pass(self):
         modules = {"app.date_parsing": "", "app.service": "import app.domain",
                    "app.domain": "from typing import Protocol\nclass Store(Protocol):\n    def get(self) -> str: ...\n"}
@@ -1082,6 +1091,22 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["Anti-Junk-Drawer Invariant", "100% of the declared contract", "e.g. `CliParser`",
                      "date_utils.py"],
         },
+        "PRINCIPLE-010": {
+            "rules": 7,
+            "present": [
+                "timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms",
+                "A membership test inside a loop MUST use a `set` or `dict`",
+                "Input whose size the program does not control",
+                "only when that step, measured single-threaded, takes 200ms or more",
+                "a pool of at most `os.cpu_count()` workers",
+                "fails on a blocking subprocess call without `timeout=` and on `open()` outside a `with`",
+                "one fsync per file written is PRINCIPLE-013 R1, not a violation",
+                "in under 200ms as a fresh process, interpreter start included",
+                "MUST state its before and after measurement",
+            ],
+            "gone": ["<100ms", "under 20ms", "genuinely", "High-frequency", "tight loops", "(`timeout=30`)",
+                     "without measurable profiling justification"],
+        },
     }
 
     @classmethod
@@ -1093,7 +1118,11 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             section = self.sections[pid]
             rules = section[section.index("- **Rules**:"):]
             with self.subTest(pid=pid, check="banned words"):
-                self.assertEqual([h for h in TestPrinciple002Unambiguity.HEDGES if h in section], [])
+                # Whole words for alphabetic entries: "mentally" must not match "incrementally".
+                found = [h for h in TestPrinciple002Unambiguity.HEDGES
+                         if (re.search(rf"(?<![A-Za-z]){re.escape(h)}(?![A-Za-z])", section)
+                             if h[0].isalpha() else h in section)]
+                self.assertEqual(found, [])
             numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", rules, re.M)
             with self.subTest(pid=pid, check="rule count"):
                 self.assertEqual(len(numbered), spec["rules"], "rule numbers are cited elsewhere")

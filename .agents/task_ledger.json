@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p009-pass1",
+    "task_id": "p010-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792187720.7497976,
-    "completed_at": 1792187738.9953768
+    "updated_at": 1792187890.34411,
+    "completed_at": 1792187908.967357
   },
   "checkpoints": [
-    {
-      "task_id": "p006-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186540.0319324,
-      "timestamp_str": "2026-10-17 00:35:40"
-    },
-    {
-      "task_id": "p006-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186681.3552604,
-      "timestamp_str": "2026-10-17 00:38:01"
-    },
-    {
-      "task_id": "p006-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p006-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792186725.9110568,
-      "timestamp_str": "2026-10-17 00:38:45"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P007 and its enforcement",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186767.185154,
-      "timestamp_str": "2026-10-17 00:39:27"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] CLI requires full impact (4 fields, risks labelled contract/dependency/concurrency/state) on a task's first plan checkpoint; lazy-code gate in update_knowledge_base.py; tests; README/help; ADR-079; [2/2] rewrite P007 R1-R6 + capsule; pins; ADR-080",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186826.5331767,
-      "timestamp_str": "2026-10-17 00:40:26",
-      "impact_assessment": {
-        "why": "P007 duties were judgement calls; R6 ledger record skipped all session; R3 contradicts P000 R5",
-        "benefits": "every model records the same assessment; stubs and unnamed suppressions fail a gate",
-        "risks": "contract: --checkpoint exits 2 for a plan without impact, update_knowledge_base fails on lazy code; dependency: none, stdlib tokenize/ast; concurrency: none; state: ledger schema unchanged, impact_assessment already exists",
-        "mitigation": "enforce only on the first plan checkpoint so revisions stay light; exempt Protocol/abstract/overload bodies; red-green tests"
-      }
-    },
     {
       "task_id": "p007-pass1",
       "phase": "in_progress",
@@ -222,6 +167,61 @@
       "status": "completed",
       "timestamp": 1792187738.9953785,
       "timestamp_str": "2026-10-17 00:55:38"
+    },
+    {
+      "task_id": "p010-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P010",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187746.6046865,
+      "timestamp_str": "2026-10-17 00:55:46"
+    },
+    {
+      "task_id": "p010-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] gate subprocess calls without timeout and open() outside with (P010 R3/R4) in the per-module walk; one --help budget (200ms, rule = dogfood); one concurrency threshold (200ms); dogfood pool <= cpu_count; rewrite P010 R1-R7; ADR-083",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187792.800807,
+      "timestamp_str": "2026-10-17 00:56:32",
+      "impact_assessment": {
+        "why": "P010 has three pairs of numbers that disagree, undefined 'unbounded'/'high-frequency', R5 fsync wording clashes with P013 R1",
+        "benefits": "one number per limit; decidable parts gated for adopters",
+        "risks": "contract: update_knowledge_base exits 1 on new conditions, dogfood --help budget tightened 400->200ms; dependency: none; concurrency: dogfood pool capped at cpu_count; state: none",
+        "mitigation": "measured medians 47-71ms; AIKit passes; README/help updated"
+      }
+    },
+    {
+      "task_id": "p010-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187792.9380116,
+      "timestamp_str": "2026-10-17 00:56:32"
+    },
+    {
+      "task_id": "p010-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187890.34411,
+      "timestamp_str": "2026-10-17 00:58:10"
+    },
+    {
+      "task_id": "p010-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p010-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792187908.967358,
+      "timestamp_str": "2026-10-17 00:58:28"
     }
   ]
 }

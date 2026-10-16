@@ -309,7 +309,7 @@ def track_readonly_gates(jail: Path, log: List[str]) -> Tuple[bool, str]:
     # The gates are independent read-only processes, so they run concurrently: run one after
     # another they took ~1s and pushed the integration tier past its 5s budget (ADR-080).
     from concurrent.futures import ThreadPoolExecutor  # lazy: --help stays fast (PRINCIPLE-010)
-    with ThreadPoolExecutor(max_workers=len(gates)) as pool:
+    with ThreadPoolExecutor(max_workers=min(len(gates), os.cpu_count() or 1)) as pool:  # PRINCIPLE-010 R3
         results = list(pool.map(lambda gate: run_cli(gate[1], gate[2], jail), gates))
     for (name, script, args), (code, out, err) in zip(gates, results):
         label = f"{name} {' '.join(args)}".strip()
@@ -328,7 +328,7 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     Track 4: every entrypoint must answer --help safely and inside the PRINCIPLE-010 R5
     startup budget, measured as a real process rather than asserted.
     """
-    budget_ms = 400  # generous vs the 100ms target: this measures full interpreter start
+    budget_ms = 200  # PRINCIPLE-010 R5, measured as a fresh process; medians were 47-71ms (ADR-083)
     failures = []
     slowest = 0.0
     for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI):

@@ -505,13 +505,16 @@ def _is_stub(fn: ast.AST) -> bool:
 
 JUNK_DRAWER_NAMES = {"utils", "util", "helpers", "helper", "common", "misc"}
 ROLE_METHOD_LIMIT = 5
+SUBPROCESS_BLOCKING = {"run", "call", "check_call", "check_output"}
 
 
 def audit_architecture(modules: Dict[str, str]) -> List[str]:
     """
-    The parts of PRINCIPLE-009 every module can be checked against: no junk-drawer module name
-    (R1), a Protocol or ABC declares 1 to 5 methods (R2), and no import cycle between the
-    repository's own modules (R5). `modules` maps a module's dotted name to its source.
+    The parts of PRINCIPLE-009 and PRINCIPLE-010 every module can be checked against: no
+    junk-drawer module name (P009 R1), a Protocol or ABC declares 1 to 5 methods (P009 R2), no
+    import cycle between the repository's own modules (P009 R5), every blocking subprocess call
+    has a timeout (P010 R3), and `open()` runs only in a `with` statement (P010 R4).
+    `modules` maps a module's dotted name to its source.
     """
     errors: List[str] = []
     graph: Dict[str, set] = {}
@@ -525,7 +528,17 @@ def audit_architecture(modules: Dict[str, str]) -> List[str]:
         except SyntaxError:
             continue
         imported = set()
+        managed = {id(item.context_expr) for node in ast.walk(tree)
+                   if isinstance(node, (ast.With, ast.AsyncWith)) for item in node.items}
         for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                owner = getattr(getattr(func, "value", None), "id", "")
+                if (owner == "subprocess" and getattr(func, "attr", "") in SUBPROCESS_BLOCKING
+                        and not any(k.arg == "timeout" for k in node.keywords)):
+                    errors.append(f"{name}:{node.lineno}: subprocess.{func.attr} without timeout= (PRINCIPLE-010 R3)")
+                if isinstance(func, ast.Name) and func.id == "open" and id(node) not in managed:
+                    errors.append(f"{name}:{node.lineno}: open() outside a with statement (PRINCIPLE-010 R4)")
             if isinstance(node, ast.Import):
                 imported |= {a.name for a in node.names}
             elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
@@ -564,13 +577,13 @@ def check_architecture(root: Path = ROOT_DIR) -> List[str]:
 def report_architecture(errors: List[str]) -> bool:
     """Print architecture findings with the remediation triad (PRINCIPLE-011 R6); True when clean."""
     if not errors:
-        print("[OK] No junk-drawer module, oversized role or import cycle (PRINCIPLE-009)")
+        print("[OK] No junk-drawer module, oversized role, import cycle, untimed subprocess or unmanaged open() (PRINCIPLE-009, PRINCIPLE-010)")
         return True
-    print(f"[FAIL] Architecture ({len(errors)}):")
+    print(f"[FAIL] Code structure ({len(errors)}):")
     for error in errors[:20]:
         print(f"   - {error}")
-    print("   Why: these couple modules that PRINCIPLE-009 keeps apart (R1, R2, R5).")
-    print("   Fix: rename the module after what it holds, split the role, or break the cycle.")
+    print("   Why: each one couples modules (PRINCIPLE-009) or can hang or leak (PRINCIPLE-010).")
+    print("   Fix: rename the module, split the role, break the cycle, add timeout=, or use with.")
     return False
 
 
@@ -746,7 +759,8 @@ Options:
               consecutive, and that no Python file holds a TODO/FIXME marker, a stub or
               an unnamed suppression (PRINCIPLE-007 R3), and no module has a junk-drawer
               name, a role of 0 or more than 5 methods, or an import cycle
-              (PRINCIPLE-009); exits 1 on any of them
+              (PRINCIPLE-009), and no subprocess call lacks timeout= and no open()
+              runs outside a with statement (PRINCIPLE-010); exits 1 on any of them
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 

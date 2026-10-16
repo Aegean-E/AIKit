@@ -14,7 +14,7 @@
 - PRINCIPLE-007 Pre-flight Impact & Quality Checklist: Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan.
 - PRINCIPLE-008 Hierarchical Problem & Task Decomposition: Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger.
 - PRINCIPLE-009 Modularity & Pluggable Architecture: Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs.
-- PRINCIPLE-010 Performance & Resource Optimization: O(1)-memory streaming; non-blocking event loops; subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms `--help`); <1s unit test tier.
+- PRINCIPLE-010 Performance & Resource Optimization: Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <1s, integ <5s.
 - PRINCIPLE-011 Zero-Friction Onboarding & Instant Usability: Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes (0/1/2); remediation triad.
 - PRINCIPLE-012 Token Frugality & Lean Code Architecture: Prompt cache prefix alignment (>=80% hits); bounded tool output & diffs; terse schema output; token circuit breakers; lean syntactic density.
 - PRINCIPLE-013 Crash Resilience, State Atomicity & Power-Loss Recovery: Atomic writes: flush + os.fsync + retried os.replace + parent-dir fsync; advisory locking on read-modify-write; .bak shadow backups; schema migration; signal-drain flush; read-only fallback.
