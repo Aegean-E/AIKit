@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `34`
 - **Total Functions / Methods**: `100`
-- **Total Source Lines**: `6743`
+- **Total Source Lines**: `6746`
 
 ---
 
@@ -114,7 +114,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `670` lines (`32197` bytes)
+**Size**: `670` lines (`32201` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -230,7 +230,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2577` lines (`141234` bytes)
+**Size**: `2580` lines (`141594` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

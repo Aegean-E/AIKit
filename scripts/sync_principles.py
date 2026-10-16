@@ -665,6 +665,6 @@ if __name__ == "__main__":
                 for _error in _errors:
                     print(f"   - {_error}")
                 print("   Why: a rule change not checked against the rules citing it can contradict them.")
-                print("   Fix: add the ADR, ending with 'Cross-principle check:' naming each listed principle.")
+                print("   Fix: add an ADR containing a 'Cross-principle check:' line naming each listed principle.")
                 sys.exit(1)
             print("[OK] Every changed principle has an ADR naming its --citing set (PRINCIPLE-000 R3)")

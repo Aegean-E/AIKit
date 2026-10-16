@@ -758,6 +758,9 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
             "an `except` block that neither re-raises, returns or exits with an error, nor writes a warning",
             "unless it only cleans up after an error that is already raised or reported",
             "when neither cites the other or each cites the other",
+            # Third pass (ADR-074): "a change to a principle" and "the change's ADR" had no definition.
+            "A principle is *changed* when its `### PRINCIPLE-NNN:` section in `GUIDELINES.md` differs from the last commit",
+            "`python scripts/sync_principles.py --check` fails while a changed principle has no ADR added since the last commit",
             "A rule cites another when its text contains that rule's `PRINCIPLE-NNN RN`",
         ):
             with self.subTest(definition=definition):
