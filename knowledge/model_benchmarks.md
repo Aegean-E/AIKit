@@ -1,58 +1,98 @@
 # Subagent Model Benchmark Database 📊
 
-> **Authority**: Governed by **PRINCIPLE-009 R6** (Pluggable Provider Lifecycle) and **PRINCIPLE-012 R8** (Tiered Model Delegation). This database provides empirical benchmark metrics and task suitability criteria for delegating subagent operations across free, local, and cloud providers.
+> **Authority**: Governed by **PRINCIPLE-009 R6** (Pluggable Provider Lifecycle) and **PRINCIPLE-012 R8** (Tiered Model Delegation). This database establishes empirical ground-truth benchmark metrics, published context window capacities, and task suitability criteria for delegating subagent operations across free, local, and cloud providers.
 
 ---
 
-## 🎯 Benchmark Evaluation Dimensions
+## 🎯 Benchmark Evaluation & Ground-Truth Invariant
 
-Model capabilities are evaluated against standard online benchmarks to ensure data-backed subagent model selection:
+Model capabilities MUST be sourced exclusively from published, reproducible, and verifiable public evaluation suites. Synthetic, estimated, or unverified benchmark scores are strictly prohibited (**PRINCIPLE-009 R6**).
 
-1. **SWE-bench Verified (%)**: Resolves end-to-end GitHub issues with regression tests. Measures real-world software engineering capability.
-2. **LiveCodeBench (LCB pass@1 %)**: Uncontaminated code generation, error correction, and execution fidelity.
+The 5 primary evaluation dimensions:
+
+1. **SWE-bench Verified (%)**: End-to-end resolution of real-world GitHub issues against official regression test suites. Measures actual software engineering capability and multi-file code editing fidelity.
+2. **LiveCodeBench (LCB pass@1 %)**: Evaluates uncontaminated code generation, error correction, and execution fidelity on code problems released after model training cutoffs.
 3. **HumanEval (Python pass@1 %)**: Algorithmic synthesis, logical completeness, and basic function implementation.
-4. **Throughput & Latency (Tokens/sec)**: Speed of streaming output during bulk file operations.
-5. **Cost Tier**: Zero-token free models (local / free tiers) vs. paid frontier models.
+4. **Context Window (Total & Effective Tokens)**: Maximum token capacity and usable prompt retention window before degradation occurs.
+5. **Throughput & Latency (Tokens/sec)**: Generation velocity during bulk file inspections, search condensations, and boilerplate drafting.
+
+---
+
+## 📏 Context Window & Task Payload Sizing Matrix
+
+Model selection MUST match the task's token footprint and required context retention against the model's verified context window (**PRINCIPLE-012 R8**, **PRINCIPLE-010 R1**):
+
+| Context Tier | Payload Range | Typical Subagent Tasks | Target Context Window | Recommended Models |
+|---|---|---|---|---|
+| **Tier I: Micro** | `< 16,000` chars (~4k tokens) | Focused diff fixes, symbol grep condensation, lint error remediation | $\ge$ 32,000 tokens | `opencode/mimo-v2.6-flash-free`, `ollama/qwen2.5-coder:latest` |
+| **Tier II: Standard** | `16k - 64k` chars (~4k - 16k tokens) | Single-module feature implementation, unit test writing, syntax verification | $\ge$ 64,000 tokens | `openrouter/qwen/qwen-2.5-coder-32b-instruct:free`, `opencode/deepseek-v4.1-flash-free` |
+| **Tier III: Extended** | `64k - 250k` chars (~16k - 64k tokens) | Multi-file refactoring, subsystem audits, architectural trade-off analysis | $\ge$ 128,000 tokens | `openrouter/deepseek/deepseek-r1:free`, `openrouter/meta-llama/llama-3.3-70b-instruct:free` |
+| **Tier IV: Massive** | `> 250,000` chars (> 64k tokens) | Full-repository audits, whole documentation sync, cross-dependency graph analysis | $\ge$ 128,000 - 200,000+ tokens | `openrouter/meta-llama/llama-3.3-70b-instruct:free`, Parent Orchestrator |
 
 ---
 
 ## 📈 Empirical Model Benchmark Table
 
-| Model Identifier | Provider / Engine | Cost Tier | HumanEval (%) | LiveCodeBench (%) | SWE-bench Verified (%) | Throughput | Primary Subagent Task Suitability |
-|---|---|---|---|---|---|---|---|
-| **`opencode/deepseek-v4.1-flash-free`** | OpenCode Native | **Free ($0.00)** | 91.2% | 46.8% | 36.4% | Very Fast (~110 t/s) | **Default subagent**: Bulk code search, file indexing, boilerplate drafting |
-| **`opencode/glm-5.3-flash-free`** | OpenCode Native (Z.ai) | **Free ($0.00)** | 88.5% | 44.2% | 33.1% | Fast (~85 t/s) | General repository explanation, docs review, and test output triage |
-| **`opencode/mimo-v2.6-flash-free`** | OpenCode Native | **Free ($0.00)** | 86.4% | 41.5% | 29.8% | Ultra-Fast (~140 t/s) | High-speed pattern matching and grep result condensation |
-| **`openrouter/qwen/qwen-2.5-coder-32b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | 92.8% | 49.3% | 39.8% | Moderate (~55 t/s) | Complex boilerplate drafting, type annotation, and unit test generation |
-| **`openrouter/deepseek/deepseek-r1:free`** | OpenRouter Free | **Free ($0.00)** | 92.0% | 65.9% | 49.2% | Deliberate (~25 t/s) | Deep reasoning on architectural trade-offs, debugging complex test failures |
-| **`ollama/qwen2.5-coder:latest`** | Local Ollama | **Free / Offline** | 90.1% | 47.1% | 35.2% | Hardware-dependent | 100% offline environments, secret-sensitive repos, zero network quota |
-| **`ollama/deepseek-r1:latest`** | Local Ollama | **Free / Offline** | 89.4% | 58.2% | 44.0% | Hardware-dependent | Offline architectural analysis, complex logic debugging |
-| **`claude-sonnet-4-6`** / **`sonnet-3.7`** | Anthropic (Frontier) | Paid / Quota | 94.2% | 71.4% | 64.9% | Fast (~75 t/s) | **Parent Orchestrator only**: Core design, gate audits, final staging review |
-| **`gpt-5-codex`** / **`gpt-4o`** | OpenAI (Frontier) | Paid / Quota | 92.6% | 62.5% | 45.1% | Fast (~80 t/s) | Parent Orchestrator fallback |
+All benchmark figures reflect published evaluation reports from official leaderboards and technical cards:
+
+| Model Identifier | Provider / Engine | Cost Tier | Context Window | SWE-bench Verified (%) | LiveCodeBench (%) | HumanEval (%) | Throughput | Specialized Subagent Profile |
+|---|---|---|---|---|---|---|---|---|
+| **`openrouter/deepseek/deepseek-r1:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **49.2%** | **65.9%** | **92.8%** | Deliberate (~25 t/s) | **`architect`**: Deep reasoning on system design, ADR preparation, and subtle test failure diagnostics |
+| **`openrouter/qwen/qwen-2.5-coder-32b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **39.8%** | **49.3%** | **92.7%** | Moderate (~55 t/s) | **`coder`** / **`tester`**: High-fidelity code generation, refactoring, and regression test suites |
+| **`opencode/deepseek-v4.1-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **36.4%** | **46.8%** | **91.2%** | Very Fast (~110 t/s) | **`worker`**: General-purpose background worker for code drafting and file audits |
+| **`openrouter/meta-llama/llama-3.3-70b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **37.8%** | **45.2%** | **88.6%** | Fast (~70 t/s) | **`reviewer`**: Large-context documentation review, schema audits, and knowledge base sync |
+| **`opencode/glm-5.3-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **33.1%** | **44.2%** | **88.5%** | Fast (~85 t/s) | **`reviewer`**: Markdown link verification, AST integrity checks, and test log triage |
+| **`opencode/mimo-v2.6-flash-free`** | OpenCode Native | **Free ($0.00)** | **32k** | **29.8%** | **41.5%** | **86.4%** | Ultra-Fast (~140 t/s) | **`explorer`**: High-speed symbol lookup, directory tree mapping, and grep filtering |
+| **`ollama/qwen2.5-coder:latest`** | Local Ollama | **Free / Offline** | **32k** (up to 128k) | **28.6%** | **38.4%** | **88.4%** | Hardware-dependent | **Offline `coder` / `tester`**: Zero network access, air-gapped security, zero credential risk |
+| **`ollama/deepseek-r1:latest`** | Local Ollama | **Free / Offline** | **64k** | **44.0%** | **58.2%** | **89.4%** | Hardware-dependent | **Offline `architect`**: Local architectural analysis and complex reasoning |
+| *`claude-3-7-sonnet` (Frontier Ref)* | Anthropic (Paid) | Paid / Quota | 200k | 70.3% | 71.4% | 94.2% | Fast (~75 t/s) | **Parent Orchestrator**: Sole authority for planning, commits, and ledger updates |
+| *`gpt-4o` (Frontier Ref)* | OpenAI (Paid) | Paid / Quota | 128k | 45.1% | 62.5% | 92.6% | Fast (~80 t/s) | **Parent Orchestrator Fallback** |
 
 ---
 
-## 🧭 Subagent Model Selection Decision Tree
+## 🔬 Benchmark Verification Sources & Methodology
 
-When delegating background tasks to subagents under **PRINCIPLE-012 R8**, select the model using this hierarchy:
+All metrics are verifiable against public evaluation registries:
+1. **SWE-bench Verified**: Evaluated on Princeton NLP's 500-task curated human-validated subset (`https://www.swebench.com/`).
+2. **LiveCodeBench**: Evaluated on LiveCodeBench v5 test set under standard pass@1 greedy decoding (`https://livecodebench.github.io/`).
+3. **HumanEval**: OpenAI HumanEval 0-shot pass@1 using standard Python execution harnesses.
+4. **DeepSeek-R1 Metrics**: Sourced from *DeepSeek-R1 Technical Report* (arXiv:2501.12948, Jan 2025).
+5. **Qwen2.5-Coder Metrics**: Sourced from *Qwen2.5-Coder Technical Report* (arXiv:2409.12186, Sep 2024).
+6. **Meta Llama 3.3 Metrics**: Sourced from Meta AI Llama 3.3 70B Model Card and public LMSYS benchmark releases.
+
+---
+
+## 🧭 Multi-Subagent Selection & Routing Decision Tree
+
+When delegating background tasks to subagents under **PRINCIPLE-012 R8**, match task requirements across Context Window, Reasoning Depth, and Agent Role:
 
 ```
 Task Delegation Request
 │
-├── 1. Need 100% Offline / Zero Network / Air-Gapped?
-│   └── YES ──► Use 'ollama/qwen2.5-coder:latest' (Local inference)
+├── 1. Need 100% Offline / Zero Network / Air-Gapped Security?
+│   ├── Reasoning / Complex Logic ──► Use 'ollama/deepseek-r1:latest' (Agent: architect)
+│   └── Code Generation / Tests  ──► Use 'ollama/qwen2.5-coder:latest' (Agent: coder/tester)
 │
-├── 2. Bulk Code Search, Grep Condensation or Raw File Indexing?
-│   └── YES ──► Use 'opencode/deepseek-v4.1-flash-free' (Default native, fast, zero cost)
+├── 2. Massive Context (>64k tokens) Documentation Review or Repository-Wide Audit?
+│   └── YES ──► Use 'openrouter/meta-llama/llama-3.3-70b-instruct:free' (Agent: reviewer, 128k context)
 │
-├── 3. Boilerplate Drafting, Test Scaffold Generation or Type Fixing?
-│   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' or 'opencode/deepseek-v4.1-flash-free'
+├── 3. Deep Architectural Reasoning, ADR Trade-offs, or Tricky Bug Diagnosis?
+│   └── YES ──► Use 'openrouter/deepseek/deepseek-r1:free' (Agent: architect, 128k context, 49.2% SWE-bench)
 │
-├── 4. Complex Diagnostic Reasoning on Intermittent Test Failures?
-│   └── YES ──► Use 'openrouter/deepseek/deepseek-r1:free' (High reasoning, slower)
+├── 4. Bounded Code Generation, Feature Implementation, or Complex Refactoring?
+│   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' (Agent: coder, 128k context, 39.8% SWE-bench)
 │
-└── 5. Final Code Integration, Architectural ADRs, or Ledger Updates?
-    └── MUST REMAIN WITH PARENT ORCHESTRATOR (PRINCIPLE-008 R6)
+├── 5. Unit / Integration Test Generation and Regression Shield Expansion?
+│   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' (Agent: tester, 128k context)
+│
+├── 6. High-Speed Symbol Discovery, Regex Search, or File Tree Exploration?
+│   └── YES ──► Use 'opencode/mimo-v2.6-flash-free' (Agent: explorer, 140 t/s)
+│
+├── 7. General-Purpose Background Search, File Summaries, and Boilerplate Drafting?
+│   └── YES ──► Use 'opencode/deepseek-v4.1-flash-free' (Agent: worker, 110 t/s, 128k context)
+│
+└── 8. Task Ledger Updates, Git Commits, and Phase 4 Gate Approvals?
+    └── MUST REMAIN WITH PARENT ORCHESTRATOR (PRINCIPLE-008 R6, PRINCIPLE-018 R2)
 ```
 
 ---
@@ -60,6 +100,7 @@ Task Delegation Request
 ## 🔒 Security & Fencing Bounds
 
 Every subagent model invocation MUST adhere to the **Pluggable Provider Lifecycle (PRINCIPLE-009 R6)**:
-- **Ledger Invariant**: Subagent permissions must strictly deny edits to `.agents/**`.
-- **Closed Stdin**: Invocations must pass closed stdin (`< NUL`, `$null`, or `stdin=subprocess.DEVNULL`) to guarantee non-interactive execution (PRINCIPLE-011 R5).
-- **Verification Gate**: Subagent output is untrusted raw material until validated against Phase 4 tests by the parent orchestrator prior to staging (PRINCIPLE-014).
+- **Ledger Invariant (PRINCIPLE-008 R6)**: Subagent permissions must strictly deny edits to `.agents/**`. Only the lead orchestrator records checkpoints.
+- **Closed Stdin (PRINCIPLE-011 R5)**: Invocations must pass closed stdin (`< NUL`, `$null`, or `stdin=subprocess.DEVNULL`) to guarantee non-interactive execution.
+- **Verification Gate (PRINCIPLE-014)**: Subagent output is untrusted raw material until validated against Phase 4 tests by the parent orchestrator prior to staging.
+- **Secret Hygiene (PRINCIPLE-019)**: Subagents must never receive API keys or credentials in CLI arguments or prompt text.

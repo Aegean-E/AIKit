@@ -1228,6 +1228,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "Code MUST NOT assign to another module's or object's `_private` attribute",
                 "fails on a junk-drawer module name, a role outside 1 to 5 methods and an import cycle",
                 "Adding or integrating an external AI model service or provider",
+                "Ground-Truth Benchmark & Multi-Agent Verification",
             ],
 
             "gone": ["Anti-Junk-Drawer Invariant", "100% of the declared contract", "e.g. `CliParser`",
@@ -1284,6 +1285,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "a function whose body only calls another function with the same arguments",
                 "delegate multi-file pattern searches, raw file indexing, boilerplate drafting",
                 "consult `knowledge/model_benchmarks.md`",
+                "verified ground-truth benchmarks and published context window capacities",
             ],
 
             "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",

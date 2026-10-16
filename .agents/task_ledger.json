@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ai-providers-principle-and-benchmark-db",
+    "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792192273.3849838,
-    "impact_assessment": {
-      "why": "Establish standard 5-step lifecycle principle for adding AI providers and provide empirical benchmark database for subagent selection",
-      "benefits": "Ensures future AI services are integrated in proper order with credential isolation, headless execution, ledger fences, and data-backed model selection",
-      "risks": "contract: rule count assertion update; dependency: zero; concurrency: zero; state: zero",
-      "mitigation": "Sync Tier 1 files, update test_kit assertions, and verify 100% pass across all gates"
-    },
-    "completed_at": 1792192518.0275605
+    "updated_at": 1792192766.745044,
+    "completed_at": 1792193147.699762
   },
   "checkpoints": [
-    {
-      "task_id": "p014-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p014-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189743.5946074,
-      "timestamp_str": "2026-10-17 01:29:03"
-    },
-    {
-      "task_id": "p015-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: compare P015 with dogfood.py behaviour",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189778.104059,
-      "timestamp_str": "2026-10-17 01:29:38"
-    },
-    {
-      "task_id": "p015-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P015 pass 2: R4 names the git-ignored run log as its one write outside the sandbox and defines the fingerprint over tracked files; ADR-100",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189778.2363338,
-      "timestamp_str": "2026-10-17 01:29:38",
-      "impact_assessment": {
-        "why": "R4 'everything under one sandbox' contradicted R7's log path",
-        "benefits": "R4 and R7 agree; rule matches dogfood.py",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "verified 10 output lines, stdin closed, log ignored"
-      }
-    },
     {
       "task_id": "p015-pass2",
       "phase": "in_progress",
@@ -248,6 +207,41 @@
       "status": "completed",
       "timestamp": 1792192518.027562,
       "timestamp_str": "2026-10-17 02:15:18"
+    },
+    {
+      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] Codify verified benchmark ground-truth, context window selection, and multi-subagent registry in GUIDELINES.md; [2/5] Update knowledge/model_benchmarks.md with factual verified benchmarks, context windows, and citations; [3/5] Configure multi-subagent suite in opencode.jsonc and .opencode/agents/; [4/5] Update tests in tests/test_kit.py and record ADR-105 in knowledge/decisions.md; [5/5] Synchronize principles, update knowledge base, and pass all verification gates.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792192761.6352181,
+      "timestamp_str": "2026-10-17 02:19:21",
+      "impact_assessment": {
+        "why": "Ensure model benchmarks are empirically verified ground-truth facts, model selection factors in context window capacity, and specialized subagents are available for distinct engineering roles",
+        "benefits": "Guarantees reliable unhallucinated subagent routing, matches model context windows to task payloads to prevent clipping, and provides specialized agent roles with mechanical guardrails",
+        "risks": "contract: principle wording changes must pass test_kit assertions; dependency: all models remain in declared free/local providers; concurrency: multi-subagent headless runs must maintain ledger isolation; state: task_ledger updated atomically",
+        "mitigation": "Sync tests with exact principle rule text, maintain closed stdin on all subagent profiles, verify 100% test pass rate"
+      }
+    },
+    {
+      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/5] Codifying verified benchmark ground-truth, context window selection, and multi-subagent registry in GUIDELINES.md",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792192766.745044,
+      "timestamp_str": "2026-10-17 02:19:26"
+    },
+    {
+      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ground-truth-benchmarks-context-and-multi-subagents' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792193147.6997638,
+      "timestamp_str": "2026-10-17 02:25:47"
     }
   ]
 }

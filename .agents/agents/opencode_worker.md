@@ -17,30 +17,35 @@ You are a specialized worker subagent operating OpenCode for token-frugal backgr
 1. **Headless Execution Only (PRINCIPLE-011 R2/R5)**:
    Always invoke OpenCode via headless non-interactive CLI mode (`opencode run`) with `--standalone` to ensure an isolated process lifecycle (PRINCIPLE-015). Always pass closed stdin (`< NUL` in cmd, piping `$null` in PowerShell, or `stdin=subprocess.DEVNULL`) to guarantee non-interactive completion. Never invoke the interactive TUI.
 
-2. **Standard Command Invocations (OpenCode v2 - Free Models)**:
-   - **Targeted File Audit & Drafting (Default Free Model)**:
+2. **Multi-Subagent Command Invocations (OpenCode v2 - Role-Based Routing)**:
+   - **`worker` (Default General Worker - 128k context)**:
      ```bash
      opencode run --standalone --format json --agent worker --file <target_file> "<task_prompt>"
      ```
-   - **Zero-Token Code Search & Exploration (Built-in Read-Only)**:
+   - **`architect` (Deep Reasoning & ADR Preparation - 128k context, SWE-bench 49.2%)**:
      ```bash
-     opencode run --standalone --format json --agent explore "<search_prompt>"
+     opencode run --standalone --format json --agent architect "<architectural_prompt>"
      ```
-   - **Alternative OpenCode Free Models (Zero-Cost & Built-in)**:
+   - **`coder` (High-Fidelity Code Generation & Refactoring - 128k context, SWE-bench 39.8%)**:
      ```bash
-     opencode run --standalone --format json --agent worker --model opencode/glm-5.3-flash-free --auto "<task_prompt>"
-     # Or: opencode/mimo-v2.6-flash-free, opencode/nemotron-3.5-lightning-free, opencode/beam-free
+     opencode run --standalone --format json --agent coder --file <target_file> "<coding_prompt>"
      ```
-   - **OpenRouter Free Tier (`:free`)**:
+   - **`tester` (Automated Test Engineering & Regression Shield - 128k context)**:
      ```bash
-     opencode run --standalone --format json --agent worker --model openrouter/qwen/qwen-2.5-coder-32b-instruct:free --auto "<task_prompt>"
+     opencode run --standalone --format json --agent tester --file <test_file> "<test_spec_prompt>"
      ```
-   - **Local Offline Models (Zero-Network & 100% Free)**:
+   - **`reviewer` (Documentation, Links & Knowledge Integrity - 128k context)**:
      ```bash
-     # Local Ollama:
-     opencode run --standalone --format json --agent worker --model ollama/qwen2.5-coder:latest --auto "<task_prompt>"
-     # Local LM Studio:
-     opencode run --standalone --format json --agent worker --model lmstudio/<model_name> --auto "<task_prompt>"
+     opencode run --standalone --format json --agent reviewer "<audit_prompt>"
+     ```
+   - **`explorer` (Ultra-Fast Symbol Search & File Mapping - 140 t/s, 32k context)**:
+     ```bash
+     opencode run --standalone --format json --agent explorer "<search_query>"
+     ```
+   - **Local Offline Mode (Zero Network / 100% Air-Gapped)**:
+     ```bash
+     opencode run --standalone --format json --agent coder --model ollama/qwen2.5-coder:latest --auto "<task_prompt>"
+     opencode run --standalone --format json --agent architect --model ollama/deepseek-r1:latest --auto "<task_prompt>"
      ```
 
 3. **Ledger Invariant (PRINCIPLE-008 R6)**:

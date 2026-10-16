@@ -77,8 +77,7 @@ portable_agent_kit/
 │   │   └── opencode_worker.md          <- OpenCode subagent spec for free model delegation
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── .opencode/
-│   └── agents/
-│       └── worker.md                   <- Native OpenCode worker subagent profile (free models & bounded)
+│   └── agents/                         <- Native OpenCode specialized subagent profiles (architect, coder, etc.)
 ├── opencode.jsonc                      <- OpenCode v2 provider, model and permissions configuration
 ├── scripts/
 │   ├── sync_principles.py              <- Generates all 6 Tier 1 files from GUIDELINES.md, budget-gated
