@@ -1,59 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p015-pass2",
+    "task_id": "p016-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189781.26636,
-    "completed_at": 1792189796.5276444
+    "updated_at": 1792189902.5660775,
+    "completed_at": 1792190229.5772727
   },
   "checkpoints": [
-    {
-      "task_id": "p012-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P012 pass 2: payload limit applies to the whole variable tail; search limits add to P004 R5's 100 lines; ledger stores repo-relative paths (code fix); ADR-097",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189482.9433858,
-      "timestamp_str": "2026-10-17 01:24:42",
-      "impact_assessment": {
-        "why": "R1 'each dynamic part' undefined; 50 matches with context can exceed 100 lines; ledger stored absolute paths incl. user home",
-        "benefits": "one reading; R5 true in code",
-        "risks": "contract: files_affected stored repo-relative; dependency: none; concurrency: none; state: ledger values change form for new entries only",
-        "mitigation": "existing ledger has no absolute paths; unit test"
-      }
-    },
-    {
-      "task_id": "p012-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189483.0969496,
-      "timestamp_str": "2026-10-17 01:24:43"
-    },
-    {
-      "task_id": "p012-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189508.4464974,
-      "timestamp_str": "2026-10-17 01:25:08"
-    },
-    {
-      "task_id": "p012-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p012-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189523.615833,
-      "timestamp_str": "2026-10-17 01:25:23"
-    },
     {
       "task_id": "p013-pass2",
       "phase": "in_progress",
@@ -227,6 +182,51 @@
       "status": "completed",
       "timestamp": 1792189796.5276456,
       "timestamp_str": "2026-10-17 01:29:56"
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: citation integrity audit of living docs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189902.2824082,
+      "timestamp_str": "2026-10-17 01:31:42"
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P016 pass 2: architecture.md rewritten to describe AIKit (no rule restatement, constants by name); TestKnowledgeCitations checks rule citations and code names in living docs; R2 names it; ADR-101",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189902.4270406,
+      "timestamp_str": "2026-10-17 01:31:42",
+      "impact_assessment": {
+        "why": "architecture.md restated old rule text with stale numbers (1,500 budget, <100ms help, P007 R3 old bans)",
+        "benefits": "knowledge base cannot silently drift from code or rules",
+        "risks": "contract: docs and tests only; dependency: none; concurrency: none; state: none",
+        "mitigation": "probe shows the test fails on a dead name"
+      }
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189902.5660775,
+      "timestamp_str": "2026-10-17 01:31:42"
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p016-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792190229.577274,
+      "timestamp_str": "2026-10-17 01:37:09"
     }
   ]
 }

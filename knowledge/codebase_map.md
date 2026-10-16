@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `43`
+- **Total Classes**: `44`
 - **Total Functions / Methods**: `114`
-- **Total Source Lines**: `7771`
+- **Total Source Lines**: `7807`
 
 ---
 
@@ -117,7 +117,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `722` lines (`35498` bytes)
+**Size**: `722` lines (`35505` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -244,7 +244,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3224` lines (`179124` bytes)
+**Size**: `3260` lines (`181292` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -304,6 +304,9 @@
 - `class TestSecretBaselineAndRuleSchema` - *PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092).*
   - Method `.test_gitignore_holds_every_baseline_pattern_the_rule_lists()`
   - Method `.test_a_rule_without_audience_is_rejected()`
+- `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
+  - Method `.test_every_rule_citation_names_an_existing_rule()`
+  - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
 - `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099).*
   - Method `.setUpClass()`
   - Method `.test_every_test_method_asserts()`

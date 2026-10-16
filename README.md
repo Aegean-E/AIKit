@@ -70,6 +70,11 @@ portable_agent_kit/
 │   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
 │   │   ├── domain.md.template          <- Template for project domain rules (Tier 1B)
 │   │   └── readme_quickref.md.template <- Adopter README Quick Reference & tree (PRINCIPLE-005 R6)
+│   ├── skills/
+│   │   └── aikit/
+│   │       └── SKILL.md                <- Antigravity operational runbook & command matrix
+│   ├── agents/
+│   │   └── opencode_worker.md          <- OpenCode subagent spec for free model delegation
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── scripts/
 │   ├── sync_principles.py              <- Generates all 6 Tier 1 files from GUIDELINES.md, budget-gated
@@ -110,7 +115,7 @@ portable_agent_kit/
   cd portable_agent_kit
   mkdir -p /path/to/target/.agents
   cp -r GUIDELINES.md scripts knowledge /path/to/target/
-  cp -r .agents/rules /path/to/target/.agents/
+  cp -r .agents/rules .agents/skills /path/to/target/.agents/
   ```
   Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json`: they test, build and record *this* repository (verified: AIKit's suite fails 19 checks inside a fresh adopter repo). Your project keeps its own suite; AIKit's enforcement travels as the CLI gates, which all pass in an adopter repo: `sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all` and `dogfood.py`. Replace the copied `knowledge/` documents with your own project's after Step 4.
   Then copy `.agents/rules/readme_quickref.md.template` into the top of your existing `README.md` and replace every placeholder that begins with `<FILL` with your project's values; it holds only what travels (the two labels, AIKit's gate commands and a tree skeleton), never AIKit's own test modules. `update_knowledge_base.py --check` fails while any such placeholder remains or the tree misses a tracked top-level entry (PRINCIPLE-005 R1, R5, R6).
@@ -178,10 +183,6 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
 | **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check; 5-section schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
-
-### ... Phase N:` heading above it. Principles appear in non-decreasing phase order, and the last one is in Phase 5; `python scripts/sync_principles.py` exits 1 otherwise. A new principle needs no change to the generator, only a heading in the right phase.
-| Principle | Title | Capsule |
-|---|---|---|
 | **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (`--validate-commit`) + adaptive push, unless the user opts out, never forced; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
 <!-- principles:end -->

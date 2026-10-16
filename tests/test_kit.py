@@ -797,6 +797,40 @@ class TestSecretBaselineAndRuleSchema(unittest.TestCase):
         self.assertIn("PRINCIPLE-001 rule(s) R2 name no audience", str(ctx.exception))
 
 
+class TestKnowledgeCitations(unittest.TestCase):
+    """PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve."""
+
+    LIVING = ["GUIDELINES.md", "README.md"] + [f"knowledge/{n}" for n in
+              ("INDEX.md", "architecture.md", "services.md", "data_models.md", "state_and_ui.md")]
+
+    def test_every_rule_citation_names_an_existing_rule(self):
+        sections = principle_sections(SSOT_MD.read_text(encoding="utf-8"))
+        counts = {pid: len(re.findall(r"^  \d+\. \*\*", s[s.index("- **Rules**:"):], re.M)) for pid, s in sections.items()}
+        stale = []
+        for rel in self.LIVING + [f"scripts/{p.name}" for p in (ROOT_DIR / "scripts").glob("*.py")]:
+            text = (ROOT_DIR / rel).read_text(encoding="utf-8")
+            for m in re.finditer(r"PRINCIPLE-(\d{3})(?:\*\*)?\s+(?:Rule\s+|R)(\d+)", text):
+                pid, number = f"PRINCIPLE-{m.group(1)}", int(m.group(2))
+                if number > counts.get(pid, 0):
+                    stale.append(f"{rel}: {pid} R{number}")
+        self.assertEqual(stale, [])
+
+    def test_every_code_name_a_knowledge_document_cites_exists(self):
+        # architecture.md had restated rules and cited numbers long after they changed.
+        code = "".join((ROOT_DIR / "scripts" / p.name).read_text(encoding="utf-8")
+                       for p in (ROOT_DIR / "scripts").glob("*.py"))
+        code += (ROOT_DIR / "tests" / "test_kit.py").read_text(encoding="utf-8")
+        code += (ROOT_DIR / "tests" / "test_integration.py").read_text(encoding="utf-8")
+        missing = []
+        for rel in self.LIVING[2:]:
+            text = (ROOT_DIR / rel).read_text(encoding="utf-8")
+            for name in set(re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)\(\)`", text)) | set(
+                    re.findall(r"`([A-Z][A-Z0-9_]{3,})`", text)):
+                if not re.search(rf"\b{re.escape(name)}\b", code):
+                    missing.append(f"{rel}: {name}")
+        self.assertEqual(missing, [])
+
+
 class TestSuiteHygiene(unittest.TestCase):
     """PRINCIPLE-014 R3 and R5 made mechanical (ADR-099)."""
 
@@ -1304,6 +1338,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "a section that does not apply says \"Not applicable\" and why, never template text",
                 "`architecture.md` when a module, layer or process boundary is added, removed or moved",
                 "`codebase_map.md` is never edited by hand",
+                "they MUST NOT restate rule text (PRINCIPLE-001 R7)",
+                "A unit test fails when a `PRINCIPLE-NNN RN` citation names a rule that does not exist",
                 "An ADR MAY be edited until the commit that adds it; after that its text is fixed",
                 "The one exception is a heading ID that `python scripts/update_knowledge_base.py` reports as duplicate or skipped",
                 "A persisted schema has a version key (`version` in the ledger)",

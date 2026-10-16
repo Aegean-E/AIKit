@@ -1256,3 +1256,12 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: R4 keeps state, databases and caches in the sandbox and names R7's run log as the one write outside it, which MUST be git-ignored; the fingerprint covers the repository's tracked files.
 - **Consequences**: R4 and R7 agree with each other and with the runner. Pinned in the P015 table entry.
 - Cross-principle check: PRINCIPLE-002 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-012 (no conflict), PRINCIPLE-018 (no conflict).
+
+### ADR-101: PRINCIPLE-016 Second Pass - Citation Resolution and Living Documentation Parity
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: In PRINCIPLE-016 R2, living documents had drifted from active rules and code, citing stale rule numbers and non-existent constants. `architecture.md` restated rule text rather than describing mechanisms, violating PRINCIPLE-001 R7.
+- **Decision**: PRINCIPLE-016 R2 now explicitly forbids restating rule text in living documents and requires citations to name existing rules and active code symbols. `TestKnowledgeCitations` mechanically validates that every `PRINCIPLE-NNN RN` citation in living documentation resolves to an active rule and every cited code symbol or constant exists in the codebase.
+- **Consequences**: `architecture.md` was rewritten to describe AIKit without rule restatements, using exact code identifiers. Verified by `TestKnowledgeCitations` in `tests/test_kit.py`.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-001 (R7 no restating rules; no conflict), PRINCIPLE-003 (R1/R2 verify-before-execution and symbol reality; no conflict), PRINCIPLE-004 (R4 ADR record and living docs; no conflict), PRINCIPLE-005 (living docs sync; no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-018 (pre-commit gate parity; no conflict).
+
