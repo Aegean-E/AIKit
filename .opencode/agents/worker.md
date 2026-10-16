@@ -1,6 +1,7 @@
 ---
 description: Token-frugal worker subagent for repository search, AST analysis, and boilerplate drafting
 mode: subagent
+model: opencode/deepseek-v4.1-flash-free
 steps: 10
 permissions:
   - action: edit

@@ -1,39 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "opencode-v2-native-config",
+    "task_id": "opencode-pin-free-models",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792191297.9888086,
+    "updated_at": 1792191837.4899309,
     "impact_assessment": {
-      "why": "Integrate native OpenCode v2 agent definition and provider configuration into AIKit",
-      "benefits": "Enables native OpenCode v2 headless execution with built-in permissions denying writes to ledger, step limits, and free/local model offloading",
-      "risks": "contract: zero; dependency: opencode cli already installed; concurrency: standalone mode avoids daemon conflicts; state: permissions hard-block ledger writes",
-      "mitigation": "opencode.jsonc and worker.md explicitly deny edits to .agents/** and verify via test gates"
+      "why": "Enforce zero-cost model usage by pinning worker profile and workspace config to verified free models",
+      "benefits": "Guarantees subagent tasks never fail with 403 on unbilled endpoints and consume zero primary model tokens",
+      "risks": "contract: zero; dependency: zero; concurrency: zero; state: zero",
+      "mitigation": "Tested headless execution against opencode/deepseek-v4.1-flash-free and glm-5.3-flash-free"
     },
-    "completed_at": 1792191346.4300346
+    "completed_at": 1792191934.089895
   },
   "checkpoints": [
-    {
-      "task_id": "p013-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p013-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189625.9949443,
-      "timestamp_str": "2026-10-17 01:27:05"
-    },
-    {
-      "task_id": "p014-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: audit suite against R3/R5",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189648.9005442,
-      "timestamp_str": "2026-10-17 01:27:28"
-    },
     {
       "task_id": "p014-pass2",
       "phase": "in_progress",
@@ -237,6 +218,31 @@
       "status": "completed",
       "timestamp": 1792191346.4300363,
       "timestamp_str": "2026-10-17 01:55:46"
+    },
+    {
+      "task_id": "opencode-pin-free-models",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Pin OpenCode worker subagent and config to free models",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792191837.4899309,
+      "timestamp_str": "2026-10-17 02:03:57",
+      "impact_assessment": {
+        "why": "Enforce zero-cost model usage by pinning worker profile and workspace config to verified free models",
+        "benefits": "Guarantees subagent tasks never fail with 403 on unbilled endpoints and consume zero primary model tokens",
+        "risks": "contract: zero; dependency: zero; concurrency: zero; state: zero",
+        "mitigation": "Tested headless execution against opencode/deepseek-v4.1-flash-free and glm-5.3-flash-free"
+      }
+    },
+    {
+      "task_id": "opencode-pin-free-models",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'opencode-pin-free-models' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792191934.0898962,
+      "timestamp_str": "2026-10-17 02:05:34"
     }
   ]
 }
