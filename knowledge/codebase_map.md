@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `19`
-- **Total Functions / Methods**: `71`
-- **Total Source Lines**: `5006`
+- **Total Functions / Methods**: `73`
+- **Total Source Lines**: `5050`
 
 ---
 
@@ -54,7 +54,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `992` lines (`40633` bytes)
+**Size**: `1005` lines (`41182` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -74,7 +74,8 @@
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task as successfully completed in the ledger (locked, PRINCIPLE-013 R3).*
 - `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006).*
 - `def clean_dangling_temp_files(workspace_dir)` - *Scan and safely purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006, PRINCIPLE-013).*
-- `def run_disruption_audit(workspace_dir)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
+- `def git_porcelain_status(workspace)` - *Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3).*
+- `def run_disruption_audit(workspace_dir, git_status)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def format_audit_report(audit)` - *Generate human and AI-readable disruption recovery audit report.*
 - `def format_resume_report(audit)` - *Generate structured guidance for cold-starting AI agents to resume an interrupted task.*
 - `def validate_conventional_commit(message)` - *Validate that a commit message conforms to Conventional Commits (PRINCIPLE-018).*
@@ -143,7 +144,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `433` lines (`19557` bytes)
+**Size**: `458` lines (`20874` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -183,6 +184,7 @@
   - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
+  - Method `.test_unit_tier_spawns_nothing_at_runtime()`
   - Method `.test_integration_tier_bounds_every_spawn()`
 
 ---
@@ -190,7 +192,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1592` lines (`82762` bytes)
+**Size**: `1598` lines (`83188` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -319,5 +321,8 @@
   - Method `.test_full_signature_includes_varargs_kwonly_and_posonly()`
   - Method `.test_self_and_cls_are_dropped_from_method_signatures_only()`
   - Method `.test_generated_map_renders_async_keyword()`
+
+**Functions:**
+- `def not_a_git_repo(workspace)` - *In-process stand-in for `git status` in a non-repository: exactly what real git returns*
 
 ---

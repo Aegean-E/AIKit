@@ -841,3 +841,13 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: AGENTS.md went from 15,895 to 1,076 real tokens, 14.8x less always-on context for every AGENTS.md-convention agent. Tier 2 is one file (27,431 -> 17,693 real tokens) that cannot drift from itself. The documented adoption flow was executed end to end in a sandbox: an adopter's own `CLAUDE.md` was protected with zero files written, then after Step 2 their rules reached the Tier 1B section of all six generated files within budget.
   - *Trade-offs*: Agents that load both AGENTS.md and their own file (for example Copilot's coding agent with `.github/copilot-instructions.md`) now see the same ~1.1k-token capsules twice. That cost is bounded and small next to the ~15.9k it replaces. Any adopter on the old layout must migrate once; sync detects this and explains how. Option B adopters no longer receive AIKit's regression suite.
   - *Known limits*: The unit tier's structural no-spawn gate inspects test source text, so tests that reach `git` *indirectly* through `run_disruption_audit` are not caught by it; the tier holds at ~0.89-0.93s with roughly 70ms of margin. Copied `knowledge/` documents still describe AIKit and must be replaced by the adopter after Step 4.
+
+### ADR-049: Injectable Git Adapter and a Runtime No-Spawn Gate for the Unit Tier
+- **Date**: 2026-10-16
+- **Status**: Accepted (closes the known limit recorded in ADR-048)
+- **Context**: ADR-040's unit-tier gate scanned test *source* for `subprocess`/`Popen`/`os.system`/`time.sleep`. A runtime spawn detector showed four unit tests still launched `git` indirectly, through `run_disruption_audit`, while the text check passed.
+- **Decision**:
+  1. `run_disruption_audit(workspace_dir, git_status=None)` takes an injectable git adapter returning `(returncode, stdout, stderr)`, defaulting to `git_porcelain_status()` (`PRINCIPLE-009` R4 zero-config DI; production behaviour unchanged).
+  2. The four unit tests pass `not_a_git_repo`, which returns exactly what real git returns in a non-repository (exit 128) without spawning.
+  3. `test_unit_tier_spawns_nothing_at_runtime` (integration tier) runs the entire unit tier under a `Popen` detector and requires zero launches. It was red-checked by reverting one fake: it failed and named the spawn.
+- **Consequences**: The no-spawn invariant is now enforced at runtime, not just by text. The integration tier rises to ~3.9s (budget 5s) because it executes the unit tier once more; the unit tier stays ~0.91s.

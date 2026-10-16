@@ -84,6 +84,12 @@ from scripts.update_knowledge_base import (
 )
 
 
+def not_a_git_repo(workspace):
+    """In-process stand-in for `git status` in a non-repository: exactly what real git returns
+    (exit 128) without spawning a process, keeping the unit tier spawn-free (PRINCIPLE-014 R3)."""
+    return 128, "", "fatal: not a git repository (or any of the parent directories): .git"
+
+
 # Single source of truth for the principle count, so adding a principle updates one place.
 EXPECTED_PRINCIPLE_COUNT = 19
 
@@ -1107,7 +1113,7 @@ class TestDisruptionRecovery(unittest.TestCase):
         # Create a dangling .tmp_* file simulating an interrupted atomic write
         dangling_tmp = self.test_dir / "service.py.tmp_1234_9999"
         dangling_tmp.write_text("partial write", encoding="utf-8")
-        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        audit = run_disruption_audit(workspace_dir=self.test_dir, git_status=not_a_git_repo)
         self.assertIn("service.py.tmp_1234_9999", [Path(p).name for p in audit["dangling_temp_files"]])
         report = format_audit_report(audit)
         self.assertIn("Dangling Temp Buffers", report)
@@ -1121,7 +1127,7 @@ class TestDisruptionRecovery(unittest.TestCase):
             description="Planning task",
             ledger_file=self.ledger_file,
         )
-        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        audit = run_disruption_audit(workspace_dir=self.test_dir, git_status=not_a_git_repo)
         resume_rep = format_resume_report(audit)
         self.assertIn("RESUMING INTERRUPTED TASK: 'interrupted_task'", resume_rep)
         self.assertIn("Phase 2 (planning)", resume_rep)
@@ -1159,7 +1165,7 @@ class TestDisruptionRecovery(unittest.TestCase):
 
     def test_non_git_workspace_detection(self):
         # In isolated test_dir (not a git repo), audit must detect missing git tracking
-        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        audit = run_disruption_audit(workspace_dir=self.test_dir, git_status=not_a_git_repo)
         self.assertTrue(audit.get("git_missing"))
         report = format_audit_report(audit)
         self.assertIn("Git Inactive", report)
@@ -1200,7 +1206,7 @@ class TestDisruptionRecovery(unittest.TestCase):
             mitigation="Time-to-live invalidation with version tags",
             ledger_file=self.ledger_file,
         )
-        audit = run_disruption_audit(workspace_dir=self.test_dir)
+        audit = run_disruption_audit(workspace_dir=self.test_dir, git_status=not_a_git_repo)
         audit_rep = format_audit_report(audit)
         self.assertIn("Pre-Flight Impact Assessment (PRINCIPLE-007)", audit_rep)
         self.assertIn("Why: Reduce API response latency", audit_rep)

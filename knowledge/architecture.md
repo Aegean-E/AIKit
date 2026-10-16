@@ -218,7 +218,7 @@ canonical command (`python -m unittest discover tests`). See [ADR-040](decisions
 | Unit | `tests/test_kit.py` | **<1s** (strict) | Pure in-process logic: parsing, classification, ledger atomicity, AST fidelity |
 | Integration | `tests/test_integration.py` | <5s, timeout per spawn | Multi-process concurrency races, real-binary CLI contracts, real `git` grounding, dogfood matrix |
 
-The unit gate is enforced **structurally**, not by a timing assertion: `TestTierBudgetDiscipline`
+The unit gate is enforced **structurally** and **at runtime** (ADR-049: the whole unit tier runs under a `Popen` detector, catching indirect spawns), not by a timing assertion: `TestTierBudgetDiscipline`
 fails if `test_kit.py` references `subprocess`, `Popen`, `os.system` or `time.sleep`, which is what
 keeps it sub-second by construction. A wall-clock assertion on a 1s budget would be flaky on a
 loaded machine, and **PRINCIPLE-014** R3 classifies flaky tests as blocking defects. The companion

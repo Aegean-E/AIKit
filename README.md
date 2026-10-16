@@ -20,7 +20,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ### 🛠️ Core Operational Command Matrix
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
-| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~1.2s) |
+| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~5s) |
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B |

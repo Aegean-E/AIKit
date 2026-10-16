@@ -14,7 +14,7 @@ import shutil
 import contextlib
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Callable, Dict, Any, Optional, List, Tuple
 
 # Safe terminal encoding on Windows (cp1254/cp1252)
 if sys.platform == "win32":
@@ -534,12 +534,31 @@ def clean_dangling_temp_files(workspace_dir: Optional[Path] = None) -> List[str]
     return deleted
 
 
-def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]:
+def git_porcelain_status(workspace: Path) -> Tuple[int, str, str]:
+    """Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3)."""
+    proc = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=str(workspace),
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def run_disruption_audit(
+    workspace_dir: Optional[Path] = None,
+    git_status: Optional[Callable[[Path], Tuple[int, str, str]]] = None,
+) -> Dict[str, Any]:
     """
     Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).
     Evaluates Git working tree status, surviving uncommitted files, and ledger state.
+
+    `git_status` is injectable (PRINCIPLE-009 R4 zero-config DI) so in-process tests can supply a
+    fake instead of spawning `git`; it returns (returncode, stdout, stderr).
     """
     ws = workspace_dir or ROOT_DIR
+    run_git = git_status or git_porcelain_status
     audit: Dict[str, Any] = {
         "workspace": str(ws),
         "has_uncommitted_changes": False,
@@ -557,15 +576,9 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
     # 1. Check Git Status
     audit["git_missing"] = False
     try:
-        proc = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=str(ws),
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if proc.returncode == 0:
-            classified = classify_git_status(proc.stdout)
+        returncode, stdout, stderr = run_git(ws)
+        if returncode == 0:
+            classified = classify_git_status(stdout)
             audit["modified_files"] = classified["modified"]
             audit["untracked_files"] = classified["untracked"]
             audit["conflicted_files"] = classified["conflicted"]
@@ -575,7 +588,7 @@ def run_disruption_audit(workspace_dir: Optional[Path] = None) -> Dict[str, Any]
             )
         else:
             audit["git_missing"] = True
-            audit["git_error"] = proc.stderr.strip() or f"git exit code {proc.returncode}"
+            audit["git_error"] = stderr.strip() or f"git exit code {returncode}"
     except Exception as e:
         audit["git_missing"] = True
         audit["git_error"] = str(e)
