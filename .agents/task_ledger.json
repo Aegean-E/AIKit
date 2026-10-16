@@ -1,45 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p001-ssot-consolidation",
-    "last_phase": "2",
+    "task_id": "p001-drift-shields",
+    "last_phase": "3",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792142183.5188806,
+    "updated_at": 1792142885.0993392,
     "impact_assessment": {
-      "why": "AGENTS.md is ~15.6k real tokens and auto-loaded by AGENTS.md-convention agents (Codex, Copilot coding agent); AGENTS.md and GUIDELINES.md are two hand-maintained copies with title-only parity and ~6 one-sided rules",
-      "benefits": "Cuts always-on context for AGENTS.md-convention agents ~13x; removes ~11.5k tokens of duplicate Tier 2; one body of rules can no longer drift from itself",
-      "risks": "Adopters on the old layout could have a hand-authored AGENTS.md overwritten by sync; SSOT relocation touches sync tooling, tests and docs",
-      "mitigation": "Sync refuses to overwrite any target still containing principle schema, with a migration message; strict schema validation aborts before any write on an unmigrated GUIDELINES.md; reconcile one-sided rules before deleting either copy"
+      "why": "Two defects this pass (7 stale '18' counts, P019 absent from both checklists) came from expansion-time drift that no test caught",
+      "benefits": "Next principle added cannot leave a stale count or an unchecked checklist",
+      "risks": "Count regex could false-positive on unrelated numbers",
+      "mitigation": "Measure every current match first; scope the regex to principle-count phrasing only"
     },
-    "completed_at": 1792142856.4766283
+    "completed_at": 1792142923.2799487
   },
   "checkpoints": [
-    {
-      "task_id": "principle-017-pass2",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[milestone 1/4] Pre-flight impact assessment for Principle 17 Pass 2 fortification",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792099471.7576597,
-      "timestamp_str": "2026-10-16 00:24:31",
-      "impact_assessment": {
-        "why": "Eliminate title drift blindspot, prevent duplicate principle IDs, make CLI help safe from mutations, provide domain.md blueprint, and add proactive 90% budget warning",
-        "benefits": "Guarantees exact title parity across documentation triad, prevents corrupt rule definitions, and provides zero-friction domain customization for adopter repositories",
-        "risks": "Risk of breaking existing tests if title parsing is too brittle or template exceeds size limits",
-        "mitigation": "Use exact regex-safe heading matching, keep template under 800 chars, and verify with automated unit tests"
-      }
-    },
-    {
-      "task_id": "principle-017-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-017-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792099684.2119257,
-      "timestamp_str": "2026-10-16 00:28:04"
-    },
     {
       "task_id": "principle-018-fortification",
       "phase": "planning",
@@ -264,6 +239,31 @@
       "status": "completed",
       "timestamp": 1792142856.4766295,
       "timestamp_str": "2026-10-16 12:27:36"
+    },
+    {
+      "task_id": "p001-drift-shields",
+      "phase": "3",
+      "phase_num": 3,
+      "description": "Milestone 3/3: mechanical shields for stale principle counts and checklist coverage",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792142885.0993392,
+      "timestamp_str": "2026-10-16 12:28:05",
+      "impact_assessment": {
+        "why": "Two defects this pass (7 stale '18' counts, P019 absent from both checklists) came from expansion-time drift that no test caught",
+        "benefits": "Next principle added cannot leave a stale count or an unchecked checklist",
+        "risks": "Count regex could false-positive on unrelated numbers",
+        "mitigation": "Measure every current match first; scope the regex to principle-count phrasing only"
+      }
+    },
+    {
+      "task_id": "p001-drift-shields",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p001-drift-shields' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792142923.2799501,
+      "timestamp_str": "2026-10-16 12:28:43"
     }
   ]
 }

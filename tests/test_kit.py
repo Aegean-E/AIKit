@@ -278,6 +278,40 @@ class TestPrincipleSync(unittest.TestCase):
         missing = validate_triad_consistency(principles, readme_file=temp_dir / "absent.md")
         self.assertTrue(any("README.md missing" in e for e in missing))
 
+    def test_checklists_cover_every_principle(self):
+        # Red-green pin: PRINCIPLE-019 shipped absent from both checklists, and no test noticed.
+        text = SSOT_MD.read_text(encoding="utf-8")
+        pre_start = text.index("Pre-Flight Checklist")
+        post_start = text.index("Post-Flight Checklist")
+        pre, post = text[pre_start:post_start], text[post_start:]
+        post = post[: post.find("\n## ")] if "\n## " in post else post
+        for p in parse_principles(SSOT_MD):
+            with self.subTest(pid=p["id"]):
+                self.assertIn(p["id"], pre, f"{p['id']} missing from the Pre-Flight checklist")
+                self.assertIn(p["id"], post, f"{p['id']} missing from the Post-Flight checklist")
+
+    def test_no_stale_principle_counts_in_docs(self):
+        # Red-green pin: seven prose references still said "18" after PRINCIPLE-019 landed,
+        # including PRINCIPLE-001's own "immutable 18". Any count phrase must match reality.
+        actual = len(parse_principles(SSOT_MD))
+        pattern = re.compile(
+            r"\b(\d+)\s+(?:universal\s+|engineering\s+|core\s+|active\s+)?(?:principles|invariants)\b",
+            re.IGNORECASE,
+        )
+        for doc in (SSOT_MD, README_MD):
+            for match in pattern.finditer(doc.read_text(encoding="utf-8")):
+                with self.subTest(doc=doc.name, phrase=match.group(0)):
+                    self.assertEqual(int(match.group(1)), actual,
+                                     f"{doc.name} says '{match.group(0)}' but there are {actual}")
+
+    def test_principle_count_constants_agree(self):
+        # Adding a principle means raising both constants; if they disagree, one was forgotten.
+        actual = len(parse_principles(SSOT_MD))
+        self.assertEqual(sync_principles_module.MIN_PRINCIPLES, actual,
+                         "MIN_PRINCIPLES in scripts/sync_principles.py is stale")
+        self.assertEqual(EXPECTED_PRINCIPLE_COUNT, actual,
+                         "EXPECTED_PRINCIPLE_COUNT in tests/test_kit.py is stale")
+
     def test_adopter_readme_without_principles_is_not_drift(self):
         # Red-green pin: forcing every adopting project's product README to list AIKit's principle
         # IDs failed their very first sync with 19 TRIAD DRIFT errors. A README that documents no
