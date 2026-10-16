@@ -1232,3 +1232,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: R1 applies 16,000 characters to the whole variable tail of one request. R3's limits apply together with PRINCIPLE-004 R5, and the first limit reached stops the output. `repo_relative` converts absolute paths inside the repository to `/`-separated relative paths before the ledger stores them; paths outside the repository stay as given, the exception R5 allows.
 - **Consequences**: The committed ledger held no absolute path. Pinned by a unit test of the conversion and the P012 table entry; both fail on the previous text and code.
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-004 (R5's 100-line cap applies together with R3; resolves the overlap), PRINCIPLE-006 (ledger checkpoints; no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-015 (no conflict).
+
+### ADR-098: PRINCIPLE-013 Second Pass - An Unwritable Ledger Explains Itself
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Running `--checkpoint` against a read-only ledger crashed with a raw `PermissionError` traceback; a lock timeout would have done the same with its own `TimeoutError`. That broke PRINCIPLE-011 R6 (no traceback), R2 of this principle (exit 1 with the triad) and R5, whose "continue with in-memory state" has no meaning for a command that ends after one action.
+- **Decision**: The ledger CLI installs `report_operational_error` as `sys.excepthook`: `OSError` and `TimeoutError` print `[LEDGER WRITE FAILED]` with `Why:` and `Fix:` and the process exits 1; any other exception keeps Python's traceback, because it is a bug. R5 now separates a long-running process (continues in memory with one warning) from a command that ends after one action (exits 1 with the triad). `--help` and README's CLI contract say so (PRINCIPLE-005 R2).
+- **Consequences**: Verified with a read-only ledger: exit 1, three lines, no traceback. Pinned by a unit test of the hook and the P013 table entry.
+- Cross-principle check: PRINCIPLE-000 (R5: no hidden failure; no conflict), PRINCIPLE-006 (ledger writes; no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-010 (no conflict), PRINCIPLE-011 (R6 triad, R5 exit 1; resolves the traceback), PRINCIPLE-016 (no conflict), PRINCIPLE-017 (no conflict).

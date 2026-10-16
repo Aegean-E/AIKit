@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `42`
-- **Total Functions / Methods**: `113`
-- **Total Source Lines**: `7701`
+- **Total Functions / Methods**: `114`
+- **Total Source Lines**: `7731`
 
 ---
 
@@ -55,7 +55,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1285` lines (`56793` bytes)
+**Size**: `1304` lines (`57823` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -88,6 +88,7 @@
 - `def classify_change(path, old, new)` - *Return (track, reason) for one changed file. Pure: no I/O.*
 - `def classify_track(changes)` - *Classify a change set into Track A, B or C (PRINCIPLE-002 R3). Pure: no I/O.*
 - `def collect_working_changes(workspace)` - *Read every changed, staged or untracked file versus HEAD (git adapter for --track).*
+- `def report_operational_error(exc_type, exc, tb)` - *`sys.excepthook` for the CLI (PRINCIPLE-011 R6, PRINCIPLE-013 R2/R5): an operational failure*
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
@@ -243,7 +244,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3173` lines (`176169` bytes)
+**Size**: `3184` lines (`176891` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -487,6 +488,7 @@
   - Method `.test_dynamic_re_decomposition_on_discovery()`
   - Method `.test_conventional_commit_validation()`
   - Method `.test_milestone_tags_are_well_formed_and_bounded()`
+  - Method `.test_unwritable_ledger_reports_the_triad_not_a_traceback()`
   - Method `.test_ledger_stores_repository_relative_paths()`
   - Method `.test_lock_retries_through_windows_delete_pending_permission_error()`
   - Method `.test_switching_from_an_in_progress_task_records_it_as_superseded()`

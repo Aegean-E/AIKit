@@ -94,6 +94,7 @@ from scripts.disruption_recovery import (
     validate_argv,
     argv_value_errors,
     impact_errors,
+    report_operational_error,
     RISK_DIMENSIONS,
 )
 from scripts.check_secrets import (
@@ -1221,6 +1222,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "at least 10MB are free",
                 "acquired with a 3-second timeout; a lock older than 30 seconds is broken",
                 "A *long-running* process runs until stopped",
+                "a command that ends after one action exits 1 with PRINCIPLE-011 R6's message, never a traceback",
                 "removed by `--clean` as PRINCIPLE-006 R6 specifies, never by an automatic sweep at startup",
                 "at least one test for each fault",
             ],
@@ -2833,6 +2835,15 @@ class TestDisruptionRecovery(unittest.TestCase):
                     "feat(x): do it [milestone 1/2]", "feat(x): [milestone 1/2]"):
             with self.subTest(msg=msg):
                 self.assertFalse(validate_conventional_commit(msg)[0])
+
+    def test_unwritable_ledger_reports_the_triad_not_a_traceback(self):
+        # Red-green pin (ADR-098): a read-only ledger crashed --checkpoint with a raw traceback.
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            report_operational_error(PermissionError, PermissionError(13, "denied"), None)
+        lines = err.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith("[LEDGER WRITE FAILED]"))
+        self.assertTrue(lines[1].startswith("Why:") and lines[2].startswith("Fix:"))
+        self.assertNotIn("Traceback", err.getvalue())
 
     def test_ledger_stores_repository_relative_paths(self):
         # Red-green pin (ADR-097): absolute paths were persisted as given, writing the user's home

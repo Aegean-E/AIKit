@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p012-pass2",
+    "task_id": "p013-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189508.4464974,
-    "completed_at": 1792189523.6158323
+    "updated_at": 1792189611.1215765,
+    "completed_at": 1792189625.994943
   },
   "checkpoints": [
-    {
-      "task_id": "p009-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: apply P009 to AIKit's own injected git_status role",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189259.1268663,
-      "timestamp_str": "2026-10-17 01:20:59"
-    },
-    {
-      "task_id": "p009-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P009 pass 2: boundary needs 2+ production implementations (a test double alone does not count, still injected per R4); a one-operation role may be a Callable; ADR-094",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189259.2797186,
-      "timestamp_str": "2026-10-17 01:20:59",
-      "impact_assessment": {
-        "why": "R1 counted a test double as a boundary, demanding four layers in a 1200-line CLI module; R2 required a Protocol for a one-function role",
-        "benefits": "rules give one answer for AIKit's own code",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "pins; cross-principle line"
-      }
-    },
-    {
-      "task_id": "p009-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189259.434987,
-      "timestamp_str": "2026-10-17 01:20:59"
-    },
-    {
-      "task_id": "p009-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189274.0168772,
-      "timestamp_str": "2026-10-17 01:21:14"
-    },
-    {
-      "task_id": "p009-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p009-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189311.2035582,
-      "timestamp_str": "2026-10-17 01:21:51"
-    },
     {
       "task_id": "p010-pass2",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189523.615833,
       "timestamp_str": "2026-10-17 01:25:23"
+    },
+    {
+      "task_id": "p013-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: unwritable ledger scenario",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189588.0601342,
+      "timestamp_str": "2026-10-17 01:26:28"
+    },
+    {
+      "task_id": "p013-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P013 pass 2: CLI excepthook turns OSError/TimeoutError into the triad + exit 1 (was a traceback); R5 separates one-shot CLIs (exit 1) from long-running processes (continue in memory); ADR-098",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189588.2152028,
+      "timestamp_str": "2026-10-17 01:26:28",
+      "impact_assessment": {
+        "why": "an unwritable ledger crashed --checkpoint with a raw traceback, against P011 R6 and P013 R2/R5",
+        "benefits": "every ledger write failure explains itself",
+        "risks": "contract: disruption_recovery exits 1 with a triad instead of a traceback on OSError/TimeoutError; dependency: none; concurrency: lock timeout now reported the same way; state: none",
+        "mitigation": "other exceptions keep their traceback; unit test; verified with a read-only ledger"
+      }
+    },
+    {
+      "task_id": "p013-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189588.371761,
+      "timestamp_str": "2026-10-17 01:26:28"
+    },
+    {
+      "task_id": "p013-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189611.1215765,
+      "timestamp_str": "2026-10-17 01:26:51"
+    },
+    {
+      "task_id": "p013-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p013-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189625.9949443,
+      "timestamp_str": "2026-10-17 01:27:05"
     }
   ]
 }

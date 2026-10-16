@@ -1054,8 +1054,26 @@ Checkpoint options:
   -h, --help                 Show this help message and exit
 
 Exit codes:
-  0  success    1  operational failure    2  CLI argument misuse
+  0  success    1  operational failure (an unwritable, full or locked ledger prints
+                    What/Why/Fix, never a traceback)    2  CLI argument misuse
 """
+
+
+def report_operational_error(exc_type, exc, tb) -> None:
+    """
+    `sys.excepthook` for the CLI (PRINCIPLE-011 R6, PRINCIPLE-013 R2/R5): an operational failure
+    - an unwritable or full disk, a lock timeout - prints the triad and the process exits 1, as an
+    uncaught exception does. It used to print a raw traceback. Other exceptions are bugs and keep
+    Python's traceback.
+    """
+    if not issubclass(exc_type, (OSError, TimeoutError)):
+        sys.__excepthook__(exc_type, exc, tb)
+        return
+    print(f"[LEDGER WRITE FAILED] {exc}", file=sys.stderr)
+    print("Why: the task ledger could not be read or written (disk full, read-only, locked or "
+          "permission denied).", file=sys.stderr)
+    print("Fix: free disk space or fix permissions on .agents/, or wait for the other process "
+          "holding the lock, then re-run the command.", file=sys.stderr)
 
 
 def validate_argv(argv: List[str]) -> List[str]:
@@ -1113,6 +1131,7 @@ def argv_value_errors(argv: List[str]) -> List[str]:
 
 
 if __name__ == "__main__":
+    sys.excepthook = report_operational_error
     if "-h" in sys.argv or "--help" in sys.argv:
         print(HELP_TEXT, end="")
         sys.exit(0)
