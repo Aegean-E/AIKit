@@ -144,6 +144,7 @@ def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
             end = later_sections[0]
         block = content[start:end]
 
+        problem_match = re.search(r"- \*\*Problem\*\*:\s*([^\n]+)", block)
         concept_match = re.search(r"- \*\*Concept\*\*:\s*([^\n]+)", block)
         invariant_match = re.search(r"- \*\*Invariant\*\*:\s*([^\n]+)", block)
         rules_match = re.search(r"- \*\*Rules\*\*:\s*\n\s*1\.", block)
@@ -154,6 +155,8 @@ def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
             seen_pids.add(pid)
             if not title:
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} has an empty title.")
+            if not problem_match or not problem_match.group(1).strip():
+                raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Problem**:' section.")
             if not concept_match or not concept_match.group(1).strip():
                 raise ValueError(f"[PRINCIPLE-017 SCHEMA VIOLATION] {pid} is missing required '- **Concept**:' section.")
             if not invariant_match or not invariant_match.group(1).strip():

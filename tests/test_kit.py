@@ -429,21 +429,21 @@ class TestPrincipleSync(unittest.TestCase):
         try:
             # Missing concept
             bad_doc = temp_dir / "bad1.md"
-            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Invariant**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Problem**: P\n- **Invariant**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
             with self.assertRaises(ValueError) as ctx:
                 parse_principles(bad_doc, strict=True)
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
 
             # Missing invariant
             bad_doc = temp_dir / "bad2.md"
-            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Concept**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Problem**: P\n- **Concept**: Test\n- **Rules**:\n  1. Do something.\n", encoding="utf-8")
             with self.assertRaises(ValueError) as ctx:
                 parse_principles(bad_doc, strict=True)
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
 
             # Missing rules
             bad_doc = temp_dir / "bad3.md"
-            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Concept**: Test\n- **Invariant**: Test\n", encoding="utf-8")
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Problem**: P\n- **Concept**: Test\n- **Invariant**: Test\n", encoding="utf-8")
             with self.assertRaises(ValueError) as ctx:
                 parse_principles(bad_doc, strict=True)
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION]", str(ctx.exception))
@@ -451,13 +451,19 @@ class TestPrincipleSync(unittest.TestCase):
             # Duplicate principle ID
             bad_doc = temp_dir / "bad4.md"
             bad_doc.write_text(
-                "### PRINCIPLE-001: First\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R1\n\n"
-                "### PRINCIPLE-001: Duplicate\n- **Concept**: C\n- **Invariant**: D\n- **Rules**:\n  1. R2\n",
+                "### PRINCIPLE-001: First\n- **Problem**: P\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R1\n\n"
+                "### PRINCIPLE-001: Duplicate\n- **Problem**: P\n- **Concept**: C\n- **Invariant**: D\n- **Rules**:\n  1. R2\n",
                 encoding="utf-8"
             )
             with self.assertRaises(ValueError) as ctx:
                 parse_principles(bad_doc, strict=True)
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION] Duplicate principle ID detected: PRINCIPLE-001", str(ctx.exception))
+            # Missing problem (ADR-090): every principle states why it exists
+            bad_doc = temp_dir / "bad5.md"
+            bad_doc.write_text("### PRINCIPLE-099: Broken Schema\n- **Concept**: C\n- **Invariant**: I\n- **Rules**:\n  1. R.\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                parse_principles(bad_doc, strict=True)
+            self.assertIn("missing required '- **Problem**:' section", str(ctx.exception))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -469,8 +475,8 @@ class TestPrincipleSync(unittest.TestCase):
         self.addCleanup(shutil.rmtree, doc.parent, ignore_errors=True)
         doc.write_text(
             "## Phase 5: Delivery\n"
-            "### PRINCIPLE-001: Complete\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R\n\n"
-            "### PRINCIPLE-002: Missing Invariant\n- **Concept**: C\n- **Rules**:\n  1. R\n\n"
+            "### PRINCIPLE-001: Complete\n- **Problem**: P\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R\n\n"
+            "### PRINCIPLE-002: Missing Invariant\n- **Problem**: P\n- **Concept**: C\n- **Rules**:\n  1. R\n\n"
             "## Appendix\n- **Invariant**: belongs to no principle\n",
             encoding="utf-8",
         )
@@ -935,7 +941,8 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
         self.assertEqual(citing_principles(text, "PRINCIPLE-002"), ["PRINCIPLE-001"])  # checklist ignored
         self.assertEqual(citing_principles(self.text, "PRINCIPLE-000"),
                          ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-007", "PRINCIPLE-009",
-                          "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-019"])
+                          "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-017",
+                          "PRINCIPLE-019"])
 
     def test_r3_completeness_is_decided_by_the_gate(self):
         # Red-green pin (third pass, ADR-073): whether the ADR named every principle --citing
@@ -1220,6 +1227,19 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "read in slices (PRINCIPLE-004 R3)",
             ],
             "gone": ["high-density", "instant cold-start", "`schema_version`", "`view_file`", "strictly prohibited"],
+        },
+        "PRINCIPLE-017": {
+            "rules": 6,
+            "present": [
+                "`- **Problem**:`, `- **Concept**:`, `- **Invariant**:` (its capsule) and `- **Rules**:`",
+                "each tagged with its audience and written as PRINCIPLE-000 R7 requires",
+                "exits 1 on a missing section, an empty title or a duplicate ID",
+                "A commit MUST NOT be made while either fails (PRINCIPLE-018 R3)",
+                "A principle belongs to the nearest `## ... Phase N:` heading above it",
+                "at most 1,200 characters",
+            ],
+            "gone": ["~300 tokens", "plus an optional `- **Problem**:`", "without rigid hardcoded range limits",
+                     "strictly prohibited"],
         },
         "PRINCIPLE-000": {
             "rules": 7,

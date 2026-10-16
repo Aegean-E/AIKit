@@ -177,7 +177,11 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
-| **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (P001); schema compliance; freshness test gate; Tier 1B domain rules injection. |
+| **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check; 5-section schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
+
+### ... Phase N:` heading above it. Principles appear in non-decreasing phase order, and the last one is in Phase 5; `python scripts/sync_principles.py` exits 1 otherwise. A new principle needs no change to the generator, only a heading in the right phase.
+| Principle | Title | Capsule |
+|---|---|---|
 | **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (feat\|fix\|refactor\|docs\|chore\|test\|perf\|build\|ci) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
 <!-- principles:end -->
