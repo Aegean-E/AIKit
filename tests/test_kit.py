@@ -43,6 +43,8 @@ import scripts.sync_principles as sync_principles_module
 from scripts.sync_principles import (
     parse_principles,
     citing_principles,
+    changed_principles,
+    cross_check_errors,
     sync_all,
     validate_triad_consistency,
     load_tier_1b_domain_rules,
@@ -771,6 +773,28 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
         self.assertEqual(citing_principles(self.text, "PRINCIPLE-000"),
                          ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-009",
                           "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-019"])
+
+    def test_r3_completeness_is_decided_by_the_gate(self):
+        # Red-green pin (third pass, ADR-073): whether the ADR named every principle --citing
+        # prints rested on the agent. cross_check_errors decides it from HEAD vs the tree.
+        old = ("### PRINCIPLE-001: A\n- cites PRINCIPLE-002.\n"
+               "### PRINCIPLE-002: B\n- plain.\n## Checklist\n")
+        new = old.replace("- cites PRINCIPLE-002.", "- cites PRINCIPLE-002 R1.")
+        adr = "### ADR-001: t\n- body\n"
+        self.assertEqual(changed_principles(old, new), ["PRINCIPLE-001"])
+        self.assertEqual(changed_principles(old, old.replace("plain.", "plain.  ")), [])  # whitespace only
+        self.assertEqual(cross_check_errors(old, old, adr, adr), [])
+        self.assertEqual(cross_check_errors(old, new, adr, adr),
+                         ["PRINCIPLE-001 changed but no ADR was added to knowledge/decisions.md (PRINCIPLE-004 R4)"])
+        no_line = adr + "### ADR-002: rule\n- body\n"
+        self.assertEqual(cross_check_errors(old, new, adr, no_line),
+                         ["PRINCIPLE-001 changed but no added ADR has a 'Cross-principle check:' line"])
+        incomplete = adr + "### ADR-002: rule\n- Cross-principle check: none\n"
+        self.assertEqual(cross_check_errors(old, new, adr, incomplete),
+                         ["PRINCIPLE-001 changed; its Cross-principle check line omits PRINCIPLE-002 "
+                          "(python scripts/sync_principles.py --citing PRINCIPLE-001)"])
+        complete = adr + "### ADR-002: rule\n- Cross-principle check: PRINCIPLE-002 (no conflict).\n"
+        self.assertEqual(cross_check_errors(old, new, adr, complete), [])
 
     def test_capsule_does_not_license_skipping_procedure(self):
         # Red-green pin: "code quality primacy over procedural formalism" read, alone in Tier 1,

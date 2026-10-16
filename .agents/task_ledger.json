@@ -1,57 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p000-pass2",
+    "task_id": "p000-pass3",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792185510.4195814,
-    "completed_at": 1792185529.838166
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792185646.6495018
   },
   "checkpoints": [
-    {
-      "task_id": "p005-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] ship .agents/rules/readme_quickref.md.template; gate checks Quick Reference structurally (heading, prereq line with version, fenced test command) and rejects unfilled <FILL: placeholders; [2/2] R1/R6 + adoption step name the template; pins; ADR-064",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184528.7572823,
-      "timestamp_str": "2026-10-17 00:02:08",
-      "impact_assessment": {
-        "why": "pasting AIKit's section imports AIKit-only commands; gate checks substrings, not R1's structure; placeholders pass"
-      }
-    },
-    {
-      "task_id": "p005-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184551.405472,
-      "timestamp_str": "2026-10-17 00:02:31"
-    },
-    {
-      "task_id": "p005-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184634.2288392,
-      "timestamp_str": "2026-10-17 00:03:54"
-    },
-    {
-      "task_id": "p005-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792184663.0420594,
-      "timestamp_str": "2026-10-17 00:04:23"
-    },
     {
       "task_id": "p005-pass2",
       "phase": "in_progress",
@@ -214,6 +170,49 @@
       "status": "completed",
       "timestamp": 1792185529.838169,
       "timestamp_str": "2026-10-17 00:18:49"
+    },
+    {
+      "task_id": "p000-pass3",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: re-read P000; design gate for R3 completeness",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185572.1913664,
+      "timestamp_str": "2026-10-17 00:19:32"
+    },
+    {
+      "task_id": "p000-pass3",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] sync_principles.py --check: cross_check_errors(HEAD vs tree) - every principle whose section changed needs a new ADR whose Cross-principle check line names its --citing set; git missing or no HEAD copy -> documented skip with warning; [2/2] R3 defines changed principle and the change's ADR, names the gate; pins; ADR-073",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185593.4497821,
+      "timestamp_str": "2026-10-17 00:19:53",
+      "impact_assessment": {
+        "why": "R3 completeness rested on the agent; 'a change to a principle' and 'the change's ADR' undefined"
+      }
+    },
+    {
+      "task_id": "p000-pass3",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185593.566176,
+      "timestamp_str": "2026-10-17 00:19:53"
+    },
+    {
+      "task_id": "p000-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792185646.6495018,
+      "timestamp_str": "2026-10-17 00:20:46"
     }
   ]
 }

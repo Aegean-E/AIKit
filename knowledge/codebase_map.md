@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `34`
-- **Total Functions / Methods**: `96`
-- **Total Source Lines**: `6648`
+- **Total Functions / Methods**: `100`
+- **Total Source Lines**: `6743`
 
 ---
 
@@ -114,7 +114,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `599` lines (`28149` bytes)
+**Size**: `670` lines (`32197` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -132,6 +132,10 @@
 - `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
 - `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
 - `def citing_principles(ssot_text, pid)` - *The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose*
+- `def _adr_blocks(decisions)` - *ADR ID -> its text, for every `### ADR-NNN:` heading.*
+- `def changed_principles(old_text, new_text)` - *Principles whose `### PRINCIPLE-NNN:` section differs between two texts (PRINCIPLE-000 R3).*
+- `def cross_check_errors(old_text, new_text, old_decisions, new_decisions)` - *PRINCIPLE-000 R3 made decidable: every principle whose section changed since the last commit*
+- `def git_head_text(rel_path)` - *`rel_path` as committed at HEAD, or None when git, a commit or the file is missing.*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
@@ -226,7 +230,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2553` lines (`139508` bytes)
+**Size**: `2577` lines (`141234` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -289,6 +293,7 @@
   - Method `.test_every_meta_rule_is_decidable()`
   - Method `.test_second_pass_definitions()`
   - Method `.test_citing_set_is_computed_from_sections_only()`
+  - Method `.test_r3_completeness_is_decided_by_the_gate()`
   - Method `.test_capsule_does_not_license_skipping_procedure()`
   - Method `.test_rule_changes_carry_a_cross_principle_check()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*

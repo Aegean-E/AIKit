@@ -521,6 +521,57 @@ def citing_principles(ssot_text: str, pid: str) -> List[str]:
     return sorted(cited_by | cites)
 
 
+def _adr_blocks(decisions: str) -> Dict[str, str]:
+    """ADR ID -> its text, for every `### ADR-NNN:` heading."""
+    return {m.group(1): m.group(2) for m in
+            re.finditer(r"^### (ADR-\d+):(.*?)(?=^### ADR-|\Z)", decisions, re.M | re.S)}
+
+
+def changed_principles(old_text: str, new_text: str) -> List[str]:
+    """Principles whose `### PRINCIPLE-NNN:` section differs between two texts (PRINCIPLE-000 R3)."""
+    def norm(section: Optional[str]) -> Optional[str]:
+        return None if section is None else "\n".join(l.rstrip() for l in section.strip().splitlines())
+    old, new = principle_sections(old_text), principle_sections(new_text)
+    return sorted(pid for pid in set(old) | set(new) if norm(old.get(pid)) != norm(new.get(pid)))
+
+
+def cross_check_errors(old_text: str, new_text: str, old_decisions: str, new_decisions: str) -> List[str]:
+    """
+    PRINCIPLE-000 R3 made decidable: every principle whose section changed since the last commit
+    needs an ADR added since then whose `Cross-principle check:` line names every principle
+    `--citing` prints for it. Completeness used to rest on each model's own list.
+    """
+    changed = changed_principles(old_text, new_text)
+    if not changed:
+        return []
+    added = [body for adr, body in _adr_blocks(new_decisions).items() if adr not in _adr_blocks(old_decisions)]
+    if not added:
+        return [f"{', '.join(changed)} changed but no ADR was added to knowledge/decisions.md (PRINCIPLE-004 R4)"]
+    lines = [m.group(1) for body in added for m in re.finditer(r"Cross-principle check:([^\n]*)", body)]
+    if not lines:
+        return [f"{', '.join(changed)} changed but no added ADR has a 'Cross-principle check:' line"]
+    named = set(re.findall(r"PRINCIPLE-\d{3}", " ".join(lines)))
+    errors = []
+    for pid in changed:
+        source = new_text if pid in principle_sections(new_text) else old_text
+        missing = [p for p in citing_principles(source, pid) if p not in named]
+        if missing:
+            errors.append(f"{pid} changed; its Cross-principle check line omits {', '.join(missing)} "
+                          f"(python scripts/sync_principles.py --citing {pid})")
+    return errors
+
+
+def git_head_text(rel_path: str) -> Optional[str]:
+    """`rel_path` as committed at HEAD, or None when git, a commit or the file is missing."""
+    import subprocess  # lazy: only --check needs git (PRINCIPLE-010 --help budget)
+    try:
+        res = subprocess.run(["git", "show", f"HEAD:{rel_path}"], cwd=str(ROOT_DIR), capture_output=True,
+                             text=True, encoding="utf-8", errors="replace", timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return res.stdout if res.returncode == 0 else None
+
+
 def print_help():
     """Print command line usage for sync_principles.py."""
     print("""AIKit Principles Auto-Sync Tool (PRINCIPLE-017)
@@ -597,3 +648,23 @@ if __name__ == "__main__":
             sys.exit(1)
 
     sync_all(check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)
+
+    if check_mode:
+        _decisions_path = ROOT_DIR / "knowledge" / "decisions.md"
+        _old_rules, _old_decisions = git_head_text("GUIDELINES.md"), git_head_text("knowledge/decisions.md")
+        if _old_rules is None:
+            # Documented default (PRINCIPLE-003 R6): no committed copy to compare, e.g. the commit
+            # that first adds GUIDELINES.md to an adopter repository.
+            print("[WARN] No committed GUIDELINES.md at HEAD; cross-principle check skipped (PRINCIPLE-000 R3).")
+        else:
+            _errors = cross_check_errors(
+                _old_rules, SSOT_MD.read_text(encoding="utf-8"), _old_decisions or "",
+                _decisions_path.read_text(encoding="utf-8") if _decisions_path.exists() else "")
+            if _errors:
+                print(f"[FAIL] Cross-principle check incomplete ({len(_errors)}):")
+                for _error in _errors:
+                    print(f"   - {_error}")
+                print("   Why: a rule change not checked against the rules citing it can contradict them.")
+                print("   Fix: add the ADR, ending with 'Cross-principle check:' naming each listed principle.")
+                sys.exit(1)
+            print("[OK] Every changed principle has an ADR naming its --citing set (PRINCIPLE-000 R3)")
