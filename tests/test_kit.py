@@ -1290,6 +1290,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "the duty itself is PRINCIPLE-011 R2 and R5",
                 "fails when it changed; it MUST NOT write to the user's home folders",
                 "Running `--help` alone is not a dogfood run",
+                "the one exception is R7's run log, which MUST be listed in `.gitignore`",
+                "a content fingerprint of the repository's tracked files",
                 "The runner prints at most 15 lines",
                 "It is one of PRINCIPLE-018 R3's commit gates",
                 "obeys the step and token caps of PRINCIPLE-012 R6",

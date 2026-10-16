@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p014-pass2",
+    "task_id": "p015-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189688.4769697,
-    "completed_at": 1792189743.5946062
+    "updated_at": 1792189781.26636,
+    "completed_at": 1792189796.5276444
   },
   "checkpoints": [
-    {
-      "task_id": "p011-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P011 pass 2: triad lines defined by first non-blank text, on stdout or stderr; usage errors on stderr; ADR-096",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189411.768137,
-      "timestamp_str": "2026-10-17 01:23:31",
-      "impact_assessment": {
-        "why": "R6 'a line starting Why:' failed AIKit's indented gate output literally; stream unspecified",
-        "benefits": "rule matches all six CLIs",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "verified 6 CLIs; pins"
-      }
-    },
-    {
-      "task_id": "p011-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189411.9117947,
-      "timestamp_str": "2026-10-17 01:23:31"
-    },
-    {
-      "task_id": "p011-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189429.3060803,
-      "timestamp_str": "2026-10-17 01:23:49"
-    },
-    {
-      "task_id": "p011-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p011-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189444.0216646,
-      "timestamp_str": "2026-10-17 01:24:04"
-    },
-    {
-      "task_id": "p012-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: scenarios for P012",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189482.8146644,
-      "timestamp_str": "2026-10-17 01:24:42"
-    },
     {
       "task_id": "p012-pass2",
       "phase": "in_progress",
@@ -227,6 +172,61 @@
       "status": "completed",
       "timestamp": 1792189743.5946074,
       "timestamp_str": "2026-10-17 01:29:03"
+    },
+    {
+      "task_id": "p015-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: compare P015 with dogfood.py behaviour",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189778.104059,
+      "timestamp_str": "2026-10-17 01:29:38"
+    },
+    {
+      "task_id": "p015-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P015 pass 2: R4 names the git-ignored run log as its one write outside the sandbox and defines the fingerprint over tracked files; ADR-100",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189778.2363338,
+      "timestamp_str": "2026-10-17 01:29:38",
+      "impact_assessment": {
+        "why": "R4 'everything under one sandbox' contradicted R7's log path",
+        "benefits": "R4 and R7 agree; rule matches dogfood.py",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "verified 10 output lines, stdin closed, log ignored"
+      }
+    },
+    {
+      "task_id": "p015-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189778.3899992,
+      "timestamp_str": "2026-10-17 01:29:38"
+    },
+    {
+      "task_id": "p015-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189781.26636,
+      "timestamp_str": "2026-10-17 01:29:41"
+    },
+    {
+      "task_id": "p015-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p015-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189796.5276456,
+      "timestamp_str": "2026-10-17 01:29:56"
     }
   ]
 }

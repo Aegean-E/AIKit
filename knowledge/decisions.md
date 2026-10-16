@@ -1248,3 +1248,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `TestSuiteHygiene` parses both test modules: every `test_` method must call an `assert*` method, `fail`, or contain an `assert` statement, and no test module may import `socket`, `http`, `urllib`, `requests`, `httpx` or `aiohttp`. R3 and R5 name these checks. A temporary test without an assertion was added to confirm the meta-test fails on it, then removed.
 - **Consequences**: Assertions on mock calls alone still pass the meta-test; R5's rule that such tests do not count toward R1 stays a review duty.
 - Cross-principle check: PRINCIPLE-000 (R5 assertion that cannot fail; no conflict), PRINCIPLE-002 (no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-010 (tier budgets; the meta-test is pure AST; no conflict).
+
+### ADR-100: PRINCIPLE-015 Second Pass - The Run Log Is the Named Exception
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Compared with what `scripts/dogfood.py` does, P015 contradicted itself: R4 sent everything a run writes, logs included, into the sandbox, while R7 writes the run log to `.agents/dogfood_last_run.log` in the repository, which `.gitignore` already called "the one deliberate write outside SANDBOX_ROOT". R4's fingerprint did not say it covers tracked files only, which is why the ignored log does not trip it. The runner itself complies elsewhere: 10 lines of output, stdin closed on every process.
+- **Decision**: R4 keeps state, databases and caches in the sandbox and names R7's run log as the one write outside it, which MUST be git-ignored; the fingerprint covers the repository's tracked files.
+- **Consequences**: R4 and R7 agree with each other and with the runner. Pinned in the P015 table entry.
+- Cross-principle check: PRINCIPLE-002 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-012 (no conflict), PRINCIPLE-018 (no conflict).
