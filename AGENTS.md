@@ -6,7 +6,7 @@
 ## Core Principles
 - PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Pre-Flight checklist before the first Track C edit; Post-Flight checklist before any Track B or C commit; report only failed items (R8).
 - PRINCIPLE-002 Lifecycle-Aligned Instruction Ordering & Attentional Priming: Track via `disruption_recovery.py --track` (A none, B docs/comments but not rule files, C rest); urgency alone never skips P018 gates (R5).
-- PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness & call-site check; manifest dependency grounding; platform parity; dual-track ambiguity protocol; strict AST syntax gate.
+- PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness; `git grep -w` call-site check; deps only if declared; platform parity; ask on intent ambiguity; strict AST syntax gate.
 - PRINCIPLE-004 Attentional Drift Prevention & Compaction Resilience: Disk-backed memory (`.agents/task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first slice retrieval; bounded rolling ledger.
 - PRINCIPLE-005 AI Cold-Start Readiness & Living Documentation: Self-describing repo; 30s cold-start orientation (<20k chars); material surface README sync; executable command parity; whole-tree drift shield.
 - PRINCIPLE-006 Incremental Progress Checkpointing & Disruption Recovery: Incremental atomic micro-commits; pre-flight disruption audit; ledger CLI `scripts/disruption_recovery.py`; explicit micro-staging.

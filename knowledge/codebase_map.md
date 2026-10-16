@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `25`
-- **Total Functions / Methods**: `83`
-- **Total Source Lines**: `5649`
+- **Total Classes**: `27`
+- **Total Functions / Methods**: `84`
+- **Total Source Lines**: `5784`
 
 ---
 
@@ -18,9 +18,10 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `270` lines (`10789` bytes)
+**Size**: `288` lines (`11276` bytes)
 
 **Functions:**
+- `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
 - `def production_modules()` - *Production source files whose reachability is audited (excludes this checker itself).*
 - `def collect_definitions(files)` - *Map every top-level function name to the module that defines it.*
 - `def collect_references(files)` - *Every name referenced in production code, however it is reached.*
@@ -132,7 +133,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `427` lines (`15602` bytes)
+**Size**: `436` lines (`16091` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -151,7 +152,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `511` lines (`23812` bytes)
+**Size**: `530` lines (`24667` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -194,6 +195,8 @@
   - Method `.test_missing_text_is_misuse()`
 - `class TestTrackCli` - *`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3).*
   - Method `.test_track_follows_the_actual_diff()`
+- `class TestAstGateCli` - *PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback.*
+  - Method `.test_syntax_error_halts_cleanly()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
@@ -206,7 +209,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1943` lines (`102186` bytes)
+**Size**: `2032` lines (`107415` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -257,6 +260,15 @@
   - Method `.test_cross_references_resolve()`
   - Method `.test_p001_precedence_points_at_this_r5()`
   - Method `.test_checklists_are_in_principle_order()`
+- `class TestPrinciple003Unambiguity` - *PRINCIPLE-003 must give every model the same grounding steps and the same answer to "is this*
+  - Method `.setUpClass()`
+  - Method `.test_rules_contain_no_hedge_words()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_ambiguity_split_is_decided_by_one_question()`
+  - Method `.test_open_terms_are_defined()`
+  - Method `.test_cross_references_resolve()`
+  - Method `.test_every_external_program_the_scripts_run_is_declared()`
+  - Method `.test_scripts_follow_platform_parity()`
 - `class TestLifecycleToolSemantics` - *PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.*
   - Method `.test_bare_digit_phase_is_that_phase()`
   - Method `.test_resume_stays_in_the_recorded_phase_on_a_clean_tree()`

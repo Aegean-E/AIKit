@@ -10,7 +10,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 
 > **Orientation Contract for AI Agents & Developers**: Orient yourself in seconds with the verified commands and prerequisites below.
 
-- **Runtime Prerequisites**: Python 3.10+ (Standard Library only — zero external pip dependencies).
+- **Runtime Prerequisites**: Python 3.10+ (Standard Library only — zero external pip dependencies) and `git`.
 - **Canonical Regression Shield Gate**:
   ```bash
   python -m unittest discover tests

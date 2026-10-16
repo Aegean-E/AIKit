@@ -85,6 +85,24 @@ PUBLIC_API_ALLOWLIST: Set[str] = {
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")
 
 
+_TREE_CACHE: Dict[Tuple[str, str], ast.Module] = {}
+
+
+def parse_module(path: Path) -> ast.Module:
+    """
+    Parse a module once per content. Every analysis below walks the same files, and parsing each
+    one 3-4 times made the repository scan the slowest unit test. The trees are only read, never
+    mutated, so sharing them is safe; the content key means a cached tree is never stale.
+    """
+    source = path.read_text(encoding="utf-8")
+    key = (str(path), source)
+    if key not in _TREE_CACHE:
+        if len(_TREE_CACHE) > 256:
+            _TREE_CACHE.clear()
+        _TREE_CACHE[key] = ast.parse(source, filename=str(path))
+    return _TREE_CACHE[key]
+
+
 def production_modules() -> List[Path]:
     """Production source files whose reachability is audited (excludes this checker itself)."""
     return sorted(p for p in PROD_DIR.glob("*.py") if p.name != Path(__file__).name)
@@ -94,7 +112,7 @@ def collect_definitions(files: List[Path]) -> Dict[str, str]:
     """Map every top-level function name to the module that defines it."""
     defined: Dict[str, str] = {}
     for path in files:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = parse_module(path)
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 defined.setdefault(node.name, path.name)
@@ -111,7 +129,7 @@ def collect_references(files: List[Path]) -> Set[str]:
     """
     referenced: Set[str] = set()
     for path in files:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = parse_module(path)
         for node in ast.walk(tree):
             if isinstance(node, ast.Name):
                 referenced.add(node.id)
@@ -147,7 +165,7 @@ def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:
     reads: Dict[str, str] = {}
     writes: Set[str] = set()
     for path in files:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = parse_module(path)
         for node in ast.walk(tree):
             # dict literal writes: {"k": v}
             if isinstance(node, ast.Dict):
@@ -177,7 +195,7 @@ def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
     # legacy data, so only flag a key with no writer anywhere at all.
     all_literals: Set[str] = set()
     for path in files:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = parse_module(path)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 all_literals.add(node.value)

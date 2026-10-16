@@ -731,6 +731,91 @@ class TestPrinciple002Unambiguity(unittest.TestCase):
                 self.assertEqual(ids, sorted(ids), f"{heading} items are out of principle order")
 
 
+class TestPrinciple003Unambiguity(unittest.TestCase):
+    """
+    PRINCIPLE-003 must give every model the same grounding steps and the same answer to "is this
+    ambiguity mine to resolve or the program's?". Its claims about this repository must be true.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-003:"):cls.text.index("\n### PRINCIPLE-004:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES
+                 if h in self.section.lower() or h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-003 contains open-ended wording: {found}")
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 7, "PRINCIPLE-003 must keep rules R1-R7 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_ambiguity_split_is_decided_by_one_question(self):
+        # Red-green pin: "data/runtime" vs "architectural/intent" had no deciding criterion.
+        self.assertIn("The deciding question for any ambiguity is who faces it", self.rules)
+        self.assertIn("*Runtime ambiguity* (the running program faces it)", self.rules)
+        self.assertIn("*Intent ambiguity* (the agent faces it)", self.rules)
+        self.assertIn("MUST NOT take a destructive action: deleting or overwriting", self.rules)
+
+    def test_open_terms_are_defined(self):
+        for definition in (
+            "the file MUST NOT have been written since that read",
+            "`git grep -n -w <name>`",
+            "including tests and documentation",
+            "A *dependency* is any import outside the language's standard library",
+            "MUST NOT use `shell=True` or `os.system`",
+            "listing the options numbered, each with its observable difference",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_cross_references_resolve(self):
+        for pid, number, expected in (("PRINCIPLE-011", 6, "Remediation Triad"),
+                                      ("PRINCIPLE-014", 7, "Reachability"),
+                                      ("PRINCIPLE-016", 2, "Code-and-Doc Pairing"),
+                                      ("PRINCIPLE-001", 3, "Retrieval Triggers")):
+            start = self.text.index(f"### {pid}:")
+            block = self.text[start:self.text.index("\n### PRINCIPLE-", start + 5)]
+            title = re.search(rf"^  {number}\. \*\*([^*]+)\*\*", block, re.M)
+            with self.subTest(ref=f"{pid} R{number}"):
+                self.assertIsNotNone(title)
+                self.assertIn(expected, title.group(1))
+
+    def test_every_external_program_the_scripts_run_is_declared(self):
+        # Red-green pin: R3 requires declared dependencies, yet the scripts ran `git` while the
+        # README prerequisites said "Standard Library only".
+        os_bundled = {"taskkill"}  # ships with Windows; governed by R4, not R3
+        prerequisites = next(l for l in README_MD.read_text(encoding="utf-8").splitlines()
+                             if "Runtime Prerequisites" in l)
+        for script in sorted((ROOT_DIR / "scripts").glob("*.py")):
+            source = script.read_text(encoding="utf-8")
+            # What actually executes: the first element of a list handed straight to
+            # subprocess.run/Popen, or a wrapper's ["<program>", *args]. Wrapper arguments such as
+            # git_output(["diff", ...]) are subcommands, not programs.
+            executed = set(re.findall(r'subprocess\.(?:run|Popen)\(\s*\[\s*"([a-z][\w.-]*)"', source))
+            executed |= set(re.findall(r'\[\s*"([a-z][\w.-]*)",\s*\*args\]', source))
+            for program in executed:
+                if program in os_bundled or program.startswith("-"):
+                    continue
+                with self.subTest(script=script.name, program=program):
+                    self.assertIn(f"`{program}`", prerequisites,
+                                  f"{script.name} runs undeclared program {program!r}")
+
+    def test_scripts_follow_platform_parity(self):
+        # R4, mechanically: no shell strings, no hardcoded interpreter names.
+        for script in sorted((ROOT_DIR / "scripts").glob("*.py")):
+            source = script.read_text(encoding="utf-8")
+            with self.subTest(script=script.name):
+                self.assertNotRegex(source, r"shell\s*=\s*True")
+                self.assertNotRegex(source, r"\bos\.system\(")
+                self.assertNotRegex(source, r"""\[\s*["'](?:python3?|py)["']""")
+
+
 class TestLifecycleToolSemantics(unittest.TestCase):
     """
     PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.
@@ -849,6 +934,10 @@ class TestSyncWriteSafety(unittest.TestCase):
     """
 
     def setUp(self):
+        # These tests verify WHICH files sync writes, not power-loss durability (covered by the
+        # PRINCIPLE-013 tests), so fsync is a no-op here. RAII-restored (PRINCIPLE-014 R4).
+        self.addCleanup(setattr, os, "fsync", os.fsync)
+        os.fsync = lambda fd: None
         self.sandbox = Path(tempfile.mkdtemp(prefix="test_sync_safety_"))
         self.addCleanup(shutil.rmtree, self.sandbox, ignore_errors=True)
         (self.sandbox / "README.md").write_text(README_MD.read_text(encoding="utf-8"), encoding="utf-8")

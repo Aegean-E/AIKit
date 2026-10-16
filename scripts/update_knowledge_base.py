@@ -232,7 +232,7 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
         modules_data.append((rel_path, info))
 
     if syntax_errors and strict:
-        err_msg = "\n".join([f"  • {p}: {err}" for p, err in syntax_errors])
+        err_msg = "\n".join([f"  - {p}: {err}" for p, err in syntax_errors])
         raise ValueError(
             f"[PRINCIPLE-003 AST GATE FAILURE] Found {len(syntax_errors)} invalid Python file(s) with syntax errors:\n{err_msg}"
         )
@@ -423,5 +423,14 @@ if __name__ == "__main__":
             sys.exit(1)
 
     is_lenient = "--lenient" in sys.argv
-    update_and_validate(strict=not is_lenient)
+    try:
+        update_and_validate(strict=not is_lenient)
+    except ValueError as gate_error:
+        # PRINCIPLE-003 R7 halts here; PRINCIPLE-011 R6 forbids doing it with a raw traceback.
+        print(f"[AST GATE FAILED] {gate_error}", file=sys.stderr)
+        print("Why: a file that does not parse cannot be catalogued or trusted (PRINCIPLE-003 R7).",
+              file=sys.stderr)
+        print("Fix: correct the syntax error in the file named above, then re-run this script.",
+              file=sys.stderr)
+        sys.exit(1)
 

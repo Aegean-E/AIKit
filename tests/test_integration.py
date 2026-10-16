@@ -449,6 +449,25 @@ class TestTrackCli(unittest.TestCase):
         self.assertEqual(track(), "Track C")
 
 
+class TestAstGateCli(unittest.TestCase):
+    """PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback."""
+
+    def test_syntax_error_halts_cleanly(self):
+        probe = ROOT_DIR / "scripts" / "_ast_gate_probe.py"
+        probe.write_text("def broken(:\n", encoding="utf-8")
+        self.addCleanup(probe.unlink, missing_ok=True)
+        res = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py")],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("_ast_gate_probe.py", res.stderr)
+        self.assertIn("line 1", res.stderr)
+        self.assertIn("Fix:", res.stderr)
+        self.assertNotIn("Traceback", res.stderr)
+
+
 class TestRepositorySecretHygiene(unittest.TestCase):
     """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
 
