@@ -249,16 +249,17 @@ class TestPrincipleSync(unittest.TestCase):
                 self.assertIn(mechanism, p6["invariant"].lower())
 
     def test_principle_014_regression_shield_capsule(self):
-        # Enforces PRINCIPLE-014: verified invariant capsule with 100% test pass gate, sub-second execution, test sanctity, RAII fixture reversion, anti-tautology, and negative path coverage
+        # Enforces PRINCIPLE-014: the capsule states when a test is required and when it may change
         principles = parse_principles(SSOT_MD)
         p14 = next((p for p in principles if p["id"] == "PRINCIPLE-014"), None)
         self.assertIsNotNone(p14)
-        self.assertIn("100% test pass gate", p14["invariant"].lower())
-        self.assertIn("<1s", p14["invariant"].lower())
-        self.assertIn("test sanctity invariant", p14["invariant"].lower())
-        self.assertIn("raii fixture reversion", p14["invariant"].lower())
-        self.assertIn("anti-tautological observable contracts", p14["invariant"].lower())
-        self.assertIn("hostile & negative path coverage", p14["invariant"].lower())
+        # Mechanisms, not labels (ADR-087; the label pins were replaced under PRINCIPLE-014 R2's
+        # exception: the user approved rewriting the principle text, and ADR-087 names this test).
+        for mechanism in ("100% test pass gate", "behaviour change = failing-first test",
+                          "weakening a test needs user approval + adr naming it", "unit <1s, no spawns/sleeps",
+                          "integration <5s", "tempdir + addcleanup", "reachability shield"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, p14["invariant"].lower())
 
     def test_principle_015_operational_dogfooding_capsule(self):
         # Enforces PRINCIPLE-015: verified invariant capsule with domain-specific dogfooding, portable process tree teardown, safety jail, non-interactive stdin parity, golden path + chaos perturbation, and terse reporting
@@ -1178,6 +1179,27 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["non-trivial", "$2\\text{s}$", "guaranteeing 100%", "Startup self-healing must actively sweep",
                      "$3 \\le"],
         },
+        "PRINCIPLE-014": {
+            "rules": 7,
+            "present": [
+                "MUST add or change a test in `tests/` that fails on the code before the change and passes after it",
+                "*Weakening* a test is any change after which it accepts a behaviour it rejected before",
+                "Rewording a test so that it rejects the same behaviours, or more, is not weakening",
+                "It MAY weaken a test only when the user approved the contract change the test encodes",
+                "is *flaky* and blocks every commit until fixed",
+                "Every test asserts at least one observable result",
+                "at least one test with invalid input",
+            ],
+            "gone": ["e.g. changing strict checks", "critical paths", "Avoid over-mocking", "Prioritize hostile",
+                     "unless the user explicitly requested a breaking contract overhaul"],
+        },
+        "PRINCIPLE-000": {
+            "rules": 7,
+            "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires"],
+            "gone": ["skipping, deleting or loosening a test, threshold, allowlist entry or budget to make a check pass without an ADR"],
+            # R7 lists the banned words themselves; TestPrinciple000Unambiguity checks the rest.
+            "skip_words": True,
+        },
     }
 
     @classmethod
@@ -1193,7 +1215,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 found = [h for h in TestPrinciple002Unambiguity.HEDGES
                          if (re.search(rf"(?<![A-Za-z]){re.escape(h)}(?![A-Za-z])", section)
                              if h[0].isalpha() else h in section)]
-                self.assertEqual(found, [])
+                self.assertEqual([] if spec.get("skip_words") else found, [])
             numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", rules, re.M)
             with self.subTest(pid=pid, check="rule count"):
                 self.assertEqual(len(numbered), spec["rules"], "rule numbers are cited elsewhere")
