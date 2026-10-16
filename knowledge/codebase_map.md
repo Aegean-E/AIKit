@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `28`
 - **Total Functions / Methods**: `84`
-- **Total Source Lines**: `5860`
+- **Total Source Lines**: `5900`
 
 ---
 
@@ -133,7 +133,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `436` lines (`16099` bytes)
+**Size**: `441` lines (`16417` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -211,7 +211,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2087` lines (`110566` bytes)
+**Size**: `2122` lines (`113014` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -275,6 +275,8 @@
   - Method `.test_unmeasurable_disk_space_is_announced()`
   - Method `.test_unreadable_backup_is_announced()`
   - Method `.test_failed_audit_scan_is_never_reported_clean()`
+  - Method `.test_ast_gate_rejects_syntax_newer_than_the_minimum()`
+  - Method `.test_no_standard_library_apis_newer_than_the_minimum()`
   - Method `.test_scripts_follow_platform_parity()`
 - `class TestLifecycleToolSemantics` - *PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.*
   - Method `.test_bare_digit_phase_is_that_phase()`

@@ -104,6 +104,7 @@ from scripts.update_knowledge_base import (
     check_codebase_map_freshness,
     CORE_DOCS,
     KNOWLEDGE_DIR,
+    MIN_PYTHON,
 )
 
 
@@ -770,6 +771,10 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
             "Declaring a new dependency requires the user's explicit approval",
             "An optional argument the user simply did not give is not missing input",
             "it MAY continue work that does not depend on the answer",
+            "including overwriting the whole file",
+            "does not satisfy this rule unless that check passes",
+            "MUST NOT use syntax or standard-library APIs introduced after that version",
+            "or what a function returns or raises",
             "including tests and documentation",
             "A *dependency* is any import outside the language's standard library",
             "MUST NOT use `shell=True` or `os.system`",
@@ -860,6 +865,36 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
         self.assertNotIn("Clean state", report)
         self.assertIn("Audit incomplete", report)
         self.assertIn("temp-buffer scan: denied", report)
+
+    def test_ast_gate_rejects_syntax_newer_than_the_minimum(self):
+        # R4/R7: the developer's interpreter is newer than the declared minimum (3.14 vs 3.10), so
+        # newer syntax would pass locally and fail for users. The gate parses at MIN_PYTHON.
+        self.assertEqual(MIN_PYTHON, (3, 10))
+        prereq = next(l for l in README_MD.read_text(encoding="utf-8").splitlines()
+                      if "Runtime Prerequisites" in l)
+        self.assertIn(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+", prereq, "MIN_PYTHON drifted from README")
+        probe = Path(tempfile.mkdtemp(prefix="test_minver_")) / "m.py"
+        self.addCleanup(shutil.rmtree, probe.parent, ignore_errors=True)
+        for name, source in (("except* (3.11)", "try:\n    pass\nexcept* ValueError:\n    pass\n"),
+                             ("PEP 695 (3.12)", "def f[T](x: T) -> T:\n    return x\n")):
+            with self.subTest(syntax=name):
+                probe.write_text(source, encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    extract_python_symbols(probe, strict=True)
+        probe.write_text("match 1:\n    case 1:\n        pass\n", encoding="utf-8")
+        self.assertNotIn("error", extract_python_symbols(probe))  # 3.10 syntax is fine
+
+    def test_no_standard_library_apis_newer_than_the_minimum(self):
+        # The parser cannot see API age; these are the post-3.10 stdlib names most often reached for.
+        # Names are assembled from fragments so this test's own source never matches itself.
+        names = ["toml" + "lib", "itertools." + "batched", ".walk" + "()", "datetime." + "UTC",
+                 "typing." + "Self", "Exception" + "Group", "Task" + "Group", "contextlib." + "chdir",
+                 "Str" + "Enum", "file_" + "digest"]
+        newer = "|".join(re.escape(n) for n in names)
+        for path in [*sorted((ROOT_DIR / "scripts").glob("*.py")), *sorted((ROOT_DIR / "tests").glob("*.py"))]:
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(file=path.name):
+                self.assertNotRegex(source, newer, f"{path.name} uses a standard-library API newer than 3.10")
 
     def test_scripts_follow_platform_parity(self):
         # R4, mechanically: no shell strings, no hardcoded interpreter names.

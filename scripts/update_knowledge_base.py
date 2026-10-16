@@ -44,6 +44,11 @@ IGNORE_DIRS = {
 }
 
 
+# Oldest Python the repository supports (README "Runtime Prerequisites", PRINCIPLE-003 R4). Parsing
+# with this grammar makes the AST gate reject syntax that only newer interpreters accept, which a
+# developer on a newer Python would otherwise never see fail locally.
+MIN_PYTHON = (3, 10)
+
 FUNCTION_NODES = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
@@ -135,7 +140,7 @@ def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, A
 def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Dict[str, Any]:
     """AST extraction proper; see extract_python_symbols()."""
     try:
-        tree = ast.parse(content, filename=str(file_path))
+        tree = ast.parse(content, filename=str(file_path), feature_version=MIN_PYTHON)
     except Exception as e:
         if strict:
             raise ValueError(f"[PRINCIPLE-003 AST FAILURE] Syntax error in {file_path}: {e}") from e
