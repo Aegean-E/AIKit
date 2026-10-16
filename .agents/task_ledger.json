@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p010-pass2",
+    "task_id": "p011-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189369.1622894,
-    "completed_at": 1792189383.1320055
+    "updated_at": 1792189429.3060803,
+    "completed_at": 1792189444.0216632
   },
   "checkpoints": [
-    {
-      "task_id": "p019-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P019",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189064.1179128,
-      "timestamp_str": "2026-10-17 01:17:44"
-    },
-    {
-      "task_id": "p019-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] rewrite P019 R1-R7 (Concept distinct from Problem, R2 list = shipped .gitignore + test, pragma named, decidable least-privilege), generator rejects untagged rules (P000 R7, P017 R1); ADR-092",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189080.0561042,
-      "timestamp_str": "2026-10-17 01:18:00",
-      "impact_assessment": {
-        "why": "P019 R2 list differs from .gitignore; Concept duplicates Problem; prefer/vague; audience tags now complete so the generator can enforce them",
-        "benefits": "rule equals the shipped baseline; tag rule enforced for every future principle",
-        "risks": "contract: sync_principles exits 1 on an untagged rule; dependency: none; concurrency: none; state: none",
-        "mitigation": "all principles tagged after this change; fixture test"
-      }
-    },
-    {
-      "task_id": "p019-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189080.1820965,
-      "timestamp_str": "2026-10-17 01:18:00"
-    },
-    {
-      "task_id": "p019-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189153.3508532,
-      "timestamp_str": "2026-10-17 01:19:13"
-    },
-    {
-      "task_id": "p019-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p019-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189167.2432766,
-      "timestamp_str": "2026-10-17 01:19:27"
-    },
     {
       "task_id": "p008-pass2",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189383.1320064,
       "timestamp_str": "2026-10-17 01:23:03"
+    },
+    {
+      "task_id": "p011-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: check P011 R6 triad against real CLI output",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189411.6467934,
+      "timestamp_str": "2026-10-17 01:23:31"
+    },
+    {
+      "task_id": "p011-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P011 pass 2: triad lines defined by first non-blank text, on stdout or stderr; usage errors on stderr; ADR-096",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189411.768137,
+      "timestamp_str": "2026-10-17 01:23:31",
+      "impact_assessment": {
+        "why": "R6 'a line starting Why:' failed AIKit's indented gate output literally; stream unspecified",
+        "benefits": "rule matches all six CLIs",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "verified 6 CLIs; pins"
+      }
+    },
+    {
+      "task_id": "p011-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189411.9117947,
+      "timestamp_str": "2026-10-17 01:23:31"
+    },
+    {
+      "task_id": "p011-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189429.3060803,
+      "timestamp_str": "2026-10-17 01:23:49"
+    },
+    {
+      "task_id": "p011-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p011-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189444.0216646,
+      "timestamp_str": "2026-10-17 01:24:04"
     }
   ]
 }

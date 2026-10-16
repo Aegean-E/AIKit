@@ -1216,3 +1216,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: Every time limit is measured on the machine that runs Phase 4, and a breach there is fixed before the commit. R4 covers `open()` and `Path.open()`; a raw descriptor from `os.open` is closed in `try`/`finally`. The gate now also rejects method-style `.open(` outside a `with`, except `os.open`.
 - **Consequences**: AIKit passes unchanged. README's code-structure row and `--help` already describe the check. Pinned by a gate fixture and the P010 table entry.
 - Cross-principle check: PRINCIPLE-007 (`concurrency:` dimension; no conflict), PRINCIPLE-013 (state writes use temp files in `with`; no conflict), PRINCIPLE-014 (tier limits measured where Phase 4 runs; no conflict).
+
+### ADR-096: PRINCIPLE-011 Second Pass - The Triad as AIKit Prints It
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Checked against real output, R6's "a line starting `Why:`" failed AIKit's own gates literally: every gate prints an indented `   Why:` line on stdout, while usage errors print unindented lines on stderr. The rule named no stream, so one reader could fail every gate's message and another accept any text containing "Why".
+- **Decision**: The triad lines are identified by their first non-blank text, `Why:` and `Fix:`, on stdout or stderr; a usage error (exit 2) prints on stderr. All six CLIs were checked with an unknown flag: each exits 2 with one `Why:` and one `Fix:` line on stderr.
+- **Consequences**: No code change. Pinned in the P011 table entry.
+- Cross-principle check: PRINCIPLE-003 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-012 (R4 schema mismatch uses this message; no conflict), PRINCIPLE-013 (R2/R7 failure messages; no conflict), PRINCIPLE-015 (R6 no traceback; no conflict), PRINCIPLE-019 (R7 missing credential message; no conflict).
