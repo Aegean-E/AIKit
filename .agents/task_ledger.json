@@ -1,52 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p004-pass3",
+    "task_id": "p005-pass1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792174038.364361,
-    "completed_at": 1792174038.4986477
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792174376.089696
   },
   "checkpoints": [
-    {
-      "task_id": "p002-unambiguity",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "P002 rewrite + --track classifier; Phase 4 passed (156 tests, all gates)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792168458.2138333,
-      "timestamp_str": "2026-10-16 19:34:18"
-    },
-    {
-      "task_id": "p002-unambiguity",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p002-unambiguity' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792168458.3207114,
-      "timestamp_str": "2026-10-16 19:34:18"
-    },
-    {
-      "task_id": "p002-second-pass",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "P002 pass 2: bookkeeping-neutral track, checkable recoil, proportionate checkpoints; Phase 4 passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792168940.7400532,
-      "timestamp_str": "2026-10-16 19:42:20"
-    },
-    {
-      "task_id": "p002-second-pass",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p002-second-pass' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792168940.852983,
-      "timestamp_str": "2026-10-16 19:42:20"
-    },
     {
       "task_id": "p002-third-pass",
       "phase": "in_progress",
@@ -199,6 +160,49 @@
       "status": "completed",
       "timestamp": 1792174038.4986496,
       "timestamp_str": "2026-10-16 21:07:18"
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P005, map its enforcement",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174096.1472092,
+      "timestamp_str": "2026-10-16 21:08:16"
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] README gate in update_knowledge_base.py: size, orientation labels, tree parity both ways, documented command parity; fix README drift (.gitignore, stray row, checkpoint cmd); [2/2] rewrite P005 R1-R6 + capsule + checklists, pins, ADR-062",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174196.1299245,
+      "timestamp_str": "2026-10-16 21:09:56",
+      "impact_assessment": {
+        "why": "P005 enforcement is a hardcoded AIKit path list checking one direction; rules use undefined terms"
+      }
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing milestone 1/2",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174199.5645845,
+      "timestamp_str": "2026-10-16 21:09:59"
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "milestone 1/2 gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174376.089696,
+      "timestamp_str": "2026-10-16 21:12:56"
     }
   ]
 }

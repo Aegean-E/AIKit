@@ -108,6 +108,8 @@ from scripts.update_knowledge_base import (
     CORE_DOCS,
     KNOWLEDGE_DIR,
     MIN_PYTHON,
+    audit_readme,
+    parse_readme_tree,
 )
 
 
@@ -499,38 +501,68 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("Python 3.10+", readme_content, "Missing Python runtime prerequisite in README.md")
         self.assertIn("python -m unittest discover tests", readme_content, "Missing canonical test command in README.md")
         
-        # 3. Whole-Tree Drift Shield: Every file listed in `What's Inside` must physically exist on disk
-        expected_paths = [
-            "README.md",
-            "AGENTS.md",
-            "GUIDELINES.md",
-            "GEMINI.md",
-            "CLAUDE.md",
-            ".cursorrules",
-            ".github/copilot-instructions.md",
-            ".github/workflows/ci.yml",
-            ".agents/rules/principles.md",
-            ".agents/task_ledger.json",
-            "scripts/sync_principles.py",
-            "scripts/disruption_recovery.py",
-            "scripts/update_knowledge_base.py",
-            "scripts/dogfood.py",
-            "scripts/check_reachability.py",
-            "scripts/check_secrets.py",
-            "tests/test_kit.py",
-            "tests/test_integration.py",
-            "knowledge/INDEX.md",
-            "knowledge/architecture.md",
-            "knowledge/services.md",
-            "knowledge/data_models.md",
-            "knowledge/state_and_ui.md",
-            "knowledge/decisions.md",
-            "knowledge/codebase_map.md",
-        ]
-        for rel in expected_paths:
-            basename = Path(rel).name
-            self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
-            self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+        # 3. Whole-Tree Drift Shield and command parity, by the same check the gate runs. This
+        # replaced a fixed list of 25 AIKit paths that never saw a new file missing from the tree
+        # (it missed `.gitignore`). Completeness against git is the integration tier's job.
+        def script_source(rel):
+            path = ROOT_DIR / rel
+            return path.read_text(encoding="utf-8") if path.is_file() else None
+        self.assertEqual(audit_readme(readme_content, None, lambda rel: (ROOT_DIR / rel).exists(),
+                                      script_source), [])
+        self.assertIn(".gitignore", parse_readme_tree(readme_content))
+
+
+class TestPrinciple005ReadmeGate(unittest.TestCase):
+    """PRINCIPLE-005: every README rule a program can decide is decided by `audit_readme`."""
+
+    TREE = (
+        "## ⚡ 30-Second Cold-Start Quick Reference\n- **Runtime Prerequisites**: Python 3.10+\n"
+        "- **Canonical Regression Shield Gate**:\n## 📦 What's Inside\n```text\nrepo/\n"
+        "├── README.md\n├── scripts/\n│   └── tool.py      <- a tool\n└── docs/\n```\n"
+    )
+    SOURCES = {"scripts/tool.py": 'FLAGS = {"--check"}'}
+    TRACKED = ["README.md", "scripts/tool.py", "docs/a.md", "docs/deep/b.md"]
+
+    def audit(self, readme, tracked=TRACKED, exists=None):
+        on_disk = set(self.TRACKED) | {"scripts", "docs", "docs/deep"}
+        return audit_readme(readme, tracked, exists or (lambda rel: rel in on_disk), self.SOURCES.get)
+
+    def test_a_correct_readme_passes(self):
+        self.assertEqual(self.audit(self.TREE), [])
+
+    def test_tree_paths_and_directories(self):
+        self.assertEqual(parse_readme_tree(self.TREE), ["README.md", "scripts/", "scripts/tool.py", "docs/"])
+
+    def test_a_dead_tree_path_fails(self):
+        errors = self.audit(self.TREE.replace("tool.py", "gone.py"))
+        self.assertIn("README.md tree lists 'scripts/gone.py', which does not exist (R5)", errors)
+
+    def test_a_missing_top_level_entry_fails(self):
+        errors = self.audit(self.TREE, tracked=self.TRACKED + [".gitignore"])
+        self.assertEqual(errors, ["README.md tree omits tracked '.gitignore' (R5)"])
+
+    def test_an_expanded_directory_must_be_complete_and_a_collapsed_one_need_not(self):
+        # scripts/ shows children, so every tracked child must be listed; docs/ shows none.
+        errors = self.audit(self.TREE, tracked=self.TRACKED + ["scripts/new.py"])
+        self.assertEqual(errors, ["README.md tree omits tracked 'scripts/new.py' (R5)"])
+
+    def test_documented_commands_must_exist(self):
+        readme = self.TREE + "`python scripts/tool.py --check --nope` `python scripts/x.py` `python -m unittest tests.test_none`"
+        self.assertEqual(self.audit(readme), [
+            "README.md passes --nope to scripts/tool.py, which does not declare it (R3)",
+            "README.md runs 'scripts/x.py', which does not exist (R3)",
+            "README.md runs test module 'tests.test_none', which does not exist (R3)",
+        ])
+
+    def test_size_labels_and_tree_are_required(self):
+        errors = self.audit("# x\n" + "y" * 20_001)
+        self.assertIn("README.md has 20,005 chars; the limit is 20,000 (R1)", errors)
+        self.assertIn("README.md lacks the label '**Runtime Prerequisites**:' (R1)", errors)
+        self.assertIn("README.md has no ```text directory tree after \"What's Inside\" (R5)", errors)
+
+    def test_a_prose_mention_is_not_the_tree_heading(self):
+        prose = "See What's Inside below.\n```text\nrepo/\n├── fake.md\n```\n"
+        self.assertEqual(parse_readme_tree(prose + self.TREE)[0], "README.md")
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):

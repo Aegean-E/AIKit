@@ -31,7 +31,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
 | **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase |
-| **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <id> --phase <p>` | Appends atomic milestone to task ledger |
+| **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num <1-5> --desc <text>` | Appends atomic milestone to task ledger (PRINCIPLE-002 R4) |
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Safely unlinks orphaned `*.tmp_*` buffers |
@@ -39,7 +39,6 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <100ms, writing nothing |
-
 | **Sandbox the Ledger CLI** | `python scripts/disruption_recovery.py --workspace <dir> --audit` | Operates on `<dir>/.agents/`, never the repo ledger |
 
 **Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every script in `scripts/` honours the same
@@ -55,6 +54,7 @@ verification runs through `--check` on `sync_principles.py` and `update_knowledg
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
+├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
 ├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
@@ -111,7 +111,7 @@ portable_agent_kit/
   cp -r .agents/rules /path/to/target/.agents/
   ```
   Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json`: they test, build and record *this* repository (verified: AIKit's suite fails 19 checks inside a fresh adopter repo). Your project keeps its own suite; AIKit's enforcement travels as the CLI gates, which all pass in an adopter repo: `sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all` and `dogfood.py`. Replace the copied `knowledge/` documents with your own project's after Step 4.
-  Then paste the **⚡ 30-Second Cold-Start Quick Reference** section into the top of your existing `README.md`.
+  Then paste the **⚡ 30-Second Cold-Start Quick Reference** section into the top of your existing `README.md`, put your own prerequisites and test command under its two labels, and add a `## 📦 What's Inside` section whose ```` ```text ```` block lists every top-level entry of your repository. `update_knowledge_base.py --check` fails until both exist (PRINCIPLE-005 R1, R5).
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
 If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules` or `.github/copilot-instructions.md`, move their project-specific rules into `.agents/rules/domain.md` (start from `.agents/rules/domain.md.template`, at most 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites a file it did not generate: it stops with `[PROTECTED]` and names the file, so nothing is lost.
@@ -190,7 +190,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
 2. **Findings Only**: `python scripts/disruption_recovery.py --audit` prints the same findings without resumption guidance.
 3. **Recording In-Flight Checkpoints & Impact Rationale**: During multi-step implementations, record milestones cleanly (including optional pre-flight impact assessment):
    ```bash
-   python scripts/disruption_recovery.py --checkpoint "task_name" --phase "planning" --desc "description" --why "why" --benefits "benefits" --risks "risks" --mitigation "mitigation"
+   python scripts/disruption_recovery.py --checkpoint "task_name" --phase-num 2 --desc "description" --why "why" --benefits "benefits" --risks "risks" --mitigation "mitigation"
    ```
 4. **Marking Completion**: When a task finishes successfully:
    ```bash

@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `29`
-- **Total Functions / Methods**: `88`
-- **Total Source Lines**: `6118`
+- **Total Classes**: `31`
+- **Total Functions / Methods**: `92`
+- **Total Source Lines**: `6280`
 
 ---
 
@@ -137,7 +137,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `441` lines (`16417` bytes)
+**Size**: `563` lines (`22180` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -149,6 +149,10 @@
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
 - `def check_codebase_map_freshness(knowledge_dir, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
 - `def update_and_validate(knowledge_dir, strict)`
+- `def parse_readme_tree(readme)` - *Paths in the first ```text block after "What's Inside" (PRINCIPLE-005 R5), relative to the*
+- `def audit_readme(readme, tracked, exists, script_source)` - *Every PRINCIPLE-005 rule a program can decide, as one error per violation. Pure: the caller*
+- `def check_readme(root)` - *Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3).*
+- `def report_readme(errors)` - *Print README findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
 - `def _validate_argv(argv, known, help_text)` - *Short-circuit on --help and reject unknown flags with exit 2 (PRINCIPLE-011, PRINCIPLE-015).*
 
 ---
@@ -156,7 +160,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `541` lines (`25215` bytes)
+**Size**: `549` lines (`25540` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -205,6 +209,8 @@
   - Method `.test_syntax_error_halts_cleanly()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
+- `class TestReadmeDriftShield` - *PRINCIPLE-005 live invariant. Integration tier: completeness shells out to `git ls-files`.*
+  - Method `.test_this_readme_matches_the_tracked_tree()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_unit_tier_guards_itself_against_spawns()`
@@ -215,7 +221,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2283` lines (`123250` bytes)
+**Size**: `2315` lines (`125556` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -244,6 +250,16 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestPrinciple005ReadmeGate` - *PRINCIPLE-005: every README rule a program can decide is decided by `audit_readme`.*
+  - Method `.audit(readme, tracked, exists)`
+  - Method `.test_a_correct_readme_passes()`
+  - Method `.test_tree_paths_and_directories()`
+  - Method `.test_a_dead_tree_path_fails()`
+  - Method `.test_a_missing_top_level_entry_fails()`
+  - Method `.test_an_expanded_directory_must_be_complete_and_a_collapsed_one_need_not()`
+  - Method `.test_documented_commands_must_exist()`
+  - Method `.test_size_labels_and_tree_are_required()`
+  - Method `.test_a_prose_mention_is_not_the_tree_heading()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

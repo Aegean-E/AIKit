@@ -11,9 +11,10 @@ import ast
 import copy
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 KNOWLEDGE_DIR = ROOT_DIR / "knowledge"
@@ -381,6 +382,123 @@ def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = Tru
         print(f"[OK] Verified link integrity in {k_dir.name}/INDEX.md")
 
 
+README_MAX_CHARS = 20_000
+README_LABELS = (
+    "Cold-Start Quick Reference",
+    "**Runtime Prerequisites**:",
+    "**Canonical Regression Shield Gate**:",
+    "What's Inside",
+)
+_TREE_LINE = re.compile(r"^((?:│   |    )*)(?:├── |└── )(.+)$")
+_SCRIPT_COMMAND = re.compile(r"python (scripts/[\w.]+\.py)([^`\n|]*)")
+_UNITTEST_COMMAND = re.compile(r"python -m unittest (tests\.\w+)")
+_FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
+
+
+def parse_readme_tree(readme: str) -> List[str]:
+    """
+    Paths in the first ```text block after "What's Inside" (PRINCIPLE-005 R5), relative to the
+    repository root; a directory ends with '/'. The block's first line (the root) is skipped.
+    """
+    heading = re.search(r"^#+ .*What's Inside", readme, re.M)  # a heading, never a mention in prose
+    fence = readme.find("```text\n", heading.end()) if heading else -1
+    if fence < 0:
+        return []
+    block = readme[fence + len("```text\n"):readme.find("```", fence + len("```text\n"))]
+    paths: List[str] = []
+    stack: List[str] = []
+    for line in block.splitlines():
+        match = _TREE_LINE.match(line)
+        if not match:
+            continue
+        name = match.group(2).split("<-")[0].strip()
+        stack = stack[:len(match.group(1)) // 4] + [name.rstrip("/")]
+        paths.append("/".join(stack) + ("/" if name.endswith("/") else ""))
+    return paths
+
+
+def audit_readme(
+    readme: str,
+    tracked: Optional[List[str]],
+    exists: Callable[[str], bool],
+    script_source: Callable[[str], Optional[str]],
+) -> List[str]:
+    """
+    Every PRINCIPLE-005 rule a program can decide, as one error per violation. Pure: the caller
+    supplies the tracked files (None when git is unavailable), a path test and a script reader.
+    It replaces a test holding a fixed list of AIKit paths, which never noticed a new file
+    missing from the tree, a dead path in it, or a documented flag that no script declares.
+    """
+    errors: List[str] = []
+    if len(readme) > README_MAX_CHARS:
+        errors.append(f"README.md has {len(readme):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
+    errors += [f"README.md lacks the label '{label}' (R1)" for label in README_LABELS if label not in readme]
+
+    tree = parse_readme_tree(readme)
+    if not tree:
+        errors.append("README.md has no ```text directory tree after \"What's Inside\" (R5)")
+    listed = {p.rstrip("/") for p in tree}
+    errors += [f"README.md tree lists '{p}', which does not exist (R5)" for p in tree if not exists(p.rstrip("/"))]
+    if tree and tracked is not None:
+        required = {t.split("/")[0] for t in tracked}
+        for directory in (p.rstrip("/") for p in tree if p.endswith("/") and any(q != p and q.startswith(p) for q in tree)):
+            prefix = directory + "/"
+            required |= {prefix + t[len(prefix):].split("/")[0] for t in tracked if t.startswith(prefix)}
+        errors += [f"README.md tree omits tracked '{p}' (R5)" for p in sorted(required - listed)]
+
+    for match in _SCRIPT_COMMAND.finditer(readme):
+        script = match.group(1)
+        source = script_source(script)
+        if source is None:
+            errors.append(f"README.md runs '{script}', which does not exist (R3)")
+            continue
+        errors += [f"README.md passes {flag} to {script}, which does not declare it (R3)"
+                   for flag in _FLAG.findall(match.group(2)) if f'"{flag}"' not in source]
+    for module in _UNITTEST_COMMAND.findall(readme):
+        if not exists(module.replace(".", "/") + ".py"):
+            errors.append(f"README.md runs test module '{module}', which does not exist (R3)")
+    return sorted(set(errors))
+
+
+def check_readme(root: Path = ROOT_DIR) -> List[str]:
+    """Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3)."""
+    readme_path = root / "README.md"
+    if not readme_path.is_file():
+        return ["README.md does not exist (R1)"]
+    tracked: Optional[List[str]] = None
+    try:
+        listing = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True,
+                                 text=True, encoding="utf-8", timeout=10)
+        if listing.returncode == 0:
+            tracked = [p for p in listing.stdout.split("\0") if p]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if tracked is None:
+        print("[WARN] git is unavailable, so README tree completeness was not checked (PRINCIPLE-005 R5).")
+
+    def script_source(rel: str) -> Optional[str]:
+        path = root / rel
+        return path.read_text(encoding="utf-8") if path.is_file() else None
+
+    return audit_readme(readme_path.read_text(encoding="utf-8"), tracked,
+                        lambda rel: (root / rel).exists(), script_source)
+
+
+def report_readme(errors: List[str]) -> bool:
+    """Print README findings with the remediation triad (PRINCIPLE-011 R6); True when clean."""
+    if not errors:
+        print("[OK] README.md: size, labels, directory tree and documented commands verified (PRINCIPLE-005)")
+        return True
+    print(f"[FAIL] README.md drift ({len(errors)}):")
+    for error in errors[:20]:
+        print(f"   - {error}")
+    if len(errors) > 20:
+        print(f"   ... and {len(errors) - 20} more")
+    print("   Why: a cold-starting agent trusts README.md; a dead path or command wastes its first turn.")
+    print("   Fix: edit README.md as each line says (rule numbers are PRINCIPLE-005's), then re-run.")
+    return False
+
+
 KNOWN_FLAGS = {"--check", "--lenient", "--help", "-h"}
 
 HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
@@ -389,7 +507,9 @@ Usage:
   python scripts/update_knowledge_base.py [OPTIONS]
 
 Options:
-  --check     Verify codebase_map.md is fresh against the AST without writing (exits 1 on drift)
+  --check     Verify, without writing, that codebase_map.md matches the AST and that README.md
+              passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
+              commands); exits 1 on any drift
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 
@@ -419,10 +539,10 @@ if __name__ == "__main__":
             fresh = check_codebase_map_freshness(strict=False)
             if fresh:
                 print("[OK] knowledge/codebase_map.md is fresh and synchronized with AST.")
-                sys.exit(0)
             else:
                 print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
-                sys.exit(1)
+            readme_ok = report_readme(check_readme())
+            sys.exit(0 if fresh and readme_ok else 1)
         except Exception as e:
             print(f"[FAIL] Error checking codebase map freshness: {e}")
             sys.exit(1)
@@ -437,5 +557,7 @@ if __name__ == "__main__":
               file=sys.stderr)
         print("Fix: correct the syntax error in the file named above, then re-run this script.",
               file=sys.stderr)
+        sys.exit(1)
+    if not report_readme(check_readme()) and not is_lenient:
         sys.exit(1)
 

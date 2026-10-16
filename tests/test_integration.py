@@ -489,6 +489,14 @@ class TestRepositorySecretHygiene(unittest.TestCase):
         self.assertEqual(exit_code, 0, "secret scan found potential credentials in the repository")
 
 
+class TestReadmeDriftShield(unittest.TestCase):
+    """PRINCIPLE-005 live invariant. Integration tier: completeness shells out to `git ls-files`."""
+
+    def test_this_readme_matches_the_tracked_tree(self):
+        from scripts.update_knowledge_base import check_readme
+        self.assertEqual(check_readme(ROOT_DIR), [])
+
+
 class TestTierBudgetDiscipline(unittest.TestCase):
     """
     Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).
