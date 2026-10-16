@@ -1014,7 +1014,10 @@ Actions (default: --audit):
   --resume                   Print the resumption report for an interrupted task
   --clean                    Purge orphaned temporary buffers (*.tmp_*) older than 60 s; younger
                              ones may belong to a write in progress and are kept
-  --checkpoint <task_id>     Record a task checkpoint in .agents/task_ledger.json
+  --checkpoint <task_id>     Record a task checkpoint in .agents/task_ledger.json; a task's
+                             first plan (--phase-num 2, --desc starting '[1/') needs --why,
+                             --benefits, --mitigation and --risks with 'contract:', 'dependency:',
+                             'concurrency:' and 'state:' verdicts, else exit 2 (PRINCIPLE-007 R6)
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task
   --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
@@ -1053,6 +1056,27 @@ def validate_argv(argv: List[str]) -> List[str]:
                 i += 1  # consume this flag's value; a `--` token is a flag, never a value
         i += 1
     return unknown
+
+
+RISK_DIMENSIONS = ("contract:", "dependency:", "concurrency:", "state:")
+
+
+def impact_errors(description: str, phase_num: Optional[int], fields: Dict[str, Optional[str]],
+                  has_prior_impact: bool) -> List[str]:
+    """
+    PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the
+    whole impact assessment, and `--risks` gives a verdict for each blast-radius dimension of R2.
+    Plans used to be recorded with `--why` alone, or nothing, and nothing noticed.
+    """
+    if phase_num != 2 or not description.startswith("[1/") or has_prior_impact:
+        return []
+    errors = [f"--{name} is required on the first plan checkpoint" for name, value in fields.items()
+              if not (value or "").strip()]
+    risks = (fields.get("risks") or "").lower()
+    if risks.strip():
+        errors += [f"--risks must give a verdict for '{label}' (write 'none' when there is no risk)"
+                   for label in RISK_DIMENSIONS if label not in risks]
+    return errors
 
 
 def argv_value_errors(argv: List[str]) -> List[str]:
@@ -1172,7 +1196,20 @@ if __name__ == "__main__":
             midx = sys.argv.index("--mitigation")
             if len(sys.argv) > midx + 1 and not sys.argv[midx + 1].startswith("--"):
                 mitigation = sys.argv[midx + 1]
-                
+
+        _prior = any(c.get("task_id") == task_id and c.get("impact_assessment")
+                     for c in load_ledger(_ledger).get("checkpoints", []))
+        _impact = impact_errors(desc, resolve_phase_num(phase, phase_num),
+                                {"why": why, "benefits": benefits, "risks": risks, "mitigation": mitigation},
+                                _prior)
+        if _impact:
+            print(f"[INCOMPLETE IMPACT] {'; '.join(_impact)}", file=sys.stderr)
+            print("Why: the first plan of a Track C task records why, benefits, risks and mitigation "
+                  "(PRINCIPLE-007 R6) so they survive compaction.", file=sys.stderr)
+            print('Fix: add --why, --benefits, --mitigation and --risks "contract: ...; dependency: ...; '
+                  'concurrency: ...; state: ..."', file=sys.stderr)
+            sys.exit(2)
+
         cp = record_checkpoint(
             task_id=task_id,
             phase=phase,

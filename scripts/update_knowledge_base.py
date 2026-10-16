@@ -421,6 +421,85 @@ _UNITTEST_COMMAND = re.compile(r"python -m unittest (tests\.\w+)")
 _FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
+_LAZY_MARKER = re.compile(r"#\s*(TODO|FIXME|XXX|HACK)\b")
+_UNNAMED_SUPPRESSION = re.compile(r"#\s*(type:\s*ignore(?!\[)|noqa(?!\s*:))")
+_EXEMPT_DECORATORS = {"abstractmethod", "overload"}
+_EXEMPT_BASES = {"Protocol", "ABC"}
+
+
+def _names(nodes) -> set:
+    """Bare names of decorators or base classes (`abc.abstractmethod` -> `abstractmethod`)."""
+    return {n.attr if isinstance(n, ast.Attribute) else getattr(n, "id", "")
+            for n in (d.func if isinstance(d, ast.Call) else d for d in nodes)}
+
+
+def audit_lazy_code(source: str, rel: str) -> List[str]:
+    """
+    PRINCIPLE-007 R3 as a gate: a `TODO`/`FIXME`/`XXX`/`HACK` comment marker, a `# type: ignore`
+    or `# noqa` that names no error code, and a stub - a function whose body is only `pass`, `...`
+    or `raise NotImplementedError` - unless it is abstract, an overload, or declared in a
+    Protocol or ABC. The rule listed these acts for years with nothing checking them.
+    """
+    import io
+    import tokenize
+    errors: List[str] = []
+    try:
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type != tokenize.COMMENT:
+                continue
+            if _LAZY_MARKER.match(token.string):
+                errors.append(f"{rel}:{token.start[0]}: '{token.string.strip()[:40]}' marks unfinished code")
+            if _UNNAMED_SUPPRESSION.search(token.string):
+                errors.append(f"{rel}:{token.start[0]}: suppression names no error code")
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        pass  # the AST gate (PRINCIPLE-003 R7) reports unparsable files with file and line
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return errors
+    exempt = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and _names(node.bases) & _EXEMPT_BASES:
+            exempt |= {id(f) for f in node.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or id(node) in exempt:
+            continue
+        if _names(node.decorator_list) & _EXEMPT_DECORATORS:
+            continue
+        body = node.body[1:] if ast.get_docstring(node) is not None else node.body
+        stub = len(body) == 1 and (
+            isinstance(body[0], ast.Pass)
+            or (isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant)
+                and body[0].value.value is Ellipsis)
+            or (isinstance(body[0], ast.Raise) and "NotImplementedError" in ast.dump(body[0])))
+        if stub:
+            errors.append(f"{rel}:{node.lineno}: function '{node.name}' is a stub")
+    return errors
+
+
+def check_lazy_code(root: Path = ROOT_DIR) -> List[str]:
+    """`audit_lazy_code` over every Python file the codebase map covers."""
+    errors: List[str] = []
+    for path in find_python_files(root):
+        errors += audit_lazy_code(path.read_text(encoding="utf-8"), path.relative_to(root).as_posix())
+    return errors
+
+
+def report_lazy_code(errors: List[str]) -> bool:
+    """Print lazy-code findings with the remediation triad (PRINCIPLE-011 R6); True when clean."""
+    if not errors:
+        print("[OK] No unfinished-code markers, stubs or unnamed suppressions (PRINCIPLE-007 R3)")
+        return True
+    print(f"[FAIL] Unfinished code ({len(errors)}):")
+    for error in errors[:20]:
+        print(f"   - {error}")
+    if len(errors) > 20:
+        print(f"   ... and {len(errors) - 20} more")
+    print("   Why: a marker or stub reports as done code that is not (PRINCIPLE-007 R3, PRINCIPLE-000 R5).")
+    print("   Fix: finish the code, or name the error code a suppression silences (e.g. '# noqa: E402').")
+    return False
+
+
 README_TEMPLATE = ".agents/rules/readme_quickref.md.template"
 README_PLACEHOLDER = "<FILL:"
 
@@ -566,8 +645,9 @@ Usage:
 Options:
   --check     Verify, without writing, that codebase_map.md matches the AST and that README.md
               passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
-              commands) and that ADR IDs in knowledge/decisions.md are unique and
-              consecutive; exits 1 on any drift
+              commands), that ADR IDs in knowledge/decisions.md are unique and
+              consecutive, and that no Python file holds a TODO/FIXME marker, a stub or
+              an unnamed suppression (PRINCIPLE-007 R3); exits 1 on any of them
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 
@@ -600,6 +680,7 @@ if __name__ == "__main__":
             else:
                 print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
             readme_ok = report_readme(check_readme())
+            readme_ok = report_lazy_code(check_lazy_code()) and readme_ok  # report both, never short-circuit
             adr_errors = audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")) \
                 if (KNOWLEDGE_DIR / "decisions.md").exists() else []
             for adr_error in adr_errors:
@@ -630,6 +711,8 @@ if __name__ == "__main__":
             print("Fix: add the missing document, repair the link or renumber the ADR named above, "
                   "then re-run this script.", file=sys.stderr)
         sys.exit(1)
-    if not report_readme(check_readme()) and not is_lenient:
+    readme_ok = report_readme(check_readme())
+    lazy_ok = report_lazy_code(check_lazy_code())
+    if not (readme_ok and lazy_ok) and not is_lenient:
         sys.exit(1)
 

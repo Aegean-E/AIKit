@@ -92,6 +92,7 @@ from scripts.disruption_recovery import (
     task_plan_checkpoint,
     validate_argv,
     argv_value_errors,
+    impact_errors,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -121,6 +122,7 @@ from scripts.update_knowledge_base import (
     README_TEMPLATE,
     audit_readme,
     audit_adr_register,
+    audit_lazy_code,
     parse_readme_tree,
 )
 
@@ -657,6 +659,64 @@ class TestGeneratedReadmeTable(unittest.TestCase):
         # Red-green pin: the hand-written rows differed from 19 of 20 capsules.
         readme = README_MD.read_text(encoding="utf-8")
         self.assertEqual(sync_readme_table(readme, parse_principles(SSOT_MD)), readme)
+
+
+class TestPrinciple007Tooling(unittest.TestCase):
+    """PRINCIPLE-007 R3 and R6 as checks every model meets the same way (ADR-079)."""
+
+    FULL = {"why": "w", "benefits": "b", "mitigation": "m",
+            "risks": "contract: none; dependency: none; concurrency: none; state: none"}
+
+    def test_first_plan_needs_the_whole_assessment(self):
+        # Red-green pin: plans were recorded with --why alone and nothing noticed.
+        self.assertEqual(impact_errors("[1/2] a; [2/2] b", 2, self.FULL, False), [])
+        partial = dict(self.FULL, benefits=None, risks="contract: none")
+        self.assertEqual(impact_errors("[1/2] a", 2, partial, False), [
+            "--benefits is required on the first plan checkpoint",
+            "--risks must give a verdict for 'dependency:' (write 'none' when there is no risk)",
+            "--risks must give a verdict for 'concurrency:' (write 'none' when there is no risk)",
+            "--risks must give a verdict for 'state:' (write 'none' when there is no risk)",
+        ])
+
+    def test_only_the_first_plan_checkpoint_is_checked(self):
+        empty = {"why": None, "benefits": None, "risks": None, "mitigation": None}
+        self.assertEqual(impact_errors("[1/3] revised", 2, empty, True), [])   # revision
+        self.assertEqual(impact_errors("User chose JSON", 2, empty, False), [])  # a note, not a plan
+        self.assertEqual(impact_errors("[1/2] a", 3, empty, False), [])      # not Phase 2
+
+    def test_lazy_code_markers_stubs_and_unnamed_suppressions_fail(self):
+        source = (
+            "import typing\n"
+            "# TODO: finish\n"
+            "x = 1  # type: ignore\n"
+            "y = 2  # noqa\n"
+            "def stub():\n    pass\n"
+            "def later():\n    raise NotImplementedError\n"
+            "def dots():\n    '''Doc.'''\n    ...\n"
+        )
+        self.assertEqual(audit_lazy_code(source, "m.py"), [
+            "m.py:2: '# TODO: finish' marks unfinished code",
+            "m.py:3: suppression names no error code",
+            "m.py:4: suppression names no error code",
+            "m.py:5: function 'stub' is a stub",
+            "m.py:7: function 'later' is a stub",
+            "m.py:9: function 'dots' is a stub",
+        ])
+
+    def test_protocols_abstract_methods_and_named_suppressions_pass(self):
+        source = (
+            "from abc import ABC, abstractmethod\n"
+            "from typing import Protocol, overload\n"
+            "class Port(Protocol):\n    def read(self) -> str: ...\n"
+            "class Base(ABC):\n    def run(self):\n        raise NotImplementedError\n"
+            "class Other:\n    @abstractmethod\n    def go(self): ...\n"
+            "@overload\ndef f(x: int) -> int: ...\n"
+            "import os  # noqa: E402\n"
+            "z = 3  # type: ignore[assignment]\n"
+            "# Two placeholders (\"XXX\" in prose) are not a marker.\n"
+            "def real():\n    try:\n        return 1\n    except OSError:\n        pass\n"
+        )
+        self.assertEqual(audit_lazy_code(source, "ok.py"), [])
 
 
 class TestAdrRegister(unittest.TestCase):
@@ -2046,6 +2106,11 @@ class TestDisruptionRecovery(unittest.TestCase):
     def setUp(self):
         self.test_dir = Path(tempfile.mkdtemp(prefix="test_disruption_"))
         self.ledger_file = self.test_dir / "task_ledger.json"
+        # These tests check ledger content, never power-loss durability, which no unit test can
+        # observe; real fsyncs (~3ms each on Windows) pushed the unit tier to 0.95s of its 1s
+        # limit. RAII-restored (PRINCIPLE-014 R4), as in TestSyncWriteSafety.
+        self.addCleanup(setattr, os, "fsync", os.fsync)
+        os.fsync = lambda fd: None
 
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
@@ -2534,7 +2599,7 @@ class TestConcurrencyAndResumptionCorrectness(unittest.TestCase):
         with file_lock(self.ledger, timeout_seconds=1.0) as held:
             self.assertTrue(held)
             with self.assertRaises(TimeoutError) as ctx:
-                with locked_ledger(self.ledger, timeout_seconds=0.05, poll_interval=0.005):
+                with locked_ledger(self.ledger, timeout_seconds=0.01, poll_interval=0.002):
                     pass
         message = str(ctx.exception)
         self.assertIn("LOCK CONTENTION", message)
