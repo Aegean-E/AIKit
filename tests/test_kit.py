@@ -1215,7 +1215,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                      "update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks"],
         },
         "PRINCIPLE-009": {
-            "rules": 5,
+            "rules": 6,
             "present": [
                 "A *pluggable boundary* is a role with two or more production implementations",
                 "a test double alone does not make one",
@@ -1227,7 +1227,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "a constructor parameter that defaults to `None`",
                 "Code MUST NOT assign to another module's or object's `_private` attribute",
                 "fails on a junk-drawer module name, a role outside 1 to 5 methods and an import cycle",
+                "Adding or integrating an external AI model service or provider",
             ],
+
             "gone": ["Anti-Junk-Drawer Invariant", "100% of the declared contract", "e.g. `CliParser`",
                      "date_utils.py"],
         },
@@ -1281,7 +1283,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "MUST define a maximum step count and a maximum token count as named parameters",
                 "a function whose body only calls another function with the same arguments",
                 "delegate multi-file pattern searches, raw file indexing, boilerplate drafting",
+                "consult `knowledge/model_benchmarks.md`",
             ],
+
             "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",
                      "excessive class hierarchies", "($K$ turns)"],
         },

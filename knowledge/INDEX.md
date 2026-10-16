@@ -14,6 +14,7 @@
 | **[`state_and_ui.md`](state_and_ui.md)** | State lifecycle, presentation layer, user feedback, and event flows. |
 | **[`decisions.md`](decisions.md)** | Architectural Decision Records (ADR log of trade-offs and rationale). |
 | **[`codebase_map.md`](codebase_map.md)** | Auto-generated AST symbol map of all modules, classes, and exported functions. |
+| **[`model_benchmarks.md`](model_benchmarks.md)** | Subagent model benchmark database, online empirical metrics, and selection tree. |
 
 ---
 

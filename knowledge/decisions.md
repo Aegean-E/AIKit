@@ -1281,6 +1281,16 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**: Enables zero-token, headless, and mechanically contained subagent execution across both Antigravity and OpenCode CLI environments.
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-003 (symbol reality and tool verified against active v2 CLI; no conflict), PRINCIPLE-004 (ADR recorded; no conflict), PRINCIPLE-008 (bounds and mechanical ledger protection via permissions; no conflict), PRINCIPLE-011 (headless execution with closed stdin; no conflict), PRINCIPLE-012 (tiered offloading to free and local models; no conflict), PRINCIPLE-015 (process isolation via --standalone; no conflict), PRINCIPLE-018 (commit and push; no conflict), PRINCIPLE-019 (zero credentials in configuration files; no conflict).
 
+### ADR-104: AI Service and Provider Integration Lifecycle with Empirical Model Benchmark Database
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Adding external AI model providers (cloud APIs, inference routers, local LLM engines) lacked a unified, standardized lifecycle principle. Without explicit lifecycle governance, provider integrations risk leaking credentials in code or CLI arguments, hanging non-interactive runs, or lacking data-backed model selection criteria.
+- **Decision**: Codified PRINCIPLE-009 R6 defining the 5-step lifecycle for external AI service and model provider integration (declarative schema, credential hygiene, non-interactive headless execution, state/ledger isolation, and benchmark/quality verification). Updated PRINCIPLE-012 R8 to require consulting `knowledge/model_benchmarks.md` for tiered subagent delegation. Created `knowledge/model_benchmarks.md` as an empirical benchmark database (SWE-bench Verified, LiveCodeBench, HumanEval, throughput, cost) with a subagent task selection decision tree.
+- **Consequences**: Governs future AI provider integrations with mechanical fences and empirical selection metrics. Pinned by `TestRewrittenPrincipleWording` in `tests/test_kit.py` under PRINCIPLE-009 (rules count 6) and PRINCIPLE-012.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-003 (symbol reality and verify-before-execution; no conflict), PRINCIPLE-004 (ADR recorded and living docs sync; no conflict), PRINCIPLE-006 (ledger writes stay with the parent; no conflict), PRINCIPLE-007 (pre-flight impact assessment; no conflict), PRINCIPLE-008 (bounds, non-interactive stdin, ledger protection; no conflict), PRINCIPLE-009 (pluggable provider lifecycle; no conflict), PRINCIPLE-010 (explicit subprocess timeouts on provider CLI calls; no conflict), PRINCIPLE-011 (closed stdin non-interactive execution; no conflict), PRINCIPLE-012 (tiered model offloading and benchmark consultation; no conflict), PRINCIPLE-014 (subagent outputs verified before staging; no conflict), PRINCIPLE-015 (process isolation and RAII teardown; no conflict), PRINCIPLE-018 (commit and push; no conflict), PRINCIPLE-019 (credentials strictly via env vars; no conflict).
+
+
+
 
 
 

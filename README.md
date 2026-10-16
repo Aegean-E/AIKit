@@ -97,8 +97,10 @@ portable_agent_kit/
     ├── data_models.md                  <- Data structures, schemas, and persistence models
     ├── state_and_ui.md                 <- Presentation layer, UI state, and event loops
     ├── decisions.md                    <- Architectural Decision Records (ADRs)
-    └── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
+    ├── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
+    └── model_benchmarks.md             <- Subagent model benchmark database & selection tree
 ```
+
 
 ---
 

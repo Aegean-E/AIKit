@@ -1,39 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "multi-provider-free-models",
+    "task_id": "ai-providers-principle-and-benchmark-db",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792192108.4849024,
+    "updated_at": 1792192273.3849838,
     "impact_assessment": {
-      "why": "Enable flexible usage of any free models across OpenCode, OpenRouter, and local offline providers",
-      "benefits": "Allows delegating subagent work to any free provider model without locking into a single service",
-      "risks": "contract: zero; dependency: zero; concurrency: zero; state: zero",
-      "mitigation": "Tested OpenCode native free models, local Ollama, and OpenRouter catalog discovery"
+      "why": "Establish standard 5-step lifecycle principle for adding AI providers and provide empirical benchmark database for subagent selection",
+      "benefits": "Ensures future AI services are integrated in proper order with credential isolation, headless execution, ledger fences, and data-backed model selection",
+      "risks": "contract: rule count assertion update; dependency: zero; concurrency: zero; state: zero",
+      "mitigation": "Sync Tier 1 files, update test_kit assertions, and verify 100% pass across all gates"
     },
-    "completed_at": 1792192135.1087053
+    "completed_at": 1792192518.0275605
   },
   "checkpoints": [
-    {
-      "task_id": "p014-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189688.4769697,
-      "timestamp_str": "2026-10-17 01:28:08"
-    },
-    {
-      "task_id": "p014-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p014-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189703.7073476,
-      "timestamp_str": "2026-10-17 01:28:23"
-    },
     {
       "task_id": "p014-pass2",
       "phase": "completed",
@@ -242,6 +223,31 @@
       "status": "completed",
       "timestamp": 1792192135.1087067,
       "timestamp_str": "2026-10-17 02:08:55"
+    },
+    {
+      "task_id": "ai-providers-principle-and-benchmark-db",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Codify AI provider integration lifecycle principle and model benchmark database",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792192273.3849838,
+      "timestamp_str": "2026-10-17 02:11:13",
+      "impact_assessment": {
+        "why": "Establish standard 5-step lifecycle principle for adding AI providers and provide empirical benchmark database for subagent selection",
+        "benefits": "Ensures future AI services are integrated in proper order with credential isolation, headless execution, ledger fences, and data-backed model selection",
+        "risks": "contract: rule count assertion update; dependency: zero; concurrency: zero; state: zero",
+        "mitigation": "Sync Tier 1 files, update test_kit assertions, and verify 100% pass across all gates"
+      }
+    },
+    {
+      "task_id": "ai-providers-principle-and-benchmark-db",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ai-providers-principle-and-benchmark-db' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792192518.027562,
+      "timestamp_str": "2026-10-17 02:15:18"
     }
   ]
 }
