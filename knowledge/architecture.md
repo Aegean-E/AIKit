@@ -165,7 +165,7 @@ See [ADR-046](decisions.md).
 - **Flat overhead on expansion**: a simulated 20th principle lands ~20 tokens under the gate, so
   the next addition requires another paydown. That is **PRINCIPLE-001** R9 working as intended.
 - **Navigation contract**: with per-line anchors gone, Tier 2 retrieval relies on the
-  deterministic grep anchor `### PRINCIPLE-XXX:`; a test asserts it survives in all five targets.
+  deterministic grep anchor `### PRINCIPLE-NNN:`; a test asserts it survives in all five targets.
 
 ### Invariant Reachability Shield (Implemented Surface)
 `scripts/check_reachability.py` enforces **PRINCIPLE-014** Rule 7. See [ADR-044](decisions.md).

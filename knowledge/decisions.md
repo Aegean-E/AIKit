@@ -863,3 +863,18 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   4. Five tests pin it: no hedge words in P001's rules, every rule tagged, RFC 2119 keywords declared and used, header trigger names derived from R3, no tool-specific terms. Red-checked: the previous text fails all of them.
   5. A stale full copy of old P001 in knowledge/architecture.md was replaced by a citation (R7).
 - **Consequences**: P001 now reads as one instruction set for any model. Tier 1 grew by about 4 tokens (Tier 1B room 306, still above 300). Hedge words remain in other principles (`e.g.` in 9 of them, `concise` in 6, `relevant` in 2, `should` in 1); they are candidates for the same treatment in later passes.
+
+### ADR-051: PRINCIPLE-001 Second Unambiguity Pass - Precedence Scope, Defined Terms, Agent Rules in Tier 1
+- **Date**: 2026-10-16
+- **Status**: Accepted (refines ADR-050)
+- **Context**: Re-reading ADR-050's rewrite adversarially found eight places where two models could still act differently, two of them introduced by ADR-050 itself:
+  1. R1 said "an explicit user instruction overrides both", contradicting PRINCIPLE-002 R5 ("skip tests" must not bypass the verification gate). Told "skip the tests and commit", models would split on which rule to obey.
+  2. R3's "each principle whose capsule governs the action" left "governs" undefined: one model reads all 19 sections, another reads none.
+  3. The ambiguity trigger fired on every request, because any two implementations differ observably somehow, and said nothing about what to do if reading did not resolve it.
+  4. "Before acting", "public function" and "load in full" were undefined; reading all sections one by one evaded the full-load ban.
+  5. R8 was an *[Agent]* rule that never reached Tier 1, so agents reading only their Tier 1 file never learned it; it also ignored Tracks, demanding a checklist on Track A edits.
+  6. Two placeholders for one thing: `PRINCIPLE-NNN` (R5) and `PRINCIPLE-XXX` (Tier 1 header, tooling).
+  7. The Concept claimed every rule says "how compliance is checked"; R3 and R8 had no check.
+  8. R2's "routine task" was undefined.
+- **Decision**: R1's user override is scoped to P001's own reading limits and defers cross-principle conflicts to the other principle, naming PRINCIPLE-002 R5. R3 defines *involved* by string match against the files, commands and failing output (falling back to PRINCIPLE-003), defines the timing, public functions, the ambiguity surfaces, and requires escalation to the user if reading does not settle the choice. R8 is scoped by Track and now reaches Tier 1 through P001's capsule, which was rewritten under R2's deletion test: its "change rules only in GUIDELINES.md, run sync" clause duplicated the header and was removed, which also paid for the additions. `NNN` is the only placeholder. Five new tests pin these; the previous text fails four of them.
+- **Consequences**: Tier 1B room rose from 306 to 311 tokens despite the added precision. The checklist-coverage test had to be anchored to the checklist headings because rule text now mentions the checklists by name.

@@ -253,7 +253,7 @@ def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str 
         # keeps the two in lock-step so every agent receives the same instruction.
         f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; do not edit.",
         "> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or "
-        "ambiguity, read its `### PRINCIPLE-XXX:` section, never the whole file.",
+        "ambiguity, read the `### PRINCIPLE-NNN:` section of each involved principle, never the whole file.",
         "",
         "## Core Principles",
     ]
@@ -348,13 +348,13 @@ def sync_all(
                 f"[MIGRATION REQUIRED] The principles still live in AGENTS.md (pre-ADR-048 layout).\n"
                 f"Why: {SSOT_MD.name} is now the single source of truth and AGENTS.md is generated, "
                 f"because AGENTS.md-convention agents auto-load it as always-on context.\n"
-                f"Fix: move each '### PRINCIPLE-XXX:' section (Concept/Invariant/Rules) from AGENTS.md "
+                f"Fix: move each '### PRINCIPLE-NNN:' section (Concept/Invariant/Rules) from AGENTS.md "
                 f"into {SSOT_MD.name}, delete AGENTS.md, then re-run this script to regenerate it.\n"
             )
         else:
             sys.stderr.write(
                 f"[SCHEMA ERROR] {schema_error}\n"
-                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-XXX:', Concept, Invariant "
+                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-NNN:', Concept, Invariant "
                 f"and numbered Rules (PRINCIPLE-017 R1).\n"
                 f"Fix: complete the section named above, then re-run.\n"
             )

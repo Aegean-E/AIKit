@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `20`
 - **Total Functions / Methods**: `73`
-- **Total Source Lines**: `5108`
+- **Total Source Lines**: `5155`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `508` lines (`23238` bytes)
+**Size**: `508` lines (`23265` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -192,7 +192,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1654` lines (`86259` bytes)
+**Size**: `1701` lines (`89018` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -227,6 +227,10 @@
   - Method `.test_every_rule_names_its_audience()`
   - Method `.test_rules_use_normative_keywords()`
   - Method `.test_tier1_header_mirrors_r3_triggers_and_r1_precedence()`
+  - Method `.test_every_agent_rule_reaches_tier1()`
+  - Method `.test_precedence_never_contradicts_another_principle()`
+  - Method `.test_open_terms_are_defined()`
+  - Method `.test_single_id_placeholder()`
   - Method `.test_tool_neutral_retrieval()`
 - `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*
   - Method `.setUp()`

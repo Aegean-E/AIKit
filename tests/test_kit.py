@@ -131,7 +131,7 @@ class TestPrincipleSync(unittest.TestCase):
             for p in principles:
                 self.assertIn(p["id"], content, f"{p['id']} missing from {target.name}")
             # The deterministic grep contract itself (PRINCIPLE-001 R5), not a label naming it.
-            self.assertIn("### PRINCIPLE-XXX:", content, f"Grep anchor missing from {target.name}")
+            self.assertIn("### PRINCIPLE-NNN:", content, f"Grep anchor missing from {target.name}")
             self.assertIn("GUIDELINES.md", content, f"Tier 2 pointer missing from {target.name}")
             # PRINCIPLE-001 R3 lives in the header now that it is no longer duplicated in a capsule;
             # this is what stops the retrieval-trigger protocol from silently vanishing.
@@ -289,8 +289,9 @@ class TestPrincipleSync(unittest.TestCase):
     def test_checklists_cover_every_principle(self):
         # Red-green pin: PRINCIPLE-019 shipped absent from both checklists, and no test noticed.
         text = SSOT_MD.read_text(encoding="utf-8")
-        pre_start = text.index("Pre-Flight Checklist")
-        post_start = text.index("Post-Flight Checklist")
+        # Anchor on the checklist HEADINGS: rule text (P001 R8) also mentions these names.
+        pre_start = re.search(r"^###[^\n]*Pre-Flight Checklist", text, re.M).start()
+        post_start = re.search(r"^###[^\n]*Post-Flight Checklist", text, re.M).start()
         pre, post = text[pre_start:post_start], text[post_start:]
         post = post[: post.find("\n## ")] if "\n## " in post else post
         for p in parse_principles(SSOT_MD):
@@ -545,6 +546,52 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
         self.assertIn("wins on conflict", header)
         self.assertIn("GUIDELINES.md", self.rules.split("*Precedence*")[1].split("\n")[0])
 
+    def test_every_agent_rule_reaches_tier1(self):
+        # An [Agent] rule that only exists in Tier 2 is invisible to an agent that reads only its
+        # Tier 1 file. R8 (checklists) was exactly that until this pass.
+        rendered = render_tier1_target("# probe", parse_principles(SSOT_MD))
+        required = {
+            "R1 hand-edit ban": "do not edit",
+            "R1 precedence": "wins on conflict",
+            "R3 contract trigger": "contract change",
+            "R3 failure trigger": "failure",
+            "R3 ambiguity trigger": "ambiguity",
+            "R3 involved principles": "each involved principle",
+            "R3 no full load": "never the whole file",
+            "R8 Pre-Flight": "Pre-Flight checklist before the first Track C edit",
+            "R8 Post-Flight": "Post-Flight checklist before any Track B or C commit",
+            "R8 reporting": "report only failed items",
+        }
+        for rule, phrase in required.items():
+            with self.subTest(rule=rule):
+                self.assertIn(phrase, rendered, f"{rule} does not reach Tier 1")
+
+    def test_precedence_never_contradicts_another_principle(self):
+        # Red-green pin: "an explicit user instruction overrides both" contradicted PRINCIPLE-002
+        # R5 ("skip tests" must not bypass the gate), so models split on which rule to obey.
+        precedence = self.rules.split("*Precedence*")[1].split("\n     - ")[0]
+        self.assertNotIn("overrides both", precedence)
+        self.assertIn("does not override another principle", precedence)
+        self.assertIn("PRINCIPLE-002 R5", precedence)
+
+    def test_open_terms_are_defined(self):
+        # Terms a model would otherwise resolve its own way must be defined in the rule text.
+        for definition in ("A principle is *involved* when",
+                           "a public function (a module-level name not starting with `_`)",
+                           "counts as loading it in full",
+                           "Track A tasks evaluate neither"):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_single_id_placeholder(self):
+        # Two placeholders for one thing ("XXX" in Tier 1, "NNN" in R5) invite two readings.
+        retired = "PRINCIPLE-" + "XXX"
+        files = [SSOT_MD, ROOT_DIR / "scripts" / "sync_principles.py", ROOT_DIR / "README.md"]
+        files += [ROOT_DIR / rel for rel in TIER1_TARGETS]
+        for path in files:
+            with self.subTest(file=path.name):
+                self.assertNotIn(retired, path.read_text(encoding="utf-8"))
+
     def test_tool_neutral_retrieval(self):
         # IDE-specific tool names make other agents guess an equivalent.
         for tool_name in ("view_file", "grep_search", "Query="):
@@ -743,7 +790,7 @@ class TestTier1ContextBudget(unittest.TestCase):
         for target in self.TARGETS:
             with self.subTest(target=target.name):
                 content = target.read_text(encoding="utf-8")
-                self.assertIn("### PRINCIPLE-XXX:", content,
+                self.assertIn("### PRINCIPLE-NNN:", content,
                               f"{target.name} lost the deterministic grep anchor contract")
                 self.assertIn("GUIDELINES.md", content,
                               f"{target.name} no longer points at Tier 2 knowledge")
