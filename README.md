@@ -164,7 +164,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
 | **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <1s, integ <5s. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s. |
-| **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | Prompt cache prefix alignment (>=80% hits); bounded tool output & diffs; terse schema output; token circuit breakers; lean syntactic density. |
+| **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
 ### 🛡️ Phase 4: Operational Verification & Resilience
 | Principle | Title | Capsule |

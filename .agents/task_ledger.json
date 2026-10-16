@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p011-pass1",
+    "task_id": "p012-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792188020.4724667,
-    "completed_at": 1792188039.028615
+    "updated_at": 1792188128.426724,
+    "completed_at": 1792188147.0833733
   },
   "checkpoints": [
-    {
-      "task_id": "p008-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P008",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187460.174928,
-      "timestamp_str": "2026-10-17 00:51:00"
-    },
-    {
-      "task_id": "p008-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] rewrite P008 R1-R6 decidably (delegation limits, milestone order by symbol use, M>6 splits into tasks, milestone = one P009 layer + tests, re-plan = new [1/M'] checkpoint, sub-agents never write the ledger); shared data-driven unambiguity test; ADR-081",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187489.1124732,
-      "timestamp_str": "2026-10-17 00:51:29",
-      "impact_assessment": {
-        "why": "P008 uses banned words, Pillar B has two readings, R5 contradicts P004 R1, R6 conflicts with ADR-077 superseded logic",
-        "benefits": "one reading of decomposition for every model; no ledger corruption by sub-agents",
-        "risks": "contract: rule text only; dependency: none; concurrency: sub-agent ledger writes forbidden, removes a conflict; state: none",
-        "mitigation": "pins fail on old text; cross-principle ADR line from --citing"
-      }
-    },
-    {
-      "task_id": "p008-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187489.2594671,
-      "timestamp_str": "2026-10-17 00:51:29"
-    },
-    {
-      "task_id": "p008-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187543.0555148,
-      "timestamp_str": "2026-10-17 00:52:23"
-    },
-    {
-      "task_id": "p008-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p008-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792187571.4060657,
-      "timestamp_str": "2026-10-17 00:52:51"
-    },
     {
       "task_id": "p009-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792188039.0286164,
       "timestamp_str": "2026-10-17 01:00:39"
+    },
+    {
+      "task_id": "p012-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P012",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188046.6440394,
+      "timestamp_str": "2026-10-17 01:00:46"
+    },
+    {
+      "task_id": "p012-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] rewrite P012 R1-R7: split LLM-calling code vs agent duties, one payload limit (16,000 chars), cache structure not outcome, schema-validated replies, named step/token caps, decidable lean-code tests; ADR-085",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188087.822256,
+      "timestamp_str": "2026-10-17 01:01:27",
+      "impact_assessment": {
+        "why": "P012 mixes audiences, uses banned words, states unverifiable outcomes and unspecified K",
+        "benefits": "one reading per audience; every limit a number",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "pins in shared table; cross-principle ADR line"
+      }
+    },
+    {
+      "task_id": "p012-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188087.9494822,
+      "timestamp_str": "2026-10-17 01:01:27"
+    },
+    {
+      "task_id": "p012-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188128.426724,
+      "timestamp_str": "2026-10-17 01:02:08"
+    },
+    {
+      "task_id": "p012-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p012-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792188147.0833747,
+      "timestamp_str": "2026-10-17 01:02:27"
     }
   ]
 }

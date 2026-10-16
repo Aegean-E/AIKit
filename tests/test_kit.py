@@ -1128,6 +1128,22 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["Third-party packages must be strictly optional", "sensible", "Systems should embed",
                      "banning hardcoded"],
         },
+        "PRINCIPLE-012": {
+            "rules": 7,
+            "present": [
+                "Rules R1, R2, R4, R6 bind code that calls an LLM API; R3, R5 and R7 bind the agent",
+                "at or below 16,000 characters",
+                "the prefix MUST be byte-identical across requests",
+                "at most 3 lines of context per hunk",
+                "a search shows at most 50 matches",
+                "validate the reply before use",
+                "store repository-relative paths",
+                "MUST define a maximum step count and a maximum token count as named parameters",
+                "a function whose body only calls another function with the same arguments",
+            ],
+            "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",
+                     "excessive class hierarchies", "($K$ turns)"],
+        },
     }
 
     @classmethod
