@@ -30,6 +30,7 @@ CORE_DOCS = [
     "codebase_map.md",
     "model_benchmarks.md",
     "host_clients.md",
+    "principles_audit_ledger.md",
 ]
 
 IGNORE_DIRS = {

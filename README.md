@@ -98,7 +98,8 @@ portable_agent_kit/
     ├── decisions.md                    <- Architectural Decision Records (ADRs)
     ├── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
     ├── model_benchmarks.md             <- Subagent model benchmark database & selection tree
-    └── host_clients.md                 <- Host client portability & cross-environment parity
+    ├── host_clients.md                 <- Host client portability & cross-environment parity
+    └── principles_audit_ledger.md      <- 7-pass comprehensive audit across all 20 principles
 ```
 
 

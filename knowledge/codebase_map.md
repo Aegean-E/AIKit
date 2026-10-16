@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `44`
 - **Total Functions / Methods**: `114`
-- **Total Source Lines**: `7818`
+- **Total Source Lines**: `7819`
 
 ---
 
@@ -148,7 +148,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `844` lines (`37264` bytes)
+**Size**: `845` lines (`37298` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*

@@ -16,6 +16,7 @@
 | **[`codebase_map.md`](codebase_map.md)** | Auto-generated AST symbol map of all modules, classes, and exported functions. |
 | **[`model_benchmarks.md`](model_benchmarks.md)** | Subagent model benchmark database, online empirical metrics, and selection tree. |
 | **[`host_clients.md`](host_clients.md)** | Agent host clients, multi-environment portability architecture, and Claude parity. |
+| **[`principles_audit_ledger.md`](principles_audit_ledger.md)** | Comprehensive 7-pass analytical audit ledger across all 20 principles (P000-P019). |
 
 ---
 
