@@ -67,7 +67,8 @@ portable_agent_kit/
 ├── .agents/
 │   ├── rules/
 │   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
-│   │   └── domain.md.template          <- Template for project domain rules (Tier 1B)
+│   │   ├── domain.md.template          <- Template for project domain rules (Tier 1B)
+│   │   └── readme_quickref.md.template <- Adopter README Quick Reference & tree (PRINCIPLE-005 R6)
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── scripts/
 │   ├── sync_principles.py              <- Generates all 6 Tier 1 files from GUIDELINES.md, budget-gated
@@ -111,7 +112,7 @@ portable_agent_kit/
   cp -r .agents/rules /path/to/target/.agents/
   ```
   Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json`: they test, build and record *this* repository (verified: AIKit's suite fails 19 checks inside a fresh adopter repo). Your project keeps its own suite; AIKit's enforcement travels as the CLI gates, which all pass in an adopter repo: `sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all` and `dogfood.py`. Replace the copied `knowledge/` documents with your own project's after Step 4.
-  Then paste the **⚡ 30-Second Cold-Start Quick Reference** section into the top of your existing `README.md`, put your own prerequisites and test command under its two labels, and add a `## 📦 What's Inside` section whose ```` ```text ```` block lists every top-level entry of your repository. `update_knowledge_base.py --check` fails until both exist (PRINCIPLE-005 R1, R5).
+  Then copy `.agents/rules/readme_quickref.md.template` into the top of your existing `README.md` and replace every placeholder that begins with `<FILL` with your project's values; it holds only what travels (the two labels, AIKit's gate commands and a tree skeleton), never AIKit's own test modules. `update_knowledge_base.py --check` fails while any such placeholder remains or the tree misses a tracked top-level entry (PRINCIPLE-005 R1, R5, R6).
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
 If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules` or `.github/copilot-instructions.md`, move their project-specific rules into `.agents/rules/domain.md` (start from `.agents/rules/domain.md.template`, at most 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites a file it did not generate: it stops with `[PROTECTED]` and names the file, so nothing is lost.

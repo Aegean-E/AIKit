@@ -110,6 +110,7 @@ from scripts.update_knowledge_base import (
     MIN_PYTHON,
     README_LABELS,
     README_MAX_CHARS,
+    README_TEMPLATE,
     audit_readme,
     parse_readme_tree,
 )
@@ -529,7 +530,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
 
     TREE = (
         "## ⚡ 30-Second Cold-Start Quick Reference\n- **Runtime Prerequisites**: Python 3.10+\n"
-        "- **Canonical Regression Shield Gate**:\n## 📦 What's Inside\n```text\nrepo/\n"
+        "- **Canonical Regression Shield Gate**:\n  ```bash\n  make test\n  ```\n"
+        "## 📦 What's Inside\n```text\nrepo/\n"
         "├── README.md\n├── scripts/\n│   └── tool.py      <- a tool\n└── docs/\n```\n"
     )
     SOURCES = {"scripts/tool.py": 'FLAGS = {"--check"}'}
@@ -569,12 +571,50 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
     def test_size_labels_and_tree_are_required(self):
         errors = self.audit("# x\n" + "y" * 20_001)
         self.assertIn("README.md has 20,005 chars; the limit is 20,000 (R1)", errors)
-        self.assertIn("README.md lacks the label '**Runtime Prerequisites**:' (R1)", errors)
+        self.assertIn("README.md has no heading containing 'Cold-Start Quick Reference' (R1)", errors)
         self.assertIn("README.md has no ```text directory tree after \"What's Inside\" (R5)", errors)
 
     def test_a_prose_mention_is_not_the_tree_heading(self):
         prose = "See What's Inside below.\n```text\nrepo/\n├── fake.md\n```\n"
         self.assertEqual(parse_readme_tree(prose + self.TREE)[0], "README.md")
+
+    def test_quick_reference_is_checked_by_structure_not_words(self):
+        # Red-green pin (second pass): labels anywhere in prose passed; R1 states a heading, a
+        # prerequisites line naming a version and a fenced command after the test-gate label.
+        prose = ("We follow the Cold-Start Quick Reference idea. **Runtime Prerequisites**: Python. "
+                 "**Canonical Regression Shield Gate**: run the tests.\n")
+        self.assertIn("README.md has no heading containing 'Cold-Start Quick Reference' (R1)",
+                      self.audit(prose + self.TREE.split("## 📦")[1].join(["## 📦", ""])))
+        no_version = self.TREE.replace("Python 3.10+", "Python")
+        self.assertIn("'- **Runtime Prerequisites**:' names no minimum version (R1)", self.audit(no_version))
+        no_command = self.TREE.replace("  ```bash\n  make test\n  ```\n", "")
+        self.assertIn("the Quick Reference has no fenced command right after "
+                      "'**Canonical Regression Shield Gate**:' (R1)", self.audit(no_command))
+
+    def test_the_adopter_template_fails_unfilled_and_passes_filled(self):
+        # Red-green pin: "paste the Quick Reference section" carried AIKit's own test modules into
+        # adopter READMEs, and an unfilled placeholder satisfied the label check.
+        template = (ROOT_DIR / README_TEMPLATE).read_text(encoding="utf-8")
+        tracked = ["README.md", "GUIDELINES.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules",
+                   ".github/copilot-instructions.md", ".agents/rules/principles.md",
+                   "knowledge/INDEX.md", "scripts/dogfood.py", "src/app.py"]
+        on_disk = set(tracked) | {".github", ".agents", "knowledge", "scripts", "src"}
+
+        def script_source(rel):
+            path = ROOT_DIR / rel
+            return path.read_text(encoding="utf-8") if path.is_file() else None
+
+        def audit(readme):
+            return audit_readme(readme, tracked, on_disk.__contains__, script_source)
+
+        unfilled = audit(template)
+        self.assertIn(f"README.md still holds an unfilled '<FILL:' placeholder from {README_TEMPLATE} (R1)",
+                      unfilled)
+        filled = re.sub(r"<FILL: every runtime[^>]*>", "Python 3.11+ and `git`", template)
+        filled = re.sub(r"<FILL: the one command[^>]*>", "python -m unittest discover tests", filled)
+        filled = filled.replace("<FILL: repository name>/", "app/")
+        filled = re.sub(r"└── <FILL:[^>]*>", "└── src/", filled)
+        self.assertEqual(audit(filled), [])
 
 
 class TestPrinciple005Unambiguity(unittest.TestCase):

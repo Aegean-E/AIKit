@@ -1,0 +1,35 @@
+## ⚡ 30-Second Cold-Start Quick Reference
+
+- **Runtime Prerequisites**: <FILL: every runtime and external program the project needs, each with its minimum version>
+- **Canonical Regression Shield Gate**:
+  ```bash
+  <FILL: the one command that runs the whole test suite>
+  ```
+
+### 🛠️ AIKit Gates
+| Role | Command |
+|---|---|
+| Resume after a cold start | `python scripts/disruption_recovery.py --resume` |
+| Classify the lifecycle track | `python scripts/disruption_recovery.py --track` |
+| Verify rule freshness | `python scripts/sync_principles.py --check` |
+| Verify AST map and README | `python scripts/update_knowledge_base.py --check` |
+| Reachability shield | `python scripts/check_reachability.py` |
+| Secret scan | `python scripts/check_secrets.py --staged` |
+| Dogfood gate | `python scripts/dogfood.py` |
+
+## 📦 What's Inside
+
+```text
+<FILL: repository name>/
+├── README.md
+├── GUIDELINES.md
+├── AGENTS.md
+├── CLAUDE.md
+├── GEMINI.md
+├── .cursorrules
+├── .github/
+├── .agents/
+├── knowledge/
+├── scripts/
+└── <FILL: every other tracked top-level file and directory, one line each>
+```

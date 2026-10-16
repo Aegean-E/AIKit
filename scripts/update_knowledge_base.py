@@ -395,6 +395,34 @@ _UNITTEST_COMMAND = re.compile(r"python -m unittest (tests\.\w+)")
 _FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
+README_TEMPLATE = ".agents/rules/readme_quickref.md.template"
+README_PLACEHOLDER = "<FILL:"
+
+
+def quick_reference_errors(readme: str) -> List[str]:
+    """
+    The structure PRINCIPLE-005 R1 states, not just its words: a heading, then inside its section
+    a `- **Runtime Prerequisites**:` line naming a version and a fenced command right after the
+    test-gate label. A substring check passed a README that merely mentioned the labels in prose.
+    """
+    heading = re.search(r"^(#{1,6}) [^\n]*Cold-Start Quick Reference", readme, re.M)
+    if not heading:
+        return ["README.md has no heading containing 'Cold-Start Quick Reference' (R1)"]
+    rest = readme[heading.end():]
+    following = re.search(rf"^#{{1,{len(heading.group(1))}}} ", rest, re.M)
+    section = rest[:following.start()] if following else rest
+    errors: List[str] = []
+    prerequisites = re.search(r"^- \*\*Runtime Prerequisites\*\*:([^\n]*)", section, re.M)
+    if not prerequisites:
+        errors.append("the Quick Reference has no line starting '- **Runtime Prerequisites**:' (R1)")
+    elif not re.search(r"\d", prerequisites.group(1)):
+        errors.append("'- **Runtime Prerequisites**:' names no minimum version (R1)")
+    if not re.search(r"\*\*Canonical Regression Shield Gate\*\*:[ \t]*\n[ \t]*```[^\n]*\n[ \t]*\S", section):
+        errors.append("the Quick Reference has no fenced command right after "
+                      "'**Canonical Regression Shield Gate**:' (R1)")
+    return errors
+
+
 def parse_readme_tree(readme: str) -> List[str]:
     """
     Paths in the first ```text block after "What's Inside" (PRINCIPLE-005 R5), relative to the
@@ -432,7 +460,10 @@ def audit_readme(
     errors: List[str] = []
     if len(readme) > README_MAX_CHARS:
         errors.append(f"README.md has {len(readme):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
-    errors += [f"README.md lacks the label '{label}' (R1)" for label in README_LABELS if label not in readme]
+    errors += quick_reference_errors(readme)
+    if README_PLACEHOLDER in readme:
+        errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder from "
+                      f"{README_TEMPLATE} (R1)")
 
     tree = parse_readme_tree(readme)
     if not tree:
