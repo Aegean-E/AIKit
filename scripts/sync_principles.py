@@ -499,6 +499,28 @@ def involved_principles(principles: List[Dict], text: str) -> List[str]:
     return sorted(involved) or [INVOLVEMENT_FALLBACK]
 
 
+def principle_sections(ssot_text: str) -> Dict[str, str]:
+    """Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3."""
+    sections: Dict[str, str] = {}
+    for match in re.finditer(r"^### (PRINCIPLE-\d{3}):", ssot_text, re.M):
+        rest = ssot_text[match.end():]
+        end = re.search(r"^#{2,3} ", rest, re.M)
+        sections[match.group(1)] = rest[:end.start()] if end else rest
+    return sections
+
+
+def citing_principles(ssot_text: str, pid: str) -> List[str]:
+    """
+    The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose
+    section cites `pid`, and those `pid`'s own section cites. Computed, so every agent lists the
+    same set; a raw `git grep` returns files and lines, and each model mapped them differently.
+    """
+    sections = principle_sections(ssot_text)
+    cited_by = {other for other, body in sections.items() if other != pid and re.search(rf"\b{pid}\b", body)}
+    cites = set(re.findall(r"PRINCIPLE-\d{3}", sections.get(pid, ""))) & set(sections) - {pid}
+    return sorted(cited_by | cites)
+
+
 def print_help():
     """Print command line usage for sync_principles.py."""
     print("""AIKit Principles Auto-Sync Tool (PRINCIPLE-017)
@@ -511,7 +533,9 @@ Options:
   --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
   --involved TEXT  List the principles TEXT involves (PRINCIPLE-001 R3); must be the first argument,
                    and every later argument is TEXT: paths to change, commands to run, failing output
-  -h, --help       Show this help message and exit
+  --citing ID      List the principles a change to principle ID must be checked against: those
+                   citing it and those it cites (PRINCIPLE-000 R3); must be the first argument
+  -h, --help      Show this help message and exit
 """)
 
 
@@ -526,6 +550,18 @@ if __name__ == "__main__":
             sys.exit(2)
         for pid in involved_principles(parse_principles(SSOT_MD, strict=True), " ".join(sys.argv[2:])):
             print(pid)
+        sys.exit(0)
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--citing":
+        _text = SSOT_MD.read_text(encoding="utf-8")
+        _pid = sys.argv[2] if len(sys.argv) == 3 else ""
+        if _pid not in principle_sections(_text):
+            print(f"[INVALID USAGE] --citing needs one existing principle ID, got '{_pid}'.", file=sys.stderr)
+            print("Why: the cross-principle set of PRINCIPLE-000 R3 is computed for one principle.", file=sys.stderr)
+            print("Fix: python scripts/sync_principles.py --citing PRINCIPLE-004", file=sys.stderr)
+            sys.exit(2)
+        for _cited in citing_principles(_text, _pid):
+            print(_cited)
         sys.exit(0)
 
     if "-h" in sys.argv or "--help" in sys.argv:

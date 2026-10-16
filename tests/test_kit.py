@@ -42,6 +42,7 @@ sys.path.insert(0, str(ROOT_DIR))
 import scripts.sync_principles as sync_principles_module
 from scripts.sync_principles import (
     parse_principles,
+    citing_principles,
     sync_all,
     validate_triad_consistency,
     load_tier_1b_domain_rules,
@@ -744,6 +745,32 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
         ):
             with self.subTest(definition=definition):
                 self.assertIn(definition, self.rules)
+
+    def test_second_pass_definitions(self):
+        # Red-green pins (ADR-072): "principles the search found" mapped files to principles
+        # differently per model; "hide a failure" did not separate cleanup from hiding; mutual
+        # citation had no winner.
+        for definition in (
+            "names every principle `python scripts/sync_principles.py --citing PRINCIPLE-NNN` prints",
+            "except those in `knowledge/decisions.md`",
+            "an `except` block that neither re-raises, returns or exits with an error, nor writes a warning",
+            "unless it only cleans up after an error that is already raised or reported",
+            "when neither cites the other or each cites the other",
+            "A rule cites another when its text contains that rule's `PRINCIPLE-NNN RN`",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_citing_set_is_computed_from_sections_only(self):
+        text = ("### PRINCIPLE-001: A\n- cites PRINCIPLE-002.\n"
+                "### PRINCIPLE-002: B\n- plain.\n"
+                "### PRINCIPLE-003: C\n- cites PRINCIPLE-001 R2.\n"
+                "## Checklist\n- PRINCIPLE-001 PRINCIPLE-002 PRINCIPLE-003\n")
+        self.assertEqual(citing_principles(text, "PRINCIPLE-001"), ["PRINCIPLE-002", "PRINCIPLE-003"])
+        self.assertEqual(citing_principles(text, "PRINCIPLE-002"), ["PRINCIPLE-001"])  # checklist ignored
+        self.assertEqual(citing_principles(self.text, "PRINCIPLE-000"),
+                         ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-009",
+                          "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-019"])
 
     def test_capsule_does_not_license_skipping_procedure(self):
         # Red-green pin: "code quality primacy over procedural formalism" read, alone in Tier 1,

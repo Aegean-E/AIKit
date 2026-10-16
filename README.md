@@ -26,6 +26,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
+| **Cross-Principle Check Set** | `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>` | Principles a rule change must be checked against (PRINCIPLE-000 R3) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on stale codebase map |
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |

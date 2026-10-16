@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `34`
-- **Total Functions / Methods**: `94`
-- **Total Source Lines**: `6576`
+- **Total Functions / Methods**: `96`
+- **Total Source Lines**: `6648`
 
 ---
 
@@ -114,7 +114,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `563` lines (`26195` bytes)
+**Size**: `599` lines (`28149` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -130,6 +130,8 @@
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
 - `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
 - `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
+- `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
+- `def citing_principles(ssot_text, pid)` - *The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
@@ -162,7 +164,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `549` lines (`25540` bytes)
+**Size**: `558` lines (`26054` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -203,6 +205,7 @@
   - Method `.test_lists_involved_principles_one_per_line()`
   - Method `.test_text_after_involved_is_never_parsed_as_options()`
   - Method `.test_missing_text_is_misuse()`
+  - Method `.test_citing_lists_the_cross_principle_set_and_rejects_unknown_ids()`
 - `class TestTrackCli` - *`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3).*
   - Method `.test_track_follows_the_actual_diff()`
 - `class TestCallSiteCommand` - *PRINCIPLE-003 R2's exact command must work for every name kind it covers, flags included.*
@@ -223,7 +226,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2526` lines (`137723` bytes)
+**Size**: `2553` lines (`139508` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -284,6 +287,8 @@
   - Method `.test_principle_000_obeys_its_own_r7()`
   - Method `.test_every_rule_names_its_audience()`
   - Method `.test_every_meta_rule_is_decidable()`
+  - Method `.test_second_pass_definitions()`
+  - Method `.test_citing_set_is_computed_from_sections_only()`
   - Method `.test_capsule_does_not_license_skipping_procedure()`
   - Method `.test_rule_changes_carry_a_cross_principle_check()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
