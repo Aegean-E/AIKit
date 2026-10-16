@@ -4,6 +4,7 @@ Validates principle synchronization, disruption recovery atomicity,
 knowledge base AST generation, and operational dogfooding.
 """
 
+import ast
 import contextlib
 import io
 import os
@@ -127,6 +128,7 @@ from scripts.update_knowledge_base import (
     audit_adr_register,
     audit_lazy_code,
     audit_architecture,
+    parse_source,
     parse_readme_tree,
 )
 
@@ -795,6 +797,40 @@ class TestSecretBaselineAndRuleSchema(unittest.TestCase):
         self.assertIn("PRINCIPLE-001 rule(s) R2 name no audience", str(ctx.exception))
 
 
+class TestSuiteHygiene(unittest.TestCase):
+    """PRINCIPLE-014 R3 and R5 made mechanical (ADR-099)."""
+
+    NETWORK_MODULES = {"socket", "http", "urllib", "requests", "httpx", "aiohttp"}
+    MODULES = ("test_kit.py", "test_integration.py")
+
+    @classmethod
+    def setUpClass(cls):
+        # Shared, content-keyed parse cache: the codebase-map test parses these files too.
+        cls.trees = {name: parse_source((ROOT_DIR / "tests" / name).read_text(encoding="utf-8"), name)
+                     for name in cls.MODULES}
+
+    def test_every_test_method_asserts(self):
+        silent = []
+        for name, tree in self.trees.items():
+            for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
+                for fn in (n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")):
+                    calls = {c.func.attr for c in ast.walk(fn)
+                             if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)}
+                    if not any(a.startswith("assert") or a == "fail" for a in calls) and \
+                            not any(isinstance(n, ast.Assert) for n in ast.walk(fn)):
+                        silent.append(f"{name}:{fn.lineno} {cls.name}.{fn.name}")
+        self.assertEqual(silent, [], "a test without an assertion proves nothing (PRINCIPLE-014 R5)")
+
+    def test_no_test_module_imports_a_network_library(self):
+        found = []
+        for name, tree in self.trees.items():
+            for node in ast.walk(tree):
+                names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                         else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+                found += [f"{name}: {n}" for n in names if n.split(".")[0] in self.NETWORK_MODULES]
+        self.assertEqual(found, [], "tests make no network call (PRINCIPLE-014 R3)")
+
+
 class TestChaosCoverage(unittest.TestCase):
     """PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite."""
 
@@ -1238,6 +1274,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "It MAY weaken a test only when the user approved the contract change the test encodes",
                 "is *flaky* and blocks every commit until fixed",
                 "Every test asserts at least one observable result",
+                "a unit test checks that every test method calls an assertion",
+                "a unit test checks that no test module imports `socket`",
                 "at least one test with invalid input",
             ],
             "gone": ["e.g. changing strict checks", "critical paths", "Avoid over-mocking", "Prioritize hostile",

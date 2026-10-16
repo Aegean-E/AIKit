@@ -1240,3 +1240,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The ledger CLI installs `report_operational_error` as `sys.excepthook`: `OSError` and `TimeoutError` print `[LEDGER WRITE FAILED]` with `Why:` and `Fix:` and the process exits 1; any other exception keeps Python's traceback, because it is a bug. R5 now separates a long-running process (continues in memory with one warning) from a command that ends after one action (exits 1 with the triad). `--help` and README's CLI contract say so (PRINCIPLE-005 R2).
 - **Consequences**: Verified with a read-only ledger: exit 1, three lines, no traceback. Pinned by a unit test of the hook and the P013 table entry.
 - Cross-principle check: PRINCIPLE-000 (R5: no hidden failure; no conflict), PRINCIPLE-006 (ledger writes; no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-010 (no conflict), PRINCIPLE-011 (R6 triad, R5 exit 1; resolves the traceback), PRINCIPLE-016 (no conflict), PRINCIPLE-017 (no conflict).
+
+### ADR-099: PRINCIPLE-014 Second Pass - Two Duties Become Meta-Tests
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: After ADR-087, two P014 duties were still checked only by whoever read the suite: R5's "every test asserts at least one observable result" and R3's "no test makes a network call". An audit found the suite compliant, but nothing would notice the first violation.
+- **Decision**: `TestSuiteHygiene` parses both test modules: every `test_` method must call an `assert*` method, `fail`, or contain an `assert` statement, and no test module may import `socket`, `http`, `urllib`, `requests`, `httpx` or `aiohttp`. R3 and R5 name these checks. A temporary test without an assertion was added to confirm the meta-test fails on it, then removed.
+- **Consequences**: Assertions on mock calls alone still pass the meta-test; R5's rule that such tests do not count toward R1 stays a review duty.
+- Cross-principle check: PRINCIPLE-000 (R5 assertion that cannot fail; no conflict), PRINCIPLE-002 (no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-010 (tier budgets; the meta-test is pure AST; no conflict).

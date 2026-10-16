@@ -1,79 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p013-pass2",
+    "task_id": "p014-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189611.1215765,
-    "completed_at": 1792189625.994943
+    "updated_at": 1792189688.4769697,
+    "completed_at": 1792189743.5946062
   },
   "checkpoints": [
-    {
-      "task_id": "p010-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: scenarios for P010",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189342.1831455,
-      "timestamp_str": "2026-10-17 01:22:22"
-    },
-    {
-      "task_id": "p010-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P010 pass 2: time limits measured on the machine running Phase 4; open() covers Path.open (gate widened), os.open via try/finally; ADR-095",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189342.3181684,
-      "timestamp_str": "2026-10-17 01:22:22",
-      "impact_assessment": {
-        "why": "time limits named no machine; R4 open() ambiguous for Path.open and unchecked",
-        "benefits": "one answer for measurement and for method-style open",
-        "risks": "contract: update_knowledge_base exits 1 on Path.open outside with; dependency: none; concurrency: none; state: none",
-        "mitigation": "AIKit has none; fixture test"
-      }
-    },
-    {
-      "task_id": "p010-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189342.444965,
-      "timestamp_str": "2026-10-17 01:22:22"
-    },
-    {
-      "task_id": "p010-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189369.1622894,
-      "timestamp_str": "2026-10-17 01:22:49"
-    },
-    {
-      "task_id": "p010-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p010-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189383.1320064,
-      "timestamp_str": "2026-10-17 01:23:03"
-    },
-    {
-      "task_id": "p011-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: check P011 R6 triad against real CLI output",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189411.6467934,
-      "timestamp_str": "2026-10-17 01:23:31"
-    },
     {
       "task_id": "p011-pass2",
       "phase": "in_progress",
@@ -228,6 +163,70 @@
       "status": "completed",
       "timestamp": 1792189625.9949443,
       "timestamp_str": "2026-10-17 01:27:05"
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: audit suite against R3/R5",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189648.9005442,
+      "timestamp_str": "2026-10-17 01:27:28"
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P014 pass 2: meta-test that every test method asserts and no test module imports a network library; rules name the meta-test; ADR-099",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189649.0276031,
+      "timestamp_str": "2026-10-17 01:27:29",
+      "impact_assessment": {
+        "why": "R5 'every test asserts' and R3 'no network call' were unchecked",
+        "benefits": "both duties mechanical",
+        "risks": "contract: none outside tests; dependency: none; concurrency: none; state: none",
+        "mitigation": "suite passes today; meta-test is pure AST"
+      }
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189649.1690226,
+      "timestamp_str": "2026-10-17 01:27:29"
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189688.4769697,
+      "timestamp_str": "2026-10-17 01:28:08"
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p014-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189703.7073476,
+      "timestamp_str": "2026-10-17 01:28:23"
+    },
+    {
+      "task_id": "p014-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p014-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189743.5946074,
+      "timestamp_str": "2026-10-17 01:29:03"
     }
   ]
 }
