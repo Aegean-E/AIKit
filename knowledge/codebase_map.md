@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `17`
-- **Total Functions / Methods**: `70`
-- **Total Source Lines**: `4742`
+- **Total Classes**: `19`
+- **Total Functions / Methods**: `71`
+- **Total Source Lines**: `4972`
 
 ---
 
@@ -104,19 +104,20 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `422` lines (`17840` bytes)
+**Size**: `506` lines (`23061` bytes)
 
 **Functions:**
+- `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
 - `def estimate_tokens(text)` - *Estimate tokens as chars // 4.*
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
 - `def load_tier_1b_domain_rules(domain_path)` - *Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017).*
 - `def append_domain_rules(lines, domain_rules)` - *Helper to append Tier 1B domain rules to prompt targets.*
-- `def parse_principles(agents_file, strict)` - *Parse AGENTS.md, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
-- `def validate_triad_consistency(principles, guidelines_file, readme_file)` - *Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md with matching titles (PRINCIPLE-017).*
+- `def parse_principles(agents_file, strict)` - *Parse the principle SSOT, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
+- `def validate_triad_consistency(principles, readme_file)` - *Verify the documentation triad's public leg: README.md lists every principle (PRINCIPLE-017).*
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
-- `def sync_all(check_only, exit_on_mismatch, domain_path, guidelines_file, readme_file)` - *Synchronize the principle SSOT across every always-injected Tier 1 target.*
+- `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
 
 ---
@@ -142,7 +143,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `420` lines (`18999` bytes)
+**Size**: `433` lines (`19557` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -178,6 +179,8 @@
   - Method `.test_dogfood_writes_its_declared_log()`
   - Method `.test_dogfood_leaves_tracked_content_untouched()`
   - Method `.test_dogfood_cli_contract()`
+- `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
+  - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_integration_tier_bounds_every_spawn()`
@@ -187,7 +190,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1425` lines (`72704` bytes)
+**Size**: `1558` lines (`80723` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -205,10 +208,24 @@
   - Method `.test_principle_018_git_workflow_capsule()`
   - Method `.test_guideline_targets_freshness_gate()`
   - Method `.test_triad_consistency_gate()`
+  - Method `.test_adopter_readme_without_principles_is_not_drift()`
+  - Method `.test_aikit_readme_lists_every_principle_strictly()`
+  - Method `.test_single_ssot_and_generated_agents_md()`
   - Method `.test_principle_schema_strictness()`
+  - Method `.test_last_principle_block_stops_at_next_section()`
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*
+  - Method `.setUp()`
+  - Method `._sync(check_only)`
+  - Method `._written_targets()`
+  - Method `.test_clean_sandbox_generates_every_target()`
+  - Method `.test_hand_authored_file_is_never_overwritten()`
+  - Method `.test_protection_is_all_or_nothing()`
+  - Method `.test_legacy_generated_target_is_upgraded()`
+  - Method `.test_unmigrated_layout_gets_migration_guidance_not_a_traceback()`
+  - Method `.test_generated_marker_detection()`
 - `class TestTier1ContextBudget` - *PRINCIPLE-001 R6/R9. Always-injected rules cost context on every turn in every IDE, so the*
   - Method `.test_every_target_is_within_the_token_target()`
   - Method `.test_token_overage_blocks_rather_than_warns()`
@@ -227,7 +244,6 @@
   - Method `.test_explicit_pragma_suppresses_everything()`
   - Method `.test_entropy_separates_random_from_prose()`
   - Method `.test_agent_memory_free_text_is_scanned()`
-  - Method `.test_this_repository_is_clean()`
   - Method `.test_gitignore_carries_the_credential_baseline()`
 - `class TestInvariantReachabilityShield` - *PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These*
   - Method `.setUp()`

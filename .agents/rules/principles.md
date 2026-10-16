@@ -1,6 +1,6 @@
 # Workspace Agent Rules (Tier 1)
 
-> Generated from `AGENTS.md` by `scripts/sync_principles.py`; edit the source, not this file.
+> Generated from `GUIDELINES.md` by `scripts/sync_principles.py`; edit the source, not this file.
 > Capsules are binding. On a boundary, failure or ambiguity, slice-view `GUIDELINES.md` (grep `### PRINCIPLE-XXX:`); never load it whole.
 
 ## Core Principles

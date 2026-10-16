@@ -35,6 +35,7 @@ from scripts.sync_principles import (
     audit_tier1_budget,
     estimate_tokens,
     render_tier1_target,
+    is_generated_target,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -91,19 +92,19 @@ class TestPrincipleSync(unittest.TestCase):
     """Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
 
     def test_parse_all_principles(self):
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT,
                          f"Expected {EXPECTED_PRINCIPLE_COUNT} principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
         for i in range(1, 19):
             expected_id = f"PRINCIPLE-{i:03d}"
-            self.assertIn(expected_id, p_ids, f"Missing {expected_id} in AGENTS.md")
+            self.assertIn(expected_id, p_ids, f"Missing {expected_id} in {SSOT_MD.name}")
         for p in principles:
             self.assertTrue(p["invariant"], f"Principle {p['id']} is missing an invariant capsule")
 
     def test_monotonic_lifecycle_phase_alignment(self):
         # Enforces PRINCIPLE-002: principles must belong to monotonic phases 1 through 5
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT)
         current_phase = 1
         for p in principles:
@@ -113,16 +114,10 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertEqual(current_phase, 5, "Principles did not reach Phase 5")
 
     def test_targets_in_sync_and_budgeted(self):
-        # All target files must be 100% in sync with AGENTS.md and within context budget (PRINCIPLE-001)
-        principles = parse_principles(AGENTS_MD)
+        # Every generated Tier 1 target must be fresh against the SSOT and within budget (PRINCIPLE-001)
+        principles = parse_principles(SSOT_MD)
         self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT)
-        targets = [
-            ROOT_DIR / "GEMINI.md",
-            ROOT_DIR / ".agents" / "rules" / "principles.md",
-            ROOT_DIR / "CLAUDE.md",
-            ROOT_DIR / ".cursorrules",
-            ROOT_DIR / ".github" / "copilot-instructions.md",
-        ]
+        targets = [ROOT_DIR / rel for rel in TIER1_TARGETS]
         for target in targets:
             self.assertTrue(target.exists(), f"Target file missing: {target}")
             content = target.read_text(encoding="utf-8")
@@ -148,7 +143,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_003_anti_hallucination_capsule(self):
         # Enforces PRINCIPLE-003: verified invariant capsule with slice freshness, call-sites, and platform parity
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p3 = next((p for p in principles if p["id"] == "PRINCIPLE-003"), None)
         self.assertIsNotNone(p3)
         self.assertIn("slice freshness", p3["invariant"].lower())
@@ -158,7 +153,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_004_compaction_resilience_capsule(self):
         # Enforces PRINCIPLE-004: verified invariant capsule with task_ledger, living plan SSOT, anti-repetition
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p4 = next((p for p in principles if p["id"] == "PRINCIPLE-004"), None)
         self.assertIsNotNone(p4)
         self.assertIn("task_ledger.json", p4["invariant"].lower())
@@ -169,7 +164,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_005_cold_start_capsule(self):
         # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, token ceiling, command parity, whole-tree drift shield
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
         self.assertIn("self-describing repo", p5["invariant"].lower())
@@ -181,7 +176,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_006_disruption_capsule(self):
         # Enforces PRINCIPLE-006: verified invariant capsule with atomic micro-commits, audit, and CLI ledger
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p6 = next((p for p in principles if p["id"] == "PRINCIPLE-006"), None)
         self.assertIsNotNone(p6)
         self.assertIn("incremental atomic micro-commits", p6["invariant"].lower())
@@ -191,7 +186,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_014_regression_shield_capsule(self):
         # Enforces PRINCIPLE-014: verified invariant capsule with 100% test pass gate, sub-second execution, test sanctity, RAII fixture reversion, anti-tautology, and negative path coverage
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p14 = next((p for p in principles if p["id"] == "PRINCIPLE-014"), None)
         self.assertIsNotNone(p14)
         self.assertIn("100% test pass gate", p14["invariant"].lower())
@@ -203,7 +198,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_015_operational_dogfooding_capsule(self):
         # Enforces PRINCIPLE-015: verified invariant capsule with domain-specific dogfooding, portable process tree teardown, safety jail, non-interactive stdin parity, golden path + chaos perturbation, and terse reporting
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p15 = next((p for p in principles if p["id"] == "PRINCIPLE-015"), None)
         self.assertIsNotNone(p15)
         self.assertIn("domain-specific interactive dogfooding", p15["invariant"].lower())
@@ -215,7 +210,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_016_knowledge_base_capsule(self):
         # Enforces PRINCIPLE-016: verified invariant capsule with canonical sync, atomic code-and-doc pairing, append-only ADRs, AST gating, link shield, and update_knowledge_base.py
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p16 = next((p for p in principles if p["id"] == "PRINCIPLE-016"), None)
         self.assertIsNotNone(p16)
         self.assertIn("canonical `knowledge/` sync", p16["invariant"].lower())
@@ -227,7 +222,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_017_auto_sync_capsule(self):
         # Enforces PRINCIPLE-017: verified invariant capsule with automated sync, budget check, schema compliance, freshness test gate, and Tier 1B domain rules
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p17 = next((p for p in principles if p["id"] == "PRINCIPLE-017"), None)
         self.assertIsNotNone(p17)
         self.assertIn("sync_principles.py", p17["invariant"].lower())
@@ -238,7 +233,7 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_principle_018_git_workflow_capsule(self):
         # Enforces PRINCIPLE-018: verified invariant capsule with conventional commits, adaptive push, explicit staging, pre-commit triad, and non-destructive recoil
-        principles = parse_principles(AGENTS_MD)
+        principles = parse_principles(SSOT_MD)
         p18 = next((p for p in principles if p["id"] == "PRINCIPLE-018"), None)
         self.assertIsNotNone(p18)
         self.assertIn("automatic conventional commits", p18["invariant"].lower())
@@ -249,7 +244,7 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
-        # Enforces PRINCIPLE-017: all 5 IDE prompt files must be 100% in sync with AGENTS.md.
+        # Enforces PRINCIPLE-017: every generated Tier 1 target must be 100% in sync with the SSOT.
         # Diagnostics are buffered (PRINCIPLE-012 R3) and replayed only on failure.
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
@@ -257,26 +252,64 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertEqual(
             mismatches,
             0,
-            f"{mismatches} AI guideline targets are out of sync with AGENTS.md. "
+            f"{mismatches} AI guideline targets are out of sync with {SSOT_MD.name}. "
             f"Run 'py scripts/sync_principles.py' to synchronize. "
             f"Diagnostics: {buffer.getvalue()}"
         )
 
     def test_triad_consistency_gate(self):
-        # Enforces PRINCIPLE-017: AGENTS.md, GUIDELINES.md, and README.md must have 100% principle and title parity
-        principles = parse_principles(AGENTS_MD)
+        # Enforces PRINCIPLE-017 R4: README.md, the triad's public leg, lists every principle in the
+        # single SSOT. (The former AGENTS.md <-> GUIDELINES.md title-parity check is gone because
+        # the second copy is gone, by design - see ADR-048.)
+        principles = parse_principles(SSOT_MD)
         errors = validate_triad_consistency(principles)
         self.assertEqual(errors, [], f"Triad documentation drift detected: {errors}")
 
-        # Negative path: verify that mismatched heading title in GUIDELINES.md is caught
+        # Negative path: a README that omits a principle must be caught.
         temp_dir = Path(tempfile.mkdtemp(prefix="test_triad_drift_"))
-        try:
-            bad_guidelines = temp_dir / "GUIDELINES.md"
-            bad_guidelines.write_text("### PRINCIPLE-001: Wrong Mismatched Title\n", encoding="utf-8")
-            drift_errors = validate_triad_consistency(principles[:1], guidelines_file=bad_guidelines, readme_file=README_MD)
-            self.assertTrue(any("does not match AGENTS.md" in e for e in drift_errors))
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        self.addCleanup(shutil.rmtree, temp_dir, ignore_errors=True)
+        partial_readme = temp_dir / "README.md"
+        partial_readme.write_text(
+            "\n".join(p["id"] for p in principles if p["id"] != "PRINCIPLE-019"), encoding="utf-8"
+        )
+        drift_errors = validate_triad_consistency(principles, readme_file=partial_readme)
+        self.assertEqual(drift_errors, ["PRINCIPLE-019 missing from README.md"])
+
+        missing = validate_triad_consistency(principles, readme_file=temp_dir / "absent.md")
+        self.assertTrue(any("README.md missing" in e for e in missing))
+
+    def test_adopter_readme_without_principles_is_not_drift(self):
+        # Red-green pin: forcing every adopting project's product README to list AIKit's principle
+        # IDs failed their very first sync with 19 TRIAD DRIFT errors. A README that documents no
+        # principles is an adopter's choice; only a partial listing is drift.
+        principles = parse_principles(SSOT_MD)
+        readme = Path(tempfile.mkdtemp(prefix="test_adopter_readme_")) / "README.md"
+        self.addCleanup(shutil.rmtree, readme.parent, ignore_errors=True)
+        readme.write_text("# Acme Widget Service\n\nOur product README.\n", encoding="utf-8")
+        self.assertEqual(validate_triad_consistency(principles, readme_file=readme), [])
+
+    def test_aikit_readme_lists_every_principle_strictly(self):
+        # The adopter rule above must never let AIKit itself drop its principles table: AIKit's
+        # own README is held to the full listing independently of the tool's leniency.
+        readme = README_MD.read_text(encoding="utf-8")
+        for p in parse_principles(SSOT_MD):
+            with self.subTest(pid=p["id"]):
+                self.assertIn(p["id"], readme, f"{p['id']} missing from AIKit's README.md")
+
+    def test_single_ssot_and_generated_agents_md(self):
+        # ADR-048: the rules live in exactly one hand-edited file. AGENTS.md - auto-loaded by
+        # AGENTS.md-convention agents - is a generated, budgeted Tier 1 target, not a second copy.
+        agents = (ROOT_DIR / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertTrue(is_generated_target(agents), "AGENTS.md is not a generated target")
+        self.assertNotIn("- **Rules**:", agents, "AGENTS.md carries the full rule bodies again")
+        self.assertLessEqual(len(agents) // 4, TARGET_TOKEN_BUDGET)
+        self.assertIn("AGENTS.md", TIER1_TARGETS)
+        self.assertEqual(SSOT_MD.name, "GUIDELINES.md")
+        guidelines = SSOT_MD.read_text(encoding="utf-8")
+        for p in parse_principles(SSOT_MD):
+            with self.subTest(pid=p["id"]):
+                self.assertEqual(guidelines.count(f"### {p['id']}:"), 1,
+                                 f"{p['id']} must have exactly one heading in the SSOT")
 
     def test_principle_schema_strictness(self):
         # Enforces PRINCIPLE-017: principles with missing schema components or duplicate IDs must raise ValueError
@@ -315,6 +348,24 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("[PRINCIPLE-017 SCHEMA VIOLATION] Duplicate principle ID detected: PRINCIPLE-001", str(ctx.exception))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_last_principle_block_stops_at_next_section(self):
+        # Red-green pin: the final principle's block used to run to end-of-file, so a field in a
+        # trailing appendix could satisfy that principle's schema. Here the last principle lacks an
+        # Invariant and only the appendix has one; strict parsing must reject it.
+        doc = Path(tempfile.mkdtemp(prefix="test_bounds_")) / "ssot.md"
+        self.addCleanup(shutil.rmtree, doc.parent, ignore_errors=True)
+        doc.write_text(
+            "## Phase 5: Delivery\n"
+            "### PRINCIPLE-001: Complete\n- **Concept**: A\n- **Invariant**: B\n- **Rules**:\n  1. R\n\n"
+            "### PRINCIPLE-002: Missing Invariant\n- **Concept**: C\n- **Rules**:\n  1. R\n\n"
+            "## Appendix\n- **Invariant**: belongs to no principle\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(ValueError) as ctx:
+            parse_principles(doc, strict=True)
+        self.assertIn("PRINCIPLE-002", str(ctx.exception))
+        self.assertIn("Invariant", str(ctx.exception))
 
     def test_tier_1b_domain_rules_injection(self):
         # Enforces PRINCIPLE-001 & PRINCIPLE-017: Tier 1B domain rules can be loaded and appended within budget
@@ -404,6 +455,97 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
 
 
+class TestSyncWriteSafety(unittest.TestCase):
+    """
+    ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,
+    and adopters often keep their own CLAUDE.md. Sync must therefore never overwrite a file it did
+    not generate, must decide that for every target before writing any, and must explain an
+    unmigrated layout instead of crashing. Each test runs the real sync_all in a sandbox.
+    """
+
+    def setUp(self):
+        self.sandbox = Path(tempfile.mkdtemp(prefix="test_sync_safety_"))
+        self.addCleanup(shutil.rmtree, self.sandbox, ignore_errors=True)
+        (self.sandbox / "README.md").write_text(README_MD.read_text(encoding="utf-8"), encoding="utf-8")
+        (self.sandbox / "GUIDELINES.md").write_text(SSOT_MD.read_text(encoding="utf-8"), encoding="utf-8")
+        for name, value in (
+            ("ROOT_DIR", self.sandbox),
+            ("SSOT_MD", self.sandbox / "GUIDELINES.md"),
+            ("AGENTS_MD", self.sandbox / "AGENTS.md"),
+            ("DOMAIN_RULES_PATH", self.sandbox / ".agents" / "rules" / "domain.md"),
+        ):
+            self.addCleanup(setattr, sync_principles_module, name, getattr(sync_principles_module, name))
+            setattr(sync_principles_module, name, value)
+
+    def _sync(self, check_only=False):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            result = sync_principles_module.sync_all(
+                check_only=check_only, exit_on_mismatch=False, readme_file=self.sandbox / "README.md"
+            )
+        return result, out.getvalue()
+
+    def _written_targets(self):
+        return [rel for rel in TIER1_TARGETS if (self.sandbox / rel).exists()]
+
+    def test_clean_sandbox_generates_every_target(self):
+        result, _ = self._sync()
+        self.assertEqual(result, 0)
+        self.assertEqual(sorted(self._written_targets()), sorted(TIER1_TARGETS))
+
+    def test_hand_authored_file_is_never_overwritten(self):
+        own = "# My project's own Claude rules\n- Use tabs, never spaces.\n"
+        (self.sandbox / "CLAUDE.md").write_text(own, encoding="utf-8")
+        result, output = self._sync()
+        self.assertGreater(result, 0, "sync overwrote or ignored a hand-authored target")
+        self.assertEqual((self.sandbox / "CLAUDE.md").read_text(encoding="utf-8"), own,
+                         "an adopter's own CLAUDE.md was modified")
+        self.assertIn("[PROTECTED]", output)
+        self.assertIn("CLAUDE.md", output)
+        self.assertIn("Fix:", output, "protection message lacks a remediation step")
+        self.assertNotIn("Traceback", output)
+
+    def test_protection_is_all_or_nothing(self):
+        # PRINCIPLE-013 R6: one protected file must not leave the other targets half-written.
+        (self.sandbox / "CLAUDE.md").write_text("# hand written\n", encoding="utf-8")
+        self._sync()
+        self.assertEqual(self._written_targets(), ["CLAUDE.md"],
+                         "other targets were written despite a protected conflict")
+
+    def test_legacy_generated_target_is_upgraded(self):
+        # Files written by pre-ADR-048 AIKit carry "(Tier 1 Invariants)" and must stay upgradable.
+        (self.sandbox / "CLAUDE.md").write_text(
+            "# Claude AI Assistant Guidelines\n\n## Core Principles (Tier 1 Invariants):\n1. old\n",
+            encoding="utf-8",
+        )
+        result, _ = self._sync()
+        self.assertEqual(result, 0)
+        self.assertIn("Generated from `GUIDELINES.md`",
+                      (self.sandbox / "CLAUDE.md").read_text(encoding="utf-8"))
+
+    def test_unmigrated_layout_gets_migration_guidance_not_a_traceback(self):
+        # The pre-ADR-048 layout: full rules in AGENTS.md, a Problem/Guideline GUIDELINES.md.
+        (self.sandbox / "AGENTS.md").write_text(SSOT_MD.read_text(encoding="utf-8"), encoding="utf-8")
+        (self.sandbox / "GUIDELINES.md").write_text(
+            "### PRINCIPLE-001: Legacy\n- **Problem**: p\n- **Guideline**:\n  - g\n", encoding="utf-8"
+        )
+        legacy_agents = (self.sandbox / "AGENTS.md").read_text(encoding="utf-8")
+        result, output = self._sync()
+        self.assertEqual(result, 1)
+        self.assertIn("[MIGRATION REQUIRED]", output)
+        self.assertIn("Fix:", output)
+        self.assertNotIn("Traceback", output)
+        self.assertEqual((self.sandbox / "AGENTS.md").read_text(encoding="utf-8"), legacy_agents,
+                         "the legacy rule source was modified before migration")
+        self.assertEqual(self._written_targets(), ["AGENTS.md"], "targets written before migration")
+
+    def test_generated_marker_detection(self):
+        self.assertTrue(is_generated_target("> Generated from `GUIDELINES.md` by ..."))
+        self.assertTrue(is_generated_target("## Core Principles (Tier 1 Invariants):"))
+        self.assertFalse(is_generated_target("# Our team's Claude notes\n- prefer small PRs\n"))
+        self.assertFalse(is_generated_target(""))
+
+
 class TestTier1ContextBudget(unittest.TestCase):
     """
     PRINCIPLE-001 R6/R9. Always-injected rules cost context on every turn in every IDE, so the
@@ -411,13 +553,7 @@ class TestTier1ContextBudget(unittest.TestCase):
     came to be silently breached while reporting BUDGET PASS.
     """
 
-    TARGETS = (
-        ROOT_DIR / "GEMINI.md",
-        ROOT_DIR / ".agents" / "rules" / "principles.md",
-        ROOT_DIR / "CLAUDE.md",
-        ROOT_DIR / ".cursorrules",
-        ROOT_DIR / ".github" / "copilot-instructions.md",
-    )
+    TARGETS = tuple(ROOT_DIR / rel for rel in TIER1_TARGETS)
 
     def test_every_target_is_within_the_token_target(self):
         for target in self.TARGETS:
@@ -599,11 +735,8 @@ class TestSecretHygieneScanner(unittest.TestCase):
         self.assertTrue(scan_text("agent-memory:task_ledger.json", leaky),
                         "a credential in ledger free-text was not detected")
 
-    def test_this_repository_is_clean(self):
-        # The live invariant: no tracked file or agent memory in AIKit carries a credential.
-        with contextlib.redirect_stdout(io.StringIO()):
-            exit_code = run_scan(mode="all")
-        self.assertEqual(exit_code, 0, "secret scan found potential credentials in the repository")
+    # The whole-repository scan (`run_scan(mode="all")`) shells out to `git ls-files`, so it lives
+    # in tests/test_integration.py; the unit tier may not spawn processes, even indirectly.
 
     def test_gitignore_carries_the_credential_baseline(self):
         # PRINCIPLE-019 R2: protection added after a leak is protection that already failed.

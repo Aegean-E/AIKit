@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Principles Auto-Sync Tool (PRINCIPLE-017)
-Ensures all AI assistant guideline documents remain in 100% synchronization
-with the master specification in AGENTS.md, enforces principle schema completeness,
-prevents duplicate principle IDs, validates exact title parity across documentation,
-and injects optional Tier 1B domain rules.
+Generates every always-injected Tier 1 target - including AGENTS.md - from the single Tier 2
+source of truth in GUIDELINES.md, enforces principle schema completeness and the Tier 1 context
+budget, rejects duplicate principle IDs, checks README parity, injects optional Tier 1B domain
+rules, and refuses to overwrite any target it did not generate.
 """
 
 import os
@@ -29,7 +29,18 @@ MAX_DOMAIN_CHARS = 1200  # Tier 1B allowance (~300 tokens) that universal rules 
 MIN_PRINCIPLES = 19
 
 # Single source of truth for the principle corpus; every Tier 1 target is generated from it.
-SSOT_MD = AGENTS_MD
+# AGENTS.md used to be this file, but tools following the AGENTS.md convention auto-load it, which
+# put ~15.6k real tokens of Tier 2 into always-on context. It is now a generated Tier 1 target.
+SSOT_MD = GUIDELINES_MD
+
+# Markers proving a file was written by this tool (current, then legacy pre-ADR-048 headers).
+# Anything else is hand-authored and must never be overwritten by a sync.
+GENERATED_MARKERS = ("Generated from `", "(Tier 1 Invariants)")
+
+
+def is_generated_target(text: str) -> bool:
+    """True when `text` carries this tool's generated-file header (current or legacy)."""
+    return any(marker in text for marker in GENERATED_MARKERS)
 
 
 def estimate_tokens(text: str) -> int:
@@ -93,8 +104,12 @@ def append_domain_rules(lines: List[str], domain_rules: str):
 
 
 def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
-    """Parse AGENTS.md, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression."""
+    """Parse the principle SSOT, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression."""
     content = agents_file.read_text(encoding="utf-8")
+    # Level-2 headings (phase sections, checklists, appendices) end a principle's block. Without
+    # this bound the last principle swallowed everything after it, so text in a trailing
+    # checklist could be misread as part of PRINCIPLE-019.
+    section_starts = [m.start() for m in re.finditer(r"^## ", content, re.M)]
     phase_pattern = r"##\s*([^\n]*Phase\s*(\d+)[:\s]*([^\n]*))"
     phase_matches = list(re.finditer(phase_pattern, content))
 
@@ -108,6 +123,9 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
         title = match.group(2).strip()
         start = match.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        later_sections = [s for s in section_starts if start < s < end]
+        if later_sections:
+            end = later_sections[0]
         block = content[start:end]
 
         concept_match = re.search(r"- \*\*Concept\*\*:\s*([^\n]+)", block)
@@ -174,30 +192,28 @@ def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
 
 def validate_triad_consistency(
     principles: List[Dict],
-    guidelines_file: Path = GUIDELINES_MD,
     readme_file: Path = README_MD,
 ) -> List[str]:
-    """Verify that all principles in AGENTS.md also exist in GUIDELINES.md and README.md with matching titles (PRINCIPLE-017)."""
-    errors = []
-    if not guidelines_file.exists():
-        errors.append(f"GUIDELINES.md missing at {guidelines_file}")
-    else:
-        g_content = guidelines_file.read_text(encoding="utf-8")
-        for p in principles:
-            pid = p["id"]
-            expected_header = f"### {pid}: {p['title']}"
-            if expected_header not in g_content:
-                errors.append(f"{pid} heading in GUIDELINES.md does not match AGENTS.md ('{expected_header}')")
+    """
+    Verify the documentation triad's public leg: README.md lists every principle (PRINCIPLE-017).
 
+    This once also compared titles between AGENTS.md and GUIDELINES.md, because the rules lived in
+    two hand-maintained copies. That check could only ever catch heading drift, never body drift,
+    and ~6 rules had already diverged between the copies. With a single SSOT there is no second
+    copy to compare; generated targets are covered by the freshness gate instead.
+    """
+    errors = []
     if not readme_file.exists():
         errors.append(f"README.md missing at {readme_file}")
-    else:
-        r_content = readme_file.read_text(encoding="utf-8")
-        for p in principles:
-            pid = p["id"]
-            if pid not in r_content:
-                errors.append(f"{pid} missing from README.md")
+        return errors
 
+    r_content = readme_file.read_text(encoding="utf-8")
+    listed = [p["id"] for p in principles if p["id"] in r_content]
+    # A README that documents no principles at all is an adopter's product README, not drift:
+    # forcing every adopting project to list AIKit's principle IDs blocked their first sync.
+    # A README that documents SOME principles must document all of them.
+    if listed:
+        errors.extend(f"{p['id']} missing from README.md" for p in principles if p["id"] not in listed)
     return errors
 
 
@@ -205,6 +221,9 @@ def validate_triad_consistency(
 # targets in lock-step; five near-identical generators previously had to be edited in parallel,
 # and the header text they shared had drifted into contradicting PRINCIPLE-001.
 TIER1_TARGETS: Dict[str, str] = {
+    # Auto-loaded by tools following the AGENTS.md convention (e.g. OpenAI Codex, GitHub Copilot's
+    # coding agent), so it must be a budgeted Tier 1 file, never the full specification.
+    "AGENTS.md": "# Agent Instructions (Tier 1)",
     "GEMINI.md": "# Gemini Instructions (Tier 1)",
     ".agents/rules/principles.md": "# Workspace Agent Rules (Tier 1)",
     "CLAUDE.md": "# Claude Instructions (Tier 1)",
@@ -297,31 +316,69 @@ def sync_all(
     check_only: bool = False,
     exit_on_mismatch: bool = True,
     domain_path: Optional[Path] = None,
-    guidelines_file: Path = GUIDELINES_MD,
     readme_file: Path = README_MD,
 ) -> int:
-    """Synchronize the principle SSOT across every always-injected Tier 1 target."""
+    """
+    Generate every always-injected Tier 1 target from the principle SSOT.
+
+    Returns the number of problems found - 0 means success in both write and check modes. With
+    `exit_on_mismatch=True` (the CLI) any problem exits 1 instead of returning.
+    """
     if not SSOT_MD.exists():
         print(f"Error: Master file {SSOT_MD} not found.")
         if exit_on_mismatch:
             sys.exit(1)
         return 1
 
-    principles = parse_principles(SSOT_MD, strict=True)
+    try:
+        principles = parse_principles(SSOT_MD, strict=True)
+    except ValueError as schema_error:
+        # Distinguish an unmigrated pre-ADR-048 layout (rules still in AGENTS.md) from a genuine
+        # schema defect, and never surface either as a raw traceback (PRINCIPLE-011 R6).
+        legacy = False
+        if AGENTS_MD.exists() and not is_generated_target(AGENTS_MD.read_text(encoding="utf-8")):
+            try:
+                legacy = bool(parse_principles(AGENTS_MD, strict=True))
+            except ValueError:
+                legacy = False
+        if legacy:
+            sys.stderr.write(
+                f"[MIGRATION REQUIRED] The principles still live in AGENTS.md (pre-ADR-048 layout).\n"
+                f"Why: {SSOT_MD.name} is now the single source of truth and AGENTS.md is generated, "
+                f"because AGENTS.md-convention agents auto-load it as always-on context.\n"
+                f"Fix: move each '### PRINCIPLE-XXX:' section (Concept/Invariant/Rules) from AGENTS.md "
+                f"into {SSOT_MD.name}, delete AGENTS.md, then re-run this script to regenerate it.\n"
+            )
+        else:
+            sys.stderr.write(
+                f"[SCHEMA ERROR] {schema_error}\n"
+                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-XXX:', Concept, Invariant "
+                f"and numbered Rules (PRINCIPLE-017 R1).\n"
+                f"Fix: complete the section named above, then re-run.\n"
+            )
+        if exit_on_mismatch:
+            sys.exit(1)
+        return 1
     print(f"Parsed {len(principles)} active principles from {SSOT_MD.name}:")
     for p in principles:
         print(f" - {p['id']}: {p['title']}")
 
-    # Validate triad consistency (AGENTS.md <-> GUIDELINES.md <-> README.md)
-    triad_errors = validate_triad_consistency(principles, guidelines_file=guidelines_file, readme_file=readme_file)
+    # Documentation triad, public leg: README.md must list every principle in the SSOT.
+    triad_errors = validate_triad_consistency(principles, readme_file=readme_file)
     if triad_errors:
-        err_msg = "\n".join([f"  • {e}" for e in triad_errors])
+        # ASCII bullets: this CLI does not reconfigure stdout, and '•' printed as garbage on cp1254.
+        err_msg = "\n".join([f"  - {e}" for e in triad_errors])
         print(f"\n[TRIAD DRIFT DETECTED]:\n{err_msg}")
         if exit_on_mismatch:
             sys.exit(1)
         return len(triad_errors)
     else:
-        print("[OK] Verified principle triad consistency across AGENTS.md, GUIDELINES.md, and README.md")
+        readme_text = readme_file.read_text(encoding="utf-8") if readme_file.exists() else ""
+        if any(p["id"] in readme_text for p in principles):
+            print(f"[OK] Verified README.md lists every principle in {SSOT_MD.name}")
+        else:
+            # Mode transparency (PRINCIPLE-011 R3): say why the check did not apply.
+            print("[INFO] README.md documents no principles (adopter README); parity check not applicable")
 
     domain_rules = load_tier_1b_domain_rules(domain_path)
     if domain_rules:
@@ -337,6 +394,29 @@ def sync_all(
         if exit_on_mismatch:
             sys.exit(1)
         return budget_violations
+
+    # Never overwrite a file this tool did not generate, and decide that for EVERY target before
+    # writing ANY, so a protected file cannot leave a half-synced tree (PRINCIPLE-013 R6). This
+    # protects an adopter's own CLAUDE.md, and a pre-ADR-048 AGENTS.md that still holds the rules.
+    foreign = []
+    for target_path, expected_content in targets.items():
+        if target_path.exists():
+            current = target_path.read_text(encoding="utf-8")
+            if current.strip() != expected_content.strip() and not is_generated_target(current):
+                foreign.append(str(target_path.relative_to(ROOT_DIR)))
+    if foreign:
+        sys.stderr.write(
+            f"\n[PROTECTED] Refusing to overwrite hand-authored file(s): {', '.join(foreign)}\n"
+            f"Why: sync only overwrites files it generated, so your own instructions are never lost. "
+            f"Older AIKit layouts kept the full rules in AGENTS.md; AGENTS.md is now generated from "
+            f"{SSOT_MD.name}.\n"
+            f"Fix: move project-specific instructions into .agents/rules/domain.md (Tier 1B, "
+            f"<={MAX_DOMAIN_CHARS} chars) and principle changes into {SSOT_MD.name}, then delete or "
+            f"rename the file(s) above and re-run.\n"
+        )
+        if exit_on_mismatch:
+            sys.exit(1)
+        return len(foreign)
 
     mismatches = 0
     for target_path, expected_content in targets.items():
@@ -368,8 +448,12 @@ def sync_all(
             sys.exit(1)
         return mismatches
 
-    print(f"\nAll {len(targets)} AI guideline targets are synchronized successfully.")
-    return mismatches
+    print(f"\nAll {len(targets)} AI guideline targets are synchronized successfully "
+          f"({mismatches} updated).")
+    # The return value always counts PROBLEMS, so 0 means success in every mode. It previously
+    # returned the number of files updated in write mode, making a successful sync look like a
+    # failure to any programmatic caller.
+    return 0
 
 
 def print_help():

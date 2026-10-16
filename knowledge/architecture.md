@@ -127,6 +127,26 @@ To prevent ceremony bloat on simple workflows, the pipeline supports 3 explicit 
 - **Dual-Track Dogfooding (Golden Path + Hostile Chaos)**: Every dogfood run verifies a complete end-to-end data lifecycle (create, modify, retrieve) paired with intentional fault injection (SIGINT interrupt, invalid payloads, malformed data streams) to verify clean error recovery.
 - **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown exit codes.
 
+### Single Source of Truth & Generated AGENTS.md (Implemented Surface)
+The rules live in exactly one hand-edited file. See [ADR-048](decisions.md).
+
+| File | Tier | Role |
+|---|---|---|
+| `GUIDELINES.md` | 2 | The only hand-edited copy: Problem, Concept, Invariant, Rules, checklists |
+| `AGENTS.md` | 1 | **Generated** capsules; auto-loaded by AGENTS.md-convention agents |
+| `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents/rules/principles.md` | 1 | Generated capsules for each IDE |
+
+- **Why AGENTS.md cannot be the specification**: tools following the AGENTS.md convention load it
+  automatically, so whatever it holds is Tier 1. As the master spec it put ~15.6k real tokens into
+  always-on context (~13x the budget). Generated, it is ~1.2k.
+- **Why one copy**: the rules previously lived in AGENTS.md *and* GUIDELINES.md. Only titles were
+  parity-checked, so bodies drifted (~6 rules existed in one copy but not the other). Folding them
+  into one file removed 36% of Tier 2 and the possibility of drift.
+- **Write safety**: `is_generated_target()` recognises current ("Generated from") and legacy
+  (`(Tier 1 Invariants)`) headers. Anything else is refused with `[PROTECTED]` before any target is
+  written, which protects an adopter's own `CLAUDE.md` and an unmigrated AGENTS.md rule source.
+  An unmigrated layout gets `[MIGRATION REQUIRED]` guidance instead of a traceback.
+
 ### Tier 1 Context Budget (Enforced Surface)
 Always-injected IDE rules cost context on every turn, so the budget is a gate, not advice.
 See [ADR-046](decisions.md).
@@ -275,7 +295,7 @@ Every entrypoint in `scripts/` implements one uniform contract, enforced mechani
 - **Material Surface Sync Contract**: Synchronous updates to `README.md` are gated strictly by modifications to public surface areas (quickstart, CLI flags, public APIs, governance principles). Internal refactors sync to `knowledge/` to prevent documentation churn.
 - **Documentation Partitioning (The SSOT Triad)**:
   - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
-  - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
+  - `GUIDELINES.md`: The single source of truth for behavioral rules, lifecycle invariants, and engineering principles; every Tier 1 file, `AGENTS.md` included, is generated from it (ADR-048).
   - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
 - **Executable Command Parity**: All documented quickstart and run commands must be factual, literal, and verified to run in the active runtime.
 - **Directory Tree & Whole-Tree Drift Shield**: Any addition, deletion, or renaming of core scripts or root files requires an atomic update to the `README.md` directory tree, ensuring zero phantom scripts or dead references across the project.
@@ -332,10 +352,10 @@ Every entrypoint in `scripts/` implements one uniform contract, enforced mechani
 ---
 
 ## 🔄 Living Principles & Cross-IDE Governance Architecture (PRINCIPLE-017)
-- **Multi-IDE Target Synchronization**: Principles defined in `AGENTS.md` are automatically compiled and synchronized to all active AI assistant environments (`GEMINI.md`, `.agents/rules/principles.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`) using atomic buffer replacements (`fsync` + `os.replace`).
+- **Multi-IDE Target Synchronization**: Principles defined in `GUIDELINES.md` are rendered by one function, `render_tier1_target()`, into every always-injected file (`AGENTS.md`, `GEMINI.md`, `.agents/rules/principles.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`) using atomic buffer replacements (`fsync` + `os.replace`). Sync never overwrites a file it did not generate (current or legacy header markers) and classifies every target before writing any.
 - **Canonical Schema & Unique ID Enforcement**: Every principle must strictly declare Title, Concept, Invariant capsule, and numbered Rules; `scripts/sync_principles.py` validates schema completeness and halts on missing sections or duplicate principle IDs.
 - **Deterministic Auto-Sync Freshness Gate**: Automated unit tests assert `sync_all(check_only=True) == 0`, preventing any pull request or commit from shipping with stale or desynchronized IDE rule files.
-- **Triad Documentation Consistency & Exact Title Parity**: Programmatically verifies that all principle IDs and exact heading titles in `AGENTS.md` match across `GUIDELINES.md` and `README.md`.
+- **Triad Documentation Consistency & Exact Title Parity**: Titles exist once, in the SSOT, so parity holds by construction. README parity is checked as "document all principles or none": a partial listing is drift, while an adopter's product README that lists none is not.
 - **Dynamic Monotonic Phase Progression**: Tracks lifecycle phases (Phases 1 through 5) dynamically without rigid range bounds, ensuring non-decreasing execution order ($Phase_i \ge Phase_{i-1}$).
 - **Tier 1B Domain Rules Blueprint & Proactive Budget Warnings**: Adopter repositories define project-specific conventions in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all targets and emits an advisory warning at 90% of the token budget, evaluated only after the blocking checks.
 

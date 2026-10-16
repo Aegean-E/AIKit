@@ -11,6 +11,8 @@ nothing here is hidden or opt-in. Every spawned process is bounded by an explici
 (PRINCIPLE-010 R3, PRINCIPLE-015 R2) so a hung child can never stall the suite.
 """
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -25,6 +27,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.check_secrets import run_scan  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
     record_checkpoint,
@@ -375,6 +378,16 @@ class TestDogfoodRunner(unittest.TestCase):
         )
         self.assertEqual(bad_res.returncode, 2)
         self.assertIn("[INVALID USAGE]", bad_res.stderr)
+
+
+class TestRepositorySecretHygiene(unittest.TestCase):
+    """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
+
+    def test_this_repository_is_clean(self):
+        # No tracked file or agent memory in AIKit carries a credential.
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = run_scan(mode="all")
+        self.assertEqual(exit_code, 0, "secret scan found potential credentials in the repository")
 
 
 class TestTierBudgetDiscipline(unittest.TestCase):

@@ -1,295 +1,410 @@
-# Project Guidelines & Architecture Principles
+# AIKit Principles: Single Source of Truth (Tier 2)
 
-This document defines the architectural guidelines and design principles for this project. All contributors, automated pipelines, and AI systems must adhere to these rules.
-The principles are strictly ordered according to the **5 Chronological Execution Phases**: **Meta-Governance & Grounding** $\rightarrow$ **Pre-Flight Orientation & Planning** $\rightarrow$ **Architecture & Lean Implementation** $\rightarrow$ **Operational Verification & Resilience** $\rightarrow$ **Living Sync & Delivery**.
+> This is the **only** hand-edited copy of AIKit's engineering principles. Every always-injected Tier 1 file (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents/rules/principles.md`) is generated from it by `python scripts/sync_principles.py`; edit here, never there.
+>
+> **Do not load this file whole.** It is Tier 2 knowledge (PRINCIPLE-001): slice-view one principle at a time with `grep "### PRINCIPLE-XXX:"` on an architectural boundary, a failure, or an ambiguity.
 
----
-
-## 🧭 Principles Index (Lifecycle-Ordered)
-
-### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
-| ID | Title | Summary |
-|---|---|---|
-| **[PRINCIPLE-001](#principle-001-progressive-rule-disclosure--governance-frugality-zero-instruction-bloat)** | Progressive Disclosure & Lean Rules | Two-tier rule disclosure, strict prompt token budget (<1,500 tokens), and zero instruction bloat. |
-| **[PRINCIPLE-002](#principle-002-lifecycle-aligned-instruction-ordering--attentional-priming-cognitive-flow-invariant)** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase execution gate, remediation recoil, adaptive pathing, and late-stage priming immunity. |
-| **[PRINCIPLE-003](#principle-003-empirical-grounding--anti-hallucination-invariant-verify-before-execution)** | Empirical Grounding | Slice freshness & call-site check, manifest dependencies, platform parity, and strict AST gate. |
-| **[PRINCIPLE-004](#principle-004-attentional-drift-prevention--compaction-resilience-context-anchor-protocol)** | Compaction & Drift Resilience | Bounded ledger, living plan SSOT, anti-repetition on compaction, and AST-first slice retrieval. |
-
-### 🧭 Phase 2: Pre-Flight Orientation & Planning
-| ID | Title | Summary |
-|---|---|---|
-| **[PRINCIPLE-005](#principle-005-ai-cold-start-readiness--living-documentation-readme-sync)** | AI Cold-Start Readiness & README Sync | Self-describing repo, 30s cold-start orientation (<20k chars), material surface sync, executable command parity, and whole-tree drift shield. |
-| **[PRINCIPLE-006](#principle-006-incremental-progress-checkpointing--disruption-recovery-zero-progress-loss-workflow)** | Zero-Progress-Loss Workflow | Micro-milestone commits, pre-flight disruption audit, and CLI ledger recovery. |
-| **[PRINCIPLE-007](#principle-007-pre-flight-impact--quality-checklist-cold-start-gate)** | Impact & Quality Checklist | Pre-flight Track C checklist evaluating why, benefits, 4 blast-radius risks, scope ceiling, and anti-satisficing. |
-| **[PRINCIPLE-008](#principle-008-hierarchical-problem--task-decomposition)** | Hierarchical Problem & Task Decomposition | Dual-pillar decomposition: top-down planning, bottom-up execution, bounded milestones ($2 \le M \le 6$), and dynamic re-planning. |
-
-### 🏗️ Phase 3: Architecture & Lean Implementation
-| ID | Title | Summary |
-|---|---|---|
-| **[PRINCIPLE-009](#principle-009-modularity--pluggable-architecture)** | Modularity & Pluggable Architecture | 4-layer architecture, role protocols, pluggable registry, zero-config DI, and immutable DTOs. |
-| **[PRINCIPLE-010](#principle-010-performance--resource-optimization-speed--lean-architecture)** | Speed & Lean Optimization | Algorithmic stream efficiency, non-blocking I/O, subprocess timeouts, batch coalescing, and lazy imports. |
-| **[PRINCIPLE-011](#principle-011-zero-friction-onboarding--instant-usability-one-click-start)** | One-Click Zero-Install Usability | Pure-stdlib clone-and-run, auto-init, mode transparency, cross-platform parity, and exit semantics. |
-| **[PRINCIPLE-012](#principle-012-token-frugality--lean-code-architecture-context-budgeting)** | Token Frugality & Lean Code | Prompt cache alignment (>=80% hits), bounded diffs, terse generation, circuit breakers, and lean code. |
-
-### 🛡️ Phase 4: Operational Verification & Resilience
-| ID | Title | Summary |
-|---|---|---|
-| **[PRINCIPLE-013](#principle-013-crash-resilience-state-atomicity--power-loss-recovery-fail-safe-operations)** | Crash Resilience & Atomicity | Resilient atomic writes, shadow backups (.bak), schema migration, signal drain, and ENOSPC guards. |
-| **[PRINCIPLE-014](#principle-014-automated-test-verification--continuous-test-coverage-regression-shield)** | Regression Shield | 100% test pass gate (<1s unit, <5s integration), test sanctity, RAII fixture reversion, anti-tautology, and negative paths. |
-| **[PRINCIPLE-015](#principle-015-universal-operational-dogfooding--chaos-verification-the-ai-must-use-what-it-builds)** | Operational Dogfooding & Chaos | Interactive UI/CLI/API dogfooding, portable process teardown, stdin parity, and chaos injection. |
-
-### 🚀 Phase 5: Living Synchronization & Delivery
-| ID | Title | Summary |
-|---|---|---|
-| **[PRINCIPLE-016](#principle-016-ai-knowledge-base--continuous-synchronization)** | AI Knowledge Base | Active `knowledge/` sync, atomic code-doc pairing, append-only ADRs, AST gating, and freshness check. |
-| **[PRINCIPLE-017](#principle-017-living-principles-system--automated-synchronization-auto-sync-governance)** | Living Principles & Auto-Sync | Extensible sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
-| **[PRINCIPLE-018](#principle-018-automatic-git-workflow-commit--push)** | Automatic Git Workflow | Conventional Commits, explicit staging (no blind add), pre-commit triad, adaptive push. |
-| **[PRINCIPLE-019](#principle-019-secret--sensitive-data-hygiene-irreversible-disclosure-shield)** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files/logs/ledgers, ignore-list baseline, pre-commit secret scan, rotate-not-revert. |
+Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governance & Grounding, Pre-Flight Orientation & Planning, Architecture & Lean Implementation, Operational Verification & Resilience, Living Sync & Delivery. Each carries a **Problem** (why it exists), a **Concept**, an **Invariant** (the capsule injected into Tier 1, so exact mechanisms only), and numbered **Rules**.
 
 ---
 
-## 📖 Principle Details
+## 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 
 ### PRINCIPLE-001: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
 - **Problem**: Monolithic rule injections burn 15–30% of active context windows, dilute reasoning, inflate latency, and trigger "satisficing" bugs where models guess implementation details instead of following rigorous invariants.
-- **Guideline**:
-  - **Two-Tier Progressive Disclosure**:
-    - *Tier 1 (Always-Injected System Instructions)*: Target IDE rules (`.cursorrules`, `GEMINI.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) must only contain dense, self-sufficient invariant capsules and essential pointers. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts.
-    - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them.
-  - **Self-Sufficient Invariant Capsules (Anti-Satisficing Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Every Tier 1 summary must encode the exact technical mechanism (e.g., `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check) so routine tasks succeed with 100% accuracy without requiring disk roundtrips.
-  - **Autonomous Tier 2 Retrieval Trigger Protocol**: The AI agent must proactively slice-view Tier 2 documentation (`GUIDELINES.md` / `knowledge/`) upon encountering any of the following 3 operational triggers:
-    1. *Architectural Boundary Trigger*: Introducing new services, data schemas, or modifying cross-module API contracts.
-    2. *Failure & Regression Trigger*: Encountering any test failure, build breakage, or runtime exception.
-    3. *Ambiguity Trigger*: Addressing underspecified domain requirements or missing schema models.
-  - **Universal vs. Domain Rule Partitioning (Adopter Ready)**: When deploying AIKit to govern external projects, maintain a strict 3-tier boundary:
-    - *Tier 1A (Universal AI Governance)*: AIKit's universal engineering invariants, bounded by what they must leave free: with no domain rules loaded, every Tier 1 target must still fit a full Tier 1B block inside the total budget.
-    - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
-    - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
-  - **Deterministic Grep Anchor Contract**: All Tier 2 guideline sections must use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers must instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
-  - **Strict Injected Context Budget & Automated Gate**: Every always-injected Tier 1 target stays within 1,500 estimated tokens *including* any Tier 1B block, and with no domain rules loaded must still leave room for a full ~300-token Tier 1B block. Tokens are estimated as chars/4, calibrated against real tokenizers to err conservative. `scripts/sync_principles.py` blocks on either breach; its 90% advisory warning is evaluated only after both blocking checks.
-  - **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
-  - **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
-  - **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
-
-### PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)
-- **Problem**: Arbitrary principle ordering causes cognitive phase confusion, while passive chronological text fails to prevent agents from skipping verification, cheating tests on failure, or yielding to late-stage user pressure ("push right now!"). Furthermore, forcing heavy multi-phase ceremonies on trivial queries destroys usability.
-- **Guideline**:
-  - **Monotonic Execution Gating (Lock-Step Integrity)**: Workflows must advance strictly along the 5 lifecycle phases: Meta-Governance $\rightarrow$ Pre-Flight Orientation $\rightarrow$ Architecture & Implementation $\rightarrow$ Verification & Resilience $\rightarrow$ Living Sync & Delivery. Phase 5 delivery actions (git commit, push, PR) are mechanically locked until Phase 4 verification gates (automated unit tests, operational dogfooding) pass with 100% success.
-  - **Remediation Recoil Protocol (Phase 4 Failure)**: When Phase 4 verification breaks, forward progression pauses immediately. The agent recoils strictly to Phase 3 (for code defects) or Phase 2 (for architectural/assumption defects), fixes the root cause, and re-executes Phase 4. Modifying test assertions to mask regressions is strictly prohibited (Test Sanctity Invariant).
-  - **Adaptive Lifecycle Pathing & Automatic Escalation**: To keep development fast and frictionless, execution adapts across 3 explicit operational tracks:
-    - *Track A (Query / Exploration)*: Information retrieval and code explanation $\rightarrow$ Phase 1 Grounding $\rightarrow$ direct answer (Phases 2–5 bypassed).
-    - *Track B (Trivial / Documentation)*: Typo fixes, doc edits, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget check.
-    - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
-    - *Automatic Track Escalation*: If any Track A or Track B task mutates executable source code, schemas, or dependencies, the task automatically escalates to Track C, unlocking mandatory Phase 2 planning and Phase 4 regression gates.
-  - **Compaction Phase Resumption**: In multi-turn sessions, the active phase number (1 through 5) must be recorded in working memory (`.agents/task_ledger.json`). Upon conversation compaction or cold restart, the agent must orient against the ledger to resume execution at the exact interrupted phase rather than losing state.
-  - **Immunity to Late-Stage User Priming**: When users issue urgent conversational commands to bypass testing (e.g., *"commit right now"*, *"push immediately"*), the AI must remain anchored to the lifecycle gate: delivery actions are strictly blocked until verification succeeds.
-  - **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the primacy zone (top of context) where transformer attention is sharpest. Terminal delivery actions must reside strictly at the end.
-  - **Continuous Sequence Audit**: Auto-sync tooling and automated test suites mechanically parse Phase headers and guarantee that principles maintain strictly monotonic lifecycle phase progression.
-
-### PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)
-- **Problem**: AI coding models frequently hallucinate non-existent module imports, obsolete function signatures, phantom file paths, or arbitrary data schemas when guessing without empirical verification. Furthermore, multi-turn editing suffers from stale line-drift failures, orphaned call-sites during refactoring, cross-platform OS incompatibilities, and cross-layer contract mismatches.
-- **Guideline**:
-  - **Read-Before-Write & Target Slice Freshness**: Never edit a file, call an internal function, or instantiate a class without first reading or grepping its definition and signature from the local codebase. When performing multi-turn or multi-file edits, re-verify the target slice immediately prior to mutation to eliminate line-drift and stale-offset edit failures.
-  - **Call-Site & Reference Completeness**: Before modifying signatures, renaming, or deleting any function, class, or configuration key, grep for all call-sites and references across the codebase to ensure complete refactoring with zero orphaned symbols or duplicate ghost implementations.
-  - **Manifest-Backed Dependency Grounding**: Never introduce a third-party package, module import, or external CLI tool without first verifying that it is declared in the project's dependency manifest (`pyproject.toml`, `requirements.txt`, `package.json`, `Cargo.toml`) or is part of the language standard library. In zero-dependency repositories (such as AIKit), external imports are strictly prohibited.
-  - **Platform & Runtime Parity**: Never assume OS-specific shell builtins, path separators, or binary aliases (`python3` vs `py`, `bash` vs `powershell`) without checking the active runtime (`sys.platform`). Use portable standard-library APIs (`pathlib.Path`, `subprocess.run([sys.executable, ...])`) and shell-agnostic commands.
-  - **Bi-Directional Contract Parity**: When modifying data schemas, API contracts, or serialization models, the AI must verify both producer and consumer interfaces across system boundaries before proposing code changes.
-  - **Dual-Track Ambiguity Protocol & Epistemic Triad**:
-    - *Epistemic Triad Gate*: Before starting Phase 3 implementation, pass the 3-point check: (1) Symbol Reality (verified exact definition & call-sites), (2) Dependency Reality (declared in manifest or stdlib), and (3) Platform Reality (valid for active OS/shell).
-    - *Data/Runtime Ambiguity*: Apply safe, deterministic, non-destructive fallbacks with explicit warning logs.
-    - *Architectural/Intent Ambiguity*: Never guess business logic or execute destructive actions under ambiguity. Halt forward progression and escalate to the user with structured, concise options.
-  - **Strict AST & Syntax Gating**: Rely on deterministic verification tools (`scripts/update_knowledge_base.py`, AST parsers, compiler dry-runs, and unit tests) to mechanically validate syntax and symbol integrity. `scripts/update_knowledge_base.py` enforces strict AST validation and halts on any syntax error before advancing to Phase 4.
-
-### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
-- **Problem**: In long-running pair programming sessions, large contexts induce "attentional drift" (the AI forgetting rules, skipping checklists, or losing constraints), repetitive plan printing pollutes conversational history, unbounded file dumps exhaust tokens, and conversation compaction discards transient context, inducing amnesia. Furthermore, unbounded ledger files grow into context traps, and compacted agents frequently re-prompt users on already-resolved decisions.
-- **Guideline**:
-  - **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines). Maintain a bounded rolling ledger window via `scripts/disruption_recovery.py` to prevent working memory bloat.
-  - **Compaction Resumption & Anti-Repetition Invariant**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
-    1. *Ledger Audit*: Inspect `.agents/task_ledger.json` for `active_task`, `active_phase` (1..5), and completed checkpoints.
-    2. *Working Tree Audit*: Inspect `git status` and `git log -n 1` to establish factual physical ground truth.
-    3. *Monotonic Resumption & Anti-Repetition*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps. Disk state is authoritative over truncated dialogue history; once a choice is recorded in an ADR or ledger, it is finalized and must never be re-prompted.
-  - **AST-First & Slice-Capped Retrieval**: When exploring code, consult AST symbol catalogs (`knowledge/codebase_map.md`) or targeted symbol greps before opening raw files. When reading source code, use targeted line slices (`StartLine`/`EndLine` <100 lines) focused on the relevant symbol, preventing context window exhaustion.
-  - **Two-Tier Memory Partitioning & Immediate ADR Persistence**: Maintain strict separation between (1) mutable in-flight execution scratchpads (`.agents/task_ledger.json`) and (2) permanent immutable architectural records (`knowledge/decisions.md`). Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
-  - **Terse Tool Invocation & Attentional Re-Anchoring**: When executing CLI commands, prefer bounded, summary-oriented flags (`git status --short`, `git log -n 1 --oneline`, `git diff --stat`, test runner `-q`). Never dump unbounded mega-logs or full file diffs into conversational turns. At the beginning of each turn, re-anchor to the Pre-flight/Post-flight checklist and active phase invariants.
-
-### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
-- **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit. Furthermore, rotting quickstart commands waste developer and agent turns, unmonitored directory trees drift out of date as files are added or renamed, unbounded README files exhaust the active context window on turn 1, and indiscriminate sync rules cause documentation churn on internal refactors.
-- **Guideline**:
-  - **Self-Describing Repository, 30-Second Orientation & Token Ceiling**: The project must maintain an explicit, high-visibility orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) canonical test commands, and (4) directory tree and primary entry points. A cold-starting agent must achieve complete operational orientation in its first turn without speculative file browsing. To prevent first-turn context exhaustion, `README.md` must stay strictly under 20,000 characters (<5,000 tokens), delegating deep architectural specifications to `knowledge/`.
-  - **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters setup/run instructions, CLI flags, environment variables, public API/UI contracts, or governance principles. Internal non-breaking refactors update `knowledge/` rather than adding churn to `README.md`.
-  - **Executable Command Parity**: Every command, script invocation, or code snippet documented in `README.md` must be factual, literal, and verified to run successfully in the active runtime environment. Zero phantom commands or broken quickstarts.
-  - **Documentation Partitioning (The SSOT Triad)**:
-    - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
-    - `AGENTS.md` / `GUIDELINES.md`: Behavioral rules, lifecycle invariants, and engineering principles.
-    - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
-  - **Whole-Tree Drift Shield & Script Parity**: Whenever top-level files or core entrypoint scripts (e.g. in `scripts/`, `knowledge/`, or repository root) are added, removed, or renamed, the directory tree in `README.md` must be synchronously updated. Every relative path and script cited in the `README.md` directory tree must physically exist on disk (zero phantom scripts or dead file citations).
-  - **Universal Polyglot Adopter Blueprint**: When adopting AIKit into non-Python stacks (Node/TS, Rust, Go, Java), the project's `README.md` must adapt the 30-second orientation matrix to declare the canonical stack equivalents (e.g. `npm test` / `cargo test` / `go test`, Node/Rust/Go toolchain versions, dev server commands) ensuring instant cold-start readiness regardless of programming language.
-
-### PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
-- **Problem**: When electricity cuts out or hardware crashes occur during a multi-file task or long coding session, all uncommitted in-memory work is wiped out, files may be left in half-edited states, orphaned temporary buffers clutter the tree, and cold-starting AI agents cannot determine what was interrupted or where to resume.
-- **Guideline**:
-  - **Micro-Milestone Atomicity & Conventional Micro-Commits**: Break down complex implementations into small, verifiable sub-tasks and commit working state incrementally rather than accumulating large, vulnerable working-tree drifts that risk total loss upon power cut. Micro-commits must follow Conventional Commits with milestone indices: `type(task): [milestone N/M] description`.
-  - **Pre-flight Disruption Audit on Cold Start**: Every cold-start session must begin by auditing the working tree via `scripts/disruption_recovery.py --audit` or `--resume`, inspecting surviving uncommitted files, and checking for interrupted ledger records before modifying any code.
-  - **Atomic File Modifications**: All source, test, script, and guideline modifications must be written atomically with buffer flushes and atomic replaces (`os.replace`) to eliminate 0-byte truncation risks during unexpected power-downs.
-  - **Disruption Ledger, Resumption & Reset Protocol**: Track in-flight multi-step refactors in `.agents/task_ledger.json` via `scripts/disruption_recovery.py --checkpoint <task_id> --phase <phase> --desc <desc>`. Incoming agents execute `scripts/disruption_recovery.py --resume` to inspect surviving files and cleanly resume at the interrupted phase with zero duplicate effort. Abandoned tasks are cleanly cleared via `scripts/disruption_recovery.py --reset [reason]`.
-  - **Non-Breaking Micro-Checkpoints (Test Sanctity Gate)**: Every intermediate checkpoint commit must maintain a clean build and 100% passing automated unit tests (`PRINCIPLE-014`). If intermediate code does not pass tests, progress must be recorded in `.agents/task_ledger.json` rather than committing broken states to git.
-  - **Explicit Staging & Transient Buffer Hygiene**: When committing micro-milestones, explicitly stage only the files modified for that specific sub-task (never execute blind `git add .`). Orphaned temporary buffers (`*.tmp_*`) left behind by interrupted writes must be purged via `scripts/disruption_recovery.py --clean` to maintain clean workspace hygiene.
-
-### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
-- **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs. Conversely, uncontrolled scope creep results in speculative over-engineering.
-- **Guideline**:
-  - Before mutating code or schemas on Track C tasks, execute a structured pre-flight impact assessment:
-    - **Why required**: Understand root cause, user goal, or architectural gap.
-    - **Expected benefits**: Concrete UX, modularity, performance, or reliability gains.
-    - **4 Blast-Radius Dimensions**:
-      - *Contracts*: Public API, CLI flag, signature, and schema parity.
-      - *Dependencies*: Zero undeclared external packages or non-standard tools.
-      - *Concurrency*: Non-blocking async execution, no event-loop starvation or thread deadlocks.
-      - *State*: Backward-compatible storage schemas and atomic mutations.
-    - **Anti-Satisficing & Type Preservation**: Strictly forbids `# TODO` stubs, silent exception swallowing (`except Exception: pass`), weakened test assertions, aesthetic degradation, or casting to `Any` / `# type: ignore` to bypass type safety.
-    - **Scope Ceiling (Anti-Gold-Plating)**: Keep modifications strictly bounded to the evaluated user goal and direct mitigations; never add speculative unrequested frameworks or features.
-    - **Reversibility & Principle 8 Bridge**: Verify clean working baseline before starting with an atomic rollback path. Mitigations directly define the hierarchical micro-milestones decomposed in Principle 8.
-    - **Ledger Persistence & Conversational Conciseness**: Keep chat output <6 lines. Persist full rationale via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc "..." --why "..." --benefits "..." --risks "..." --mitigation "..."` to preserve pre-flight context across compactions.
-
-### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-- **Problem**: Monolithic execution bias leads to broken intermediate code and ghost imports. Conversely, micro-task over-fragmentation creates excessive churn. Similarly, unbounded recursive data processing triggers context exhaustion and crashes.
-- **Guideline**:
-  - **Dual-Pillar Framework**:
-    - *Pillar A (Engineering Task Workflow)*: Deconstruct features top-down into distinct domains (Model $\rightarrow$ Service $\rightarrow$ Presentation $\rightarrow$ Tests), then into atomic leaf units within a bounded milestone horizon ($2 \le M \le 6$).
-    - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep file trees, AST nodes, or datasets with strict recursion limits ($D \le 3$, fan-out $K \le 50$) and deterministic base-case summary aggregation.
-  - **Top-Down Planning, Bottom-Up Execution**: Plan top-down to discover contracts and dependencies; implement bottom-up (foundations and models first, domain services second, UI/CLI third, tests last) to ensure every symbol physically exists before invocation.
-  - **Milestone Indexing Contract ($N/M$)**: Leaf units define the micro-milestones sequence ($N=1..M$) logged in `.agents/task_ledger.json` and committed via Conventional Commits: `type(task): [milestone N/M] description`.
-  - **Single-Domain Leaf Atomicity & Verifiability**: Each leaf unit must focus on a single architectural domain, compile cleanly, and pass unit tests in isolation.
-  - **Dynamic Re-Decomposition**: If execution reveals an unanticipated blocker or dependency gap, pause, update the task ledger with refined sub-tasks ($M'$), and resume monotonically without losing progress.
-
-### PRINCIPLE-009: Modularity & Pluggable Architecture
-- **Problem**: Monolithic spaghetti code, hardcoded infrastructure dependencies, multi-directory boilerplate bloat on small scripts, and generic junk-drawer modules (`utils.py`) couple business logic to specific frameworks, making systems brittle, untestable, and impossible to refactor cleanly.
-- **Guideline**:
-  - **Canonical 4-Layer Architecture & Scalable Layering**: Enforce strict separation between Presentation (CLI/UI), Service (workflows), Domain (pure models & invariants), and Infrastructure (adapters). For small tools (<300 lines), keep layers logically separated within a single module rather than generating excessive folder bloat.
-  - **Anti-Junk-Drawer Invariant**: Prohibit generic `utils.py` catch-alls; co-locate functions with their domain or group into single-purpose utility modules.
-  - **Interface Segregation & Narrow Role Protocols**: Declare fine-grained role contracts (`abc.ABC` or `typing.Protocol` with $1 \le \text{methods} \le 5$). Never force test mocks to implement unused stub methods.
-  - **Pluggable Registry & Open-Closed Extensibility (OCP)**: Dynamically register backends and adapters via registries/factories rather than hardcoded `if/elif` branching in domain services.
-  - **Pure-Stdlib Dependency Injection & Zero-Config Usability**: Pass adapters via constructor injection with default factory fallbacks (`adapter: Protocol | None = None`), enabling instant one-click execution with 100% in-memory test mockability.
-  - **Unidirectional Flow & Immutable DTOs**: Maintain strictly inward dependency flow with zero circular imports, and pass immutable data transfer objects across boundaries without leaking internal mutable state.
-
-### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
-- **Problem**: Quadratic loops ($O(N^2)$), blocking I/O on async event loops, hung subprocess deadlocks, disk thrashing from unbatched `fsync`, daemon memory creep, heavy startup imports, and slow test suites degrade performance and developer velocity.
-- **Guideline**:
-  - **Algorithmic Stream Processing**: Employ $O(1)$ set/dict lookups and generator pipelines (`yield`) to maintain $O(1)$ auxiliary memory; avoid buffering unbounded files into memory.
-  - **Non-Blocking Concurrency & Profile-First**: Never perform blocking I/O on async event loops or GUI threads; offload to `asyncio.to_thread()` or worker pools with thread-safe locks. Avoid premature concurrency on sub-20ms micro-tasks.
-  - **Subprocess Timeout Gate**: Declare explicit timeouts on all `subprocess.run` calls (`timeout=30`) and bound parallel execution ($K \le \text{cpu\_count}$) to prevent zombie hangs and PID exhaustion.
-  - **Deterministic Resource Reclamation & Ring Buffers (RAII)**: Manage file handles, sockets, and subprocesses via context managers (`with`); use bounded ring buffers (`deque(maxlen=N)`) in daemons and monitors to guarantee $O(1)$ memory.
-  - **Batch I/O Coalescing & Cold Startup Budget**: Coalesce high-frequency disk writes in memory before atomic commit to prevent `fsync` thrashing; keep CLI entrypoint startup under 100ms with lazy module loading.
-  - **Sub-Second Unit Gate & Budgeted Integration Tier**: Keep the unit tier (`tests/test_kit.py`) under 1 second by testing in memory or isolated temp fixtures without artificial delays; budget process-spawning tests (`tests/test_integration.py`) separately under 5 seconds with an explicit timeout per spawn.
-
-### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
-- **Problem**: Setup friction, missing env crashes (`KeyError`), un-scaffolded directory errors, silent mock deception, shell-specific command failures, interactive console deadlocks, and cryptic tracebacks break user onboarding and automated AI execution.
-- **Guideline**:
-  - **Pure-Stdlib Clone-and-Run**: Ensure core CLI entrypoints and test suites execute immediately upon `git clone` using standard-library primitives alone; external packages must be strictly optional plugins.
-  - **Self-Bootstrapping Workspace & Zero-Prompt Auto-Init**: Automatically scaffold directories (`.agents/`, `data/`, `logs/`) and default configuration files on first launch without prompting console questions.
-  - **Zero-Crash Config & Explicit Mode Transparency**: Safely query environment variables via `os.getenv()`; prominently signpost mock/dry-run states (`[INFO] OFFLINE MOCK MODE`) and fail-fast on mutating operations requiring credentials.
-  - **Cross-Platform Polyglot Command & Path Parity**: Use portable standard-library invocations (`python -m <module>`) and `pathlib.Path` across Windows, macOS, and Linux without shell-specific assumptions.
-  - **Non-Interactive Parity & Deterministic Exit Codes**: Default to non-interactive execution when `not sys.stdin.isatty()`; provide `--yes` / `--batch` flags and adhere strictly to POSIX exit semantics (`0` success, `1` error, `2` misuse).
-  - **Actionable Remediation Triad**: Format user-facing errors into What $\rightarrow$ Why $\rightarrow$ Exact command to resolve; avoid raw, unhandled tracebacks.
-  - **Health Diagnostics & Self-Demonstrating Fixtures**: Provide diagnostic checks (`--audit` / `--doctor`) and embedded minimal demo fixtures (`--demo`) for instant 10-second verification.
-
-### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
-- **Problem**: Unbounded payload dumps, prompt cache thrashing, tool output explosions, conversational output bloat, runaway spending loops, and ceremonial code boilerplate exhaust context windows and inflate LLM costs.
-- **Guideline**:
-  - **Bounded Prompt Ceilings & AST Slicing**: Enforce explicit payload caps (<4,000 tokens / <16,000 chars); utilize AST symbol catalogs (`knowledge/codebase_map.md`) and slice-capped views rather than raw file dumps.
-  - **Prompt Cache Alignment & Prefix Invariance**: Partition prompts into a deterministic frozen prefix (instructions/schemas $\ge 1,024$ tokens) and volatile tail; guarantee $\ge 80\%$ cache hit rates across multi-turn sessions.
-  - **Tool Output Frugality & Bounded Diff Slicing**: Bound tool outputs in context; scope unified diffs to $\le 3$ lines of context; default test runners to quiet modes; cap grep matches ($\le 50$).
-  - **Terse Schema Generation & Output Frugality**: Return compact typed schemas (JSON Schema / dataclasses); keep conversational updates under 15 lines without polite echoing or redundant code restatements.
-  - **Compact Relative-Path Serialization**: Transmit concise repository-relative paths and dense key schemas (~70% token savings) across all prompt payloads, tool arguments, and ledgers.
-  - **Token-Aware Rate Pacing & Runaway Circuit Breakers**: Pace batch requests against TPM/RPM limits with jittered backoff; enforce hard token/step ceilings on autonomous loops to prevent runaway spending death spirals.
-  - **Lean Syntactic Density & Anti-Premature-Abstraction**: Maximize expressive leverage per line using Python standard-library primitives; prohibit ceremonial boilerplate and redundant wrapper abstractions.
-
-### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
-- **Problem**: Sudden power cuts, electrical outages, process crashes, Windows lock contention (`WinError 32`), disk exhaustion (`ENOSPC`), schema incompatibilities on recovery, or unexpected signal aborts can corrupt state files, sever logs, or leave batches in an unrecoverable, untracked state.
-- **Guideline**:
-  - **Atomic File Operations & Lock Retries**: All critical JSON configurations and logs must use atomic temporary staging (`.tmp`) with buffer flushing (`flush` + `os.fsync`) and bounded retry loops on `os.replace` to survive Windows lock contention from scanners and watchers. Direct in-place overwrites are prohibited.
-  - **Storage Headroom Pre-Check (ENOSPC Resilience)**: Check storage space via `shutil.disk_usage` ($\ge 10\text{MB}$) before writing; halt cleanly with actionable diagnostic if space is exhausted.
-  - **Inter-Process Advisory Locking**: Enforce cooperative advisory file locking (`.lock`) on concurrent read-modify-write state paths with bounded timeouts to prevent parallel subagents from clobbering state.
-  - **Dual-Slot Shadow Snapshots & Schema Migration**: Rotate prior verified state to `.bak` before replacements; on startup detection of corrupted or 0-byte truncated files, quarantine `*.corrupt_*`, restore from shadow backup, and auto-migrate legacy schemas (`migrate_ledger_schema`).
-  - **Signal-Aware Flush & Read-Only Fallback**: Register signal handlers (`SIGINT`/`SIGTERM`) to flush memory buffers and release locks before termination; degrade to in-memory state on read-only filesystems without crashing.
-  - **Write-Ahead Logging (WAL) & Multi-File Staging**: Journal progress incrementally during batch operations; stage multi-file updates completely before sequential atomic replacement to prevent split-brain states.
-  - **Orphaned Buffer Sanitation**: Startup self-healing sweeps and purges stale temporary buffers (`*.tmp_*`) left by interrupted dead processes, ensuring clean workspace hygiene.
-  - **Continuous Fault-Injection Verification**: Automated tests must inject 0-byte truncations, corrupted JSON streams, and lock collisions to guarantee 100% self-healing recovery.
-
-### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
-- **Problem**: Code changes without tests break contractual contracts; AI agents frequently weaken or delete failing test assertions to force passing gates; shared-state pollution causes order-dependent flakiness; tautological mock echoes test nothing; and leaked test files pollute the working tree.
-- **Guideline**:
-  - **Test-Backed Changes & Regression Shield**: Every code mutation, schema change, or bug fix must include dedicated unit tests in `tests/`; untested production logic is strictly prohibited.
-  - **Test Sanctity Invariant (Anti-Regression Masking)**: Test assertions represent immutable contractual truth; fixing regressions by weakening, skipping (`@unittest.skip`), or deleting assertions is forbidden.
-  - **Two-Tier Test Budget & Zero Flakiness (<1s Unit Gate)**: Partition tests into a unit tier (`tests/test_kit.py`, $T_{\text{unit}} < 1\text{s}$, no process spawns and no wall-clock sleeps — enforced structurally rather than by a flaky timing assertion) and an integration tier (`tests/test_integration.py`, <5s, explicit timeout per spawn) for contracts that can only be proven by spawning a process. Both run under the one canonical command. All tests avoid real network calls, pin random seeds (`random.seed(42)`), and prohibit `time.sleep()` in favor of mock clocks or deterministic ticks. A fast total is never a licence to under-test concurrency or CLI surfaces.
-  - **Pristine Working Tree & RAII Fixture Reversion**: File I/O tests must execute strictly within ephemeral sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global state (`os.environ`, `sys.argv`, singletons) must guarantee bit-for-bit restoration via `addCleanup()`; running tests leaves `git status` bit-for-bit clean.
-  - **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, return values, and state transitions; avoid over-mocking domain logic into meaningless echo tests.
-  - **Invariant Reachability Shield (Anti-Dead-Capability)**: A passing test proves a mechanism works, never that it is *used*. A safety mechanism defined, exported and unit-tested but called from nowhere in production is a defect reported as green. Every production function must be reachable from a production call site or entrypoint dispatch; every persisted-state key read must have a producer; and when a principle names a mechanism, verify it is wired into the path it protects. Enforced by `scripts/check_reachability.py`.
-  - **Red-Green Defect Pinning & Negative Path Coverage**: Reproduce bugs with failing tests first (Red) before fixing (Green); prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme values, expected exceptions, and diagnostic messages).
-
-### PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
-- **Problem**: Headless unit tests in idealized vacuums fail to detect real-world interaction bugs; unsupervised dev servers leak zombie background processes; interactive CLI prompts hang in subshells; browser hydration white screens evade HTTP 200 checks; and unhandled display environments crash GUI windows.
-- **Guideline**:
-  - **Domain-Specific Interactive Dogfooding & Headless Parity**:
-    - *Desktop GUI*: Spawns the window in-process or via virtual display buffers (`xvfb`/offscreen), pumps event loop ticks, exercises controls, tests window destruction, and traps callback exceptions with bounded timeouts ($T \le 10\text{s}$).
-    - *Web Apps*: Boots local dev server on ephemeral ports, interacts with DOM via headless browser tools, asserts client-side root container DOM hydration (rendered children in `#root`/`#app`), and verifies zero console errors (`console.error`).
-    - *CLI Applications*: Executes the binary in subshells with real arguments, pipes stdin/stdout, tests SIGINT interruption, asserts non-interactive flag parity (`--yes`/`--headless`), and verifies exit codes and clean stderr formatting.
-    - *Backend APIs*: Boots service, executes real HTTP requests with test clients, and asserts status codes, schemas, and bounded latency ($<500\text{ms}$).
-  - **Platform-Portable Process Tree Teardown (RAII Cleanup)**: All server processes and child daemons must execute within managed supervisors or RAII context managers that guarantee recursive child process termination across Windows (`taskkill /F /T /PID`) and POSIX (`os.killpg(pid, signal.SIGKILL)`) on exit or assertion failure, preventing port collisions (`EADDRINUSE`) and zombie processes.
-  - **Non-Interactive Stdin Parity & EOF Safety**: Interactive prompts must never hang in subshells. All interactive commands must provide non-interactive bypass flags (`--yes`, `--non-interactive`, `--batch`). Commands must handle closed standard input (`< /dev/null`) gracefully without hanging or unhandled `EOFError` exceptions.
-  - **Hermetic Ephemeral State & Storage Sandboxing**: All operational state modifications, runtime databases (`sqlite:///:memory:` or ephemeral file DB), and temporary caches must execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`). Dogfooding must NEVER touch host user directories (Desktop, Documents, personal folders). Runners must assert zero file alterations outside `SANDBOX_ROOT` and bit-for-bit clean `git status --porcelain`.
-  - **Dual-Track Dogfooding (Golden Path + Hostile Chaos Perturbation)**: Testing `--help` alone is forbidden. Dogfood runs must execute: (1) a complete end-to-end golden path exercising creation, modification, and retrieval, and (2) at least one hostile perturbation (simulated SIGINT interrupt, invalid payload, malformed stream, or concurrent requests) to verify clean recovery without unhandled stack traces.
-  - **Deterministic Domain Exit Contracts**: Verify concrete success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean exit codes.
-  - **Realistic Live Budgeting & Sanity Guardrails**: Live provider workflows must be bounded, enforcing strict rate-limit and token budget guardrails against runaway loops.
-  - **Terse Context Reporting & Pre-Ship Gate**: Console outputs remain concise status dashboards (<15 lines) with verbose logs diverted to `.agents/dogfood_last_run.log`. Dogfooding must pass with 100% success before staging changes.
-
-### PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
-- **Problem**: When AI assistants modify code without updating documentation, knowledge drift sets in; forgotten `codebase_map.md` updates lead to hallucinated symbols; duplicated schemas across documents drift out of sync; and retroactively edited ADRs erase architectural rationale.
-- **Guideline**:
-  - **Canonical Structure & Router Sitemap (`INDEX.md`)**: Maintain an active, modular knowledge repository under `knowledge/` (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`). `INDEX.md` serves as the authoritative router sitemap, providing high-density summaries for instant cold-start navigation.
-  - **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Whenever architecture, service signatures, data models, or state conventions mutate, the corresponding knowledge documents must be updated in the exact same commit. Stale documentation is treated as a build defect.
-  - **Monotonic Append-Only ADR Register**: Architectural decisions in `decisions.md` are immutable historical records; design evolutions append new ADRs marking predecessors as superseded.
-  - **Strict AST Syntax Validation & Freshness Gate**: Execute `scripts/update_knowledge_base.py` to parse the codebase AST, regenerate `codebase_map.md`, and validate zero syntax errors. Automated tests enforce that `codebase_map.md` bit-for-bit matches the current repository AST prior to shipping.
-  - **Modular SSOT Partitioning & Versioned Data Models**: Prohibit duplicating schemas across files; `data_models.md` is the sole Single Source of Truth for schemas and DTOs, cross-referenced via hyperlinks. Persistent models must declare `schema_version`, nullability defaults, and backward-compatible migration transformers.
-  - **Slice-View Heading Hygiene & Link Integrity Shield**: Documents must use structured section headings (`##`, `###`) enabling targeted single-call grep slice-viewing (`view_file` <100 lines). `scripts/update_knowledge_base.py` mechanically validates that all relative file links in `knowledge/INDEX.md` resolve to physical disk paths.
-
-### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
-- **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats; missing schemas dilute rule precision; and un-injected domain rules force adopters to manually maintain multiple files.
-- **Guideline**:
-  - **Canonical Schema, Unique IDs & Strict Validation**: Every principle must follow the strict 4-section schema: `### PRINCIPLE-XXX: [Title]`, `- **Concept**:`, `- **Invariant**:`, and `- **Rules**:` with numbered testable constraints. Duplicate principle IDs are strictly rejected by `scripts/sync_principles.py`.
-  - **Mandatory Cross-IDE Auto-Sync**: Modifying or adding any principle must automatically update all AI guideline targets (`AGENTS.md`, `GUIDELINES.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`, and `README.md`) via atomic writes (`fsync` + `os.replace`).
-  - **Deterministic Freshness Test Gate**: Automated unit tests in `tests/test_kit.py` mechanically assert that all on-disk IDE targets are 100% in sync with `AGENTS.md` before changes can be shipped.
-  - **Triad Documentation Consistency & Exact Title Parity**: Programmatically validates that principle IDs and exact heading titles match across `AGENTS.md`, `GUIDELINES.md`, and `README.md`.
-  - **Tier 1B Domain Rules Blueprint**: Adopter projects define custom domain rules in `.agents/rules/domain.md` from `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens), which `scripts/sync_principles.py` automatically injects beneath universal principles in all generated targets.
-
-### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
-- **Problem**: Uncommitted work leads to lost progress and uncoordinated branches; blind staging sweeps unwanted junk into commits; diverging remotes trigger dangerous force-pushes; and destructive resets wipe out uncommitted progress.
-- **Guideline**:
-  - **Automatic Conventional Commits**: Upon completing any verified task or milestone, automatically commit using Conventional Commits (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `build`, `ci`) with concise, imperative descriptions (<72 chars) and milestone indices (`[milestone N/M]`).
-  - **Explicit Staging Invariant (Zero Blind Staging)**: Never execute blind `git add .` or `git add -A`. Explicitly name target files (`git add <file1> <file2> ...`) to avoid staging untracked test sandboxes, build artifacts, `.env` secrets, or unrelated human edits.
-  - **Pre-Commit Delivery Triad Gate**: Terminal commits are locked until 3 gates pass: (1) 100% unit tests pass, (2) principle rules and codebase map pass freshness checks (`--check`), and (3) `git status --short` confirms only intended files are staged.
-  - **Adaptive Push & Zero Force Push**: Automatically push to the active tracked branch (`origin/<current_branch>`). If no remote exists, commit locally and report local-only status. If upstream diverged, fetch and rebase (`git pull --rebase`). Force pushes (`--force`, `--force-with-lease`) are strictly forbidden.
-  - **Non-Destructive Recoil Invariant**: When resetting or recovering from failures, always use non-destructive rollbacks (`git reset --soft HEAD~1`). Never execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
-  - **Terse Delivery Confirmation**: Confirm completion with a concise status summary (<10 lines) citing the short commit hash (`git rev-parse --short HEAD`), commit subject, files committed count, and target branch.
-
-### PRINCIPLE-019: Secret & Sensitive Data Hygiene (Irreversible Disclosure Shield)
-- **Problem**: Secret leakage is the only defect class with no clean rollback: once a credential reaches a commit, a log, a prompt payload, or a shared artifact it must be rotated, not reverted, and `git reset` cannot help. AI agents are structurally prone to it — they paste environment contents into diagnostics, commit scaffolding wholesale, and persist free-text rationale to disk where it is committed like any other file.
-- **Guideline**:
-  - **Zero Credentials in Tracked Files**: No API keys, tokens, passwords, private keys, certificates, connection strings, or session cookies in source, config, fixtures, test data, docs, or commit messages. Secrets arrive only via environment variables or a secret store, read with safe lookups, and appear in the repository only as named placeholders in `.env.example`-style templates.
-  - **Ignore-List Baseline (Pre-Exposure Shield)**: The ignore file must pre-emptively exclude `.env` and variants, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `*.keystore`, `credentials*`, `secrets*`, `*.tfvars` and cloud CLI config directories before such a file can exist.
-  - **Agent Working Memory Is Tracked Output**: Free-text written into `.agents/task_ledger.json` (`--why`, `--benefits`, `--risks`, `--mitigation`), ADR bodies, dogfood logs, and progress notes must reference secrets by name, never by value.
-  - **Redacted Diagnostics & Prompt Payloads**: Errors, logs, tool outputs, and outbound LLM payloads redact credential-shaped values. Never dump whole environment dictionaries, request headers, or raw auth responses.
-  - **Mechanical Pre-Commit Secret Scan**: `scripts/check_secrets.py` scans staged content and agent ledger free-text for credential patterns and high-entropy literals as a fourth gate in the `PRINCIPLE-018` delivery triad. Allowlisting is risk-tiered: an explicit `# aikit:allow-secret` pragma or an unambiguous placeholder suppresses all detectors, while a weak hint such as "example" suppresses only the low-confidence entropy fallback and can never veto a pattern match.
-  - **Rotate, Never Revert (Irreversibility Protocol)**: On suspected exposure, rotate or revoke first, then purge the artifact. Never present `git reset`, a force-push, or a file deletion as remediation.
-  - **Least-Privilege Defaults & Zero Secret Fabrication**: Request the narrowest scope and shortest lifetime, prefer read-only credentials on verification paths, and never invent or placeholder-fill a real credential to make a flow proceed — fail fast with remediation guidance.
+- **Concept**: AI governance systems must never consume excessive context windows or degrade model reasoning through instruction bloat. System-level rule injections must remain ultra-dense and compact (Tier 1), while deep architectural rationale, historical logs, and exhaustive edge cases are offloaded to disk-backed knowledge documents (Tier 2) to be retrieved progressively on demand.
+- **Invariant**: Two-tier progressive disclosure: Tier 1 <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B (gate-enforced); capsules keep exact mechanisms, never narrative.
+- **Rules**:
+  1. **Two-Tier Progressive Disclosure**:
+     - *Tier 1 (Always-Injected System Instructions)*: Every file an agent auto-loads (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents/rules/principles.md`) must only contain dense, self-sufficient invariant capsules and essential pointers, and must be generated rather than hand-edited. Never inject multi-page essays, full code blocks, or raw historical logs into always-on prompt contexts. Any file that a tool auto-loads by convention is Tier 1 regardless of its intended role: `AGENTS.md` is loaded automatically by AGENTS.md-convention agents, so it can never hold the full specification.
+     - *Tier 2 (Disk-Backed On-Demand Knowledge)*: Full explanations, deep problem analysis, and implementation guides live on disk (`GUIDELINES.md`, `knowledge/`) and are read selectively via targeted slice tooling (`view_file`, `grep_search`) only when relevant sub-tasks require them. The rules have exactly one hand-edited copy, `GUIDELINES.md`; a second copy can only drift.
+  2. **Self-Sufficient Invariant Capsules (Anti-Satisficing Invariant)**: Compression must target narrative filler, rationale, and examples—never hard mechanical constraints. Every Tier 1 summary must encode the exact technical mechanism (e.g. `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check) so routine tasks succeed with 100% accuracy without requiring disk reads.
+  3. **Autonomous Tier 2 Retrieval Trigger Protocol**: The AI agent must proactively slice-view Tier 2 documentation (`GUIDELINES.md` / `knowledge/`) upon encountering any of the following 3 operational triggers:
+     - *Architectural Boundary Trigger*: Introducing new services, data schemas, or modifying cross-module API contracts.
+     - *Failure & Regression Trigger*: Encountering any test failure, build breakage, or runtime exception.
+     - *Ambiguity Trigger*: Addressing underspecified domain requirements or missing schema models.
+  4. **Universal vs. Domain Rule Partitioning (Adopter Ready)**: When deploying AIKit to govern external projects, maintain a strict 3-tier boundary:
+     - *Tier 1A (Universal AI Governance)*: AIKit's universal engineering invariants. Their size is bounded by what they must leave free: with no domain rules loaded, every Tier 1 target must still have room for a full Tier 1B block inside the total budget (R6).
+     - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` (<=1,200 chars / ~300 tokens: framework version, linting, naming conventions), injected beneath Tier 1A in every target.
+     - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
+  5. **Deterministic Grep Anchor Contract**: All Tier 2 guideline sections must use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers must instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
+  6. **Strict Injected Context Budget & Automated Gate**: Every always-injected Tier 1 target must stay within 1,500 estimated tokens *including* any Tier 1B block, and with no domain rules loaded must still leave room for a full ~300-token Tier 1B block. Tokens are estimated as chars/4, a ratio calibrated against real tokenizers to err conservative. `scripts/sync_principles.py` blocks on either breach; its 90% advisory warning is evaluated only after both blocking checks, so a warning can never shadow a violation.
+  7. **High Information Density (Anti-Fluff Invariant)**: Eliminate filler words, decorative prose, and duplicate instructions. Maximize the information-to-token ratio across all guidelines.
+  8. **Terse Checklist Execution**: Checklists must be concise and actionable, designed to be verified mentally or in compact ledgers without spamming conversational history with verbose multi-paragraph checklists.
+  9. **Zero Context Bloat on Expansion**: When adding new principles or guidelines, existing summaries must be condensed or modularized so total system prompt overhead remains bounded and flat over time.
 
 ---
 
-## 📝 How to Add New Principles
+### PRINCIPLE-002: Lifecycle-Aligned Instruction Ordering & Attentional Priming (Cognitive Flow Invariant)
+- **Problem**: Arbitrary principle ordering causes cognitive phase confusion, while passive chronological text fails to prevent agents from skipping verification, cheating tests on failure, or yielding to late-stage user pressure ("push right now!"). Furthermore, forcing heavy multi-phase ceremonies on trivial queries destroys usability.
+- **Concept**: Prompts, rules, checklists, and documentation must be arranged strictly along the chronological execution lifecycle of an agent's task (Grounding $\rightarrow$ Orientation $\rightarrow$ Architecture $\rightarrow$ Verification $\rightarrow$ Delivery). Instructions must never present late-stage actions (e.g. committing, pushing) before early-stage prerequisites (e.g. symbol verification, pre-flight analysis), eliminating instruction order bias and cognitive phase confusion.
+- **Invariant**: Monotonic 5-phase gate: Phase 4 verification passes before Phase 5 delivery; Track A/B/C pathing with auto-escalation; immune to late-stage priming.
+- **Rules**:
+  1. **Monotonic Execution Gating (Lock-Step Integrity)**: All engineering workflows must advance through the 5 lifecycle phases sequentially: Phase 1 (Meta-Governance & Grounding) $\rightarrow$ Phase 2 (Pre-Flight Orientation & Planning) $\rightarrow$ Phase 3 (Architecture & Lean Implementation) $\rightarrow$ Phase 4 (Operational Verification & Resilience) $\rightarrow$ Phase 5 (Living Documentation & Delivery). Phase 5 actions (commit, push, release) are mechanically illegal and locked until Phase 4 verification gates (tests, dogfooding) pass with 100% success.
+  2. **Remediation Recoil Protocol (Phase 4 Failure)**: When Phase 4 verification fails (test breakage, build failure, or dogfood crash), monotonic forward progression pauses. The agent must recoil strictly to Phase 3 (for code defects) or Phase 2 (for architectural/assumption defects), fix the root cause, and re-run Phase 4. Modifying test assertions to mask regressions is strictly prohibited (Test Sanctity Invariant).
+  3. **Adaptive Lifecycle Pathing & Automatic Escalation**: To keep development zero-friction, task execution adapts across 3 explicit operational tracks:
+     - *Track A (Query / Exploration)*: Questions, code explanations, or searches $\rightarrow$ Phase 1 (Grounding) $\rightarrow$ Direct Output (Phases 2–5 bypassed).
+     - *Track B (Trivial / Documentation)*: Typo fixes, markdown tweaks, or comment updates $\rightarrow$ Phase 1 $\rightarrow$ Phase 3 (Edit) $\rightarrow$ Phase 5 (Sync & Commit), with Phase 4 scaled to syntax/budget check.
+     - *Track C (Engineering / Feature / Refactor)*: Complete 5-phase sequence with mandatory impact gates, regression tests, and living sync.
+     - *Automatic Track Escalation*: If any Track A or Track B task mutates executable code, data schemas, or dependency configs, it must instantly escalate to Track C, unlocking mandatory Phase 2 impact planning and Phase 4 regression gates.
+  4. **Compaction Phase Resumption**: In multi-turn sessions, the active phase number (1 through 5) must be recorded in working memory (`.agents/task_ledger.json`). Upon conversation compaction or cold restart, the agent must orient against the ledger to resume execution at the exact interrupted phase rather than losing state.
+  5. **Immunity to Late-Stage User Priming**: When users issue urgent late-stage commands (e.g. *"commit right now"*, *"push immediately"*, *"skip tests"*), the AI must remain anchored to the lifecycle gate. Terminal delivery actions cannot be executed until required verification gates pass.
+  6. **Primacy-Weighted Anchoring**: Epistemic grounding, context budget limits, and safety invariants must occupy the top of prompts (primacy zone) where transformer attention is sharpest. Terminal delivery gates must reside strictly at the end.
+  7. **Continuous Sequence Audit**: Auto-sync tooling and automated tests must mechanically verify that every principle is partitioned across the 5 lifecycle phases in strictly monotonic sequence without phase inversions.
 
-To add a new principle:
-1. Assign the next sequential ID (`PRINCIPLE-019`, etc.).
-2. Define the **Problem/Concept** and concrete **Rules/Guidelines**.
-3. Place it within the appropriate execution phase.
-4. Update `GUIDELINES.md` and `AGENTS.md`.
-5. Run `python scripts/sync_principles.py` to auto-propagate across all AI guidelines.
+---
+
+### PRINCIPLE-003: Empirical Grounding & Anti-Hallucination Invariant (Verify-Before-Execution)
+- **Problem**: AI coding models frequently hallucinate non-existent module imports, obsolete function signatures, phantom file paths, or arbitrary data schemas when guessing without empirical verification. Furthermore, multi-turn editing suffers from stale line-drift failures, orphaned call-sites during refactoring, cross-platform OS incompatibilities, and cross-layer contract mismatches.
+- **Concept**: Never make architectural assumptions, guess function signatures, invent phantom dependencies, or extrapolate ambiguous data models without first reading and verifying factual source code, schemas, and runtime state on disk.
+- **Invariant**: Read-before-write slice freshness & call-site check; manifest dependency grounding; platform parity; dual-track ambiguity protocol; strict AST syntax gate.
+- **Rules**:
+  1. **Read-Before-Write & Target Slice Freshness**: Never edit a file, call an internal function, or instantiate a class without first reading or grepping its definition and signature from the local codebase. When performing multi-turn or multi-file edits, re-verify the target slice immediately prior to mutation to eliminate line-drift and stale-offset failures.
+  2. **Call-Site & Reference Completeness**: Before modifying signatures, renaming, or deleting any function, class, or configuration key, grep for all call-sites and references across the codebase to ensure complete refactoring with zero orphaned symbols or duplicate ghost implementations.
+  3. **Manifest-Backed Dependency Grounding**: Never introduce a third-party package, module import, or external CLI tool without first verifying that it is declared in the project's dependency manifest (`pyproject.toml`, `requirements.txt`, `package.json`, `Cargo.toml`) or is part of the language standard library. In zero-dependency repositories, external imports are strictly prohibited.
+  4. **Platform & Runtime Parity**: Never assume OS-specific shell builtins, path separators, or binary aliases (`python3` vs `py`, `bash` vs `powershell`) without checking the active runtime (`sys.platform`). Use portable standard-library APIs (`pathlib.Path`, `subprocess.run([sys.executable, ...])`) and shell-agnostic commands.
+  5. **Bi-Directional Contract Parity**: When modifying data schemas, API contracts, or serialization models, the AI must verify both producer and consumer interfaces across system boundaries before proposing code changes.
+  6. **Dual-Track Ambiguity Protocol & Epistemic Triad**:
+     - *Epistemic Triad Gate*: Before starting Phase 3 implementation, pass the 3-point check: (1) Symbol Reality (verified exact definition & call-sites), (2) Dependency Reality (declared in manifest or stdlib), and (3) Platform Reality (valid for active OS/shell).
+     - *Data/Runtime Ambiguity*: Apply safe, deterministic, non-destructive fallbacks with explicit warning logs.
+     - *Architectural/Intent Ambiguity*: Never guess business logic or execute destructive actions under ambiguity. Halt forward progression and escalate to the user with structured, concise options.
+  7. **Strict AST & Syntax Gating**: Rely on deterministic verification tools (`scripts/update_knowledge_base.py`, AST parsers, compiler dry-runs, and unit tests) to mechanically validate syntax and symbol integrity. `scripts/update_knowledge_base.py` enforces strict AST validation and halts on any syntax error before advancing to Phase 4.
+
+
+
+---
+
+### PRINCIPLE-004: Attentional Drift Prevention & Compaction Resilience (Context Anchor Protocol)
+- **Problem**: In long-running pair programming sessions, large contexts induce "attentional drift" (the AI forgetting rules, skipping checklists, or losing constraints), repetitive plan printing pollutes conversational history, unbounded file dumps exhaust tokens, and conversation compaction discards transient context, inducing amnesia. Furthermore, unbounded ledger files grow into context traps, and compacted agents frequently re-prompt users on already-resolved decisions.
+- **Concept**: Complex, long-running agent workflows must actively counteract attentional drift, context exhaustion, and compaction amnesia through externalized working memory, living plan SSOT hygiene, disciplined AST-first retrieval, and persistent disk-anchored state.
+- **Invariant**: Disk-backed memory (`.agents/task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first slice retrieval; bounded rolling ledger.
+- **Rules**:
+  1. **Externalized Working Memory & Living Plan SSOT**: Never store task status, multi-step plans, or architectural decisions solely in transient conversational turns. Persist them immediately to structured artifacts (`.agents/task_ledger.json`, `knowledge/decisions.md`). Never reprint verbose multi-step plans across conversational turns; update the plan in-place on disk and keep chat updates terse (<15 lines). Maintain a bounded rolling ledger window via `scripts/disruption_recovery.py` to prevent working memory bloat.
+  2. **Compaction Resumption & Anti-Repetition Invariant**: Upon cold restart or conversation compaction, execute a 3-step self-orientation before taking action:
+     - *Step 1 (Ledger Audit)*: Inspect `.agents/task_ledger.json` for `active_task`, `active_phase` (1..5), and completed checkpoints.
+     - *Step 2 (Working Tree Audit)*: Inspect `git status` and `git log -n 1` to establish factual physical ground truth.
+     - *Step 3 (Monotonic Resumption & Anti-Repetition)*: Resume execution directly at the interrupted phase without re-asking resolved user questions or re-executing verified steps. Disk state is authoritative over truncated dialogue history; once a choice is recorded in an ADR or ledger, it is finalized and must never be re-prompted.
+  3. **AST-First & Slice-Capped Retrieval**: When exploring code, consult AST symbol catalogs (`knowledge/codebase_map.md`) or targeted symbol greps before opening raw files. When reading source code, use targeted line slices (`StartLine`/`EndLine` <100 lines) focused on the relevant symbol, preventing context window exhaustion.
+  4. **Two-Tier Memory Partitioning & Immediate ADR Persistence**: Maintain strict separation between (1) mutable in-flight execution scratchpads (`.agents/task_ledger.json`) and (2) permanent immutable architectural records (`knowledge/decisions.md`). Persist all architectural choices, user constraints (e.g. zero-dependency rules, library bans), and data schemas immediately to `knowledge/decisions.md` as structured ADRs. Treat the decision register as immutable disk ground truth across long sessions.
+  5. **Terse Tool Invocation & Attentional Re-Anchoring**: When executing CLI commands, prefer bounded, summary-oriented flags (`git status --short`, `git log -n 1 --oneline`, `git diff --stat`, test runner `-q`). Never dump unbounded mega-logs or full file diffs into conversational turns. At the beginning of each turn, re-anchor to the Pre-flight/Post-flight checklist and active phase invariants.
+
+
+
+---
+
+## 🧭 Phase 2: Pre-Flight Orientation & Planning
+
+### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
+- **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit. Furthermore, rotting quickstart commands waste developer and agent turns, unmonitored directory trees drift out of date as files are added or renamed, unbounded README files exhaust the active context window on turn 1, and indiscriminate sync rules cause documentation churn on internal refactors.
+- **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles within a single turn. To prevent knowledge drift, public surface documentation must be systematically synchronized.
+- **Invariant**: Self-describing repo; 30s cold-start orientation (<20k chars); material surface README sync; executable command parity; whole-tree drift shield.
+- **Rules**:
+  1. **Self-Describing Repository, 30-Second Orientation & Token Ceiling**: The project must maintain an explicit, high-visibility orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) the canonical test command, and (4) the directory tree and primary entry points. A cold-starting agent must achieve complete operational orientation in its first turn without speculative file browsing. To prevent first-turn context exhaustion, `README.md` must stay strictly under 20,000 characters (<5,000 tokens), delegating deep architectural details to `knowledge/`.
+  2. **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters:
+     - Setup, build, or run instructions,
+     - CLI flags, environment variables, or public API/UI surfaces,
+     - Architectural boundaries, core directory layouts, or governance principles.
+     Internal non-breaking refactors that preserve public surfaces update `knowledge/` rather than adding churn to `README.md`.
+  3. **Executable Command Parity**: Every command, script invocation, or code snippet documented in `README.md` must be factual, literal, and verified to run successfully in the active runtime environment. Zero phantom commands or broken quickstarts.
+  4. **Documentation Partitioning (The SSOT Triad)**:
+     - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
+     - `GUIDELINES.md`: The single source of truth for behavioral rules, lifecycle invariants, and engineering principles. Every Tier 1 file, `AGENTS.md` included, is generated from it.
+     - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
+  5. **Whole-Tree Drift Shield & Script Parity**: Whenever top-level files or core entrypoint scripts (e.g. in `scripts/`, `knowledge/`, or repository root) are added, removed, or renamed, the directory tree in `README.md` must be synchronously updated. Every relative path and script cited in the `README.md` directory tree must physically exist on disk (zero phantom scripts or dead file citations).
+  6. **Universal Polyglot Adopter Blueprint**: When adopting AIKit into non-Python stacks (Node/TS, Rust, Go, Java), the project's `README.md` must adapt the 30-second orientation matrix to declare the canonical stack equivalents (e.g. `npm test` / `cargo test` / `go test`, Node/Rust/Go toolchain versions, dev server commands) ensuring instant cold-start readiness regardless of programming language.
+
+
+---
+
+### PRINCIPLE-006: Incremental Progress Checkpointing & Disruption Recovery (Zero-Progress-Loss Workflow)
+- **Problem**: When electricity cuts out or hardware crashes occur during a multi-file task or long coding session, all uncommitted in-memory work is wiped out, files may be left in half-edited states, orphaned temporary buffers clutter the tree, and cold-starting AI agents cannot determine what was interrupted or where to resume.
+- **Concept**: Development workflows and AI execution sessions must be resilient against abrupt disruptions—such as sudden power outages, battery depletion, OS crashes, or process termination. Progress must never be treated as an all-or-nothing end-of-turn artifact; it must be recorded through incremental, atomic micro-checkpoints, persistent task ledgers, and immediate cold-start recovery protocols to guarantee zero work loss without compromising code quality.
+- **Invariant**: Incremental atomic micro-commits; pre-flight disruption audit; ledger CLI `scripts/disruption_recovery.py`; explicit micro-staging.
+- **Rules**:
+  1. **Micro-Milestone Atomicity & Conventional Micro-Commits**: For multi-step tasks or non-trivial implementations, the AI must checkpoint and commit working state incrementally after each logical, verified sub-task (e.g. service logic $\rightarrow$ verified commit; UI component $\rightarrow$ verified commit; docs/tests $\rightarrow$ verified commit) rather than accumulating large, vulnerable working-tree states that risk total loss upon power cut. Micro-commits must follow Conventional Commits with milestone indices: `type(task): [milestone N/M] description`.
+  2. **Pre-flight Disruption Audit on Cold Start**: Upon every cold start or conversation resumption, before beginning any new coding task, the AI must immediately audit the working tree (`git status`, uncommitted changes, untracked files, temp artifacts) via `scripts/disruption_recovery.py --audit` or `--resume` to detect, preserve, and recover any uncommitted progress interrupted by an unclean shutdown.
+  3. **Atomic File Write Integrity**: All script, source, and guideline modifications must be written atomically to disk via temporary buffers and atomic replacements (`os.replace`), ensuring that an abrupt power cut during a write operation never leaves 0-byte or corrupted source files.
+  4. **Non-Breaking Micro-Checkpoints (Test Sanctity Gate)**: Every incremental commit must leave the repository in a stable, syntactically valid state with passing unit tests (`PRINCIPLE-014`). Never commit broken, non-compiling, or failing code to git; if intermediate progress is non-passing, buffer it in `.agents/task_ledger.json` rather than committing broken states.
+  5. **Disruption Ledger, Resumption & Reset Protocol**: Interrupted tasks, ongoing refactors, and multi-step plans must be persisted to `.agents/task_ledger.json` via `scripts/disruption_recovery.py --checkpoint <task_id> --phase <phase> --desc <desc>`. Incoming agents execute `scripts/disruption_recovery.py --resume` to inspect surviving files and cleanly resume at the interrupted phase with zero duplicate effort. Abandoned or superseded tasks must be cleanly cleared via `scripts/disruption_recovery.py --reset [reason]`.
+  6. **Explicit Staging & Transient Buffer Hygiene**: When committing micro-milestones, explicitly stage only the files modified for that specific sub-task (never execute blind `git add .`). Orphaned temporary buffers (`*.tmp_*`) left behind by interrupted writes must be purged via `scripts/disruption_recovery.py --clean` to maintain clean workspace hygiene.
+
+---
+
+### PRINCIPLE-007: Pre-flight Impact & Quality Checklist (Cold-Start Gate)
+- **Problem**: Rushing into implementation without understanding context, risks, or rationale leads to broken contracts, regressions, or cheapened designs. Conversely, uncontrolled scope creep results in speculative over-engineering.
+- **Concept**: Before implementing code modifications, refactorings, or architecture changes—especially upon a cold start—the AI must evaluate a structured pre-flight impact checklist. This assessment ensures the AI clarifies the *why*, maximizes project *benefits*, preemptively neutralizes concrete *blast-radius risks*, bounds execution within an anti-gold-plating *scope ceiling*, strictly enforces *quality non-diminution*, and preserves assessment memory across interruptions.
+- **Invariant**: Track C pre-edit gate: why, benefits, 4 blast-radius dimensions, anti-satisficing, scope ceiling, reversibility.
+- **Rules**:
+  1. **Adaptive Lifecycle Trigger (Track C Gate)**: The full 4-quadrant impact assessment is mandatory for **Track C (Engineering/Feature/Refactor)** tasks before mutating code or schemas. For Track B (Trivial/Doc), scale to a micro-sanity check (zero syntax/link breakage). Track A (Query/Exploration) bypasses this gate.
+  2. **The 4 Blast-Radius Dimensions**: When evaluating *"How could this harm the project?"*, the AI must explicitly assess:
+     - *Contract & Signature Breakage*: Call-site ripple effects on public APIs, CLI flags, method signatures, or data serialization schemas.
+     - *Dependency Infiltration*: Accidental introduction of undeclared third-party packages, external runtime binaries, or version mismatches (`PRINCIPLE-003`).
+     - *Concurrency & Thread Safety*: Synchronous blocking I/O, event-loop starvation, thread deadlocks, or UI freezing (`PRINCIPLE-010`).
+     - *State Mutation & Schema Drift*: Modifying file formats or storage schemas without backward compatibility, migrations, or atomicity (`PRINCIPLE-013`).
+  3. **Anti-Satisficing, Type Preservation & Zero Lazy Code**:
+     - Principles, token frugality, or checklists must **never** be used as an excuse to deliver substandard, stubbed, or crippled implementations.
+     - *Forbidden Shortcuts*: Never leave `# TODO`, `// implement later`, `pass`, or mock placeholders in production code paths. Never silently swallow exceptions (`except Exception: pass`). Never weaken, skip, or delete unit test assertions to force tests to pass (`PRINCIPLE-014`). Never demote polished UI to bare wireframes. Never evade type safety by casting variables to `Any` or disabling linters with `# type: ignore` to bypass compiler errors.
+  4. **Scope Ceiling (Anti-Gold-Plating Invariant)**: Modifications must remain strictly bounded to the evaluated user goal and its direct blast-radius mitigations. Never introduce speculative abstractions, unrequested architectural overhauls, or unsolicited feature expansions beyond the evaluated scope.
+  5. **Reversibility, Recoil Preparedness & Principle 8 Bridge**: Before starting non-trivial mutations, verify a clean working baseline (`git status`) with an atomic rollback path if verification gates fail. The defensive mitigations identified in this gate directly define the hierarchical micro-milestones decomposed in `PRINCIPLE-008`.
+  6. **Persistent Assessment Memory & Conversational Conciseness**: Keep chat articulation ultra-terse (<6 lines: 1 compact bullet per quadrant). Record the full pre-flight impact assessment in the task ledger via `scripts/disruption_recovery.py --checkpoint <task_id> --phase 2 --desc <desc> --why <why> --benefits <benefits> --risks <risks> --mitigation <mitigation>` so intent and rationale survive conversation compaction and disruption recovery.
+
+---
+
+### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
+- **Problem**: Monolithic execution bias leads to broken intermediate code and ghost imports. Conversely, micro-task over-fragmentation creates excessive churn. Similarly, unbounded recursive data processing triggers context exhaustion and crashes.
+- **Concept**: Complex systems, deep directory hierarchies, and non-trivial engineering tasks must be partitioned hierarchically rather than processed via monolithic single-pass operations or micro-task over-fragmentation. Planning proceeds top-down from root goals to atomic leaf units within a bounded milestone horizon, while execution proceeds bottom-up from foundations to consumers, with each leaf milestone independently verified.
+- **Invariant**: Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable.
+- **Rules**:
+  1. **Dual-Pillar Framework**:
+     - *Pillar A (Engineering Task Workflow)*: Decompose non-trivial features into structured tiers: Root Goal $\rightarrow$ Functional Domains (Model / Service / Presentation / Test) $\rightarrow$ Atomic Leaf Units.
+     - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep trees, AST structures, or large datasets into bounded sub-graphs with strict recursion limits (max depth $D \le 3$, max fan-out batch $K \le 50$) and deterministic base-case summary aggregation.
+  2. **Top-Down Decomposition, Bottom-Up Execution**:
+     - *Planning (Top-Down)*: Deconstruct high-level user requirements downward into contracts, dependencies, and interfaces.
+     - *Implementation (Bottom-Up)*: Implement upward from foundational primitives and data models first, domain service logic second, presentation/CLI interfaces third, and end-to-end integration tests last. This guarantees every referenced class, method, and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
+  3. **Bounded Milestone Horizon & Indexing Contract**:
+     - Decomposed plans must avoid both monolithic mega-diffs and micro-task proliferation. Target a bounded milestone horizon ($2 \le M \le 6$ cohesive milestones). If $M > 6$, decompose into multiple distinct user features.
+     - The leaf sequence directly defines the milestone indices ($N=1..M$) recorded in `.agents/task_ledger.json` and committed via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
+  4. **Single-Domain Leaf Atomicity & Independent Verifiability**: Every leaf unit must focus on a single architectural domain (e.g. model + unit test), be independently testable, and compile cleanly without leaving the repository in a broken intermediate state.
+  5. **Dynamic Re-Decomposition on Discovery**: When in-flight execution uncovers an unanticipated blocker, dependency gap, or schema conflict, pause forward progression, update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks, adjust $M'$, and resume monotonically without discarding completed milestones.
+  6. **State & Context Propagation**: Child sub-agent or recursive tasks must receive scoped context from parent contracts and return structured, verified artifacts back to the parent task ledger.
+
+---
+
+## 🏗️ Phase 3: Architecture & Lean Implementation
+
+### PRINCIPLE-009: Modularity & Pluggable Architecture
+- **Problem**: Monolithic spaghetti code, hardcoded infrastructure dependencies, multi-directory boilerplate bloat on small scripts, and generic junk-drawer modules (`utils.py`) couple business logic to specific frameworks, making systems brittle, untestable, and impossible to refactor cleanly.
+- **Concept**: Systems must follow a decoupled, 4-layer architecture adhering to the Single Responsibility Principle, narrow role protocols, open-closed provider registries, zero-config dependency injection, and unidirectional data flow. Presentation, domain logic, and infrastructure adapters must never bleed across layer boundaries.
+- **Invariant**: 4 layers (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs.
+- **Rules**:
+  1. **Canonical 4-Layer Architecture & Scalable Layering**:
+     - *Presentation Layer*: CLI, GUI, or API endpoints. Pure input validation, parsing, routing, and rendering. Never contains business logic, SQL/queries, or raw file I/O.
+     - *Service Layer*: Orchestrates domain use cases, coordinates workflows, and manages transactions. Communicates with presentation via immutable data transfer objects.
+     - *Domain / Model Layer*: Pure business entities, schemas, algorithms, and core invariants. Completely independent of frameworks, databases, or UI.
+     - *Infrastructure / Adapter Layer*: Implements abstract interfaces for filesystem I/O, external network APIs, databases, and third-party tools.
+     - *Scalable Layering (Anti-Boilerplate Invariant)*: The 4 layers represent logical boundaries. For small utilities or micro-modules (<300 lines), layers may be co-located as distinct classes/functions within a single module (e.g. `CliParser`, `WorkflowService`, `DataSchema`, `DiskAdapter`) without generating multi-directory folder bloat. Multi-directory packages are reserved for larger systems ($>300$ lines or multiple backends).
+     - *Anti-Junk-Drawer Invariant*: Generic catch-all `utils.py` or `helpers.js` junk drawers are prohibited. Helper functions belong to the domain module that owns them or to focused, single-purpose utilities (`date_utils.py`, `string_parsers.py`).
+  2. **Interface Segregation & Narrow Role Protocols (Anti-Fat-Interface)**: Pluggable provider/adapter boundaries must declare fine-grained, role-oriented contracts using language-native typing constructs (`abc.ABC` or `typing.Protocol`). Interfaces must never force an adapter or test mock to implement unused methods ($1 \le \text{methods} \le 5$). Concrete adapters must fulfill 100% of the declared contract without stubbing dummy methods.
+  3. **Pluggable Registry & Open-Closed Extensibility (OCP)**: Pluggable backends, AI providers, and storage engines must register dynamically via lightweight registries or factories (`@register_adapter("name")` or dictionary lookups) rather than fragile hardcoded `if/elif` branching in service logic. New adapters are plugged in with zero modifications to existing domain orchestration.
+  4. **Pure-Stdlib Dependency Injection & Zero-Config Usability**: Domain services must receive infrastructure adapters via constructor (`__init__`) or factory injection. To maintain one-click zero-install usability (`PRINCIPLE-011`) with zero third-party DI containers, provide default-argument factory fallbacks (`def __init__(self, adapter: StorageAdapter | None = None): self._adapter = adapter or DefaultStorageAdapter()`). This guarantees instant zero-config usability out of the box while enabling 100% in-memory mock injection for isolated unit testing (`PRINCIPLE-014`).
+  5. **Unidirectional Flow & Immutable Data Transfer Objects (DTOs)**: Dependencies must flow strictly inward: Presentation $\rightarrow$ Service $\rightarrow$ Domain $\leftarrow$ Infrastructure. Circular imports are banned. Data crossing layer boundaries must use immutable DTOs (`dataclass(frozen=True)` or `NamedTuple`), preventing state leakage and side-effect mutations across system boundaries. Modules interact exclusively through declared public contracts with zero external mutation of `_private` attributes.
+
+---
+
+### PRINCIPLE-010: Performance & Resource Optimization (Speed & Lean Architecture)
+- **Problem**: Quadratic loops ($O(N^2)$), blocking I/O on async event loops, hung subprocess deadlocks, disk thrashing from unbatched `fsync`, daemon memory creep, heavy startup imports, and slow test suites degrade performance and developer velocity.
+- **Concept**: Systems must be architected for computational efficiency, sub-second latency, deterministic resource reclamation, non-blocking I/O, and lean dependency footprints. Code must maximize runtime performance while maintaining clean modularity and zero memory leaks.
+- **Invariant**: O(1)-memory streaming; non-blocking event loops; subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms `--help`); <1s unit test tier.
+- **Rules**:
+  1. **Algorithmic Stream Processing ($O(1)$ Auxiliary Memory)**: Scanning, filtering, and data transformations must use $O(1)$ set/dict lookups rather than $O(N)$ linear scans. Unbounded files, directories, and data streams must be processed via iterator pipelines and generators (`yield`) rather than buffering entire payloads into memory with `.read()`.
+  2. **Non-Blocking Event Loops & Measurement-Driven Concurrency**: Heavy synchronous operations (filesystem I/O, subprocess execution, database queries, network calls) must never execute directly on asynchronous event loops or GUI main threads; offload to `asyncio.to_thread()` or background worker thread pools with explicit synchronization locks (`threading.Lock`). Never introduce multithreading or multiprocessing for tasks whose single-threaded baseline completes in under 20ms; reserve concurrency for genuinely I/O-bound or heavy CPU operations ($>200\text{ms}$).
+  3. **Subprocess Timeout Gate & Bounded Concurrency**: All external process invocations (`subprocess.run`) must specify explicit timeouts (`timeout=30`), preventing hung child processes from freezing the application. Parallel subprocess execution must be bounded by a worker pool or semaphore ($K \le \text{os.cpu\_count()}$), preventing process table (PID) exhaustion and OS thrashing.
+  4. **Deterministic Resource Reclamation & Daemon Ring Buffers (RAII)**: All operating system resources (file descriptors, sockets, database handles, subprocesses) must be deterministically managed using context managers (`with` statements) or explicit `try...finally` teardown. Long-running daemons, file watchers, and session monitors must use bounded ring buffers (`collections.deque(maxlen=N)`) or bounded caches (`maxsize=N`) to maintain constant $O(1)$ memory consumption indefinitely.
+  5. **Batch I/O Coalescing & Cold Startup Budget (<100ms)**: High-frequency disk mutations must be coalesced in memory and committed in a single atomic transaction/batch rather than invoking costly disk syncs (`os.fsync`) in tight loops. CLI entrypoints must maintain a strict startup budget (<100ms to `--help`), keeping top-level imports restricted to lightweight standard libraries (`sys`, `os`, `argparse`, `pathlib`) and deferring heavy module loading until after argument dispatch.
+  6. **Sub-Second Unit Test Gate (<1s) & Budgeted Integration Tier**: Automated unit tests must be architected for extreme execution speed, executing in memory or against ephemeral isolated fixtures without artificial sleep delays (`time.sleep()`), keeping the unit tier under 1 second. Tests that must spawn real processes are budgeted separately under 5 seconds with an explicit timeout per spawn, and are never dropped to protect the unit number (`PRINCIPLE-014`).
+  7. **Clean Optimization (Anti-Cleverness Invariant)**: Performance optimizations must never compromise code clarity, type safety, modularity (`PRINCIPLE-009`), or correctness. Micro-optimizations that degrade readability without measurable profiling justification are strictly prohibited.
+
+---
+
+### PRINCIPLE-011: Zero-Friction Onboarding & Instant Usability (One-Click Start)
+- **Problem**: Setup friction, missing env crashes (`KeyError`), un-scaffolded directory errors, silent mock deception, shell-specific command failures, interactive console deadlocks, and cryptic tracebacks break user onboarding and automated AI execution.
+- **Concept**: The repository and applications must be instantly runnable and testable out of the box ("one-click and start") immediately upon clone, with zero mandatory package installations, zero config boilerplate, auto-bootstrapping workspaces, and resilient fallbacks.
+- **Invariant**: Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes (0/1/2); remediation triad.
+- **Rules**:
+  1. **Pure-Stdlib Clone-and-Run Baseline**: The core application, CLI entrypoints, and regression test suites must execute cleanly immediately after `git clone` using language standard-library primitives alone. Third-party packages must be strictly optional adapters or plugins (`PRINCIPLE-009`, `PRINCIPLE-010`) that degrade gracefully when uninstalled.
+  2. **Self-Bootstrapping Workspace & Zero-Prompt Auto-Init**: Applications must automatically bootstrap required runtime directories (`.agents/`, `data/`, `logs/`) and initialize default configuration states on first launch if absent. First-run routines select sensible, secure defaults automatically without prompting console questions; interactive configuration wizards must be strictly opt-in (`--interactive` or `-i`).
+  3. **Zero-Crash Config Protocol & Explicit Mode Transparency**: Never access environment variables or configuration dicts via raw indexing (`os.environ['KEY']`). Always use safe lookups (`os.getenv('KEY')`) with sensible defaults, offline dry-run modes, or mock provider fallbacks. Operating under a fallback must be explicitly signposted (`[INFO] Running in OFFLINE MOCK MODE. Output is simulated.`). Mutating operations requiring external credentials must fail-fast with diagnostic guidance rather than silently simulating fake success or dumping unhandled `KeyError` tracebacks.
+  4. **Cross-Platform Polyglot Command & Path Parity**: Quickstart commands, scripts, and documentation must execute identically across Windows, macOS, and Linux. Prefer portable standard-library invocations (`python -m <module>` or `sys.executable`) over platform-specific shell builtins (`export`, `./run.sh`). All file path logic must strictly use `pathlib.Path` or `os.path` abstractions, banning hardcoded `/` or `\\` path separators.
+  5. **Non-Interactive Headless Parity & Deterministic Exit Codes**: Commands must default to non-interactive execution when running in automated AI subagent contexts, IDE extensions, or CI/CD pipelines (`not sys.stdin.isatty()`). Provide explicit non-interactive flags (`--yes`, `--batch`) and never hang indefinitely waiting on terminal stdin. Applications must strictly adhere to standard exit code semantics: `0` (clean success), `1` (operational failure), and `2` (CLI argument misuse or invalid syntax).
+  6. **Actionable Remediation Triad (Anti-Cryptic Error Invariant)**: User-facing error messages must adhere to the 3-part Remediation Triad: (1) **What happened** (concise failure summary), (2) **Why it happened** (underlying root cause), and (3) **How to fix it** (exact, copy-pasteable command or remediation step). Never dump raw, unhandled exception stack traces to end users.
+  7. **Idempotent Health Diagnostics & Self-Demonstrating Fixtures**: Applications must provide an idempotent pre-flight health diagnostic command (e.g. `--audit` or `--doctor`) to verify runtime version parity, platform permissions, tool paths, and ledger state. Systems should embed minimal self-demonstrating fixtures or demo commands (`--demo`) enabling incoming users or agents to experience verified functionality in under 10 seconds without external data dependencies.
+
+---
+
+### PRINCIPLE-012: Token Frugality & Lean Code Architecture (Context Budgeting)
+- **Problem**: Unbounded payload dumps, prompt cache thrashing, tool output explosions, conversational output bloat, runaway spending loops, and ceremonial code boilerplate exhaust context windows and inflate LLM costs.
+- **Concept**: Systems, prompt pipelines, and autonomous agent loops must be architected for extreme token efficiency, prompt cache optimization, bounded context payloads, rate-limit resilience, and lean, expressive code. Every token ingested by or generated from an LLM must deliver maximum informational leverage.
+- **Invariant**: Prompt cache prefix alignment (>=80% hits); bounded tool output & diffs; terse schema output; token circuit breakers; lean syntactic density.
+- **Rules**:
+  1. **Bounded Prompt Payload Ceilings & AST Slicing**: Dynamic context payloads injected into prompts must enforce explicit ceilings (target <4,000 tokens / <16,000 characters per outbound payload). Utilize AST codebase symbol catalogs (`knowledge/codebase_map.md`), summary digests, and targeted line slices (`PRINCIPLE-004`) rather than raw, unbounded multi-file source dumps.
+  2. **Prompt Cache Alignment & Deterministic Prefix Partitioning (Cache-Friendly Invariant)**: Structurally partition prompt payloads into a **Deterministic Frozen Prefix** (static system instructions, invariant rules, tool definitions, output schemas $\ge 1,024$ tokens) and a **Volatile Dynamic Tail** (timestamps, task ledger states, user prompts). Never inject fluctuating timestamps, session GUIDs, or volatile state into prompt headers, guaranteeing $\ge 80\%$ prompt cache hit rates across multi-turn sessions.
+  3. **Tool Output Frugality & Bounded Diff Slicing (Anti-Mega-Log Invariant)**: Tool responses appended to conversational context must be bounded and sifted. Unified diffs must be scoped strictly to changed hunks with $\le 3$ lines of surrounding context; test runners and linters must default to summary/quiet modes; search/grep outputs must be capped ($\le 50$ matches or top-k relevant symbols). Never spew hundreds of lines of unchanged source code or raw stack traces into context.
+  4. **Output Token Frugality & Schema-Constrained Generation**: Minimize high-cost generation tokens through strict schema-constrained outputs. In automated machine orchestration, models must return compact, typed data contracts (JSON Schema / dataclasses) rather than conversational prose. Conversational progress updates must remain terse (<15 lines), avoiding polite echoing or redundant restatements of code.
+  5. **Compact Schema & Relative-Path Serialization (~70% Token Savings)**: All prompt payloads, tool inputs/outputs, and persistent ledgers must serialize repository-relative paths (`scripts/disruption_recovery.py`) rather than absolute filesystem paths. Employ concise, non-redundant key names and compact serialization structures (tabular markdown, JSON Lines, or key-value pairs).
+  6. **Token-Aware Rate Pacing & Runaway Circuit Breakers (Anti-Death-Spiral Invariant)**: Batch LLM requests must track token consumption against TPM/RPM limits, implementing full-jitter exponential backoff on HTTP 429 throttling. Autonomous loops and background subagents must enforce explicit token and step ceilings ($K$ turns); if the budget is breached, execution must trip a circuit breaker, checkpoint state to `.agents/task_ledger.json`, and pause cleanly for user confirmation.
+  7. **Lean Syntactic Density & Anti-Premature-Abstraction (Codebase Token Hygiene)**: Code written by AI assistants must maximize syntactic density and readability using standard-library primitives (`dataclasses`, `pathlib`, `itertools`, `collections`). Prohibit ceremonial enterprise boilerplate, excessive class hierarchies, and redundant wrapper layers that permanently inflate codebase token overhead for downstream AI agents.
+
+---
+
+## 🛡️ Phase 4: Operational Verification & Resilience
+
+### PRINCIPLE-013: Crash Resilience, State Atomicity & Power-Loss Recovery (Fail-Safe Operations)
+- **Problem**: Sudden power cuts, electrical outages, process crashes, Windows lock contention (`WinError 32`), disk exhaustion (`ENOSPC`), schema incompatibilities on recovery, or unexpected signal aborts can corrupt state files, sever logs, or leave batches in an unrecoverable, untracked state.
+- **Concept**: The application, agent frameworks, and persistent data layers must remain fail-safe and self-healing against abrupt disruptions—such as sudden power outages, battery exhaustion, OS crashes, storage exhaustion (`ENOSPC`), process termination, or concurrent process contention. User data, application settings, and state transaction logs must never be left corrupted, half-written, or in split-brain states.
+- **Invariant**: Atomic writes: flush + os.fsync + retried os.replace + parent-dir fsync; advisory locking on read-modify-write; .bak shadow backups; schema migration; signal-drain flush; read-only fallback.
+- **Rules**:
+  1. **Atomic Persistence & Lock-Contention Retry Loop**: All persistent JSON state, configuration, and cache files must be written via atomic temporary buffers with explicit flushing (`flush` + `os.fsync`) followed by atomic replacement (`os.replace`). On Windows and virtualized filesystems where concurrent readers (antivirus, indexers, watchers) hold shared locks, `os.replace` must execute a bounded retry loop ($3 \le \text{retries} \le 5$ with exponential backoff) rather than failing abruptly with `WinError 32 / PermissionError`. Direct in-place truncation writes that risk 0-byte corruption are strictly prohibited.
+  2. **Storage Headroom Pre-Flight Check (ENOSPC Resilience)**: Before executing non-trivial atomic writes or generating synthetic fixtures, the persistence layer must verify minimum storage headroom via `shutil.disk_usage` ($\ge 10\text{MB}$). If available storage is exhausted, halt gracefully with an actionable warning rather than initiating failing disk writes that crash the process.
+  3. **Inter-Process Advisory Locking (Anti-Race Invariant)**: In environments with concurrent subagents, CLI processes, or background threads, persistent read-modify-write state operations must acquire an advisory file lock (`path.with_suffix('.lock')`) with bounded timeout ($2\text{s}$–$5\text{s}$) and automatic stale-lock expiration (>30s), preventing interleaved writes and silent progress erasure.
+  4. **Dual-Slot Shadow Snapshots & Schema Migration (`.bak` Fallback)**: Before replacing existing persistent state, rotate the verified file to a shadow backup (`file.json.bak`). On launch, if the primary file is detected to be corrupted or 0-byte truncated from an unclean shutdown, the self-healing routine must quarantine the corrupted artifact (`*.corrupt_*`), restore state from the shadow backup (`.bak`), and apply forward-compatible schema migration (`migrate_ledger_schema`) before falling back to empty defaults.
+  5. **Signal-Aware Memory Drain & Read-Only Fallback**: Long-running agents and background tasks must register signal handlers (`SIGINT`/`SIGTERM`) to flush in-flight working memory to disk and release advisory locks before exiting. In read-only container environments or sandboxes where disk writes are restricted, the system must degrade gracefully to ephemeral in-memory state with a diagnostic warning rather than crashing.
+  6. **Multi-File Staging, WAL & Orphan Sanitation**: Multi-file refactors or syncs must stage all target buffers completely in temporary storage and validate syntax before sequential atomic replacements, preventing split-brain states. Startup self-healing must actively sweep and purge abandoned temporary buffers (`*.tmp_*`) left by interrupted dead processes.
+  7. **Continuous Chaos & Fault-Injection Verification**: Automated test suites must systematically validate resilience against hostile power cuts—including 0-byte truncated files, malformed JSON streams, disk space limits, shadow recovery, and lock concurrency—guaranteeing 100% self-healing without application panic.
+
+---
+
+### PRINCIPLE-014: Automated Test Verification & Continuous Test Coverage (Regression Shield)
+- **Problem**: Code changes without tests break contractual contracts; AI agents frequently weaken or delete failing test assertions to force passing gates; shared-state pollution causes order-dependent flakiness; tautological mock echoes test nothing; and leaked test files pollute the working tree.
+- **Concept**: Automated tests form the immutable contract shield of the repository. Every code modification, new feature, bug fix, or refactoring must be accompanied by automated unit or integration tests. Under no circumstance may tests be weakened or deleted to force verification gates to pass.
+- **Invariant**: 100% test pass gate (<1s unit tier, <5s integration tier); test sanctity invariant (never weaken); RAII fixture reversion; anti-tautological observable contracts; hostile & negative path coverage; reachability shield (`scripts/check_reachability.py`).
+- **Rules**:
+  1. **Test-Backed Changes & Regression Shield**: Every code modification, service layer, data schema, or bug fix must include dedicated unit tests in `tests/`. Adding untested production logic or leaving coverage gaps across critical paths is strictly prohibited.
+  2. **Test Sanctity Invariant (Anti-Regression Masking)**: Existing test assertions represent immutable contractual truth. When a test fails after code changes, the AI must fix the production implementation to satisfy the contract. Weakening assertions (e.g. changing strict checks to `assertTrue(True)`), commenting out tests, deleting test methods, or applying `@unittest.skip` to force passes is strictly prohibited unless the user explicitly requested a breaking contract overhaul.
+  3. **Two-Tier Test Budget & Zero Flakiness (<1s Unit Gate)**: Tests are partitioned into two budgeted tiers, both of which run under the single canonical command (nothing is opt-in or hidden):
+     - *Unit tier* (`tests/test_kit.py`): pure in-process logic, strictly under 1 second total ($T_{\text{unit}} < 1\text{s}$). It must not spawn processes or sleep on the wall clock — that structural rule, not a flaky wall-clock assertion, is what keeps it sub-second, and it is mechanically enforced.
+     - *Integration tier* (`tests/test_integration.py`): tests that must spawn real processes — multi-process concurrency races, real-binary CLI contracts, real `git` output grounding (`PRINCIPLE-015`). Budgeted under 5 seconds with an explicit timeout on every spawn.
+     A sub-second total is never a licence to under-test concurrency, CLI surfaces, or crash paths: when a contract can only be proven by spawning a process, it belongs in the integration tier, not in no tier at all. All tests run deterministically and avoid external network calls (use mocks/fakes). Prohibit arbitrary wall-clock sleeps (`time.sleep()`); use mock time, deterministic clocks, or seeded pseudorandom generators (`random.seed(42)`). Flaky tests are treated as blocking Sev-1 defects.
+  4. **Pristine Working Tree & RAII Fixture Reversion**: File I/O tests must execute strictly within ephemeral temporary sandboxes (`tempfile.TemporaryDirectory()`). Tests modifying global process state (`os.environ`, `sys.argv`, logger levels, or singletons) must guarantee bit-for-bit restoration via RAII context managers or `self.addCleanup()`. Running tests must leave `git status --porcelain` completely clean with zero leaked artifacts.
+  5. **Observable Contracts Over Mock Echoes (Anti-Tautological Invariant)**: Assert outward observable behavior, state transitions, return payloads, and exception boundaries rather than internal private implementation details or mock call counts (`assert_called_once`). Avoid over-mocking domain logic into meaningless echo tests; prefer lightweight in-memory instances.
+  6. **Red-Green Defect Pinning & Hostile Negative Path Hardening**: Before resolving a reported bug or defect, write a reproducing unit test that fails on the defect (Red), then verify that the fix makes it pass (Green). Prioritize hostile boundary and negative path coverage (empty inputs, `None`, 0-byte files, extreme values, malformed types, expected exception classes, and formatted diagnostic messages) over superficial happy-path coverage.
+  7. **Invariant Reachability Shield (Anti-Dead-Capability Invariant)**: A passing test proves a mechanism *works*, never that it is *used*. A safety mechanism that is defined, exported and unit-tested but called from nowhere in production is a defect reported as green, and is the highest-frequency failure class observed in this repository. Three reachability rules therefore hold, enforced mechanically by `scripts/check_reachability.py`:
+     - *Call-Site Reachability*: Every function in production modules must be reachable from a production call site or an entrypoint dispatch. "Covered by a unit test" is not reachability.
+     - *Key Round-Trip Integrity*: Every persisted-state key read by production code must have a production writer, and vice versa. A reader keyed to a field no writer produces silently returns its default forever.
+     - *Declared-Capability Audit*: When a principle names a mechanism (advisory lock, retry loop, teardown, migration), verify it is wired into the path it protects before marking the work done — not merely that it exists.
+
+---
+
+### PRINCIPLE-015: Universal Operational Dogfooding & Chaos Verification (The AI Must Use What It Builds)
+- **Problem**: Headless unit tests in idealized vacuums fail to detect real-world interaction bugs; unsupervised dev servers leak zombie background processes; interactive CLI prompts hang in subshells; browser hydration white screens evade HTTP 200 checks; and unhandled display environments crash GUI windows.
+- **Concept**: Synthetic headless unit tests in idealized vacuums fail to detect real-world interaction bugs. The AI assistant must interactively execute and operate what it builds across domain surfaces (UI event loops, CLI subshells, web dev servers, or backend APIs) coupled with chaos fuzzing, platform-portable process supervision, non-interactive stdin parity, and zero-blast-radius sandboxing.
+- **Invariant**: Domain-specific interactive dogfooding (GUI/CLI/web/API) via `scripts/dogfood.py`; portable RAII process tree teardown; ephemeral safety jail (zero host mutation); non-interactive stdin parity; golden path + chaos perturbation; terse reporting (<15 lines).
+- **Rules**:
+  1. **Domain-Specific Interactive Dogfooding & Headless Parity**:
+     - *Desktop GUI*: Spawns the live window in-process or via virtual display buffers (`xvfb`/offscreen), pumps the event loop, exercises buttons and tabs, stress-tests window destruction, and mechanically traps unhandled callback exceptions with bounded timeouts ($T \le 10\text{s}$).
+     - *Web Apps*: Boots local dev server on ephemeral ports, interacts with DOM via headless browser tools, asserts client-side root container DOM hydration (rendered child elements in `#root`/`#app`), and verifies zero console errors (`console.error`).
+     - *CLI Applications*: Executes the binary in subshells with real arguments, pipes stdin/stdout, tests interrupt signals (SIGINT), asserts non-interactive flag parity (`--yes`/`--headless`), and verifies deterministic exit codes and clean error formatting.
+     - *Backend APIs*: Boots the service, executes real HTTP requests with test clients, and asserts status codes, response schemas, and bounded latency ($<500\text{ms}$).
+  2. **Platform-Portable Process Tree Teardown (RAII Cleanup)**: All background daemons, web servers, or subshell processes spawned during dogfooding must run within managed supervisors or RAII context managers that guarantee recursive child process termination across both Windows (`taskkill /F /T /PID`) and POSIX (`os.killpg(pid, signal.SIGKILL)`) on exit or assertion failure, preventing port collisions (`EADDRINUSE`) and zombie background processes.
+  3. **Non-Interactive Stdin Parity & EOF Safety**: Interactive prompts must never hang in subshells. All interactive commands must provide non-interactive bypass flags (`--yes`, `--non-interactive`, `--batch`). Commands must handle closed standard input (`< /dev/null`) gracefully without hanging or unhandled `EOFError` exceptions.
+  4. **Hermetic Ephemeral State & Storage Sandboxing**: All operational state modifications, runtime databases (`sqlite:///:memory:` or ephemeral file DB), and temporary caches must execute strictly within an isolated ephemeral directory (`SANDBOX_ROOT`). Dogfooding must NEVER touch host user directories (Desktop, Documents, personal folders). Runners must assert zero file alterations outside `SANDBOX_ROOT` and bit-for-bit clean `git status --porcelain`.
+  5. **Dual-Track Dogfooding (Golden Path + Hostile Chaos Perturbation)**: Testing `--help` alone is strictly prohibited. Every dogfood run must execute: (1) a complete end-to-end golden path exercising creation, modification, and retrieval, and (2) at least one hostile perturbation (simulated SIGINT interrupt, invalid payload, malformed JSON stream, or concurrent requests) to verify clean error recovery without unhandled stack traces.
+  6. **Deterministic Domain Exit Contracts**: Verify concrete domain success criteria: zero unhandled tracebacks in stderr, zero browser console errors, valid API schemas, and clean shutdown codes.
+  7. **Terse Context Reporting & Pre-Ship Gate**: Dogfood console output must remain concise status dashboards (<15 lines), with verbose logs and stack traces diverted to `.agents/dogfood_last_run.log`. Interactive dogfooding must pass with 100% success alongside unit tests before staging changes.
+  8. **Realistic Live Budgeting & Sanity Guardrails**: Live provider workflows must be bounded, enforcing strict rate-limit and token budget guardrails against runaway loops.
+
+---
+
+## 🚀 Phase 5: Living Synchronization & Delivery
+
+### PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
+- **Problem**: When AI assistants modify code without updating documentation, knowledge drift sets in; forgotten `codebase_map.md` updates lead to hallucinated symbols; duplicated schemas across documents drift out of sync; and retroactively edited ADRs erase architectural rationale.
+- **Concept**: The repository must maintain an active, structured, and modular codebase knowledge base in `knowledge/`. Every AI assistant interacting with this codebase must consult the knowledge base for deep architectural context and systematically update it after any architectural, service, model, or UI change to eliminate knowledge drift.
+- **Invariant**: Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`.
+- **Rules**:
+  1. **Canonical Structure & Router Sitemap (`INDEX.md`)**: The knowledge base must reside in `knowledge/` with modular documentation (`INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`). `INDEX.md` serves as the authoritative router sitemap, providing high-density summaries for instant cold-start navigation.
+  2. **Atomic Code-and-Doc Pairing (Anti-Drift Invariant)**: Whenever classes, functions, architectural boundaries, API contracts, or data models are added, modified, or refactored, the corresponding `knowledge/` documents must be updated immediately in the exact same commit. Stale or desynchronized documentation is strictly prohibited.
+  3. **Monotonic Append-Only ADR Register**: Architectural decisions in `knowledge/decisions.md` are immutable historical records. Past ADRs must never be rewritten or deleted; when a design is superseded, append a new ADR that explicitly references and marks the prior decision as superseded.
+  4. **Strict AST Syntax Validation & Freshness Gate**: Execute `scripts/update_knowledge_base.py` to inspect the codebase AST, regenerate `knowledge/codebase_map.md`, and mechanically validate zero syntax errors. Automated test suites must enforce that `codebase_map.md` bit-for-bit matches the current repository AST prior to shipping.
+  5. **Modular SSOT Partitioning & Versioned Data Models**: Prohibit duplicating schemas across files; `data_models.md` is the sole Single Source of Truth for schemas and DTOs, cross-referenced via hyperlinks. Persistent models must declare `schema_version`, nullability defaults, and backward-compatible migration transformers.
+  6. **Slice-View Heading Hygiene & Link Integrity Shield**: All `knowledge/` documents must use clean, predictable Markdown headings (`##`, `###`) for targeted grep slice-viewing (`view_file` <100 lines). `scripts/update_knowledge_base.py` mechanically validates that all relative file links in `knowledge/INDEX.md` resolve to physical disk paths.
+
+---
+
+### PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
+- **Problem**: Projects evolve, and static rules or fragmented guideline files become outdated and desynchronized across different AI tools and IDE formats; missing schemas dilute rule precision; and un-injected domain rules force adopters to manually maintain multiple files.
+- **Concept**: Principles can and will be added as the project evolves. Whenever any principle is added, updated, or revised, all AI guideline documents across the repository must be automatically synchronized to maintain absolute consistency.
+- **Invariant**: Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (P001); schema compliance; freshness test gate; Tier 1B domain rules injection.
+- **Rules**:
+  1. **Canonical Schema, Unique IDs & Strict Validation**: Every principle must follow the strict 4-section schema: (1) `### PRINCIPLE-XXX: [Title]`, (2) `- **Concept**:`, (3) `- **Invariant**:`, and (4) `- **Rules**:` with numbered testable constraints, plus an optional `- **Problem**:` stating why it exists. Duplicate principle IDs are strictly prohibited. `scripts/sync_principles.py` validates schema completeness and halts on missing sections or duplicate IDs.
+  2. **Automated Cross-IDE Target Synchronization**: Whenever principles change, `scripts/sync_principles.py` automatically regenerates every Tier 1 target (`AGENTS.md`, `GEMINI.md`, `.agents/rules/principles.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`) from `GUIDELINES.md` using atomic writes (`fsync` + `os.replace`). It never overwrites a file it did not generate, and it decides that for every target before writing any, so an adopter's own instructions cannot be lost and a protected file cannot leave a half-synced tree.
+  3. **Deterministic Auto-Sync Freshness Gate**: Unit tests in `tests/test_kit.py` must assert that all on-disk Tier 1 targets are 100% synchronized with `GUIDELINES.md` (`sync_all(check_only=True) == 0`). Committing stale or desynchronized rule files is strictly prohibited.
+  4. **Triad Documentation Consistency & Exact Title Parity**: Principle titles exist exactly once, in `GUIDELINES.md`, so title parity holds by construction. `scripts/sync_principles.py` mechanically validates that `README.md`, the triad's public leg, lists every principle ID.
+  5. **Dynamic Lifecycle Phase Alignment**: Principle parsing dynamically tracks lifecycle phases (Phases 1 through 5), enforcing monotonic non-decreasing order ($Phase_i \ge Phase_{i-1}$) without rigid hardcoded range limits, supporting future principle evolution.
+  6. **Tier 1B Domain Invariants Injection & Blueprint**: Adopter projects can define custom domain rules in `.agents/rules/domain.md` based on `.agents/rules/domain.md.template` (<1,200 chars / ~300 tokens). `scripts/sync_principles.py` automatically injects this block into all generated IDE targets beneath the universal principles without manual editing.
+
+---
+
+### PRINCIPLE-018: Automatic Git Workflow (Commit & Push)
+- **Problem**: Uncommitted work leads to lost progress and uncoordinated branches; blind staging sweeps unwanted junk into commits; diverging remotes trigger dangerous force-pushes; and destructive resets wipe out uncommitted progress.
+- **Concept**: AI must maintain an active, clean, and reliable Git trail without requiring manual commit reminders from the user, operating with explicit staging, adaptive remote push, and non-destructive failure recovery.
+- **Invariant**: Automatic conventional commits (feat|fix|refactor|docs|chore|test|perf|build|ci) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil.
+- **Rules**:
+  1. **Automatic Conventional Commits**: Upon completing any verified task or milestone, the AI must automatically commit changes using Conventional Commits (`type(scope): description` or `type(scope): [milestone N/M] description`). Valid types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `build`, `ci`.
+  2. **Explicit Staging Invariant (Zero Blind Staging)**: Never execute blind `git add .` or `git add -A`. Explicitly name target files (`git add <file1> <file2> ...`) to prevent accidental inclusion of secrets, OS artifacts, build clutter, or unrelated user edits.
+  3. **Pre-Commit Delivery Triad Gate**: Terminal commits are mechanically locked until 3 gates pass: (1) 100% of both test tiers pass; (2) every read-only verification gate passes - rule and codebase-map freshness (`--check`), the reachability shield (`scripts/check_reachability.py`), the secret scan (`scripts/check_secrets.py`), and the dogfood run (`scripts/dogfood.py`); and (3) `git status --short` confirms only intended files are staged.
+  4. **Adaptive Push & Zero Force Push**: Automatically push to the active tracked branch (`origin/<current_branch>`). If no remote is configured, commit locally and report local-only status. If upstream diverged, fetch and rebase (`git pull --rebase`). Never execute `git push --force` or `--force-with-lease` without explicit user instruction.
+  5. **Non-Destructive Recoil Invariant**: When resetting or recovering from failures, always use non-destructive rollbacks (`git reset --soft HEAD~1`). Never execute destructive commands (`git reset --hard`, `git clean -fdx`) that discard uncommitted progress.
+  6. **Terse Delivery Confirmation**: Confirm completion with a concise status summary (<10 lines) citing the short commit hash (`git rev-parse --short HEAD`), commit subject, files committed count, and target branch.
+
+---
+
+### PRINCIPLE-019: Secret & Sensitive Data Hygiene (Irreversible Disclosure Shield)
+- **Problem**: Secret leakage is the only defect class with no clean rollback: once a credential reaches a commit, a log, a prompt payload, or a shared artifact it must be rotated, not reverted, and `git reset` cannot help. AI agents are structurally prone to it — they paste environment contents into diagnostics, commit scaffolding wholesale, and persist free-text rationale to disk where it is committed like any other file.
+- **Concept**: Secret leakage is the one defect class with no clean rollback: once a credential reaches a commit, a log, a prompt payload, or a shared artifact, it must be rotated rather than reverted, and `git reset` cannot help. AI agents are structurally prone to it, because they paste environment contents into diagnostics, commit scaffolding wholesale, and persist free-text rationale to disk. Secrets must therefore be kept out of tracked files, generated artifacts, and agent working memory by mechanical gate, never by recollection.
+- **Invariant**: Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert.
+- **Rules**:
+  1. **Zero Credentials in Tracked Files**: Never commit API keys, tokens, passwords, private keys, certificates, connection strings, or session cookies — not in source, config, fixtures, test data, documentation, or commit messages. Secrets are supplied exclusively through environment variables or a secret store, read with safe lookups (`PRINCIPLE-011` R3), and committed only as named placeholders (`API_KEY=<your-key-here>`) in `.env.example`-style templates.
+  2. **Ignore-List Baseline (Pre-Exposure Shield)**: The repository's ignore file must pre-emptively exclude the standard credential surfaces — `.env` and variants, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `*.keystore`, `credentials*`, `secrets*`, `*.tfvars`, cloud CLI config directories — before any such file can exist. Protection added after the fact is protection that already failed.
+  3. **Agent Working Memory Is Tracked Output**: Disk-backed agent memory is committed like any other file, so free-text written into `.agents/task_ledger.json` (`--why`, `--benefits`, `--risks`, `--mitigation`), ADR bodies, dogfood logs, and progress notes must never quote credential values, authorization headers, or raw provider payloads. Reference secrets by name (`the staging API key`), never by value.
+  4. **Redacted Diagnostics & Prompt Payloads**: Error messages, logs, tool outputs, and outbound LLM payloads must redact credential-shaped values rather than echoing them. Never dump whole environment dictionaries, full request headers, or raw auth responses into a diagnostic, a transcript, or a bug report.
+  5. **Mechanical Pre-Commit Secret Scan**: `scripts/check_secrets.py` scans staged content and agent ledger free-text for known credential patterns and high-entropy literals, and runs within gate (2) of the `PRINCIPLE-018` R3 delivery triad. Findings block delivery. Deliberate exceptions require an explicit allowlist entry or inline pragma — never a silenced scanner.
+  6. **Rotate, Never Revert (Irreversibility Protocol)**: On suspected exposure, treat the secret as permanently compromised. Rotate or revoke it first, then purge the artifact. Never present `git reset`, a force-push, or a deleted file as remediation: the value must be assumed captured the moment it was pushed, logged, or sent to a third-party service.
+  7. **Least-Privilege Defaults & Zero Secret Fabrication**: Request the narrowest scope and shortest lifetime that works, prefer read-only credentials for verification paths, and never invent, guess, or placeholder-fill a real credential value to make a flow proceed — fail fast with remediation guidance instead (`PRINCIPLE-011` R6).
+
+---
+
+---
+
+## 🛠️ AI Task Checklists
+
+### 🛫 Pre-Flight Checklist (Run at Cold Start / Before Coding)
+- [ ] **Instruction & Context Budget Check**: Are prompt rules, summaries, and outputs compact to prevent context bloat and preserve LLM focus (**PRINCIPLE-001**)?
+- [ ] **Lifecycle Alignment**: Am I following the 5 execution phases in chronological order (**PRINCIPLE-002**)?
+- [ ] **Empirical Grounding (Read-Before-Write)**: Have I verified code definitions, imports, paths, and signatures on disk before writing or modifying code (**PRINCIPLE-003**)?
+- [ ] **Attentional Anchor & Budget**: Is my working memory externalized to disk, and am I using targeted slices to preserve context budget (**PRINCIPLE-004**)?
+- [ ] **Context Verification**: Have I reviewed every active principle and the repo state (**PRINCIPLE-005**)?
+- [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
+- [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
+- [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
+- [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
+- [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
+- [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
+- [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
+- [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
+- [ ] **Test Coverage Plan**: Have I planned hermetic, sub-second unit tests with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
+- [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with portable RAII process teardown, non-interactive stdin parity, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
+- [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` and planned atomic doc updates for any schema or service changes (**PRINCIPLE-016**)?
+- [ ] **Rule Freshness Baseline**: Have I confirmed the rule sync and codebase map are fresh at cold start (`py scripts/sync_principles.py --check`, `py scripts/update_knowledge_base.py --check`) so pre-existing drift is never misattributed to my changes (**PRINCIPLE-017**)?
+- [ ] **Delivery Baseline & Rollback Path**: Is the working tree clean (`git status --short`) on a tracked branch with a known-good `HEAD` to recoil to via `git reset --soft` (**PRINCIPLE-018**)?
+- [ ] **Secret Exposure Plan**: Will any credential, token or auth header touch code, fixtures, logs, prompts or ledger free-text, and is it supplied by env/secret store and referenced only by name (**PRINCIPLE-019**)?
+
+### 🛬 Post-Flight Checklist (Run Before Completion)
+- [ ] Is governance overhead **lean and progressively disclosed** without prompt bloat (**PRINCIPLE-001**)?
+- [ ] Was the task executed according to the **temporal lifecycle flow** (**PRINCIPLE-002**)?
+- [ ] Is all code **empirically grounded** with verified symbols, zero hallucinations, and AST validation (**PRINCIPLE-003**)?
+- [ ] Was **working memory externalized** to disk/ledger, avoiding attentional drift (**PRINCIPLE-004**)?
+- [ ] Has **README.md been updated** to reflect all changes (**PRINCIPLE-005**)?
+- [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-006**)?
+- [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
+- [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
+- [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
+- [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and fast (<1s tests)** (**PRINCIPLE-010**)?
+- [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
+- [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
+- [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
+- [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution and RAII fixture reversion** (**PRINCIPLE-014**)?
+- [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with portable process cleanup and stdin parity (**PRINCIPLE-015**)?
+- [ ] Has the **AI knowledge base in `knowledge/` been updated and verified with zero AST syntax errors, link integrity, and codebase map freshness** (**PRINCIPLE-016**)?
+- [ ] Have all **AI guideline files been verified fresh and synchronized with zero schema drift and triad parity** (**PRINCIPLE-017**)?
+- [ ] Has code been **explicitly staged (no blind 'git add .'), committed with Conventional Commits, verified via pre-commit triad, and pushed safely without force** (**PRINCIPLE-018**)?
+- [ ] Did **`scripts/check_secrets.py` pass on the staged diff and ledger**, with any exposed credential rotated rather than merely reverted (**PRINCIPLE-019**)?
+
+---
+
+## 📝 How to Add or Change a Principle
+
+1. Edit **this file**, never a generated Tier 1 file. Use the next sequential ID and place it under the correct lifecycle heading; lifecycle order must stay monotonic.
+2. Give it `- **Problem**:`, `- **Concept**:`, `- **Invariant**:` (the Tier 1 capsule: exact mechanisms, numbers and tool names only) and numbered `- **Rules**:`.
+3. Raise `MIN_PRINCIPLES` in `scripts/sync_principles.py` and `EXPECTED_PRINCIPLE_COUNT` in `tests/test_kit.py`, and add the ID to `README.md` and to both checklists above.
+4. Run `python scripts/sync_principles.py`. A `[TOKEN EXCEEDED]` or `[TIER 1B HEADROOM]` result means the new capsule must be paid for by condensing existing capsule narrative, never mechanisms (PRINCIPLE-001 R9).
+5. Run `python -m unittest discover tests` and the read-only gates before committing (PRINCIPLE-018).

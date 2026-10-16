@@ -53,8 +53,8 @@ verification runs through `--check` on `sync_principles.py` and `update_knowledg
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── AGENTS.md                           <- Master AI Specification & Checklists (All 18 Principles)
-├── GUIDELINES.md                       <- Comprehensive Architectural Reference & Problem Index
+├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
+├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
 ├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
 ├── CLAUDE.md                           <- Anthropic Claude Code configuration
 ├── .cursorrules                        <- Cursor IDE instructions
@@ -68,7 +68,7 @@ portable_agent_kit/
 │   │   └── domain.md.template          <- Template for project domain rules (Tier 1B)
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── scripts/
-│   ├── sync_principles.py              <- Auto-sync engine (syncs all IDE files from AGENTS.md)
+│   ├── sync_principles.py              <- Generates all 6 Tier 1 files from GUIDELINES.md, budget-gated
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
@@ -100,25 +100,27 @@ portable_agent_kit/
   cp -r portable_agent_kit/.* /path/to/target/ 2>/dev/null || true
   ```
 
-- **Option B (Existing Project / Non-Destructive Quick-Merge)**:
-  Copy governance rules, scripts, tests, and knowledge assets without overwriting your existing `README.md`:
+- **Option B (Existing Project / Non-Destructive Merge)**:
+  Copy only the source of truth and tooling; the Tier 1 files are generated in Step 3, never copied:
   ```bash
   cd portable_agent_kit
-  cp -r AGENTS.md GUIDELINES.md GEMINI.md CLAUDE.md .cursorrules .github .agents scripts tests knowledge /path/to/target/
+  mkdir -p /path/to/target/.agents
+  cp -r GUIDELINES.md scripts knowledge /path/to/target/
+  cp -r .agents/rules /path/to/target/.agents/
   ```
+  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json`: they test, build and record *this* repository (verified: AIKit's suite fails 19 checks inside a fresh adopter repo). Your project keeps its own suite; AIKit's enforcement travels as the CLI gates, which all pass in an adopter repo: `sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all` and `dogfood.py`. Replace the copied `knowledge/` documents with your own project's after Step 4.
   Then paste the **⚡ 30-Second Cold-Start Quick Reference** section into the top of your existing `README.md`.
 
-
-### Step 2: Customize Project Name
-In `AGENTS.md` and `GUIDELINES.md`, replace `<PROJECT_NAME>` with your project's name (e.g. `MyAwesomeApp`).
+### Step 2: Move Your Own Agent Instructions into Tier 1B
+If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules` or `.github/copilot-instructions.md`, move their project-specific rules into `.agents/rules/domain.md` (start from `.agents/rules/domain.md.template`, at most 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites a file it did not generate: it stops with `[PROTECTED]` and names the file, so nothing is lost.
 
 ### Step 3: Run Principle Synchronization
-Run the auto-sync script to programmatically regenerate and align all IDE target rules:
+Generate every Tier 1 file from `GUIDELINES.md`:
 
 ```bash
 python scripts/sync_principles.py
 ```
-This automatically updates `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, and `.github/copilot-instructions.md`, while auditing context budgets (<1,500 tokens).
+This writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.agents/rules/principles.md` and `.github/copilot-instructions.md`, each within 1,500 est. tokens including your Tier 1B block.
 
 ### Step 4: Generate Your Knowledge Base
 Run the knowledge base AST scanner to automatically index your project's classes and functions:
@@ -209,7 +211,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
 
 ## 🛠️ Adding New Principles to Your Project
 
-1. Add `### PRINCIPLE-019: [Title]` to `AGENTS.md` and `GUIDELINES.md` following the standard schema.
-2. Position it within the relevant lifecycle phase (Phase 1 through 5).
-3. Run `python scripts/sync_principles.py`.
-4. All target IDE files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.agents/rules/principles.md`, `.github/copilot-instructions.md`) will instantly reflect the new principle!
+1. Add `### PRINCIPLE-0XX: [Title]` (the next free ID) to `GUIDELINES.md` only, with `Problem`, `Concept`, `Invariant` and numbered `Rules`, under the right lifecycle heading.
+2. Raise `MIN_PRINCIPLES` in `scripts/sync_principles.py` and `EXPECTED_PRINCIPLE_COUNT` in `tests/test_kit.py`; add the ID to this README and both checklists.
+3. Run `python scripts/sync_principles.py`. On `[TOKEN EXCEEDED]` or `[TIER 1B HEADROOM]`, pay for the new capsule by condensing existing capsule narrative (PRINCIPLE-001 R9).
+4. All six generated Tier 1 files then carry the new capsule.
