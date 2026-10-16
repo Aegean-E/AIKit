@@ -757,6 +757,25 @@ class TestArchitectureGate(unittest.TestCase):
         self.assertEqual(audit_architecture(modules), [])
 
 
+class TestChaosCoverage(unittest.TestCase):
+    """PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite."""
+
+    FAULTS = {
+        "0-byte state file": r"zero_byte|0_byte|truncat",
+        "malformed JSON": r"malformed|corrupt",
+        "insufficient disk space": r"headroom|disk_space|enospc",
+        "recovery from .bak": r"bak|shadow",
+        "concurrent writers": r"parallel|concurren|contention",
+    }
+
+    def test_every_named_fault_has_a_test(self):
+        names = re.findall(r"def (test_\w+)", (ROOT_DIR / "tests" / "test_kit.py").read_text(encoding="utf-8")
+                           + (ROOT_DIR / "tests" / "test_integration.py").read_text(encoding="utf-8"))
+        for fault, pattern in self.FAULTS.items():
+            with self.subTest(fault=fault):
+                self.assertTrue(any(re.search(pattern, n, re.I) for n in names), f"no test for {fault}")
+
+
 class TestAdrRegister(unittest.TestCase):
     """PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069)."""
 
@@ -1143,6 +1162,21 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             ],
             "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",
                      "excessive class hierarchies", "($K$ turns)"],
+        },
+        "PRINCIPLE-013": {
+            "rules": 7,
+            "present": [
+                "A *state file* is a file the program writes and a later run reads back",
+                "A *generated file* is rebuilt by a command from tracked sources",
+                "retried up to 5 times with exponential backoff",
+                "at least 10MB are free",
+                "acquired with a 3-second timeout; a lock older than 30 seconds is broken",
+                "A *long-running* process runs until stopped",
+                "removed by `--clean` as PRINCIPLE-006 R6 specifies, never by an automatic sweep at startup",
+                "at least one test for each fault",
+            ],
+            "gone": ["non-trivial", "$2\\text{s}$", "guaranteeing 100%", "Startup self-healing must actively sweep",
+                     "$3 \\le"],
         },
     }
 

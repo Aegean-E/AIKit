@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p012-pass1",
+    "task_id": "p013-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792188128.426724,
-    "completed_at": 1792188147.0833733
+    "updated_at": 1792188274.9455688,
+    "completed_at": 1792188288.5389369
   },
   "checkpoints": [
-    {
-      "task_id": "p009-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P009",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187579.6847951,
-      "timestamp_str": "2026-10-17 00:52:59"
-    },
-    {
-      "task_id": "p009-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] architecture gate in update_knowledge_base.py (junk-drawer module names, import cycles, Protocol/ABC with 0 or >5 methods); rewrite P009 with explicit scope (universal checks vs pluggable boundaries); README/help; ADR-082",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187628.4372234,
-      "timestamp_str": "2026-10-17 00:53:48",
-      "impact_assessment": {
-        "why": "P009 scope undefined: read literally it condemns AIKit's own modules; only some parts decidable",
-        "benefits": "one reading of where layering applies; the decidable parts gated for adopters too",
-        "risks": "contract: update_knowledge_base exits 1 on new conditions; dependency: none; concurrency: none; state: none",
-        "mitigation": "AIKit passes unchanged; unit tests with fixtures; README rows and --help updated"
-      }
-    },
-    {
-      "task_id": "p009-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187628.5610762,
-      "timestamp_str": "2026-10-17 00:53:48"
-    },
-    {
-      "task_id": "p009-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187720.7497976,
-      "timestamp_str": "2026-10-17 00:55:20"
-    },
-    {
-      "task_id": "p009-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p009-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792187738.9953785,
-      "timestamp_str": "2026-10-17 00:55:38"
-    },
     {
       "task_id": "p010-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792188147.0833747,
       "timestamp_str": "2026-10-17 01:02:27"
+    },
+    {
+      "task_id": "p013-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P013",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188154.8224757,
+      "timestamp_str": "2026-10-17 01:02:34"
+    },
+    {
+      "task_id": "p013-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] rewrite P013 R1-R7 with defined state vs generated files, single numbers (3 retries, 10MB, 3s lock, 30s stale), long-running defined, orphan cleanup = P006 R6 --clean, named fault list pinned by a coverage test; ADR-086",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188195.1544244,
+      "timestamp_str": "2026-10-17 01:03:15",
+      "impact_assessment": {
+        "why": "P013 scope undefined (generated writers skip retry), ranges instead of numbers, R6 claims a startup sweep that contradicts P006 R6, R7 outcome claim",
+        "benefits": "one reading; rule describes what AIKit does",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "fault-coverage meta-test; cross-principle ADR line"
+      }
+    },
+    {
+      "task_id": "p013-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188195.2757275,
+      "timestamp_str": "2026-10-17 01:03:15"
+    },
+    {
+      "task_id": "p013-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188274.9455688,
+      "timestamp_str": "2026-10-17 01:04:34"
+    },
+    {
+      "task_id": "p013-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p013-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792188288.5389378,
+      "timestamp_str": "2026-10-17 01:04:48"
     }
   ]
 }

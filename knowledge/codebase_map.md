@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `40`
+- **Total Classes**: `41`
 - **Total Functions / Methods**: `112`
-- **Total Source Lines**: `7491`
+- **Total Source Lines**: `7525`
 
 ---
 
@@ -242,7 +242,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2991` lines (`164845` bytes)
+**Size**: `3025` lines (`166599` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -298,6 +298,8 @@
   - Method `.test_untimed_subprocess_and_unmanaged_open_fail()`
   - Method `.test_raw_environ_reads_fail_and_writes_and_getenv_pass()`
   - Method `.test_focused_names_narrow_roles_and_one_way_imports_pass()`
+- `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite.*
+  - Method `.test_every_named_fault_has_a_test()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
   - Method `.test_consecutive_ids_pass()`
