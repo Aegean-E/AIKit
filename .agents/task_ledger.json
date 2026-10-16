@@ -1,67 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p000-zeroth-law",
+    "task_id": "p000-meta-enrichment",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792176626.7156353,
-    "completed_at": 1792176662.9404984
+    "status": "in_progress",
+    "updated_at": 1792183034.9080987
   },
   "checkpoints": [
-    {
-      "task_id": "p005-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P005, map its enforcement",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174096.1472092,
-      "timestamp_str": "2026-10-16 21:08:16"
-    },
-    {
-      "task_id": "p005-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] README gate in update_knowledge_base.py: size, orientation labels, tree parity both ways, documented command parity; fix README drift (.gitignore, stray row, checkpoint cmd); [2/2] rewrite P005 R1-R6 + capsule + checklists, pins, ADR-062",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174196.1299245,
-      "timestamp_str": "2026-10-16 21:09:56",
-      "impact_assessment": {
-        "why": "P005 enforcement is a hardcoded AIKit path list checking one direction; rules use undefined terms"
-      }
-    },
-    {
-      "task_id": "p005-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing milestone 1/2",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174199.5645845,
-      "timestamp_str": "2026-10-16 21:09:59"
-    },
-    {
-      "task_id": "p005-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "milestone 1/2 gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174376.089696,
-      "timestamp_str": "2026-10-16 21:12:56"
-    },
-    {
-      "task_id": "p005-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "milestone 2/2 gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174502.741346,
-      "timestamp_str": "2026-10-16 21:15:02"
-    },
     {
       "task_id": "p005-pass1",
       "phase": "completed",
@@ -220,6 +166,62 @@
       "status": "completed",
       "timestamp": 1792176662.9405003,
       "timestamp_str": "2026-10-16 21:51:02"
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Phase 2: Enrich PRINCIPLE-000 rules in GUIDELINES.md",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792182836.7544868,
+      "timestamp_str": "2026-10-16 23:33:56",
+      "impact_assessment": {
+        "why": "Enrich PRINCIPLE-000 with anti-malicious compliance, resolution hierarchy, and mechanical falsifiability",
+        "benefits": "Closes loophole exploitation, establishes deterministic conflict resolution, enforces testability of rules",
+        "risks": "Context budget bloat, wording ambiguities",
+        "mitigation": "Keep Tier 1 capsule concise, verify all tests and sync budget"
+      }
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/3] Phase 3: Add rules 5-7 to PRINCIPLE-000 in GUIDELINES.md",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792182885.6559718,
+      "timestamp_str": "2026-10-16 23:34:45"
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/3] Phase 3: Regenerate Tier 1 targets and append ADR-066",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792182927.1788805,
+      "timestamp_str": "2026-10-16 23:35:27"
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "Phase 4 Verification: Run full test suite and read-only gates for enriched PRINCIPLE-000",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792182969.5247083,
+      "timestamp_str": "2026-10-16 23:36:09"
+    },
+    {
+      "task_id": "p000-meta-enrichment",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "Phase 5 Delivery: Stage, commit, and push enriched PRINCIPLE-000",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792183034.9080987,
+      "timestamp_str": "2026-10-16 23:37:14"
     }
   ]
 }
