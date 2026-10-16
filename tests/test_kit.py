@@ -2320,6 +2320,48 @@ class TestDisruptionRecovery(unittest.TestCase):
             valid, reason = validate_conventional_commit(msg)
             self.assertFalse(valid, f"Expected '{msg}' to be invalid")
 
+    def test_milestone_tags_are_well_formed_and_bounded(self):
+        # Red-green pin (ADR-077): out-of-range or misplaced tags passed as description text.
+        for msg in ("feat(x): [milestone 2/2] finish it", "fix(x): [milestone 6/6] last"):
+            with self.subTest(msg=msg):
+                self.assertTrue(validate_conventional_commit(msg)[0])
+        for msg in ("feat(x): [milestone 3/2] overshoot", "feat(x): [milestone 1/1] single",
+                    "feat(x): [milestone 1/7] too many", "feat(x): [milestone 0/3] zero",
+                    "feat(x): do it [milestone 1/2]", "feat(x): [milestone 1/2]"):
+            with self.subTest(msg=msg):
+                self.assertFalse(validate_conventional_commit(msg)[0])
+
+    def test_lock_retries_through_windows_delete_pending_permission_error(self):
+        # Red-green pin (ADR-077): EACCES while another process deletes the lock file is
+        # contention, not a fault; it crashed a parallel checkpoint under suite load.
+        real_open, calls = os.open, []
+
+        def flaky_open(path, flags, *args):
+            calls.append(path)
+            if len(calls) == 1:
+                raise PermissionError(13, "delete pending")
+            return real_open(path, flags, *args)
+
+        self.addCleanup(setattr, os, "open", real_open)
+        os.open = flaky_open
+        with file_lock(self.ledger_file, timeout_seconds=1.0, poll_interval=0.001) as acquired:
+            self.assertTrue(acquired)
+        self.assertEqual(len(calls), 2)
+
+    def test_switching_from_an_in_progress_task_records_it_as_superseded(self):
+        # Red-green pin (ADR-077): the interrupted task vanished from the ledger's active state
+        # with no record that it was never completed or reset.
+        ledger_file = self.ledger_file
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            record_checkpoint("first", "implementation", "half done", phase_num=3, ledger_file=ledger_file)
+            record_checkpoint("second", "planning", "new", phase_num=2, ledger_file=ledger_file)
+        superseded = [c for c in load_ledger(ledger_file)["checkpoints"] if c["status"] == "superseded"]
+        self.assertEqual([(c["task_id"], c["phase_num"]) for c in superseded], [("first", 3)])
+        self.assertIn("Task 'first' was still in progress", err.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()) as quiet:
+            record_checkpoint("second", "implementation", "same task", phase_num=3, ledger_file=ledger_file)
+        self.assertEqual(quiet.getvalue(), "")
+
 
 class TestKnowledgeBase(unittest.TestCase):
     """Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016)."""

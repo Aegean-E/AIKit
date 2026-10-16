@@ -1,57 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p005-pass3",
+    "task_id": "p006-pass1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792186142.3149989,
-    "completed_at": 1792186163.4475956
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792186465.448421
   },
   "checkpoints": [
-    {
-      "task_id": "p000-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] fix R5 violations found in repo: secret scan fails closed on any unscanned surface (git missing, unreadable file); ledger .bak and quarantine failures warn; [2/2] R5 defines a hiding except block; R3 gets computed citation set (sync_principles.py --citing) with decisions/ledger exempt; R6 mutual-citation case; README row; ADR-071/072",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185325.1441932,
-      "timestamp_str": "2026-10-17 00:15:25",
-      "impact_assessment": {
-        "why": "applying P000 R5 to AIKit found a secret gate that reports clean after scanning nothing"
-      }
-    },
-    {
-      "task_id": "p000-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185325.2766566,
-      "timestamp_str": "2026-10-17 00:15:25"
-    },
-    {
-      "task_id": "p000-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185387.5314798,
-      "timestamp_str": "2026-10-17 00:16:27"
-    },
-    {
-      "task_id": "p000-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792185414.4314427,
-      "timestamp_str": "2026-10-17 00:16:54"
-    },
     {
       "task_id": "p000-pass2",
       "phase": "in_progress",
@@ -214,6 +170,49 @@
       "status": "completed",
       "timestamp": 1792186163.447597,
       "timestamp_str": "2026-10-17 00:29:23"
+    },
+    {
+      "task_id": "p006-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P006 and its enforcement",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186262.3150866,
+      "timestamp_str": "2026-10-17 00:31:02"
+    },
+    {
+      "task_id": "p006-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] validator checks [milestone N/M] (1<=N<=M, 2<=M<=6); switching from an in-progress task records a superseded checkpoint and warns; tests; ADR-077; [2/2] rewrite P006 R1-R6: commit per milestone after Phase 4, P002 R5 aware, failing work stays uncommitted, R2/R3/R6 defer to P004/P013/P018, --phase-num, define abandon and --clean timing; capsule; pins; ADR-078",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186330.5616572,
+      "timestamp_str": "2026-10-17 00:32:10",
+      "impact_assessment": {
+        "why": "P006 duplicates P004/P013/P018 with weaker text, contradicts P002 R5, uses banned words; ledger silently drops in-progress task on switch"
+      }
+    },
+    {
+      "task_id": "p006-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186330.7217607,
+      "timestamp_str": "2026-10-17 00:32:10"
+    },
+    {
+      "task_id": "p006-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792186465.448421,
+      "timestamp_str": "2026-10-17 00:34:25"
     }
   ]
 }

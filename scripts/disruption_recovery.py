@@ -58,6 +58,12 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
                 f.flush()
             acquired = True
             break
+        except PermissionError:
+            # Windows: creating a file another process is deleting raises EACCES, not EEXIST.
+            # It is contention, so retry; a real permission fault ends as locked_ledger's
+            # TimeoutError. It crashed a parallel checkpoint under suite load (ADR-077).
+            time.sleep(poll_interval)
+            continue
         except FileExistsError:
             try:
                 mtime = lock_file.stat().st_mtime
@@ -495,6 +501,21 @@ def record_checkpoint(
 
     # Locked read-modify-write: parallel subagents must not interleave here (PRINCIPLE-013 R3)
     with locked_ledger(ledger_file) as ledger:
+        previous = ledger.get("active_task") or {}
+        if previous.get("status") == "in_progress" and previous.get("task_id") != task_id:
+            # PRINCIPLE-006 R5: a task left without --complete or --reset used to vanish from
+            # --resume silently. Its last state is kept and the switch is reported.
+            ledger.setdefault("checkpoints", []).append({
+                "task_id": previous.get("task_id"),
+                "phase": "superseded",
+                "phase_num": previous.get("active_phase"),
+                "description": f"Superseded by '{task_id}' without --complete or --reset",
+                "status": "superseded",
+                "timestamp": checkpoint_entry["timestamp"],
+                "timestamp_str": checkpoint_entry["timestamp_str"],
+            })
+            sys.stderr.write(f"[WARN] Task '{previous.get('task_id')}' was still in progress; recorded as "
+                             f"superseded by '{task_id}'. Use --complete or --reset before switching.\n")
         ledger["active_task"] = {
             "task_id": task_id,
             "last_phase": phase,
@@ -844,6 +865,16 @@ def validate_conventional_commit(message: str) -> Tuple[bool, str]:
     desc = desc.strip()
     if not desc:
         return False, "Commit description cannot be empty."
+
+    # A milestone tag must be well-formed and inside PRINCIPLE-008's horizon (PRINCIPLE-006 R1);
+    # "[milestone 3/2]" or "[milestone 1/9]" used to pass as plain description text.
+    if "[milestone" in desc:
+        tag = re.match(r"\[milestone (\d+)/(\d+)\] \S", desc)
+        if not tag:
+            return False, "Milestone tag must open the description as '[milestone N/M] <text>'."
+        n, m = int(tag.group(1)), int(tag.group(2))
+        if not (2 <= m <= 6 and 1 <= n <= m):
+            return False, f"Milestone tag [milestone {n}/{m}] needs 2 <= M <= 6 and 1 <= N <= M; a one-milestone plan commits untagged."
 
     # Reject lazy anti-patterns
     anti_patterns = {"wip", "update", "fix", "fixed", "changes", "stuff", "test"}
