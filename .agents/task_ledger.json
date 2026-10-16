@@ -1,63 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p010-pass1",
+    "task_id": "p011-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792187890.34411,
-    "completed_at": 1792187908.967357
+    "updated_at": 1792188020.4724667,
+    "completed_at": 1792188039.028615
   },
   "checkpoints": [
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186826.6758406,
-      "timestamp_str": "2026-10-17 00:40:26"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792186930.9119737,
-      "timestamp_str": "2026-10-17 00:42:10"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187029.4751115,
-      "timestamp_str": "2026-10-17 00:43:49"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187103.3238952,
-      "timestamp_str": "2026-10-17 00:45:03"
-    },
-    {
-      "task_id": "p007-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p007-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792187359.5279264,
-      "timestamp_str": "2026-10-17 00:49:19"
-    },
     {
       "task_id": "p008-pass1",
       "phase": "in_progress",
@@ -222,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792187908.967358,
       "timestamp_str": "2026-10-17 00:58:28"
+    },
+    {
+      "task_id": "p011-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P011",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187917.1829894,
+      "timestamp_str": "2026-10-17 00:58:37"
+    },
+    {
+      "task_id": "p011-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] gate raw os.environ[...] reads (P011 R3); rewrite P011 R1-R7: deps per P003 R3 with adapter-local imports, R3 defers to P003 R6, R4 defers to P003 R4, defined interactive opt-in, exit codes, triad format, one end-to-end demo command; ADR-084",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187946.2342482,
+      "timestamp_str": "2026-10-17 00:59:06",
+      "impact_assessment": {
+        "why": "R1 contradicts P003 R3; R3/R4 duplicate P003; R7 is a should; hedges",
+        "benefits": "one dependency rule, one platform rule; env-read ban checked",
+        "risks": "contract: update_knowledge_base exits 1 on raw environ reads; dependency: none; concurrency: none; state: none",
+        "mitigation": "AIKit has none; README/help updated; pins"
+      }
+    },
+    {
+      "task_id": "p011-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792187946.356135,
+      "timestamp_str": "2026-10-17 00:59:06"
+    },
+    {
+      "task_id": "p011-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188020.4724667,
+      "timestamp_str": "2026-10-17 01:00:20"
+    },
+    {
+      "task_id": "p011-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p011-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792188039.0286164,
+      "timestamp_str": "2026-10-17 01:00:39"
     }
   ]
 }

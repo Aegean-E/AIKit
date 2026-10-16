@@ -745,6 +745,12 @@ class TestArchitectureGate(unittest.TestCase):
             "m:3: open() outside a with statement (PRINCIPLE-010 R4)",
         ])
 
+    def test_raw_environ_reads_fail_and_writes_and_getenv_pass(self):
+        # PRINCIPLE-011 R3 (ADR-084).
+        source = "import os\nx = os.environ['K']\nos.environ['K'] = 'v'\ny = os.getenv('K', 'd')\n"
+        self.assertEqual(audit_architecture({"m": source}),
+                         ["m:2: os.environ[...] read; use os.getenv() with a default (PRINCIPLE-011 R3)"])
+
     def test_focused_names_narrow_roles_and_one_way_imports_pass(self):
         modules = {"app.date_parsing": "", "app.service": "import app.domain",
                    "app.domain": "from typing import Protocol\nclass Store(Protocol):\n    def get(self) -> str: ...\n"}
@@ -1106,6 +1112,21 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             ],
             "gone": ["<100ms", "under 20ms", "genuinely", "High-frequency", "tight loops", "(`timeout=30`)",
                      "without measurable profiling justification"],
+        },
+        "PRINCIPLE-011": {
+            "rules": 7,
+            "present": [
+                "MUST run with only the dependencies declared under PRINCIPLE-003 R3",
+                "A dependency that only one adapter uses is imported inside that adapter",
+                "MUST NOT read the keyboard (`input()`, a confirmation prompt) unless the user passed `--interactive`",
+                "never `os.environ[...]`; `python scripts/update_knowledge_base.py` fails on such a read",
+                "it prints one line naming that mode before its output",
+                "follow PRINCIPLE-003 R4",
+                "a line starting `Why:` with the cause, and a line starting `Fix:`",
+                "In AIKit these are `python scripts/disruption_recovery.py --audit` and `python scripts/dogfood.py`",
+            ],
+            "gone": ["Third-party packages must be strictly optional", "sensible", "Systems should embed",
+                     "banning hardcoded"],
         },
     }
 

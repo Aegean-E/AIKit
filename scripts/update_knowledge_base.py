@@ -539,6 +539,10 @@ def audit_architecture(modules: Dict[str, str]) -> List[str]:
                     errors.append(f"{name}:{node.lineno}: subprocess.{func.attr} without timeout= (PRINCIPLE-010 R3)")
                 if isinstance(func, ast.Name) and func.id == "open" and id(node) not in managed:
                     errors.append(f"{name}:{node.lineno}: open() outside a with statement (PRINCIPLE-010 R4)")
+            if (isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load)
+                    and isinstance(node.value, ast.Attribute) and node.value.attr == "environ"
+                    and getattr(node.value.value, "id", "") == "os"):
+                errors.append(f"{name}:{node.lineno}: os.environ[...] read; use os.getenv() with a default (PRINCIPLE-011 R3)")
             if isinstance(node, ast.Import):
                 imported |= {a.name for a in node.names}
             elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
@@ -577,13 +581,13 @@ def check_architecture(root: Path = ROOT_DIR) -> List[str]:
 def report_architecture(errors: List[str]) -> bool:
     """Print architecture findings with the remediation triad (PRINCIPLE-011 R6); True when clean."""
     if not errors:
-        print("[OK] No junk-drawer module, oversized role, import cycle, untimed subprocess or unmanaged open() (PRINCIPLE-009, PRINCIPLE-010)")
+        print("[OK] No junk-drawer module, oversized role, import cycle, untimed subprocess, unmanaged open() or raw os.environ read (PRINCIPLE-009, PRINCIPLE-010, PRINCIPLE-011)")
         return True
     print(f"[FAIL] Code structure ({len(errors)}):")
     for error in errors[:20]:
         print(f"   - {error}")
-    print("   Why: each one couples modules (PRINCIPLE-009) or can hang or leak (PRINCIPLE-010).")
-    print("   Fix: rename the module, split the role, break the cycle, add timeout=, or use with.")
+    print("   Why: each one couples modules (PRINCIPLE-009), can hang or leak (PRINCIPLE-010) or crash on a missing variable (PRINCIPLE-011).")
+    print("   Fix: rename the module, split the role, break the cycle, add timeout=, use with, or use os.getenv().")
     return False
 
 
@@ -760,7 +764,8 @@ Options:
               an unnamed suppression (PRINCIPLE-007 R3), and no module has a junk-drawer
               name, a role of 0 or more than 5 methods, or an import cycle
               (PRINCIPLE-009), and no subprocess call lacks timeout= and no open()
-              runs outside a with statement (PRINCIPLE-010); exits 1 on any of them
+              runs outside a with statement (PRINCIPLE-010), and no code reads os.environ[...] (PRINCIPLE-011 R3);
+              exits 1 on any of them
   --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help  Show this help message and exit
 

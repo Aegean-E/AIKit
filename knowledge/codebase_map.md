@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `40`
 - **Total Functions / Methods**: `112`
-- **Total Source Lines**: `7449`
+- **Total Source Lines**: `7475`
 
 ---
 
@@ -146,7 +146,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `833` lines (`36373` bytes)
+**Size**: `838` lines (`36915` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -242,7 +242,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2954` lines (`162587` bytes)
+**Size**: `2975` lines (`163939` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -296,6 +296,7 @@
 - `class TestArchitectureGate` - *PRINCIPLE-009's checkable parts (ADR-082).*
   - Method `.test_junk_drawers_fat_roles_and_cycles_fail()`
   - Method `.test_untimed_subprocess_and_unmanaged_open_fail()`
+  - Method `.test_raw_environ_reads_fail_and_writes_and_getenv_pass()`
   - Method `.test_focused_names_narrow_roles_and_one_way_imports_pass()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
