@@ -249,9 +249,11 @@ def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str 
     lines = [
         heading,
         "",
-        f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; edit the source, not this file.",
-        "> Capsules are binding. On a boundary, failure or ambiguity, slice-view `GUIDELINES.md` "
-        "(grep `### PRINCIPLE-XXX:`); never load it whole.",
+        # Wording mirrors PRINCIPLE-001 R1 (precedence) and R3 (trigger names) exactly; a test
+        # keeps the two in lock-step so every agent receives the same instruction.
+        f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; do not edit.",
+        "> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or "
+        "ambiguity, read its `### PRINCIPLE-XXX:` section, never the whole file.",
         "",
         "## Core Principles",
     ]

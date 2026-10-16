@@ -275,20 +275,7 @@ Every entrypoint in `scripts/` implements one uniform contract, enforced mechani
 ---
 
 ## ⚡ Progressive Rule Disclosure & Governance Frugality
-- **Two-Tier Architecture**: Injected IDE prompt instructions are capped (<1,500 tokens) with terse, self-sufficient invariant capsules (Tier 1), while exhaustive guides, edge-case rationale, and failure analysis live in disk-backed knowledge documents (Tier 2) (**PRINCIPLE-001**).
-- **Self-Sufficient Invariant Capsules**: Every Tier 1 entry contains the exact technical mechanism (e.g., `flush` + `os.fsync` + `os.replace`, 100% test pass gate, read-before-write symbol check), ensuring routine code generation is 100% accurate with zero disk roundtrips.
-- **Autonomous Retrieval Trigger Protocol**: Defines explicit operational triggers where an AI agent must slice-view Tier 2 knowledge:
-  1. *Architectural Boundary Trigger*: Introducing new services, data schemas, or cross-module API contracts.
-  2. *Failure & Regression Trigger*: Test failures, build breakages, or unhandled exceptions.
-  3. *Ambiguity Trigger*: Underspecified domain requirements or missing schema models.
-- **Universal vs Domain Rule Partitioning (Adopter Architecture)**:
-  - *Tier 1A (Universal AI Governance)*: AIKit's immutable 18 engineering invariants (<1,000 tokens).
-  - *Tier 1B (Project Domain Invariants)*: Project-specific ironclad conventions defined in `.agents/rules/domain.md` or dedicated prompt section (<300 tokens: framework version, linting, naming conventions).
-  - *Tier 2 (Disk Knowledge & Schemas)*: Project architecture, database schemas, and API specs in `knowledge/`.
-- **Deterministic Grep Anchor Contract**: All Tier 2 sections use unique regex-safe headers (`### PRINCIPLE-XXX:`). Pointers instruct agents to locate and slice-view the exact 30-line block via single-call grep (`Query="### PRINCIPLE-XXX:"`), eliminating line-number drift across edits.
-- **Context Overhead Guardrails**: `scripts/sync_principles.py` mechanically enforces a 1,500 est.-token budget per generated target, including a reserved full Tier 1B block, preventing instruction bloat (ADR-047).
-
----
+Rules live only in `GUIDELINES.md`; see **PRINCIPLE-001** there (R1 tiers and precedence, R3 retrieval triggers, R6 budget). This document deliberately does not restate them (PRINCIPLE-001 R7): an earlier copy here kept the retired trigger names, the "18 invariants" count and a "<1,000 tokens" figure long after the rules changed. Implementation details are in *Tier 1 Context Budget* and *Single Source of Truth & Generated AGENTS.md* above.
 
 ## 📚 Living Documentation & Cold-Start Orientation (The SSOT Triad)
 - **30-Second Cold-Start Orientation**: `README.md` serves as the authoritative entrypoint for cold-starting agents, providing unambiguous prerequisites, setup/run commands, test commands, and directory layouts (**PRINCIPLE-005**).

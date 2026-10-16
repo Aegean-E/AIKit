@@ -1,10 +1,10 @@
 # Workspace Agent Rules (Tier 1)
 
-> Generated from `GUIDELINES.md` by `scripts/sync_principles.py`; edit the source, not this file.
-> Capsules are binding. On a boundary, failure or ambiguity, slice-view `GUIDELINES.md` (grep `### PRINCIPLE-XXX:`); never load it whole.
+> Generated from `GUIDELINES.md` by `scripts/sync_principles.py`; do not edit.
+> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read its `### PRINCIPLE-XXX:` section, never the whole file.
 
 ## Core Principles
-- PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Two-tier progressive disclosure: Tier 1 <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B (gate-enforced); capsules keep exact mechanisms, never narrative.
+- PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Tier 1 = 6 generated files, each <=1,500 est. tokens (chars/4) incl. a <=1,200-char Tier 1B; rules live only in `GUIDELINES.md`, which wins on conflict; capsules state mechanisms only.
 - PRINCIPLE-002 Lifecycle-Aligned Instruction Ordering & Attentional Priming: Monotonic 5-phase gate: Phase 4 verification passes before Phase 5 delivery; Track A/B/C pathing with auto-escalation; immune to late-stage priming.
 - PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness & call-site check; manifest dependency grounding; platform parity; dual-track ambiguity protocol; strict AST syntax gate.
 - PRINCIPLE-004 Attentional Drift Prevention & Compaction Resilience: Disk-backed memory (`.agents/task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first slice retrieval; bounded rolling ledger.

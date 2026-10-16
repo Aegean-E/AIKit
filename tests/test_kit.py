@@ -135,10 +135,12 @@ class TestPrincipleSync(unittest.TestCase):
             self.assertIn("GUIDELINES.md", content, f"Tier 2 pointer missing from {target.name}")
             # PRINCIPLE-001 R3 lives in the header now that it is no longer duplicated in a capsule;
             # this is what stops the retrieval-trigger protocol from silently vanishing.
-            for trigger in ("boundary", "failure", "ambiguity"):
+            for trigger in ("contract change", "failure", "ambiguity"):
                 self.assertIn(trigger, content, f"R3 '{trigger}' trigger missing from {target.name}")
-            self.assertIn("never load it whole", content,
+            self.assertIn("never the whole file", content,
                           f"{target.name} no longer forbids loading Tier 2 wholesale")
+            self.assertIn("wins on conflict", content,
+                          f"{target.name} does not state that GUIDELINES.md wins on conflict (R1)")
             self.assertIn("Generated from", content,
                           f"{target.name} is not marked as generated; hand edits would be lost")
             # The enforced token budget, which is stricter than the old 8,000-char cap.
@@ -493,6 +495,60 @@ class TestPrincipleSync(unittest.TestCase):
             basename = Path(rel).name
             self.assertIn(basename, readme_content, f"Path '{rel}' (basename '{basename}') missing from README.md")
             self.assertTrue((ROOT_DIR / rel).exists(), f"Path from README.md tree does not exist on disk: {rel}")
+
+
+class TestPrinciple001Unambiguity(unittest.TestCase):
+    """
+    PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:
+    no hedge words, every rule states who it binds, and the Tier 1 header uses the exact trigger
+    and precedence wording of the Tier 2 rules it summarises.
+    """
+
+    HEDGES = ("e.g.", "etc.", "relevant", "proactively", "essential", "excessive", "concise",
+              "dense", "appropriate", "as needed", "~", "should", "where possible", "mentally")
+
+    @classmethod
+    def setUpClass(cls):
+        text = SSOT_MD.read_text(encoding="utf-8")
+        start = text.index("### PRINCIPLE-001:")
+        end = text.index("\n### PRINCIPLE-002:")
+        cls.section = text[start:end]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        lowered = self.rules.lower()
+        found = [h for h in self.HEDGES if h in lowered]
+        self.assertEqual(found, [], f"PRINCIPLE-001 rules contain open-ended wording: {found}")
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 9, "PRINCIPLE-001 must keep rules R1-R9 (cited elsewhere)")
+        for number, title, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*",
+                                 f"R{number} {title} does not say whom it binds")
+
+    def test_rules_use_normative_keywords(self):
+        # RFC 2119 keywords, declared once in the GUIDELINES.md header, carry the obligations.
+        self.assertIn("RFC 2119", SSOT_MD.read_text(encoding="utf-8").split("### PRINCIPLE-001:")[0])
+        for keyword in ("MUST", "MUST NOT", "MAY"):
+            self.assertIn(keyword, self.rules)
+
+    def test_tier1_header_mirrors_r3_triggers_and_r1_precedence(self):
+        # The header is what most agents actually read; it must use R3's own trigger names.
+        triggers = re.findall(r"\*([A-Za-z-]+) trigger\*", self.rules)
+        self.assertEqual(triggers, ["Contract-change", "Failure", "Ambiguity"])
+        header = render_tier1_target("# probe", parse_principles(SSOT_MD)).split("## Core Principles")[0]
+        for trigger in triggers:
+            with self.subTest(trigger=trigger):
+                self.assertIn(trigger.lower().replace("-", " "), header.lower())
+        self.assertIn("wins on conflict", header)
+        self.assertIn("GUIDELINES.md", self.rules.split("*Precedence*")[1].split("\n")[0])
+
+    def test_tool_neutral_retrieval(self):
+        # IDE-specific tool names make other agents guess an equivalent.
+        for tool_name in ("view_file", "grep_search", "Query="):
+            self.assertNotIn(tool_name, self.section, f"tool-specific term '{tool_name}' in P001")
 
 
 class TestSyncWriteSafety(unittest.TestCase):

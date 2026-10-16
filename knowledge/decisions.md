@@ -851,3 +851,15 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   2. The four unit tests pass `not_a_git_repo`, which returns exactly what real git returns in a non-repository (exit 128) without spawning.
   3. `test_unit_tier_spawns_nothing_at_runtime` (integration tier) runs the entire unit tier under a `Popen` detector and requires zero launches. It was red-checked by reverting one fake: it failed and named the spawn.
 - **Consequences**: The no-spawn invariant is now enforced at runtime, not just by text. The integration tier rises to ~3.9s (budget 5s) because it executes the unit tier once more; the unit tier stays ~0.91s.
+
+### ADR-050: PRINCIPLE-001 Rewritten for a Single Interpretation
+- **Date**: 2026-10-16
+- **Status**: Accepted
+- **Context**: Audited for one property - could two models read PRINCIPLE-001 and act differently? Yes, in six ways: (1) no audience - agent-time rules (R3, R8) were mixed with maintainer rules with nothing saying which bound whom; (2) no precedence between a capsule and GUIDELINES.md, or for an explicit user request to read the full file; (3) undefined triggers ("relevant sub-tasks", "underspecified requirements", and "boundary" in the header vs "Architectural Boundary" in R3); (4) IDE-specific verbs (`view_file`, `grep_search`, `Query=`); (5) unverifiable rules ("100% accuracy", "maximize the ratio", "verified mentally", "bounded and flat"); (6) conflicting definitions (Tier 2 defined twice, "~300 tokens" vs "1,200 chars", three names for the capsule). P001 carried 8 hedge words, the most of any principle.
+- **Decision**:
+  1. Keep R1-R9 in their numbered slots (every number is cited elsewhere) and rewrite each as an RFC 2119 obligation (MUST / MUST NOT / MAY, declared once in the GUIDELINES.md header) tagged *[Agent]* or *[Maintainer]*.
+  2. R1 adds precedence: capsules bind; GUIDELINES.md wins on conflict and the mismatch is reported; an explicit user instruction overrides both. R3 defines three triggers by observable events (contract change, failure, ambiguity) and states how to pick the section to read. R5 is tool-neutral. R2 gets a deletion test; R6 states the exact formula and thresholds; R7 defines what "decoration" and "copying" mean; R8 defines the reporting format; R9 forbids raising budget constants without user approval and an ADR.
+  3. The generated Tier 1 header uses R1's and R3's exact words ("wins on conflict", "contract change, failure or ambiguity", "never the whole file").
+  4. Five tests pin it: no hedge words in P001's rules, every rule tagged, RFC 2119 keywords declared and used, header trigger names derived from R3, no tool-specific terms. Red-checked: the previous text fails all of them.
+  5. A stale full copy of old P001 in knowledge/architecture.md was replaced by a citation (R7).
+- **Consequences**: P001 now reads as one instruction set for any model. Tier 1 grew by about 4 tokens (Tier 1B room 306, still above 300). Hedge words remain in other principles (`e.g.` in 9 of them, `concise` in 6, `relevant` in 2, `should` in 1); they are candidates for the same treatment in later passes.
