@@ -1,39 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p003-third-pass",
+    "task_id": "p004-unambiguity",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792172941.9478328,
-    "completed_at": 1792172942.05647
+    "updated_at": 1792173288.0318353,
+    "completed_at": 1792173288.1531756
   },
   "checkpoints": [
-    {
-      "task_id": "principle-roadmap-m4-secrets",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-roadmap-m4-secrets' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792103951.1221285,
-      "timestamp_str": "2026-10-16 01:39:11"
-    },
-    {
-      "task_id": "principle-roadmap-m5-budget",
-      "phase": "2",
-      "phase_num": 2,
-      "description": "Milestone 5/5: condense invariant capsules to bring all Tier 1 targets back under the 1500-token target, and enforce it",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792103979.6730714,
-      "timestamp_str": "2026-10-16 01:39:39",
-      "impact_assessment": {
-        "why": "P019 pushed 4 of 5 targets past the stated 1500-token Tier 1 target (principles.md 1656); P001 R9 requires expansion be paid for by condensing, and the target has been silently breached since before this session",
-        "benefits": "Restores the stated invariant to truth, reclaims injected context on every turn for every IDE, and converts a warning into an enforced gate so the breach cannot recur silently",
-        "risks": "Over-compression could strip the hard mechanical constraints P001 R2 explicitly protects, degrading routine-task accuracy - the exact anti-satisficing failure the principle forbids",
-        "mitigation": "Compress only narrative connectives and duplicated phrasing, never mechanisms or numbers; capsule tests assert the required mechanical terms survive; promote the token check from warning to hard failure once under target"
-      }
-    },
     {
       "task_id": "principle-roadmap-m5-budget",
       "phase": "completed",
@@ -222,6 +197,25 @@
       "status": "completed",
       "timestamp": 1792172942.0564716,
       "timestamp_str": "2026-10-16 20:49:02"
+    },
+    {
+      "task_id": "p004-unambiguity",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "P004 rewrite; bounded ledger keeps plan; --resume prints plan; Phase 4 passed on final tree",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792173288.0318353,
+      "timestamp_str": "2026-10-16 20:54:48"
+    },
+    {
+      "task_id": "p004-unambiguity",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p004-unambiguity' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792173288.153177,
+      "timestamp_str": "2026-10-16 20:54:48"
     }
   ]
 }

@@ -94,7 +94,11 @@ LOCK_TIMEOUT_SECONDS = 3.0
 
 
 @contextlib.contextmanager
-def locked_ledger(ledger_file: Optional[Path] = None, timeout_seconds: float = LOCK_TIMEOUT_SECONDS):
+def locked_ledger(
+    ledger_file: Optional[Path] = None,
+    timeout_seconds: float = LOCK_TIMEOUT_SECONDS,
+    poll_interval: float = 0.05,
+):
     """
     Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).
 
@@ -106,7 +110,7 @@ def locked_ledger(ledger_file: Optional[Path] = None, timeout_seconds: float = L
     timeout the mutation is abandoned with a diagnostic rather than written unprotected.
     """
     path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
-    with file_lock(path, timeout_seconds=timeout_seconds) as acquired:
+    with file_lock(path, timeout_seconds=timeout_seconds, poll_interval=poll_interval) as acquired:
         if not acquired:
             raise TimeoutError(
                 f"[PRINCIPLE-013 LOCK CONTENTION] Could not acquire advisory lock on "
@@ -289,10 +293,27 @@ def prune_checkpoints(
     active_cps = [c for c in checkpoints if active_task_id and c.get("task_id") == active_task_id]
     inactive_cps = [c for c in checkpoints if not active_task_id or c.get("task_id") != active_task_id]
 
-    keep_inactive = max(5, max_history - len(active_cps))
-    pruned_inactive = inactive_cps[-keep_inactive:]
+    # The bound applies to the active task too: it used to be exempt, so one long task kept every
+    # checkpoint (60 against a cap of 20). Its plan - the Phase 2 checkpoint (PRINCIPLE-004 R1) -
+    # is always kept, so pruning can never lose what resumption needs.
+    min_inactive = min(5, len(inactive_cps))
+    active_budget = max(1, max_history - min_inactive)
+    if len(active_cps) > active_budget:
+        plan = task_plan_checkpoint(active_cps)
+        recent = active_cps[-(active_budget - (1 if plan else 0)):] if active_budget > 1 else []
+        active_cps = ([plan] if plan and plan not in recent else []) + recent
+    keep_inactive = max(min_inactive, max_history - len(active_cps))
+    pruned_inactive = inactive_cps[-keep_inactive:] if keep_inactive else []
     combined = active_cps + pruned_inactive
     return sorted(combined, key=lambda x: x.get("timestamp", 0))
+
+
+def task_plan_checkpoint(task_checkpoints: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """The task's plan: its earliest Phase 2 checkpoint (PRINCIPLE-004 R1), or None."""
+    for cp in task_checkpoints:
+        if cp.get("phase_num") == 2:
+            return cp
+    return None
 
 
 def save_ledger(
@@ -617,6 +638,10 @@ def run_disruption_audit(
     checkpoints = ledger.get("checkpoints", [])
     if checkpoints:
         audit["last_checkpoint"] = checkpoints[-1]
+        if active and active.get("status") == "in_progress":
+            plan = task_plan_checkpoint([c for c in checkpoints if c.get("task_id") == active.get("task_id")])
+            if plan:
+                audit["plan"] = plan.get("description")
 
     # 3. Check for Quarantined Corrupted Artifacts (.corrupt_ files)
     try:
@@ -746,6 +771,8 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
     lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")
     lines.append(f"🚀 Recommended Resumption Phase: Phase {next_phase_num}")
+    if audit.get("plan"):
+        lines.append(f"🗺️  Plan (Phase 2 checkpoint): {audit['plan']}")
 
     impact = interrupted.get("impact_assessment")
     if impact:

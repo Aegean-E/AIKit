@@ -192,7 +192,12 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("living plan ssot", p4["invariant"].lower())
         self.assertIn("anti-repetition", p4["invariant"].lower())
         self.assertIn("ast-first", p4["invariant"].lower())
-        self.assertIn("bounded rolling ledger", p4["invariant"].lower())
+        # "bounded rolling ledger" was removed under PRINCIPLE-001 R2's deletion test (the tool
+        # bounds the ledger; no agent action follows). The capsule now names the mechanisms:
+        self.assertIn("phase 2 `--desc`", p4["invariant"].lower())
+        self.assertIn("`--resume`", p4["invariant"])
+        self.assertIn("adr before commit", p4["invariant"].lower())
+        self.assertIn("<=100 lines", p4["invariant"])
 
     def test_principle_005_cold_start_capsule(self):
         # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, token ceiling, command parity, whole-tree drift shield
@@ -906,6 +911,81 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
                 self.assertNotRegex(source, r"""\[\s*["'](?:python3?|py)["']""")
 
 
+class TestPrinciple004Unambiguity(unittest.TestCase):
+    """
+    PRINCIPLE-004 must name where each kind of state is written and how it is read back, so no
+    two models keep a plan or a decision in different places (or only in chat).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-004:"):cls.text.index("\n### PRINCIPLE-005:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES
+                 if h in self.section.lower() or h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-004 contains open-ended wording: {found}")
+        self.assertNotIn("StartLine", self.section, "IDE-specific tool parameter names")
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 5, "PRINCIPLE-004 must keep rules R1-R5 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_every_kind_of_state_has_one_home(self):
+        for definition in (
+            "the plan is the `--desc` text of the task's Phase 2 checkpoint",
+            "MUST record a new checkpoint with the full revised plan",
+            "a deliverable the user asked for (an analysis, a report) is not a progress message",
+            "MUST run `python scripts/disruption_recovery.py --resume` before any other action",
+            "A user who changes a recorded decision is followed",
+            "A single read MUST NOT exceed 100 lines",
+            "An *architectural decision* is one that changes a public contract",
+            "Data schemas are written to `knowledge/data_models.md`",
+            "Checklist timing is set by PRINCIPLE-001 R8",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_no_second_resumption_procedure(self):
+        # Red-green pin: R2 told agents to hand-inspect `active_phase` in the JSON while P002 R4
+        # said to run --resume - two procedures for one event. R2 now defers to P002 R4.
+        self.assertIn("follow PRINCIPLE-002 R4", self.rules)
+        self.assertNotIn("Inspect `.agents/task_ledger.json` for `active_task`", self.rules)
+
+    def test_schemas_are_not_sent_to_adrs(self):
+        # Red-green pin: R4 sent data schemas to decisions.md, contradicting PRINCIPLE-016 R5.
+        self.assertNotIn("and data schemas immediately to `knowledge/decisions.md`", self.rules)
+        p016 = self.text[self.text.index("### PRINCIPLE-016:"):self.text.index("\n### PRINCIPLE-017:")]
+        self.assertIn("`data_models.md` is the sole Single Source of Truth for schemas", p016)
+
+    def test_active_task_is_bounded_and_keeps_its_plan(self):
+        # Red-green pin: the active task was exempt from the bound - 60 checkpoints kept vs 20.
+        # prune_checkpoints is pure, so the bound is tested without 40 fsynced ledger writes.
+        history = [{"task_id": "old", "phase_num": 5, "description": f"old {i}", "timestamp": i}
+                   for i in range(10)]
+        history.append({"task_id": "t", "phase_num": 2, "description": "[1/2] a; [2/2] b", "timestamp": 10})
+        history += [{"task_id": "t", "phase_num": 3, "description": f"step {i}", "timestamp": 11 + i}
+                    for i in range(40)]
+        checkpoints = prune_checkpoints(history, active_task_id="t", max_history=20)
+        self.assertLessEqual(len(checkpoints), 20)
+        self.assertTrue(any(c["phase_num"] == 2 for c in checkpoints), "pruning dropped the plan")
+        self.assertEqual(checkpoints[-1]["description"], "step 39", "pruning dropped the newest work")
+
+    def test_resume_prints_the_plan(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_plan_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        record_checkpoint("t", "planning", "[1/2] model; [2/2] cli", phase_num=2, ledger_file=ledger)
+        record_checkpoint("t", "implementation", "building", phase_num=3, ledger_file=ledger)
+        report = format_resume_report(run_disruption_audit(workspace, git_status=not_a_git_repo))
+        self.assertIn("Plan (Phase 2 checkpoint): [1/2] model; [2/2] cli", report)
+
+
 class TestLifecycleToolSemantics(unittest.TestCase):
     """
     PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.
@@ -1030,11 +1110,12 @@ class TestSyncWriteSafety(unittest.TestCase):
         os.fsync = lambda fd: None
         self.sandbox = Path(tempfile.mkdtemp(prefix="test_sync_safety_"))
         self.addCleanup(shutil.rmtree, self.sandbox, ignore_errors=True)
-        (self.sandbox / "README.md").write_text(README_MD.read_text(encoding="utf-8"), encoding="utf-8")
-        (self.sandbox / "GUIDELINES.md").write_text(SSOT_MD.read_text(encoding="utf-8"), encoding="utf-8")
+        # Sync only READS its sources, so the real GUIDELINES.md and README.md are used in place;
+        # copying them cost two slow file creations per test (~3.4ms each on Windows). Every
+        # file sync WRITES still lands in the sandbox, because ROOT_DIR points there.
         for name, value in (
             ("ROOT_DIR", self.sandbox),
-            ("SSOT_MD", self.sandbox / "GUIDELINES.md"),
+            ("SSOT_MD", SSOT_MD),
             ("AGENTS_MD", self.sandbox / "AGENTS.md"),
             ("DOMAIN_RULES_PATH", self.sandbox / ".agents" / "rules" / "domain.md"),
         ):
@@ -1045,7 +1126,7 @@ class TestSyncWriteSafety(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             result = sync_principles_module.sync_all(
-                check_only=check_only, exit_on_mismatch=False, readme_file=self.sandbox / "README.md"
+                check_only=check_only, exit_on_mismatch=False, readme_file=README_MD
             )
         return result, out.getvalue()
 
@@ -1090,6 +1171,7 @@ class TestSyncWriteSafety(unittest.TestCase):
     def test_unmigrated_layout_gets_migration_guidance_not_a_traceback(self):
         # The pre-ADR-048 layout: full rules in AGENTS.md, a Problem/Guideline GUIDELINES.md.
         (self.sandbox / "AGENTS.md").write_text(SSOT_MD.read_text(encoding="utf-8"), encoding="utf-8")
+        sync_principles_module.SSOT_MD = self.sandbox / "GUIDELINES.md"  # restored by setUp cleanup
         (self.sandbox / "GUIDELINES.md").write_text(
             "### PRINCIPLE-001: Legacy\n- **Problem**: p\n- **Guideline**:\n  - g\n", encoding="utf-8"
         )
@@ -1937,7 +2019,7 @@ class TestConcurrencyAndResumptionCorrectness(unittest.TestCase):
         with file_lock(self.ledger, timeout_seconds=1.0) as held:
             self.assertTrue(held)
             with self.assertRaises(TimeoutError) as ctx:
-                with locked_ledger(self.ledger, timeout_seconds=0.05):
+                with locked_ledger(self.ledger, timeout_seconds=0.05, poll_interval=0.005):
                     pass
         message = str(ctx.exception)
         self.assertIn("LOCK CONTENTION", message)

@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `28`
-- **Total Functions / Methods**: `84`
-- **Total Source Lines**: `5900`
+- **Total Classes**: `29`
+- **Total Functions / Methods**: `85`
+- **Total Source Lines**: `6009`
 
 ---
 
@@ -55,18 +55,19 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1134` lines (`48130` bytes)
+**Size**: `1161` lines (`49512` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
 - `def file_lock(lock_path, timeout_seconds, poll_interval)` - *Cross-platform cooperative advisory lock (PRINCIPLE-013).*
-- `def locked_ledger(ledger_file, timeout_seconds)` - *Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).*
+- `def locked_ledger(ledger_file, timeout_seconds, poll_interval)` - *Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).*
 - `def fsync_dir(dir_path)` - *Flush a directory entry so a completed `os.replace` survives power loss (PRINCIPLE-013 R1).*
 - `def check_disk_headroom(target_dir, min_mb)` - *Check whether sufficient disk headroom exists before writing (PRINCIPLE-013).*
 - `def migrate_ledger_schema(data)` - *Ensure recovered or loaded ledger conforms to current schema specification (PRINCIPLE-013).*
 - `def atomic_write_json(file_path, data, max_retries, min_headroom_mb)` - *Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013).*
 - `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-013).*
 - `def prune_checkpoints(checkpoints, active_task_id, max_history)` - *Prune checkpoints to maintain a bounded rolling memory window (PRINCIPLE-004).*
+- `def task_plan_checkpoint(task_checkpoints)` - *The task's plan: its earliest Phase 2 checkpoint (PRINCIPLE-004 R1), or None.*
 - `def save_ledger(ledger, ledger_file, max_history, _locked)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
@@ -211,7 +212,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2122` lines (`113014` bytes)
+**Size**: `2204` lines (`118122` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -278,6 +279,15 @@
   - Method `.test_ast_gate_rejects_syntax_newer_than_the_minimum()`
   - Method `.test_no_standard_library_apis_newer_than_the_minimum()`
   - Method `.test_scripts_follow_platform_parity()`
+- `class TestPrinciple004Unambiguity` - *PRINCIPLE-004 must name where each kind of state is written and how it is read back, so no*
+  - Method `.setUpClass()`
+  - Method `.test_rules_contain_no_hedge_words()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_every_kind_of_state_has_one_home()`
+  - Method `.test_no_second_resumption_procedure()`
+  - Method `.test_schemas_are_not_sent_to_adrs()`
+  - Method `.test_active_task_is_bounded_and_keeps_its_plan()`
+  - Method `.test_resume_prints_the_plan()`
 - `class TestLifecycleToolSemantics` - *PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.*
   - Method `.test_bare_digit_phase_is_that_phase()`
   - Method `.test_resume_stays_in_the_recorded_phase_on_a_clean_tree()`
