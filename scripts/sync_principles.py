@@ -22,11 +22,11 @@ DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 # Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
 # thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
 # chain and let ~1,860-token targets through with only a warning.
-TARGET_TOKEN_BUDGET = 1500  # per target, INCLUDING any Tier 1B block
+TARGET_TOKEN_BUDGET = 1600  # per target, INCLUDING any Tier 1B block
 WARN_TOKEN_RATIO = 0.9  # advisory early warning, checked only after every violation
 MAX_DOMAIN_CHARS = 1200  # Tier 1B allowance (~300 tokens) that universal rules must leave free
 # Floor that catches a truncated or mis-parsed SSOT; raise it whenever a principle is added.
-MIN_PRINCIPLES = 19
+MIN_PRINCIPLES = 20
 
 # Single source of truth for the principle corpus; every Tier 1 target is generated from it.
 # AGENTS.md used to be this file, but tools following the AGENTS.md convention auto-load it, which

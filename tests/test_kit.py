@@ -122,18 +122,18 @@ def not_a_git_repo(workspace):
 
 
 # Single source of truth for the principle count, so adding a principle updates one place.
-EXPECTED_PRINCIPLE_COUNT = 19
+EXPECTED_PRINCIPLE_COUNT = 20
 
 
 class TestPrincipleSync(unittest.TestCase):
-    """Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
+    """Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017)."""
 
     def test_parse_all_principles(self):
         principles = parse_principles(SSOT_MD)
         self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT,
                          f"Expected {EXPECTED_PRINCIPLE_COUNT} principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
-        for i in range(1, 19):
+        for i in range(1, EXPECTED_PRINCIPLE_COUNT + 1):
             expected_id = f"PRINCIPLE-{i:03d}"
             self.assertIn(expected_id, p_ids, f"Missing {expected_id} in {SSOT_MD.name}")
         for p in principles:
@@ -289,6 +289,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("zero `git add .`", p18["invariant"].lower())
         self.assertIn("pre-commit delivery triad", p18["invariant"].lower())
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
+
+    def test_principle_020_meta_principle_capsule(self):
+        # Enforces PRINCIPLE-020: verified invariant capsule with universal adherence, mutual alignment, impact audit, and code quality primacy
+        principles = parse_principles(SSOT_MD)
+        p20 = next((p for p in principles if p["id"] == "PRINCIPLE-020"), None)
+        self.assertIsNotNone(p20)
+        self.assertIn("universal adherence", p20["invariant"].lower())
+        self.assertIn("mutual alignment", p20["invariant"].lower())
+        self.assertIn("cross-principle impact audit", p20["invariant"].lower())
+        self.assertIn("code quality primacy", p20["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
         # Enforces PRINCIPLE-017: every generated Tier 1 target must be 100% in sync with the SSOT.

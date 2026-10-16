@@ -33,7 +33,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
      - *Tier 1B* is project-specific rules in `.agents/rules/domain.md`, at most 1,200 characters (300 estimated tokens), started from `.agents/rules/domain.md.template` and injected below Tier 1A in every Tier 1 file.
      - *Tier 2* for a project is its architecture, schemas and API specifications in `knowledge/`.
   5. **Deterministic Grep Anchor Contract** *[Agent + Maintainer]*: Every principle MUST have exactly one heading of the form `### PRINCIPLE-NNN: Title` in `GUIDELINES.md`, where NNN is three digits; `NNN` is the only placeholder used for an ID. IDs MUST NOT be renumbered or reused. To read a principle, search for the literal text `### PRINCIPLE-NNN:` with any text-search tool and read from that line up to the next line that starts with `### `, `## ` or `---`. Agents MUST NOT rely on remembered line numbers.
-  6. **Strict Injected Context Budget & Automated Gate** *[Maintainer]*: Estimated tokens are the character count divided by 4, rounded down. Each Tier 1 file MUST be at most 1,500 estimated tokens including its Tier 1B block, and with no domain file present MUST still fit a 1,200-character Tier 1B block within 1,500. `python scripts/sync_principles.py` and its `--check` mode exit 1 on either breach, and the breach blocks the commit through gate (2) of PRINCIPLE-018 R3. The warning at 1,350 estimated tokens (90%) is advisory and is evaluated only after both blocking checks.
+  6. **Strict Injected Context Budget & Automated Gate** *[Maintainer]*: Estimated tokens are the character count divided by 4, rounded down. Each Tier 1 file MUST be at most 1,600 estimated tokens including its Tier 1B block, and with no domain file present MUST still fit a 1,200-character Tier 1B block within 1,600. `python scripts/sync_principles.py` and its `--check` mode exit 1 on either breach, and the breach blocks the commit through gate (2) of PRINCIPLE-018 R3. The warning at 1,440 estimated tokens (90%) is advisory and is evaluated only after both blocking checks.
   7. **Single Source & No Decoration** *[Maintainer]*: Rule text exists only in `GUIDELINES.md`. Other files MAY cite a principle by ID and MAY summarise it in one sentence or one table row, as the `README.md` principle table does, but MUST NOT copy rule text. Generated files MUST NOT use formatting that names no mechanism (bold, emoji, repeated headings).
   8. **Terse Checklist Execution** *[Agent]*: The checklists are the *Pre-Flight Checklist* and *Post-Flight Checklist* sections of `GUIDELINES.md`; reading them is allowed under R3. On a Track C task (PRINCIPLE-002 R3) the agent MUST evaluate the Pre-Flight checklist before its first file edit of the task. On Track B and Track C tasks it MUST evaluate the Post-Flight checklist before committing. Track A tasks evaluate neither. The agent MUST NOT paste either checklist into the conversation; it reports only failed or skipped items, one line each naming the principle ID, and when nothing failed it reports `checklists passed`. An item that does not apply to the task counts as passed and is not reported; *skipped* means the item applies but was not done.
   9. **Zero Context Bloat on Expansion** *[Maintainer]*: A change that raises any Tier 1 file's estimate MUST still pass both R6 checks; when it does not, the maintainer MUST shorten existing capsules by R2's deletion test until it does. `TARGET_TOKEN_BUDGET` and `MAX_DOMAIN_CHARS` MUST NOT be raised without the user's explicit approval and a new ADR in `knowledge/decisions.md`.
@@ -347,6 +347,16 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 
 ---
 
+### PRINCIPLE-020: Meta-Principle Integrity & Mutual Alignment (Code Quality Primacy)
+- **Problem**: When principles operate without systemic meta-governance, individual rules risk being selectively adhered to or bypassed; uncoordinated updates introduce contradictions between principles; rule changes lack cross-impact verification; and dogmatic or bureaucratic compliance compromises code quality.
+- **Concept**: Principles form an indivisible, coherent, and mutually reinforcing governance system whose sole purpose is elevating engineering excellence. Every principle is mandatory; no principle may contradict or undermine another; every principle change must be audited against all other principles; and principles must never lower code quality or force architectural degradation.
+- **Invariant**: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
+- **Rules**:
+  1. **Universal Adherence Invariant** *[Agent + Maintainer]*: Every principle in this system is mandatory and binding across all tasks and workflows. An agent or maintainer MUST NOT selectively ignore, weaken, or bypass any principle unless an RFC 2119 exception explicitly defined within that principle applies.
+  2. **Mutual Alignment & Non-Contradiction** *[Maintainer]*: Every principle MUST align with all other principles. No principle may introduce requirements, constraints, or definitions that conflict with, weaken, or subvert another principle. In any perceived friction, principles MUST be resolved toward systemic harmony, coherence, and non-contradiction.
+  3. **Cross-Principle Impact Verification Gate** *[Maintainer]*: Whenever any principle is added, modified, or removed, the change MUST be evaluated against every other active principle in `GUIDELINES.md` before committing, verifying that no existing invariant, security shield, or verification gate is undermined.
+  4. **Code Quality & Craftsmanship Primacy** *[Agent + Maintainer]*: Principles exist to safeguard and elevate software engineering excellence. Principles MUST NOT be interpreted or enforced in a manner that degrades code quality, encourages fragile workarounds, bloats complexity, or diminishes testing rigor. Governance serves craftsmanship, never vice versa.
+
 ---
 
 ## 🛠️ AI Task Checklists
@@ -371,6 +381,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] **Rule Freshness Baseline**: Have I confirmed the rule sync and codebase map are fresh at cold start (`python scripts/sync_principles.py --check`, `python scripts/update_knowledge_base.py --check`) so pre-existing drift is never misattributed to my changes (**PRINCIPLE-017**)?
 - [ ] **Delivery Baseline & Rollback Path**: Is the working tree clean (`git status --short`) on a tracked branch with a known-good `HEAD` to recoil to via `git reset --soft` (**PRINCIPLE-018**)?
 - [ ] **Secret Exposure Plan**: Will any credential, token or auth header touch code, fixtures, logs, prompts or ledger free-text, and is it supplied by env/secret store and referenced only by name (**PRINCIPLE-019**)?
+- [ ] **Meta-Principle Integrity & Systemic Quality**: Am I adhering to all principles, verifying cross-principle alignment, and ensuring governance enhances rather than compromises code quality (**PRINCIPLE-020**)?
 
 ### 🛬 Post-Flight Checklist (Run Before Completion)
 - [ ] Is governance overhead **lean and progressively disclosed** without prompt bloat (**PRINCIPLE-001**)?
@@ -392,6 +403,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] Have all **AI guideline files been verified fresh and synchronized with zero schema drift and triad parity** (**PRINCIPLE-017**)?
 - [ ] Has code been **explicitly staged (no blind 'git add .'), committed with Conventional Commits, verified via pre-commit triad, and pushed safely without force** (**PRINCIPLE-018**)?
 - [ ] Did **`scripts/check_secrets.py` pass on the staged diff and ledger**, with any exposed credential rotated rather than merely reverted (**PRINCIPLE-019**)?
+- [ ] Are all **principles strictly adhered, mutually aligned, verified against cross-principle regressions, and upholding code quality primacy** (**PRINCIPLE-020**)?
 
 ---
 

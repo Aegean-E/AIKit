@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `32`
 - **Total Functions / Methods**: `92`
-- **Total Source Lines**: `6332`
+- **Total Source Lines**: `6342`
 
 ---
 
@@ -221,10 +221,10 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2367` lines (`128316` bytes)
+**Size**: `2377` lines (`128996` bytes)
 
 **Classes:**
-- `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
+- `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
   - Method `.test_parse_all_principles()`
   - Method `.test_monotonic_lifecycle_phase_alignment()`
   - Method `.test_targets_in_sync_and_budgeted()`
@@ -237,6 +237,7 @@
   - Method `.test_principle_016_knowledge_base_capsule()`
   - Method `.test_principle_017_auto_sync_capsule()`
   - Method `.test_principle_018_git_workflow_capsule()`
+  - Method `.test_principle_020_meta_principle_capsule()`
   - Method `.test_guideline_targets_freshness_gate()`
   - Method `.test_triad_consistency_gate()`
   - Method `.test_checklists_cover_every_principle()`

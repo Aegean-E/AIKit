@@ -1,71 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p005-pass1",
+    "task_id": "meta-principle-020",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792174502.741346,
-    "completed_at": 1792174520.297527
+    "status": "in_progress",
+    "updated_at": 1792176224.3909514
   },
   "checkpoints": [
-    {
-      "task_id": "p003-unambiguity",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "P003 rewrite; git declared; traceback-free AST gate; Phase 4 passed on final tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792172411.6216552,
-      "timestamp_str": "2026-10-16 20:40:11"
-    },
-    {
-      "task_id": "p003-unambiguity",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p003-unambiguity' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792172411.7386367,
-      "timestamp_str": "2026-10-16 20:40:11"
-    },
-    {
-      "task_id": "p003-second-pass",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "P003 pass 2: -e search, ADR exception, no silent guesses; Phase 4 passed on final tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792172718.3748312,
-      "timestamp_str": "2026-10-16 20:45:18"
-    },
-    {
-      "task_id": "p003-second-pass",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p003-second-pass' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792172718.4972649,
-      "timestamp_str": "2026-10-16 20:45:18"
-    },
-    {
-      "task_id": "p003-third-pass",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "P003 pass 3: decision-table gaps, MIN_PYTHON AST gate; Phase 4 passed on final tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792172941.9478328,
-      "timestamp_str": "2026-10-16 20:49:01"
-    },
-    {
-      "task_id": "p003-third-pass",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p003-third-pass' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792172942.0564716,
-      "timestamp_str": "2026-10-16 20:49:02"
-    },
     {
       "task_id": "p004-unambiguity",
       "phase": "in_progress",
@@ -204,6 +146,72 @@
       "status": "completed",
       "timestamp": 1792174520.2975283,
       "timestamp_str": "2026-10-16 21:15:20"
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Phase 2: Add PRINCIPLE-020, adjust budget, update tests and docs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792175975.4030128,
+      "timestamp_str": "2026-10-16 21:39:35",
+      "impact_assessment": {
+        "why": "Introduce meta-principle for principle adherence, mutual alignment, cross-check on changes, and coding quality preservation, adjusting Tier 1 budget with user approval",
+        "benefits": "Prevents principle conflicts, protects code quality from bureaucratic degradation, ensures systemic integrity",
+        "risks": "Context budget overflow, checklist or triad desynchronization",
+        "mitigation": "Raise TARGET_TOKEN_BUDGET from 1500 to 1600 as approved, record ADR-064, run full test suite and sync gates"
+      }
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/3] Phase 3: Add PRINCIPLE-020 to GUIDELINES.md and update checklists",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792175978.99008,
+      "timestamp_str": "2026-10-16 21:39:38"
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/3] Phase 3: Update sync_principles.py and test_kit.py for 20 principles and 1600 budget",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176045.8863518,
+      "timestamp_str": "2026-10-16 21:40:45"
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[3/3] Phase 3: Update README.md, sync Tier 1 targets, append ADR-064",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176097.6814427,
+      "timestamp_str": "2026-10-16 21:41:37"
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "Phase 4: Run full verification suite, read-only gates, and dogfooding",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176181.3394587,
+      "timestamp_str": "2026-10-16 21:43:01"
+    },
+    {
+      "task_id": "meta-principle-020",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "Phase 5 Delivery: Stage, commit, and complete meta-principle task",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176224.3909514,
+      "timestamp_str": "2026-10-16 21:43:44"
     }
   ]
 }

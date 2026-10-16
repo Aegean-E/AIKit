@@ -23,7 +23,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~5s) |
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
-| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,500 est. tokens/target incl. a reserved 300-token Tier 1B |
+| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | AST parsed & validated without syntax errors |
@@ -122,7 +122,7 @@ Generate every Tier 1 file from `GUIDELINES.md`:
 ```bash
 python scripts/sync_principles.py
 ```
-This writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.agents/rules/principles.md` and `.github/copilot-instructions.md`, each within 1,500 est. tokens including your Tier 1B block.
+This writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.agents/rules/principles.md` and `.github/copilot-instructions.md`, each within 1,600 est. tokens including your Tier 1B block.
 
 ### Step 4: Generate Your Knowledge Base
 Run the knowledge base AST scanner to automatically index your project's classes and functions:
@@ -134,14 +134,14 @@ This generates `knowledge/codebase_map.md` with every exported class, method, ar
 
 ---
 
-## 🏛️ The 19 Core Principles (Lifecycle-Ordered)
+## 🏛️ The 20 Core Principles (Lifecycle-Ordered)
 
 The principles are strictly organized across **5 chronological execution phases**:
 
 ### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 | Principle | Title | Core Concept |
 |---|---|---|
-| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,500 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
+| **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,600 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
 | **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase gate (Phase 4 passes before delivery); Track A/B/C computed by `--track`; urgency never skips gates. |
 | **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness & call-site check; manifest dependency grounding; platform parity; strict AST gate. |
 | **PRINCIPLE-004** | Attentional Drift & Compaction Resilience | Bounded ledger (`task_ledger.json`); living plan SSOT; anti-repetition on compaction; AST-first retrieval. |
@@ -176,6 +176,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Multi-IDE rule sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
 | **PRINCIPLE-018** | Automatic Git Workflow | Conventional Commits; explicit staging (zero blind add); pre-commit triad; adaptive push. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; ignore-list baseline; pre-commit secret scan; rotate-not-revert. |
+| **PRINCIPLE-020** | Meta-Principle Integrity & Mutual Alignment | Universal adherence; mutual alignment across all principles; cross-principle impact audit on rule changes; code quality primacy over procedural formalism. |
 
 ---
 

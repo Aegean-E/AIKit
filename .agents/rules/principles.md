@@ -23,3 +23,4 @@
 - PRINCIPLE-017 Living Principles System & Automated Synchronization: Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (P001); schema compliance; freshness test gate; Tier 1B domain rules injection.
 - PRINCIPLE-018 Automatic Git Workflow: Automatic conventional commits (feat|fix|refactor|docs|chore|test|perf|build|ci) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil.
 - PRINCIPLE-019 Secret & Sensitive Data Hygiene: Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert.
+- PRINCIPLE-020 Meta-Principle Integrity & Mutual Alignment: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
