@@ -1193,6 +1193,21 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["e.g. changing strict checks", "critical paths", "Avoid over-mocking", "Prioritize hostile",
                      "unless the user explicitly requested a breaking contract overhaul"],
         },
+        "PRINCIPLE-015": {
+            "rules": 8,
+            "present": [
+                "AIKit's runner is `python scripts/dogfood.py`, for AIKit's CLIs; an adopting project writes its own",
+                "within 500ms",
+                "kills the whole process tree",
+                "the duty itself is PRINCIPLE-011 R2 and R5",
+                "fails when it changed; it MUST NOT write to the user's home folders",
+                "Running `--help` alone is not a dogfood run",
+                "The runner prints at most 15 lines",
+                "It is one of PRINCIPLE-018 R3's commit gates",
+                "obeys the step and token caps of PRINCIPLE-012 R6",
+            ],
+            "gone": ["remain concise", "(<15 lines)", "strictly prohibited", "bit-for-bit clean"],
+        },
         "PRINCIPLE-000": {
             "rules": 7,
             "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires"],

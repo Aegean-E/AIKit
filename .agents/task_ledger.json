@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p014-pass1",
+    "task_id": "p015-pass1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792188440.0111341,
-    "completed_at": 1792188481.5866141
+    "updated_at": 1792188575.866018,
+    "completed_at": 1792188589.7609172
   },
   "checkpoints": [
-    {
-      "task_id": "p011-pass1",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: read P011",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187917.1829894,
-      "timestamp_str": "2026-10-17 00:58:37"
-    },
-    {
-      "task_id": "p011-pass1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] gate raw os.environ[...] reads (P011 R3); rewrite P011 R1-R7: deps per P003 R3 with adapter-local imports, R3 defers to P003 R6, R4 defers to P003 R4, defined interactive opt-in, exit codes, triad format, one end-to-end demo command; ADR-084",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187946.2342482,
-      "timestamp_str": "2026-10-17 00:59:06",
-      "impact_assessment": {
-        "why": "R1 contradicts P003 R3; R3/R4 duplicate P003; R7 is a should; hedges",
-        "benefits": "one dependency rule, one platform rule; env-read ban checked",
-        "risks": "contract: update_knowledge_base exits 1 on raw environ reads; dependency: none; concurrency: none; state: none",
-        "mitigation": "AIKit has none; README/help updated; pins"
-      }
-    },
-    {
-      "task_id": "p011-pass1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792187946.356135,
-      "timestamp_str": "2026-10-17 00:59:06"
-    },
-    {
-      "task_id": "p011-pass1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792188020.4724667,
-      "timestamp_str": "2026-10-17 01:00:20"
-    },
-    {
-      "task_id": "p011-pass1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p011-pass1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792188039.0286164,
-      "timestamp_str": "2026-10-17 01:00:39"
-    },
     {
       "task_id": "p012-pass1",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792188481.5866153,
       "timestamp_str": "2026-10-17 01:08:01"
+    },
+    {
+      "task_id": "p015-pass1",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: read P015",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188489.4090533,
+      "timestamp_str": "2026-10-17 01:08:09"
+    },
+    {
+      "task_id": "p015-pass1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] rewrite P015 R1-R8: whose runner (AIKit dogfood.py vs project's own), when (P018 R3 gate), link duplicates to P011/P004/P012, one line limit (15, P004 R5), domain contracts as numbers; ADR-088",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188527.8205707,
+      "timestamp_str": "2026-10-17 01:08:47",
+      "impact_assessment": {
+        "why": "P015 linked to no principle; R3/R7/R8 restate P011/P004/P012 with different numbers; runner ownership undefined",
+        "benefits": "one reading; duplicates become pointers",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "pins; cross-principle ADR line"
+      }
+    },
+    {
+      "task_id": "p015-pass1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188527.9623773,
+      "timestamp_str": "2026-10-17 01:08:47"
+    },
+    {
+      "task_id": "p015-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792188575.866018,
+      "timestamp_str": "2026-10-17 01:09:35"
+    },
+    {
+      "task_id": "p015-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p015-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792188589.7609189,
+      "timestamp_str": "2026-10-17 01:09:49"
     }
   ]
 }
