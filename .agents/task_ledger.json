@@ -4,19 +4,11 @@
     "task_id": "p000-zeroth-law",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792176626.7156353
+    "status": "completed",
+    "updated_at": 1792176626.7156353,
+    "completed_at": 1792176662.9404984
   },
   "checkpoints": [
-    {
-      "task_id": "p004-pass3",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p004-pass3' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792174038.4986496,
-      "timestamp_str": "2026-10-16 21:07:18"
-    },
     {
       "task_id": "p005-pass1",
       "phase": "in_progress",
@@ -219,6 +211,15 @@
       "status": "in_progress",
       "timestamp": 1792176626.7156353,
       "timestamp_str": "2026-10-16 21:50:26"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p000-zeroth-law' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792176662.9405003,
+      "timestamp_str": "2026-10-16 21:51:02"
     }
   ]
 }
