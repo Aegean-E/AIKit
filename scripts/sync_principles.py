@@ -504,7 +504,7 @@ def print_help():
     print("""AIKit Principles Auto-Sync Tool (PRINCIPLE-017)
 
 Usage:
-  py scripts/sync_principles.py [OPTIONS]
+  python scripts/sync_principles.py [OPTIONS]
 
 Options:
   --check          Verify that all guideline targets are fresh without modifying files (exits 1 on drift)
@@ -522,7 +522,7 @@ if __name__ == "__main__":
         if len(sys.argv) < 3:
             print("[INVALID USAGE] --involved requires text to match.", file=sys.stderr)
             print("Why: involvement is computed from the paths, commands or failing output given.", file=sys.stderr)
-            print("Fix: py scripts/sync_principles.py --involved scripts/dogfood.py \"pytest failed\"", file=sys.stderr)
+            print("Fix: python scripts/sync_principles.py --involved scripts/dogfood.py \"pytest failed\"", file=sys.stderr)
             sys.exit(2)
         for pid in involved_principles(parse_principles(SSOT_MD, strict=True), " ".join(sys.argv[2:])):
             print(pid)
@@ -547,7 +547,7 @@ if __name__ == "__main__":
     if _unknown:
         print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(_unknown)}", file=sys.stderr)
         print("Why: unrecognized flags would otherwise trigger an unintended full rule rewrite.", file=sys.stderr)
-        print("Fix: run 'py scripts/sync_principles.py --help' to list valid options.", file=sys.stderr)
+        print("Fix: run 'python scripts/sync_principles.py --help' to list valid options.", file=sys.stderr)
         sys.exit(2)
 
     check_mode = "--check" in sys.argv

@@ -23,8 +23,8 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
+    except (AttributeError, ValueError, OSError):
+        pass  # documented default: keep the console's own encoding (cosmetic; no input is read)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 AGENTS_DIR = ROOT_DIR / ".agents"
@@ -159,7 +159,10 @@ def check_disk_headroom(target_dir: Path, min_mb: float = 10.0) -> bool:
             sys.stderr.write(f"[WARN] Low disk space: {free_mb:.1f}MB remaining (minimum {min_mb}MB required)\n")
             return False
         return True
-    except Exception:
+    except OSError as e:
+        # Documented default: proceed with the write. Announced, never silent (PRINCIPLE-003 R6).
+        sys.stderr.write(f"[WARN] Could not measure free space in {target_dir} ({e}); "
+                         f"proceeding without the {min_mb}MB headroom check.\n")
         return True
 
 
@@ -264,8 +267,9 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
                     recovered = json.load(f_bak)
                     sys.stderr.write(f"[INFO] Recovered task ledger from shadow backup {bak_path.name}\n")
                     return migrate_ledger_schema(recovered)
-            except Exception:
-                pass
+            except (OSError, ValueError) as e:
+                sys.stderr.write(f"[WARN] Shadow backup {bak_path.name} is unreadable ({e}); "
+                                 f"starting an empty ledger. Task history was not recovered.\n")
 
         return {"version": 1, "active_task": None, "checkpoints": []}
 
@@ -531,10 +535,10 @@ def clean_dangling_temp_files(workspace_dir: Optional[Path] = None) -> List[str]
                     rel = str(p.relative_to(ws))
                     p.unlink()
                     deleted.append(rel)
-                except OSError:
-                    pass
-    except Exception:
-        pass
+                except OSError as e:
+                    sys.stderr.write(f"[WARN] Could not delete {p}: {e}\n")
+    except OSError as e:
+        sys.stderr.write(f"[WARN] Temp-buffer scan of {ws} stopped early ({e}); list is partial.\n")
     return deleted
 
 
@@ -575,6 +579,7 @@ def run_disruption_audit(
         "clean_shutdown": True,
         "quarantined_files": [],
         "dangling_temp_files": [],
+        "scan_errors": [],
     }
 
     # 1. Check Git Status
@@ -618,16 +623,16 @@ def run_disruption_audit(
         for p in ws.rglob("*.corrupt_*"):
             if ".git" not in str(p):
                 audit["quarantined_files"].append(str(p.relative_to(ws)))
-    except Exception:
-        pass
+    except OSError as e:
+        audit["scan_errors"].append(f"quarantine scan: {e}")
 
     # 4. Check for Dangling Temporary Files (*.tmp_*) from interrupted atomic writes
     try:
         for p in ws.rglob("*.tmp_*"):
             if ".git" not in str(p):
                 audit["dangling_temp_files"].append(str(p.relative_to(ws)))
-    except Exception:
-        pass
+    except OSError as e:
+        audit["scan_errors"].append(f"temp-buffer scan: {e}")
 
     return audit
 
@@ -642,6 +647,8 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
 
     if audit.get("has_conflicts"):
         lines.append("🔴 Status: UNRESOLVED MERGE CONFLICTS - resolve before any edit or commit!")
+    elif audit.get("scan_errors"):
+        lines.append("🟡 Status: Audit incomplete - some scans failed, so 'clean' cannot be claimed.")
     elif audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files") and not audit.get("git_missing"):
         lines.append("🟢 Status: Clean state. No interrupted tasks or uncommitted drift detected.")
     else:
@@ -652,6 +659,9 @@ def format_audit_report(audit: Dict[str, Any]) -> str:
         for f in audit["conflicted_files"]:
             lines.append(f"   • {f}")
         lines.append("   Fix: resolve, then 'git add <file>' — or abort via 'git merge --abort' / 'git rebase --abort'")
+
+    for err in audit.get("scan_errors", []):
+        lines.append(f"⚠️  Scan failed: {err}")
 
     if audit.get("git_missing"):
         lines.append("⚠️  Git Inactive: Not a git repository (run 'git init' to enable full tracking)")
@@ -927,7 +937,7 @@ KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS
 HELP_TEXT = """AIKit Disruption Recovery & Task Ledger (PRINCIPLE-006, PRINCIPLE-013)
 
 Usage:
-  py scripts/disruption_recovery.py [ACTION] [OPTIONS]
+  python scripts/disruption_recovery.py [ACTION] [OPTIONS]
 
 Actions (default: --audit):
   --audit                    Report working-tree drift, dangling buffers, and ledger state
@@ -983,7 +993,7 @@ if __name__ == "__main__":
     if _unknown:
         print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(_unknown)}", file=sys.stderr)
         print("Why: the requested action is not part of this tool's CLI contract.", file=sys.stderr)
-        print("Fix: run 'py scripts/disruption_recovery.py --help' to list valid actions.", file=sys.stderr)
+        print("Fix: run 'python scripts/disruption_recovery.py --help' to list valid actions.", file=sys.stderr)
         sys.exit(2)
 
     # Resolve the target workspace once. Default stays repository-anchored so an agent in a

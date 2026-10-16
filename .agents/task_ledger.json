@@ -1,39 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p003-unambiguity",
+    "task_id": "p003-second-pass",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792172411.6216552,
-    "completed_at": 1792172411.7386355
+    "updated_at": 1792172718.3748312,
+    "completed_at": 1792172718.497263
   },
   "checkpoints": [
-    {
-      "task_id": "principle-roadmap-m2-dogfood",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-roadmap-m2-dogfood' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792103316.2020974,
-      "timestamp_str": "2026-10-16 01:28:36"
-    },
-    {
-      "task_id": "principle-roadmap-m3-reachability",
-      "phase": "2",
-      "phase_num": 2,
-      "description": "Milestone 3/5: add P014 R7 invariant reachability shield with AST checker, instead of a new principle",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792103339.7690794,
-      "timestamp_str": "2026-10-16 01:28:59",
-      "impact_assessment": {
-        "why": "The green-test-broken-production class recurred 5 times across audits (unused lock, phantom last_phase_num key, porcelain whitelist gap, async omission, tautological dogfood test); no principle covers declared-but-unwired capabilities",
-        "benefits": "Mechanical regression shield for the single highest-frequency defect class in the repo, at zero Tier 1 token cost since it folds into an existing principle rather than adding P019",
-        "risks": "False positives on intentionally-exported library API could create noise and erode trust in the gate",
-        "mitigation": "Allowlist for deliberately public API; checker reports only prod-unreachable symbols; test asserts the checker is clean rather than asserting a symbol list"
-      }
-    },
     {
       "task_id": "principle-roadmap-m3-reachability",
       "phase": "completed",
@@ -234,6 +209,25 @@
       "status": "completed",
       "timestamp": 1792172411.7386367,
       "timestamp_str": "2026-10-16 20:40:11"
+    },
+    {
+      "task_id": "p003-second-pass",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "P003 pass 2: -e search, ADR exception, no silent guesses; Phase 4 passed on final tree",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792172718.3748312,
+      "timestamp_str": "2026-10-16 20:45:18"
+    },
+    {
+      "task_id": "p003-second-pass",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p003-second-pass' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792172718.4972649,
+      "timestamp_str": "2026-10-16 20:45:18"
     }
   ]
 }

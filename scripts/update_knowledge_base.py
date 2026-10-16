@@ -381,7 +381,7 @@ KNOWN_FLAGS = {"--check", "--lenient", "--help", "-h"}
 HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
 
 Usage:
-  py scripts/update_knowledge_base.py [OPTIONS]
+  python scripts/update_knowledge_base.py [OPTIONS]
 
 Options:
   --check     Verify codebase_map.md is fresh against the AST without writing (exits 1 on drift)
@@ -402,7 +402,7 @@ def _validate_argv(argv: List[str], known: set, help_text: str) -> None:
     if unknown:
         print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(unknown)}", file=sys.stderr)
         print(f"Why: this tool accepts only {', '.join(sorted(known))}.", file=sys.stderr)
-        print("Fix: run 'py scripts/update_knowledge_base.py --help' to list valid options.", file=sys.stderr)
+        print("Fix: run 'python scripts/update_knowledge_base.py --help' to list valid options.", file=sys.stderr)
         sys.exit(2)
 
 

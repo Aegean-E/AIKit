@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `27`
+- **Total Classes**: `28`
 - **Total Functions / Methods**: `84`
-- **Total Source Lines**: `5784`
+- **Total Source Lines**: `5860`
 
 ---
 
@@ -55,7 +55,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1124` lines (`47037` bytes)
+**Size**: `1134` lines (`48130` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -110,7 +110,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `563` lines (`26183` bytes)
+**Size**: `563` lines (`26195` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -133,7 +133,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `436` lines (`16091` bytes)
+**Size**: `436` lines (`16099` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -152,7 +152,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `530` lines (`24667` bytes)
+**Size**: `541` lines (`25215` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -195,6 +195,8 @@
   - Method `.test_missing_text_is_misuse()`
 - `class TestTrackCli` - *`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3).*
   - Method `.test_track_follows_the_actual_diff()`
+- `class TestCallSiteCommand` - *PRINCIPLE-003 R2's exact command must work for every name kind it covers, flags included.*
+  - Method `.test_command_finds_a_flag()`
 - `class TestAstGateCli` - *PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback.*
   - Method `.test_syntax_error_halts_cleanly()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
@@ -209,7 +211,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2032` lines (`107415` bytes)
+**Size**: `2087` lines (`110566` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -268,6 +270,11 @@
   - Method `.test_open_terms_are_defined()`
   - Method `.test_cross_references_resolve()`
   - Method `.test_every_external_program_the_scripts_run_is_declared()`
+  - Method `.test_no_silent_broad_exception_handlers()`
+  - Method `.test_user_facing_commands_use_python_not_py()`
+  - Method `.test_unmeasurable_disk_space_is_announced()`
+  - Method `.test_unreadable_backup_is_announced()`
+  - Method `.test_failed_audit_scan_is_never_reported_clean()`
   - Method `.test_scripts_follow_platform_parity()`
 - `class TestLifecycleToolSemantics` - *PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.*
   - Method `.test_bare_digit_phase_is_that_phase()`

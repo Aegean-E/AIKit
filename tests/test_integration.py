@@ -449,6 +449,17 @@ class TestTrackCli(unittest.TestCase):
         self.assertEqual(track(), "Track C")
 
 
+class TestCallSiteCommand(unittest.TestCase):
+    """PRINCIPLE-003 R2's exact command must work for every name kind it covers, flags included."""
+
+    def test_command_finds_a_flag(self):
+        res = subprocess.run(["git", "grep", "-n", "-w", "-e", "--track"], cwd=str(ROOT_DIR),
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=PROC_TIMEOUT)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("disruption_recovery.py", res.stdout)
+
+
 class TestAstGateCli(unittest.TestCase):
     """PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback."""
 

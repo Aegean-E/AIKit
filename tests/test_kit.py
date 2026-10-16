@@ -765,7 +765,11 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
     def test_open_terms_are_defined(self):
         for definition in (
             "the file MUST NOT have been written since that read",
-            "`git grep -n -w <name>`",
+            "`git grep -n -w -e <name>`",
+            "Hits in `knowledge/decisions.md` always stay unchanged",
+            "Declaring a new dependency requires the user's explicit approval",
+            "An optional argument the user simply did not give is not missing input",
+            "it MAY continue work that does not depend on the answer",
             "including tests and documentation",
             "A *dependency* is any import outside the language's standard library",
             "MUST NOT use `shell=True` or `os.system`",
@@ -805,6 +809,57 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
                 with self.subTest(script=script.name, program=program):
                     self.assertIn(f"`{program}`", prerequisites,
                                   f"{script.name} runs undeclared program {program!r}")
+
+    def test_no_silent_broad_exception_handlers(self):
+        # Red-green pin (R6, PRINCIPLE-007 R3): six `except Exception: pass/return` blocks made the
+        # scripts continue on silent guesses - e.g. an unreadable backup silently became an empty
+        # ledger, and a failed audit scan reported "clean".
+        import ast
+        for script in sorted((ROOT_DIR / "scripts").glob("*.py")):
+            tree = ast.parse(script.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ExceptHandler) or node.type is None:
+                    continue
+                broad = "Exception" in ast.dump(node.type) and "Error" not in ast.dump(node.type)
+                silent = all(isinstance(b, (ast.Pass, ast.Return, ast.Continue)) for b in node.body)
+                with self.subTest(script=script.name, line=node.lineno):
+                    self.assertFalse(broad and silent,
+                                     f"{script.name}:{node.lineno} swallows Exception silently")
+
+    def test_user_facing_commands_use_python_not_py(self):
+        # R4 + PRINCIPLE-011 R6: a remediation command must work when copy-pasted on any OS; the
+        # `py` launcher exists only on Windows.
+        for path in [*sorted((ROOT_DIR / "scripts").glob("*.py")), SSOT_MD, README_MD]:
+            with self.subTest(file=path.name):
+                self.assertNotRegex(path.read_text(encoding="utf-8"), r"(?<![\w-])py scripts/")
+
+    def test_unmeasurable_disk_space_is_announced(self):
+        real = shutil.disk_usage
+        self.addCleanup(setattr, shutil, "disk_usage", real)
+
+        def fail(path):
+            raise OSError("statvfs unavailable")
+        shutil.disk_usage = fail
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertTrue(check_disk_headroom(Path(tempfile.gettempdir())))
+        self.assertIn("[WARN] Could not measure free space", err.getvalue())
+
+    def test_unreadable_backup_is_announced(self):
+        led = Path(tempfile.mkdtemp(prefix="test_bak_")) / "task_ledger.json"
+        self.addCleanup(shutil.rmtree, led.parent, ignore_errors=True)
+        led.write_text("{ corrupt", encoding="utf-8")
+        led.with_suffix(".json.bak").write_text("{ also corrupt", encoding="utf-8")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(load_ledger(led)["checkpoints"], [])
+        self.assertIn("Task history was not recovered", err.getvalue())
+
+    def test_failed_audit_scan_is_never_reported_clean(self):
+        report = format_audit_report({"clean_shutdown": True, "scan_errors": ["temp-buffer scan: denied"]})
+        self.assertNotIn("Clean state", report)
+        self.assertIn("Audit incomplete", report)
+        self.assertIn("temp-buffer scan: denied", report)
 
     def test_scripts_follow_platform_parity(self):
         # R4, mechanically: no shell strings, no hardcoded interpreter names.
