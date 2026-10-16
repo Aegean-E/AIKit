@@ -15,6 +15,7 @@
 | **[`decisions.md`](decisions.md)** | Architectural Decision Records (ADR log of trade-offs and rationale). |
 | **[`codebase_map.md`](codebase_map.md)** | Auto-generated AST symbol map of all modules, classes, and exported functions. |
 | **[`model_benchmarks.md`](model_benchmarks.md)** | Subagent model benchmark database, online empirical metrics, and selection tree. |
+| **[`host_clients.md`](host_clients.md)** | Agent host clients, multi-environment portability architecture, and Claude parity. |
 
 ---
 

@@ -7,9 +7,18 @@ description: >-
   checkpointing tasks, scanning for secrets, verifying reachability, or executing dogfooding and pre-commit gates.
 ---
 
-# AIKit Operational Runbook (Antigravity Integration)
+# AIKit Operational Runbook (Universal Host Integration)
 
-This skill integrates AIKit's command matrix with Antigravity agent workflows across the 5 lifecycle phases.
+This operational runbook provides the unified command matrix for driving AIKit across all supported agent host clients (Antigravity, Claude, OpenCode, Cursor, Copilot) under **PRINCIPLE-009 R7** (Pluggable Host Architecture) and **PRINCIPLE-017 R2** (Cross-IDE Synchronization).
+
+---
+
+## 🌐 Host Client Operation Matrix
+
+- **Antigravity**: Native chat harness. Discovers this skill via `.agents/skills/aikit/SKILL.md` and rule files in `.agents/rules/`.
+- **Claude (Code CLI / Desktop)**: Reads `CLAUDE.md` automatically on startup. Executes kit commands directly via terminal tool calls.
+- **OpenCode**: Runs headless subagent profiles (`architect`, `coder`, `tester`, etc.) via `opencode run --standalone`.
+- **State SSOT**: All clients interact with workspace state strictly through `python scripts/disruption_recovery.py` and `.agents/task_ledger.json`.
 
 ---
 
@@ -55,20 +64,26 @@ python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num 2 --des
 
 To prevent context exhaustion and preserve primary model quota (**PRINCIPLE-012 R8**), delegate token-heavy exploratory and repetitive tasks to worker subagents running free or local models:
 
-### 1. Headless CLI Delegation (PRINCIPLE-011 R2/R5)
-Always invoke OpenCode in non-interactive headless mode with `--standalone` for RAII process isolation (PRINCIPLE-015):
+### 1. Headless Multi-Subagent Invocations (OpenCode v2)
+Invoke specialized subagents in non-interactive headless mode with `--standalone` (PRINCIPLE-011 R5, PRINCIPLE-015):
 ```bash
-# Target file audit & drafting using native worker subagent (.opencode/agents/worker.md):
+# Deep reasoning on system design & ADRs (architect):
+opencode run --standalone --format json --agent architect "<prompt>"
+
+# High-fidelity code generation & refactoring (coder):
+opencode run --standalone --format json --agent coder --file <path> "<prompt>"
+
+# Test engineering & regression suite generation (tester):
+opencode run --standalone --format json --agent tester --file <test_file> "<prompt>"
+
+# Documentation, link integrity & secret review (reviewer):
+opencode run --standalone --format json --agent reviewer "<prompt>"
+
+# High-speed symbol lookup & file tree mapping (explorer):
+opencode run --standalone --format json --agent explorer "<search_query>"
+
+# General background worker (worker):
 opencode run --standalone --format json --agent worker --file <path> "<prompt>"
-
-# Built-in read-only zero-token code search & exploration:
-opencode run --standalone --format json --agent explore "<search_prompt>"
-
-# Automated analysis using OpenCode free tier models:
-opencode run --standalone --format json --agent worker --model opencode/deepseek-v4.1-flash-free --auto "<prompt>"
-
-# Offline local model execution (Ollama via opencode.jsonc):
-opencode run --standalone --format json --agent worker --model ollama/qwen2.5-coder:latest --auto "<prompt>"
 ```
 
 ### 2. Model & Provider Options (opencode.jsonc)

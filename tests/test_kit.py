@@ -1215,7 +1215,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                      "update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks"],
         },
         "PRINCIPLE-009": {
-            "rules": 6,
+            "rules": 7,
             "present": [
                 "A *pluggable boundary* is a role with two or more production implementations",
                 "a test double alone does not make one",
@@ -1229,6 +1229,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "fails on a junk-drawer module name, a role outside 1 to 5 methods and an import cycle",
                 "Adding or integrating an external AI model service or provider",
                 "Ground-Truth Benchmark & Multi-Agent Verification",
+                "Agent Host Environment & Client Portability",
             ],
 
             "gone": ["Anti-Junk-Drawer Invariant", "100% of the declared contract", "e.g. `CliParser`",

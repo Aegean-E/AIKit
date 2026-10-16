@@ -29,6 +29,7 @@ CORE_DOCS = [
     "decisions.md",
     "codebase_map.md",
     "model_benchmarks.md",
+    "host_clients.md",
 ]
 
 IGNORE_DIRS = {

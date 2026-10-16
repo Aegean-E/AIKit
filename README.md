@@ -97,7 +97,8 @@ portable_agent_kit/
     ├── state_and_ui.md                 <- Presentation layer, UI state, and event loops
     ├── decisions.md                    <- Architectural Decision Records (ADRs)
     ├── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
-    └── model_benchmarks.md             <- Subagent model benchmark database & selection tree
+    ├── model_benchmarks.md             <- Subagent model benchmark database & selection tree
+    └── host_clients.md                 <- Host client portability & cross-environment parity
 ```
 
 

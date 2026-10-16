@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `44`
 - **Total Functions / Methods**: `114`
-- **Total Source Lines**: `7816`
+- **Total Source Lines**: `7818`
 
 ---
 
@@ -148,7 +148,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `843` lines (`37241` bytes)
+**Size**: `844` lines (`37264` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -244,7 +244,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3268` lines (`181781` bytes)
+**Size**: `3269` lines (`181844` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
