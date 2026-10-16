@@ -473,11 +473,12 @@ class TestTierBudgetDiscipline(unittest.TestCase):
 
     def test_unit_tier_spawns_no_processes_and_never_sleeps(self):
         source = self.UNIT_MODULE.read_text(encoding="utf-8")
+        # Calls, not the module name: test_kit imports subprocess solely to guard against spawns.
         forbidden = {
-            "subprocess": r"\bsubprocess\b",
-            "os.system": r"\bos\.system\b",
-            "time.sleep": r"\btime\.sleep\b",
-            "Popen": r"\bPopen\b",
+            "subprocess.run call": r"\bsubprocess\.run\(",
+            "Popen call": r"\bPopen\(",
+            "os.system call": r"\bos\.system\(",
+            "time.sleep call": r"\btime\.sleep\(",
         }
         offenders = [name for name, pat in forbidden.items() if re.search(pat, source)]
         self.assertEqual(
@@ -486,30 +487,13 @@ class TestTierBudgetDiscipline(unittest.TestCase):
             f"move process-spawning or sleeping tests into tests/test_integration.py",
         )
 
-    def test_unit_tier_spawns_nothing_at_runtime(self):
-        # The source scan above cannot see INDIRECT spawns: four unit tests reached `git` through
-        # run_disruption_audit while the text check passed. Run the whole unit tier under a spawn
-        # detector and require zero process launches.
-        spawned = []
-        real_init = subprocess.Popen.__init__
-
-        def detect(popen_self, args, *a, **k):
-            spawned.append(args if isinstance(args, str) else " ".join(map(str, args)))
-            return real_init(popen_self, args, *a, **k)
-
-        subprocess.Popen.__init__ = detect
-        self.addCleanup(setattr, subprocess.Popen, "__init__", real_init)
-        suite = unittest.TestLoader().loadTestsFromName("tests.test_kit")
-        result = unittest.TestResult()
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            suite.run(result)
-        subprocess.Popen.__init__ = real_init
-        self.assertTrue(result.wasSuccessful(), "unit tier failed while under the spawn detector")
-        self.assertEqual(
-            spawned, [],
-            f"the unit tier launched {len(spawned)} process(es): {spawned[:3]}; inject a fake "
-            f"adapter (PRINCIPLE-009 R4) or move the test to tests/test_integration.py",
-        )
+    def test_unit_tier_guards_itself_against_spawns(self):
+        # Supersedes a ~1s full re-run of the unit tier under a detector: test_kit now installs a
+        # module-level guard that fails any unit test the moment it starts a process, by name.
+        source = self.UNIT_MODULE.read_text(encoding="utf-8")
+        self.assertIn("def setUpModule():\n    subprocess.Popen.__init__ = _refuse_spawn", source)
+        self.assertIn("def tearDownModule():\n    subprocess.Popen.__init__ = _REAL_POPEN_INIT",
+                      source)
 
     def test_integration_tier_bounds_every_spawn(self):
         source = Path(__file__).read_text(encoding="utf-8")

@@ -1,39 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p002-second-pass",
+    "task_id": "p002-third-pass",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792168940.7400532,
-    "completed_at": 1792168940.8529816
+    "updated_at": 1792171847.0099592,
+    "completed_at": 1792171847.1242723
   },
   "checkpoints": [
-    {
-      "task_id": "principle-audit-pass2-correctness",
-      "phase": "2",
-      "phase_num": 2,
-      "description": "Fix 4 proven defects: unused advisory lock (lost updates), porcelain blindness to merge conflicts, broken phase resumption, AST catalog missing async+signatures",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792101180.523438,
-      "timestamp_str": "2026-10-16 00:53:00",
-      "impact_assessment": {
-        "why": "Deep per-principle audit proved 4 load-bearing invariants are green in tests but broken in production: P013 R3 lock has zero call sites (5/6 concurrent checkpoints lost), P006 audit reports UU merge conflicts as clean, P002/P004 resume always reports Phase 2, P016 map omits all async defs and truncates signatures",
-        "benefits": "Closes the silent-data-loss and false-clean classes of defect; makes the symbol catalog trustworthy for call-site verification; restores monotonic phase resumption",
-        "risks": "Lock wiring could deadlock or slow the sub-second suite; porcelain rewrite could misclassify states; richer signatures churn codebase_map.md",
-        "mitigation": "Bounded lock timeout with fail-loud on contention; whitelist-free porcelain rule validated against all 16 real states; regenerate map and assert freshness gate"
-      }
-    },
-    {
-      "task_id": "principle-audit-pass2-correctness",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'principle-audit-pass2-correctness' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792102218.7541125,
-      "timestamp_str": "2026-10-16 01:10:18"
-    },
     {
       "task_id": "principle-roadmap-m1-ci",
       "phase": "2",
@@ -246,6 +221,25 @@
       "status": "completed",
       "timestamp": 1792168940.852983,
       "timestamp_str": "2026-10-16 19:42:20"
+    },
+    {
+      "task_id": "p002-third-pass",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "P002 pass 3: resume/phase/audit semantics; budgets restored; Phase 4 passed on final tree",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792171847.0099592,
+      "timestamp_str": "2026-10-16 20:30:47"
+    },
+    {
+      "task_id": "p002-third-pass",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p002-third-pass' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792171847.1242743,
+      "timestamp_str": "2026-10-16 20:30:47"
     }
   ]
 }

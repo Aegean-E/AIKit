@@ -347,6 +347,10 @@ def resolve_phase_num(phase: str, explicit_num: Optional[int] = None) -> int:
     if explicit_num is not None and 1 <= explicit_num <= 5:
         return explicit_num
     normalized = phase.strip().lower()
+    # A bare digit is the phase itself. PRINCIPLE-007 R6 documents `--phase 2`, and "2" matched
+    # none of the phase words below, so that checkpoint was recorded as Phase 1.
+    if normalized in {"1", "2", "3", "4", "5"}:
+        return int(normalized)
     for key, num in PHASE_MAPPING.items():
         if key in normalized:
             return num
@@ -579,8 +583,8 @@ def run_disruption_audit(
         returncode, stdout, stderr = run_git(ws)
         if returncode == 0:
             classified = classify_git_status(stdout)
-            audit["modified_files"] = classified["modified"]
-            audit["untracked_files"] = classified["untracked"]
+            audit["modified_files"] = [f for f in classified["modified"] if f not in BOOKKEEPING_PATHS]
+            audit["untracked_files"] = [f for f in classified["untracked"] if f not in BOOKKEEPING_PATHS]
             audit["conflicted_files"] = classified["conflicted"]
             audit["has_conflicts"] = bool(audit["conflicted_files"])
             audit["has_uncommitted_changes"] = bool(
@@ -724,9 +728,10 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     task_id = interrupted.get("task_id", "unknown")
     phase = interrupted.get("last_phase", "unknown")
     phase_num = resolve_active_phase(interrupted, default=2)
-    # Monotonic resumption (PRINCIPLE-002 R1): never recommend an earlier phase than the one
-    # actually reached. Surviving uncommitted work means the phase is still in flight.
-    next_phase_num = max(phase_num, min(5, phase_num if audit.get("has_uncommitted_changes") else phase_num + 1))
+    # PRINCIPLE-002 R4 records a checkpoint on ENTERING a phase, so the recorded phase is the one
+    # in progress: resume there. Guessing "phase + 1" when the tree was clean skipped work - after
+    # a PRINCIPLE-006 milestone commit during Phase 3, it sent the agent straight to Phase 4.
+    next_phase_num = phase_num
     
     lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
     lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")
@@ -825,7 +830,7 @@ TRACK_C_DOC_NAMES = frozenset({
 # Bookkeeping written by AIKit's own lifecycle commands. PRINCIPLE-002 R4 requires these writes,
 # so they must not move the track: before this, recording the mandated checkpoint alone turned a
 # documentation-only task into Track C.
-TRACK_NEUTRAL_PATHS = frozenset({".agents/task_ledger.json"})
+BOOKKEEPING_PATHS = frozenset({".agents/task_ledger.json"})
 
 
 def _ast_without_docstrings(source: str) -> str:
@@ -900,7 +905,7 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
         xy, path = raw[:2], raw[3:]
         if "R" in xy or "C" in xy:
             i += 1  # -z puts the rename/copy source in the next field; we classify the new path
-        if path in TRACK_NEUTRAL_PATHS:
+        if path in BOOKKEEPING_PATHS:
             continue
         head = git("show", f"HEAD:{path}")
         old = head.stdout if head.returncode == 0 else None

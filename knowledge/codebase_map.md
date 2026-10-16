@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `24`
-- **Total Functions / Methods**: `78`
-- **Total Source Lines**: `5527`
+- **Total Classes**: `25`
+- **Total Functions / Methods**: `83`
+- **Total Source Lines**: `5649`
 
 ---
 
@@ -54,7 +54,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1119` lines (`46671` bytes)
+**Size**: `1124` lines (`47037` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -109,7 +109,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `547` lines (`25430` bytes)
+**Size**: `563` lines (`26183` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -118,6 +118,7 @@
 - `def load_tier_1b_domain_rules(domain_path)` - *Load project-specific domain rules from .agents/rules/domain.md if present (PRINCIPLE-001, PRINCIPLE-017).*
 - `def append_domain_rules(lines, domain_rules)` - *Helper to append Tier 1B domain rules to prompt targets.*
 - `def parse_principles(agents_file, strict)` - *Parse the principle SSOT, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression.*
+- `def _parse_principles_uncached(content, strict)` - *Parsing and validation proper; see parse_principles().*
 - `def validate_triad_consistency(principles, readme_file)` - *Verify the documentation triad's public leg: README.md lists every principle (PRINCIPLE-017).*
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
@@ -131,12 +132,13 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `402` lines (`14566` bytes)
+**Size**: `427` lines (`15602` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
 - `def render_signature(node, drop_self)` - *Render a complete call signature from an AST function node (PRINCIPLE-003, PRINCIPLE-016).*
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
+- `def _extract_symbols_uncached(file_path, content, strict)` - *AST extraction proper; see extract_python_symbols().*
 - `def find_python_files(root)` - *Dynamically discover all source python files across the repository.*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
@@ -149,7 +151,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `527` lines (`24461` bytes)
+**Size**: `511` lines (`23812` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -196,7 +198,7 @@
   - Method `.test_this_repository_is_clean()`
 - `class TestTierBudgetDiscipline` - *Structural enforcement of the two-tier test budget (PRINCIPLE-010 R6, PRINCIPLE-014 R3).*
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
-  - Method `.test_unit_tier_spawns_nothing_at_runtime()`
+  - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
 
 ---
@@ -204,7 +206,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `1851` lines (`97372` bytes)
+**Size**: `1943` lines (`102186` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -255,6 +257,13 @@
   - Method `.test_cross_references_resolve()`
   - Method `.test_p001_precedence_points_at_this_r5()`
   - Method `.test_checklists_are_in_principle_order()`
+- `class TestLifecycleToolSemantics` - *PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.*
+  - Method `.test_bare_digit_phase_is_that_phase()`
+  - Method `.test_resume_stays_in_the_recorded_phase_on_a_clean_tree()`
+  - Method `.test_audit_ignores_the_ledger()`
+  - Method `.test_p002_names_one_resume_line_and_defines_cold_start()`
+  - Method `.test_caches_never_leak_or_go_stale()`
+  - Method `.test_every_command_in_the_rules_exists()`
 - `class TestTrackClassification` - *PRINCIPLE-002 R3: the track is computed, so every model assigns the same one.*
   - Method `.test_no_changes_is_track_a()`
   - Method `.test_documentation_is_track_b()`
@@ -366,6 +375,9 @@
   - Method `.test_generated_map_renders_async_keyword()`
 
 **Functions:**
+- `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`
+- `def setUpModule()`
+- `def tearDownModule()`
 - `def not_a_git_repo(workspace)` - *In-process stand-in for `git status` in a non-repository: exactly what real git returns*
 
 ---

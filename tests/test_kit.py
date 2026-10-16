@@ -11,9 +11,29 @@ import re
 import sys
 import json
 import shutil
+import subprocess  # imported only to refuse process spawns; see setUpModule
 import tempfile
 import unittest
 from pathlib import Path
+
+# The unit tier must never start a process (PRINCIPLE-014 R3), directly or indirectly. While this
+# module's tests run, any attempt fails the offending test immediately and names the command.
+_REAL_POPEN_INIT = subprocess.Popen.__init__
+
+
+def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs):
+    raise AssertionError(
+        f"unit tier tried to start a process: {args!r}. Inject a fake adapter "
+        f"(PRINCIPLE-009 R4) or move the test to tests/test_integration.py."
+    )
+
+
+def setUpModule():
+    subprocess.Popen.__init__ = _refuse_spawn
+
+
+def tearDownModule():
+    subprocess.Popen.__init__ = _REAL_POPEN_INIT
 
 # Add project root to path
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -60,6 +80,7 @@ from scripts.disruption_recovery import (
     migrate_ledger_schema,
     validate_conventional_commit,
     classify_track,
+    resolve_phase_num,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -710,6 +731,77 @@ class TestPrinciple002Unambiguity(unittest.TestCase):
                 self.assertEqual(ids, sorted(ids), f"{heading} items are out of principle order")
 
 
+class TestLifecycleToolSemantics(unittest.TestCase):
+    """
+    PRINCIPLE-002 delegates decisions to commands; each command must mean what the rule says.
+    These pins come from running P002's commands literally (ADR-055).
+    """
+
+    def test_bare_digit_phase_is_that_phase(self):
+        # PRINCIPLE-007 R6 documents `--phase 2`; it used to be recorded as Phase 1.
+        for digit in "12345":
+            with self.subTest(phase=digit):
+                self.assertEqual(resolve_phase_num(digit), int(digit))
+        self.assertEqual(resolve_phase_num("planning"), 2)
+
+    def test_resume_stays_in_the_recorded_phase_on_a_clean_tree(self):
+        # R4 records phases on ENTRY. After a PRINCIPLE-006 milestone commit during Phase 3 the
+        # tree is clean, and resume used to recommend Phase 4, skipping the remaining milestones.
+        for dirty in (False, True):
+            with self.subTest(uncommitted=dirty):
+                report = format_resume_report({
+                    "interrupted_task": {"task_id": "t", "active_phase": 3, "last_phase": "build",
+                                         "status": "in_progress"},
+                    "has_uncommitted_changes": dirty,
+                })
+                self.assertIn("Recommended Resumption Phase: Phase 3", report)
+
+    def test_audit_ignores_the_ledger(self):
+        # The ledger is bookkeeping; counting it made every checkpointed task look disrupted.
+        audit = run_disruption_audit(
+            Path(tempfile.mkdtemp(prefix="test_bookkeeping_")),
+            git_status=lambda ws: (0, " M .agents/task_ledger.json\n?? notes.md\n", ""),
+        )
+        self.assertEqual(audit["modified_files"], [])
+        self.assertEqual(audit["untracked_files"], ["notes.md"])
+
+    def test_p002_names_one_resume_line_and_defines_cold_start(self):
+        text = SSOT_MD.read_text(encoding="utf-8")
+        p002 = text[text.index("### PRINCIPLE-002:"):text.index("\n### PRINCIPLE-003:")]
+        self.assertIn("`Recommended Resumption Phase` line", p002)
+        self.assertIn("A recorded phase means the phase was entered, not finished", p002)
+        self.assertIn("a cold start is the first turn of a session", p002)
+        self.assertIn("not rule files", p002, "capsule must not imply rule-file edits are Track B")
+
+    def test_caches_never_leak_or_go_stale(self):
+        # Both parse caches are keyed on file content and hand out copies (PRINCIPLE-014 R4).
+        first = parse_principles(SSOT_MD)
+        first[0]["invariant"] = "MUTATED"
+        self.assertNotEqual(parse_principles(SSOT_MD)[0]["invariant"], "MUTATED")
+        doc = Path(tempfile.mkdtemp(prefix="test_cache_")) / "m.py"
+        self.addCleanup(shutil.rmtree, doc.parent, ignore_errors=True)
+        doc.write_text('"""A."""\ndef one():\n    pass\n', encoding="utf-8")
+        symbols = extract_python_symbols(doc)
+        symbols["functions"].clear()
+        self.assertEqual([f["name"] for f in extract_python_symbols(doc)["functions"]], ["one"])
+        doc.write_text('"""A."""\ndef two():\n    pass\n', encoding="utf-8")
+        self.assertEqual([f["name"] for f in extract_python_symbols(doc)["functions"]], ["two"])
+
+    def test_every_command_in_the_rules_exists(self):
+        # Executable command parity for rule text (PRINCIPLE-005 R3): each quoted script exists and
+        # each flag it is given is one that script declares.
+        text = SSOT_MD.read_text(encoding="utf-8")
+        commands = re.findall(r"`((?:python |py )?scripts/\w+\.py[^`]*)`", text)
+        self.assertGreater(len(commands), 10)
+        for cmd in commands:
+            script = ROOT_DIR / "scripts" / re.search(r"scripts/(\w+\.py)", cmd).group(1)
+            with self.subTest(command=cmd):
+                self.assertTrue(script.exists(), f"rule cites a missing script: {cmd}")
+                source = script.read_text(encoding="utf-8")
+                for flag in re.findall(r"(?<![\w-])(--[a-z][a-z-]*)", cmd):
+                    self.assertIn(f'"{flag}"', source, f"rule cites unknown flag {flag}: {cmd}")
+
+
 class TestTrackClassification(unittest.TestCase):
     """PRINCIPLE-002 R3: the track is computed, so every model assigns the same one."""
 
@@ -1301,7 +1393,7 @@ class TestDisruptionRecovery(unittest.TestCase):
             # Nested attempt on same file must fail acquisition within its bounded timeout.
             # The timeout is kept short deliberately: the contract under test is refusal, and a
             # longer wall-clock wait only inflates the sub-second suite gate (PRINCIPLE-014 R3).
-            with file_lock(test_file, timeout_seconds=0.03) as acquired2:
+            with file_lock(test_file, timeout_seconds=0.03, poll_interval=0.005) as acquired2:
                 self.assertFalse(acquired2)
         # Once released, lock should be immediately re-acquirable
         with file_lock(test_file, timeout_seconds=1.0) as acquired3:

@@ -11,7 +11,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 AGENTS_MD = ROOT_DIR / "AGENTS.md"
@@ -103,9 +103,25 @@ def append_domain_rules(lines: List[str], domain_rules: str):
     lines.append("")
 
 
+# Parsed principles keyed by (strict, file content). Keying on content, not path or mtime, means a
+# cached result can never be stale; callers get fresh dicts so mutating one cannot leak elsewhere.
+_PARSE_CACHE: Dict[Tuple[bool, str], List[Dict]] = {}
+
+
 def parse_principles(agents_file: Path, strict: bool = True) -> List[Dict]:
     """Parse the principle SSOT, enforce strict schema validation, reject duplicate IDs, and verify monotonic lifecycle progression."""
     content = agents_file.read_text(encoding="utf-8")
+    cached = _PARSE_CACHE.get((strict, content))
+    if cached is not None:
+        return [dict(p) for p in cached]
+    principles = _parse_principles_uncached(content, strict)
+    _PARSE_CACHE.clear()  # one entry is enough; bounded memory (PRINCIPLE-010 R4)
+    _PARSE_CACHE[(strict, content)] = [dict(p) for p in principles]
+    return principles
+
+
+def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
+    """Parsing and validation proper; see parse_principles()."""
     # Level-2 headings (phase sections, checklists, appendices) end a principle's block. Without
     # this bound the last principle swallowed everything after it, so text in a trailing
     # checklist could be misread as part of PRINCIPLE-019.

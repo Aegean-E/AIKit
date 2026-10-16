@@ -8,6 +8,7 @@ the integrity of all knowledge base documents.
 """
 
 import ast
+import copy
 import os
 import re
 import sys
@@ -106,10 +107,34 @@ def render_signature(node: Any, drop_self: bool = False) -> List[str]:
     return parts
 
 
+# Extracted symbols keyed by (path, content): a hit can never be stale, and callers receive a deep
+# copy so mutating a result cannot leak. Bounded to the files of one repository scan.
+_SYMBOL_CACHE: Dict[tuple, Dict[str, Any]] = {}
+_SYMBOL_CACHE_MAX = 256
+
+
 def extract_python_symbols(file_path: Path, strict: bool = False) -> Dict[str, Any]:
     """Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003)."""
     try:
         content = file_path.read_text(encoding="utf-8")
+    except Exception as e:
+        if strict:
+            raise ValueError(f"[PRINCIPLE-003 AST FAILURE] Unreadable file {file_path}: {e}") from e
+        return {"error": str(e), "classes": [], "functions": [], "docstring": None}
+    key = (str(file_path), content)
+    if key in _SYMBOL_CACHE:
+        return copy.deepcopy(_SYMBOL_CACHE[key])
+    result = _extract_symbols_uncached(file_path, content, strict)
+    if "error" not in result:
+        if len(_SYMBOL_CACHE) >= _SYMBOL_CACHE_MAX:
+            _SYMBOL_CACHE.clear()
+        _SYMBOL_CACHE[key] = copy.deepcopy(result)
+    return result
+
+
+def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Dict[str, Any]:
+    """AST extraction proper; see extract_python_symbols()."""
+    try:
         tree = ast.parse(content, filename=str(file_path))
     except Exception as e:
         if strict:
