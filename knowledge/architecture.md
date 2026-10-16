@@ -279,7 +279,7 @@ Rules live only in `GUIDELINES.md`; see **PRINCIPLE-001** there (R1 tiers and pr
 
 ## 📚 Living Documentation & Cold-Start Orientation (The SSOT Triad)
 - **30-Second Cold-Start Orientation**: `README.md` serves as the authoritative entrypoint for cold-starting agents, providing unambiguous prerequisites, setup/run commands, test commands, and directory layouts (**PRINCIPLE-005**).
-- **Material Surface Sync Contract**: Synchronous updates to `README.md` are gated strictly by modifications to public surface areas (quickstart, CLI flags, public APIs, governance principles). Internal refactors sync to `knowledge/` to prevent documentation churn.
+- **Material Surface Sync Contract**: `README.md` changes in the same commit as a user-observable change (tracked tree, scripts, flags, exit codes, environment variables, prerequisites, setup, test command, principles) and for no other reason; everything else is documented in `knowledge/`. `update_knowledge_base.py --check` verifies size, labels, tree and documented commands (**PRINCIPLE-005**, ADR-062).
 - **Documentation Partitioning (The SSOT Triad)**:
   - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
   - `GUIDELINES.md`: The single source of truth for behavioral rules, lifecycle invariants, and engineering principles; every Tier 1 file, `AGENTS.md` included, is generated from it (ADR-048).

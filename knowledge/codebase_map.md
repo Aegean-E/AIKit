@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `31`
+- **Total Classes**: `32`
 - **Total Functions / Methods**: `92`
-- **Total Source Lines**: `6280`
+- **Total Source Lines**: `6332`
 
 ---
 
@@ -221,7 +221,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2315` lines (`125556` bytes)
+**Size**: `2367` lines (`128316` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 19 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -260,6 +260,13 @@
   - Method `.test_documented_commands_must_exist()`
   - Method `.test_size_labels_and_tree_are_required()`
   - Method `.test_a_prose_mention_is_not_the_tree_heading()`
+- `class TestPrinciple005Unambiguity` - *PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes.*
+  - Method `.setUpClass()`
+  - Method `.test_rules_contain_no_hedge_words()`
+  - Method `.test_every_rule_names_its_audience()`
+  - Method `.test_rule_labels_are_the_ones_the_gate_checks()`
+  - Method `.test_every_trigger_and_home_is_defined()`
+  - Method `.test_checklists_match_the_rules()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

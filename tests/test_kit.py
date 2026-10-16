@@ -108,6 +108,8 @@ from scripts.update_knowledge_base import (
     CORE_DOCS,
     KNOWLEDGE_DIR,
     MIN_PYTHON,
+    README_LABELS,
+    README_MAX_CHARS,
     audit_readme,
     parse_readme_tree,
 )
@@ -208,16 +210,16 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("<=100 lines", p4["invariant"])
 
     def test_principle_005_cold_start_capsule(self):
-        # Enforces PRINCIPLE-005: verified invariant capsule with 30s orientation, token ceiling, command parity, whole-tree drift shield
+        # Enforces PRINCIPLE-005: the capsule names what README holds and which command checks it
         principles = parse_principles(SSOT_MD)
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
-        self.assertIn("self-describing repo", p5["invariant"].lower())
-        self.assertIn("30s cold-start orientation", p5["invariant"].lower())
-        self.assertIn("<20k chars", p5["invariant"].lower())
-        self.assertIn("material surface readme sync", p5["invariant"].lower())
-        self.assertIn("executable command parity", p5["invariant"].lower())
-        self.assertIn("whole-tree drift shield", p5["invariant"].lower())
+        # Mechanisms, not labels (ADR-063): the size limit, the checked items, the trigger, the gate.
+        for mechanism in ("readme <=20k chars", "prerequisites, test command, tree",
+                          "user-visible changes update it same commit",
+                          "`update_knowledge_base.py --check` gates it"):
+            with self.subTest(mechanism=mechanism):
+                self.assertIn(mechanism, p5["invariant"].lower())
 
     def test_principle_006_disruption_capsule(self):
         # Enforces PRINCIPLE-006: verified invariant capsule with atomic micro-commits, audit, and CLI ledger
@@ -563,6 +565,56 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
     def test_a_prose_mention_is_not_the_tree_heading(self):
         prose = "See What's Inside below.\n```text\nrepo/\n├── fake.md\n```\n"
         self.assertEqual(parse_readme_tree(prose + self.TREE)[0], "README.md")
+
+
+class TestPrinciple005Unambiguity(unittest.TestCase):
+    """PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = cls.text[cls.text.index("### PRINCIPLE-005:"):cls.text.index("\n### PRINCIPLE-006:")]
+        cls.rules = cls.section[cls.section.index("- **Rules**:"):]
+
+    def test_rules_contain_no_hedge_words(self):
+        found = [h for h in TestPrinciple002Unambiguity.HEDGES if h in self.section]
+        self.assertEqual(found, [], f"PRINCIPLE-005 contains open-ended wording: {found}")
+        for vague in ("high-visibility", "speculative", "zero-ambiguity", "instant", "factual"):
+            with self.subTest(word=vague):
+                self.assertNotIn(vague, self.section)
+
+    def test_every_rule_names_its_audience(self):
+        numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
+        self.assertEqual(len(numbered), 6, "PRINCIPLE-005 must keep rules R1-R6 (cited elsewhere)")
+        for number, _, rest in numbered:
+            with self.subTest(rule=f"R{number}"):
+                self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+
+    def test_rule_labels_are_the_ones_the_gate_checks(self):
+        # Red-green pin: R1 asked for an "orientation block" no program could recognise.
+        for label in README_LABELS:
+            with self.subTest(label=label):
+                self.assertIn(label.rstrip(":").strip("*"), self.rules)
+        self.assertIn(f"MUST NOT exceed {README_MAX_CHARS:,} characters", self.rules)
+
+    def test_every_trigger_and_home_is_defined(self):
+        for definition in (
+            "in the same commit as a change that",
+            "For any other change the agent MUST NOT edit `README.md`",
+            "the agent MUST run it, in a temporary directory when it copies, moves or deletes files",
+            "a directory shown with none is collapsed and exempt",
+            "The R1 check compares the tree with `git ls-files`",
+            "MUST NOT restate the rules of one",
+        ):
+            with self.subTest(definition=definition):
+                self.assertIn(definition, self.rules)
+
+    def test_checklists_match_the_rules(self):
+        # Red-green pin: Post-Flight demanded README reflect "all changes" (R2 forbids that) and
+        # Pre-Flight demanded reviewing "every active principle" (PRINCIPLE-001 R3 forbids that).
+        self.assertNotIn("to reflect all changes", self.text)
+        self.assertNotIn("reviewed every active principle", self.text)
+        self.assertIn("Did every change listed in **PRINCIPLE-005** R2 update **README.md**", self.text)
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):

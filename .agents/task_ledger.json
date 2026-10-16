@@ -3,30 +3,12 @@
   "active_task": {
     "task_id": "p005-pass1",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792174376.089696
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792174502.741346,
+    "completed_at": 1792174520.297527
   },
   "checkpoints": [
-    {
-      "task_id": "p002-third-pass",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "P002 pass 3: resume/phase/audit semantics; budgets restored; Phase 4 passed on final tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792171847.0099592,
-      "timestamp_str": "2026-10-16 20:30:47"
-    },
-    {
-      "task_id": "p002-third-pass",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p002-third-pass' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792171847.1242743,
-      "timestamp_str": "2026-10-16 20:30:47"
-    },
     {
       "task_id": "p003-unambiguity",
       "phase": "in_progress",
@@ -203,6 +185,25 @@
       "status": "in_progress",
       "timestamp": 1792174376.089696,
       "timestamp_str": "2026-10-16 21:12:56"
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "milestone 2/2 gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792174502.741346,
+      "timestamp_str": "2026-10-16 21:15:02"
+    },
+    {
+      "task_id": "p005-pass1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p005-pass1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792174520.2975283,
+      "timestamp_str": "2026-10-16 21:15:20"
     }
   ]
 }

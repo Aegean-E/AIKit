@@ -93,22 +93,19 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 
 ### PRINCIPLE-005: AI Cold-Start Readiness & Living Documentation (README Sync)
 - **Problem**: New AI sessions and developers starting fresh ("cold start") lose context if documentation is stale, fragmented, or implicit. Furthermore, rotting quickstart commands waste developer and agent turns, unmonitored directory trees drift out of date as files are added or renamed, unbounded README files exhaust the active context window on turn 1, and indiscriminate sync rules cause documentation churn on internal refactors.
-- **Concept**: The repository must be permanently prepared for a "cold start" by any AI assistant or developer. Any new agent entering the project with zero prior conversational history must immediately understand the project state, run commands, architecture, and principles within a single turn. To prevent knowledge drift, public surface documentation must be systematically synchronized.
-- **Invariant**: Self-describing repo; 30s cold-start orientation (<20k chars); material surface README sync; executable command parity; whole-tree drift shield.
+- **Concept**: `README.md` is the cold-start entry point, built from labelled items a program can check: what to install, the one test command, and a tree of what exists. It changes in the same commit as anything a user can observe, and only then; everything else is documented in `knowledge/`.
+- **Invariant**: README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it.
 - **Rules**:
-  1. **Self-Describing Repository, 30-Second Orientation & Token Ceiling**: The project must maintain an explicit, high-visibility orientation block in `README.md` documenting: (1) runtime prerequisites, (2) zero-ambiguity setup/run commands, (3) the canonical test command, and (4) the directory tree and primary entry points. A cold-starting agent must achieve complete operational orientation in its first turn without speculative file browsing. To prevent first-turn context exhaustion, `README.md` must stay strictly under 20,000 characters (<5,000 tokens), delegating deep architectural details to `knowledge/`.
-  2. **Material Surface Sync Contract**: A synchronous update to `README.md` is mandatory whenever a change alters:
-     - Setup, build, or run instructions,
-     - CLI flags, environment variables, or public API/UI surfaces,
-     - Architectural boundaries, core directory layouts, or governance principles.
-     Internal non-breaking refactors that preserve public surfaces update `knowledge/` rather than adding churn to `README.md`.
-  3. **Executable Command Parity**: Every command, script invocation, or code snippet documented in `README.md` must be factual, literal, and verified to run successfully in the active runtime environment. Zero phantom commands or broken quickstarts.
-  4. **Documentation Partitioning (The SSOT Triad)**:
-     - `README.md`: Public surface, quickstart, entry points, and high-level architecture.
-     - `GUIDELINES.md`: The single source of truth for behavioral rules, lifecycle invariants, and engineering principles. Every Tier 1 file, `AGENTS.md` included, is generated from it.
-     - `knowledge/`: Deep technical domain knowledge, AST codebase maps, schemas, and immutable ADR decision records.
-  5. **Whole-Tree Drift Shield & Script Parity**: Whenever top-level files or core entrypoint scripts (e.g. in `scripts/`, `knowledge/`, or repository root) are added, removed, or renamed, the directory tree in `README.md` must be synchronously updated. Every relative path and script cited in the `README.md` directory tree must physically exist on disk (zero phantom scripts or dead file citations).
-  6. **Universal Polyglot Adopter Blueprint**: When adopting AIKit into non-Python stacks (Node/TS, Rust, Go, Java), the project's `README.md` must adapt the 30-second orientation matrix to declare the canonical stack equivalents (e.g. `npm test` / `cargo test` / `go test`, Node/Rust/Go toolchain versions, dev server commands) ensuring instant cold-start readiness regardless of programming language.
+  1. **Self-Describing Repository, 30-Second Orientation & Token Ceiling** *[Agent + Maintainer]*: `README.md` MUST contain a heading that includes `Cold-Start Quick Reference`; under it, a line starting `- **Runtime Prerequisites**:` that names every runtime and external program the project needs with its minimum version, and the label `**Canonical Regression Shield Gate**:` followed by a fenced block holding the one command that runs the whole test suite; and a heading that includes `What's Inside`, followed by the directory tree of R5. `README.md` MUST NOT exceed 20,000 characters; material beyond that limit goes to `knowledge/` (R4). `python scripts/update_knowledge_base.py --check` checks the size, the labels and the tree.
+  2. **Material Surface Sync Contract** *[Agent]*: The agent MUST update `README.md` in the same commit as a change that: adds, removes or renames a tracked top-level file or directory, or a file in a directory the tree shows with children (R5); adds, removes or renames a script, command-line flag, exit code or environment variable a user can use; changes the runtime prerequisites, the setup steps or the test command; or adds or removes a principle (README's principle table, PRINCIPLE-017). For any other change the agent MUST NOT edit `README.md`; its documentation goes to `knowledge/` per PRINCIPLE-016 R2.
+  3. **Executable Command Parity** *[Agent + Maintainer]*: Every `python scripts/<name>.py` command in `README.md` MUST name an existing script and only flags that script declares, and every `python -m unittest tests.<module>` command MUST name an existing module; the R1 check verifies both. Before adding or changing any other command in `README.md` (a `git`, copy or package-manager command), the agent MUST run it, in a temporary directory when it copies, moves or deletes files, and it MUST exit 0. A value the reader supplies is written `<name>`.
+  4. **Documentation Partitioning (The SSOT Triad)** *[Agent]*: Each fact has one home, chosen by who uses it:
+     - a command a user runs or a file a user opens: `README.md`;
+     - a rule an agent obeys: `GUIDELINES.md`, the only hand-edited rule file; every Tier 1 file, `AGENTS.md` included, is generated from it;
+     - how the code works and why: the `knowledge/` file PRINCIPLE-016 assigns (schemas in `data_models.md`, decisions in `decisions.md`).
+     `README.md` MAY list each principle with a one-line summary and MUST NOT restate the rules of one.
+  5. **Whole-Tree Drift Shield & Script Parity** *[Agent + Maintainer]*: The tree is the first ```` ```text ```` block after the `What's Inside` heading; its first line is the repository root. Every path in the tree MUST exist; the tree MUST list every tracked top-level file and directory; and a directory shown with at least one child MUST list all of its tracked children, while a directory shown with none is collapsed and exempt. The R1 check compares the tree with `git ls-files`.
+  6. **Universal Polyglot Adopter Blueprint** *[Agent]*: In a project not written in Python, `- **Runtime Prerequisites**:` names that stack's toolchains with minimum versions, `**Canonical Regression Shield Gate**:` holds that stack's own test command, and the Quick Reference lists its build and run commands. The R1 check verifies only `python scripts/...` and `python -m unittest` commands, so every other command falls under the run-before-documenting duty of R3.
 
 
 ---
@@ -359,7 +356,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] **Lifecycle Alignment**: Am I following the 5 execution phases in chronological order (**PRINCIPLE-002**)?
 - [ ] **Empirical Grounding (Read-Before-Write)**: Have I verified code definitions, imports, paths, and signatures on disk before writing or modifying code (**PRINCIPLE-003**)?
 - [ ] **Attentional Anchor & Budget**: Is my working memory externalized to disk, and am I using targeted slices to preserve context budget (**PRINCIPLE-004**)?
-- [ ] **Context Verification**: Have I reviewed every active principle and the repo state (**PRINCIPLE-005**)?
+- [ ] **Context Verification**: On a cold start, have I run `--resume` (**PRINCIPLE-004** R2) and read the `README.md` Cold-Start Quick Reference (**PRINCIPLE-005** R1)?
 - [ ] **Disruption & Progress Audit**: Have I checked for uncommitted changes, untracked files, or interrupted tasks from prior disruptions (**PRINCIPLE-006**)?
 - [ ] **Pre-Flight Impact & Quality Gate**: Have I evaluated why this change is needed, projected benefits, 4 blast-radius risks, and anti-satisficing quality (**PRINCIPLE-007**)?
 - [ ] **Hierarchical Decomposition Plan**: Has the task been planned top-down, indexed into micro-milestones ($N/M$), and scheduled for bottom-up implementation (**PRINCIPLE-008**)?
@@ -380,7 +377,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] Was the task executed according to the **temporal lifecycle flow** (**PRINCIPLE-002**)?
 - [ ] Is all code **empirically grounded** with verified symbols, zero hallucinations, and AST validation (**PRINCIPLE-003**)?
 - [ ] Was **working memory externalized** to disk/ledger, avoiding attentional drift (**PRINCIPLE-004**)?
-- [ ] Has **README.md been updated** to reflect all changes (**PRINCIPLE-005**)?
+- [ ] Did every change listed in **PRINCIPLE-005** R2 update **README.md** in the same commit, and does `python scripts/update_knowledge_base.py --check` pass?
 - [ ] Have intermediate milestones been **safely checkpointed and disruption-protected** (**PRINCIPLE-006**)?
 - [ ] Was the **pre-flight impact assessment respected** without diminishing quality (**PRINCIPLE-007**)?
 - [ ] Have I adhered to **hierarchical decomposition and bottom-up execution** (**PRINCIPLE-008**)?
