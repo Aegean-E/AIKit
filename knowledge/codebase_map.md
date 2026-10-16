@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `38`
+- **Total Classes**: `39`
 - **Total Functions / Methods**: `109`
-- **Total Source Lines**: `7246`
+- **Total Source Lines**: `7295`
 
 ---
 
@@ -239,7 +239,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2840` lines (`156196` bytes)
+**Size**: `2889` lines (`158750` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -327,6 +327,9 @@
   - Method `.test_rules_match_the_checks()`
   - Method `.test_no_ban_contradicts_principle_000_r5()`
   - Method `.test_capsule_states_the_mechanisms()`
+- `class TestRewrittenPrincipleWording` - *One data-driven check for every principle rewritten to a single reading (PRINCIPLE-000 R7):*
+  - Method `.setUpClass()`
+  - Method `.test_rewritten_principles_have_one_reading()`
 - `class TestPrinciple001Unambiguity` - *PRINCIPLE-001 must say the same thing to every model. These tests make that mechanical:*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`

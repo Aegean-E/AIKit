@@ -44,6 +44,7 @@ import scripts.sync_principles as sync_principles_module
 from scripts.sync_principles import (
     parse_principles,
     citing_principles,
+    principle_sections,
     changed_principles,
     cross_check_errors,
     render_readme_table,
@@ -1021,6 +1022,54 @@ class TestPrinciple007Unambiguity(unittest.TestCase):
                           "no todo or stub", "no change outside the plan"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, capsule.lower())
+
+
+class TestRewrittenPrincipleWording(unittest.TestCase):
+    """
+    One data-driven check for every principle rewritten to a single reading (PRINCIPLE-000 R7):
+    no banned word, every rule tagged with its audience, its definitions present and the vague
+    phrases it replaced gone. A table instead of a class per principle keeps the unit tier fast.
+    """
+
+    REWRITTEN = {
+        "PRINCIPLE-008": {
+            "rules": 6,
+            "present": [
+                "sub-agents MUST NOT be nested more than 3 levels deep",
+                "no milestone may use a class, function, flag or file that a later milestone creates",
+                "When the decomposition yields more than 6, the agent MUST split the work into separate tasks",
+                "A milestone changes one PRINCIPLE-009 layer together with its tests and documentation",
+                "MUST record the revised plan as a new `[1/M']` Phase 2 checkpoint",
+                "It MUST NOT write `.agents/task_ledger.json`",
+                "sub-agents never write the ledger",
+            ],
+            "gone": ["non-trivial", "Target a bounded", "type(task)", "back to the parent task ledger",
+                     "update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks"],
+        },
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.sections = principle_sections(SSOT_MD.read_text(encoding="utf-8"))
+
+    def test_rewritten_principles_have_one_reading(self):
+        for pid, spec in self.REWRITTEN.items():
+            section = self.sections[pid]
+            rules = section[section.index("- **Rules**:"):]
+            with self.subTest(pid=pid, check="banned words"):
+                self.assertEqual([h for h in TestPrinciple002Unambiguity.HEDGES if h in section], [])
+            numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", rules, re.M)
+            with self.subTest(pid=pid, check="rule count"):
+                self.assertEqual(len(numbered), spec["rules"], "rule numbers are cited elsewhere")
+            for number, _, rest in numbered:
+                with self.subTest(pid=pid, rule=f"R{number}"):
+                    self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
+            for text in spec["present"]:
+                with self.subTest(pid=pid, present=text):
+                    self.assertIn(text, section)
+            for text in spec["gone"]:
+                with self.subTest(pid=pid, gone=text):
+                    self.assertNotIn(text, section)
 
 
 class TestPrinciple001Unambiguity(unittest.TestCase):

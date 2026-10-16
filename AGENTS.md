@@ -12,7 +12,7 @@
 - PRINCIPLE-005 AI Cold-Start Readiness & Living Documentation: README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it.
 - PRINCIPLE-006 Incremental Progress Checkpointing & Disruption Recovery: Commit each `[milestone N/M]` once Phase 4 passes; failing work stays uncommitted, described by `--checkpoint`; `--complete` or `--reset` before switching tasks; `--clean` stale `.tmp_*`.
 - PRINCIPLE-007 Pre-flight Impact & Quality Checklist: Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan.
-- PRINCIPLE-008 Hierarchical Problem & Task Decomposition: Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable.
+- PRINCIPLE-008 Hierarchical Problem & Task Decomposition: Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger.
 - PRINCIPLE-009 Modularity & Pluggable Architecture: 4 layers (Presentation -> Service -> Domain <- Adapter); role protocols & registry; zero-config constructor DI; immutable DTOs.
 - PRINCIPLE-010 Performance & Resource Optimization: O(1)-memory streaming; non-blocking event loops; subprocess timeouts; write-coalescing batch I/O; lazy imports (<100ms `--help`); <1s unit test tier.
 - PRINCIPLE-011 Zero-Friction Onboarding & Instant Usability: Pure-stdlib clone-and-run; self-bootstrapping workspace; mode transparency; non-interactive headless parity; deterministic exit codes (0/1/2); remediation triad.

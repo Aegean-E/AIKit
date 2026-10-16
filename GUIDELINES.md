@@ -154,22 +154,16 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 ---
 
 ### PRINCIPLE-008: Hierarchical Problem & Task Decomposition
-- **Problem**: Monolithic execution bias leads to broken intermediate code and ghost imports. Conversely, micro-task over-fragmentation creates excessive churn. Similarly, unbounded recursive data processing triggers context exhaustion and crashes.
-- **Concept**: Complex systems, deep directory hierarchies, and non-trivial engineering tasks must be partitioned hierarchically rather than processed via monolithic single-pass operations or micro-task over-fragmentation. Planning proceeds top-down from root goals to atomic leaf units within a bounded milestone horizon, while execution proceeds bottom-up from foundations to consumers, with each leaf milestone independently verified.
-- **Invariant**: Goal -> Domain -> Leaf decomposition; plan top-down, build bottom-up; 2<=M<=6 milestones as `[milestone N/M]` commits; each leaf independently verifiable.
+- **Problem**: A task done as one monolithic change leaves broken intermediate code and imports of symbols that do not exist yet; a task cut into dozens of tiny steps creates churn; delegated work without bounds exhausts context. When the size limits, the unit of a milestone and the re-plan step are not defined, each model decomposes differently, and sub-agents that write the shared ledger corrupt the parent task's state.
+- **Concept**: A Track C plan has at most six milestones, ordered so that nothing is used before it is built, each passing the gates on its own. A changed plan is recorded as a new plan, delegated work is bounded, and only the parent task writes the ledger.
+- **Invariant**: Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger.
 - **Rules**:
-  1. **Dual-Pillar Framework**:
-     - *Pillar A (Engineering Task Workflow)*: Decompose non-trivial features into structured tiers: Root Goal $\rightarrow$ Functional Domains (Model / Service / Presentation / Test) $\rightarrow$ Atomic Leaf Units.
-     - *Pillar B (Data & System Architecture)*: Divide-and-conquer deep trees, AST structures, or large datasets into bounded sub-graphs with strict recursion limits (max depth $D \le 3$, max fan-out batch $K \le 50$) and deterministic base-case summary aggregation.
-  2. **Top-Down Decomposition, Bottom-Up Execution**:
-     - *Planning (Top-Down)*: Deconstruct high-level user requirements downward into contracts, dependencies, and interfaces.
-     - *Implementation (Bottom-Up)*: Implement upward from foundational primitives and data models first, domain service logic second, presentation/CLI interfaces third, and end-to-end integration tests last. This guarantees every referenced class, method, and import physically exists prior to consumer invocation (`PRINCIPLE-003`).
-  3. **Bounded Milestone Horizon & Indexing Contract**:
-     - Decomposed plans must avoid both monolithic mega-diffs and micro-task proliferation. Target a bounded milestone horizon ($2 \le M \le 6$ cohesive milestones). If $M > 6$, decompose into multiple distinct user features.
-     - The leaf sequence directly defines the milestone indices ($N=1..M$) recorded in `.agents/task_ledger.json` and committed via Conventional Commits: `type(task): [milestone N/M] description` (`PRINCIPLE-006`).
-  4. **Single-Domain Leaf Atomicity & Independent Verifiability**: Every leaf unit must focus on a single architectural domain (e.g. model + unit test), be independently testable, and compile cleanly without leaving the repository in a broken intermediate state.
-  5. **Dynamic Re-Decomposition on Discovery**: When in-flight execution uncovers an unanticipated blocker, dependency gap, or schema conflict, pause forward progression, update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks, adjust $M'$, and resume monotonically without discarding completed milestones.
-  6. **State & Context Propagation**: Child sub-agent or recursive tasks must receive scoped context from parent contracts and return structured, verified artifacts back to the parent task ledger.
+  1. **Dual-Pillar Framework** *[Agent]*: *Pillar A*: a Track C task is decomposed as Goal, then the PRINCIPLE-009 layers it touches, then milestones. *Pillar B*: work the agent delegates is bounded: sub-agents MUST NOT be nested more than 3 levels deep, and one sub-agent MUST NOT receive more than 50 files or records in one brief.
+  2. **Top-Down Decomposition, Bottom-Up Execution** *[Agent]*: The plan is written goal first and executed foundations first: no milestone may use a class, function, flag or file that a later milestone creates (PRINCIPLE-003 R1).
+  3. **Bounded Milestone Horizon & Indexing Contract** *[Agent]*: A plan has 1 to 6 milestones. When the decomposition yields more than 6, the agent MUST split the work into separate tasks, each with its own task ID and plan, and tell the user the order of the tasks. Milestones are numbered N = 1..M in the plan (PRINCIPLE-004 R1) and committed as PRINCIPLE-006 R1 specifies.
+  4. **Single-Domain Leaf Atomicity & Independent Verifiability** *[Agent]*: A milestone changes one PRINCIPLE-009 layer together with its tests and documentation, unless its plan entry states why it must change two; and its commit MUST pass Phase 4 on its own (PRINCIPLE-006 R4).
+  5. **Dynamic Re-Decomposition on Discovery** *[Agent]*: When the agent finds that the recorded plan cannot be completed as written, it MUST record the revised plan as a new `[1/M']` Phase 2 checkpoint (PRINCIPLE-004 R1) before its next file edit. Committed milestones keep their numbers; later commits use M'.
+  6. **State & Context Propagation** *[Agent]*: A sub-agent receives in its brief the milestone it serves, the files it may change and the commands that verify its result. It MUST NOT write `.agents/task_ledger.json`; it returns its result to the parent, and only the parent records checkpoints, so one task has one ledger writer.
 
 ---
 
