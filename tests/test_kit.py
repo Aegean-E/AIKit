@@ -1209,6 +1209,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "MUST record the revised plan as a new `[1/M']` Phase 2 checkpoint",
                 "It MUST NOT write `.agents/task_ledger.json`",
                 "sub-agents never write the ledger",
+                "A sub-agent process MUST run non-interactively with closed stdin",
             ],
             "gone": ["non-trivial", "Target a bounded", "type(task)", "back to the parent task ledger",
                      "update the active task ledger (`.agents/task_ledger.json`) with refined sub-tasks"],
@@ -1265,9 +1266,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                      "banning hardcoded"],
         },
         "PRINCIPLE-012": {
-            "rules": 7,
+            "rules": 8,
             "present": [
-                "Rules R1, R2, R4, R6 bind code that calls an LLM API; R3, R5 and R7 bind the agent",
+                "Rules R1, R2, R4, R6 bind code that calls an LLM API; R3, R5, R7 and R8 bind the agent",
                 "at or below 16,000 characters",
                 "the variable tail of one request (R2)",
                 "These limits apply together with PRINCIPLE-004 R5's 100 lines per command",
@@ -1279,6 +1280,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "store repository-relative paths",
                 "MUST define a maximum step count and a maximum token count as named parameters",
                 "a function whose body only calls another function with the same arguments",
+                "delegate multi-file pattern searches, raw file indexing, boilerplate drafting",
             ],
             "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",
                      "excessive class hierarchies", "($K$ turns)"],

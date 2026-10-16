@@ -1265,3 +1265,13 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Consequences**: `architecture.md` was rewritten to describe AIKit without rule restatements, using exact code identifiers. Verified by `TestKnowledgeCitations` in `tests/test_kit.py`.
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-001 (R7 no restating rules; no conflict), PRINCIPLE-003 (R1/R2 verify-before-execution and symbol reality; no conflict), PRINCIPLE-004 (R4 ADR record and living docs; no conflict), PRINCIPLE-005 (living docs sync; no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-018 (pre-commit gate parity; no conflict).
 
+### ADR-102: Subagent Headless Execution and Tiered Model Delegation
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Subagent usage lacked explicit execution and delegation contracts in the principles. While PRINCIPLE-008 R1 bounded delegation depth and fan-out and R6 forbade writing the ledger, it did not state the non-interactive stdin contract or parent verification duties. In PRINCIPLE-012, context budgeting rules focused on direct LLM requests without authorizing tiered offloading of token-heavy exploratory work to free or local subagent models.
+- **Decision**: PRINCIPLE-008 R6 now explicitly requires sub-agent processes to run non-interactively with closed stdin (PRINCIPLE-011 R5) and forbids blind staging of sub-agent outputs, requiring them to pass Phase 4 test gates before staging. PRINCIPLE-012 R8 authorizes tiered model delegation, allowing agents to offload multi-file pattern searches, raw indexing, boilerplate drafting, and linting to local models or free-tier providers within PRINCIPLE-008 R1 bounds.
+- **Consequences**: Pinned by `TestRewrittenPrincipleWording` in `tests/test_kit.py` under PRINCIPLE-008 and PRINCIPLE-012 (rules count 8).
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-002 (cognitive flow and lifecycle gates; no conflict), PRINCIPLE-003 (R1/R2 verify-before-execution and symbol reality; no conflict), PRINCIPLE-004 (R4 ADR record and living docs; no conflict), PRINCIPLE-006 (ledger writes stay with the parent; no conflict), PRINCIPLE-007 (assessment covers in-scope delegation; no conflict), PRINCIPLE-008 (bounds, non-interactive stdin, parent verification; no conflict), PRINCIPLE-009 (subagent interfaces follow pluggable boundaries; no conflict), PRINCIPLE-011 (R5 closed stdin mandated for subagent processes; resolves headless contract), PRINCIPLE-012 (tiered offloading bounds; no conflict), PRINCIPLE-015 (subagent testing obeys process tree teardown; no conflict), PRINCIPLE-018 (parent verify gates before staging; no conflict).
+
+
+
