@@ -4,6 +4,7 @@
 > Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read the `### PRINCIPLE-NNN:` section of each principle `sync_principles.py --involved` lists; never the whole file unless asked.
 
 ## Core Principles
+- PRINCIPLE-000 Meta-Principle Integrity & Mutual Alignment: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
 - PRINCIPLE-001 Progressive Rule Disclosure & Governance Frugality: Pre-Flight checklist before the first Track C edit; Post-Flight checklist before any Track B or C commit; report only failed items (R8).
 - PRINCIPLE-002 Lifecycle-Aligned Instruction Ordering & Attentional Priming: Track via `disruption_recovery.py --track` (A none, B docs/comments but not rule files, C rest); urgency alone never skips P018 gates (R5).
 - PRINCIPLE-003 Empirical Grounding & Anti-Hallucination Invariant: Read-before-write slice freshness; `git grep -w -e` call-site check; deps only if declared; platform parity; ask on intent ambiguity; strict AST syntax gate.
@@ -23,4 +24,3 @@
 - PRINCIPLE-017 Living Principles System & Automated Synchronization: Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check (P001); schema compliance; freshness test gate; Tier 1B domain rules injection.
 - PRINCIPLE-018 Automatic Git Workflow: Automatic conventional commits (feat|fix|refactor|docs|chore|test|perf|build|ci) + adaptive push; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil.
 - PRINCIPLE-019 Secret & Sensitive Data Hygiene: Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert.
-- PRINCIPLE-020 Meta-Principle Integrity & Mutual Alignment: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.

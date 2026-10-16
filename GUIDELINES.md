@@ -12,6 +12,18 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 
 ## 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 
+### PRINCIPLE-000: Meta-Principle Integrity & Mutual Alignment (Code Quality Primacy)
+- **Problem**: When principles operate without systemic meta-governance, individual rules risk being selectively adhered to or bypassed; uncoordinated updates introduce contradictions between principles; rule changes lack cross-impact verification; and dogmatic or bureaucratic compliance compromises code quality.
+- **Concept**: Principles form an indivisible, coherent, and mutually reinforcing governance system whose sole purpose is elevating engineering excellence. Every principle is mandatory; no principle may contradict or undermine another; every principle change must be audited against all other principles; and principles must never lower code quality or force architectural degradation.
+- **Invariant**: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
+- **Rules**:
+  1. **Universal Adherence Invariant** *[Agent + Maintainer]*: Every principle in this system is mandatory and binding across all tasks and workflows. An agent or maintainer MUST NOT selectively ignore, weaken, or bypass any principle unless an RFC 2119 exception explicitly defined within that principle applies.
+  2. **Mutual Alignment & Non-Contradiction** *[Maintainer]*: Every principle MUST align with all other principles. No principle may introduce requirements, constraints, or definitions that conflict with, weaken, or subvert another principle. In any perceived friction, principles MUST be resolved toward systemic harmony, coherence, and non-contradiction.
+  3. **Cross-Principle Impact Verification Gate** *[Maintainer]*: Whenever any principle is added, modified, or removed, the change MUST be evaluated against every other active principle in `GUIDELINES.md` before committing, verifying that no existing invariant, security shield, or verification gate is undermined.
+  4. **Code Quality & Craftsmanship Primacy** *[Agent + Maintainer]*: Principles exist to safeguard and elevate software engineering excellence. Principles MUST NOT be interpreted or enforced in a manner that degrades code quality, encourages fragile workarounds, bloats complexity, or diminishes testing rigor. Governance serves craftsmanship, never vice versa.
+
+---
+
 ### PRINCIPLE-001: Progressive Rule Disclosure & Governance Frugality (Zero Instruction Bloat)
 - **Problem**: Rules that are always loaded consume context on every turn and compete with the task for the model's attention, so long rule files lower accuracy instead of raising it. Short but vague rules fail differently: each model resolves the vagueness its own way, and agents stop behaving alike.
 - **Concept**: Governance is split into two tiers. Tier 1 is a generated set of one-line capsules that every agent loads automatically. Tier 2 is the full rule text in `GUIDELINES.md`, read one section at a time when a named trigger fires. Every rule names who it binds and what to do; rules about files are checked by `scripts/sync_principles.py` and the test suite, and rules about agent conduct are checked by the report that R8 requires.
@@ -347,21 +359,10 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 
 ---
 
-### PRINCIPLE-020: Meta-Principle Integrity & Mutual Alignment (Code Quality Primacy)
-- **Problem**: When principles operate without systemic meta-governance, individual rules risk being selectively adhered to or bypassed; uncoordinated updates introduce contradictions between principles; rule changes lack cross-impact verification; and dogmatic or bureaucratic compliance compromises code quality.
-- **Concept**: Principles form an indivisible, coherent, and mutually reinforcing governance system whose sole purpose is elevating engineering excellence. Every principle is mandatory; no principle may contradict or undermine another; every principle change must be audited against all other principles; and principles must never lower code quality or force architectural degradation.
-- **Invariant**: Universal adherence; mutual alignment across all principles; cross-principle impact audit on every rule change; code quality primacy over procedural formalism.
-- **Rules**:
-  1. **Universal Adherence Invariant** *[Agent + Maintainer]*: Every principle in this system is mandatory and binding across all tasks and workflows. An agent or maintainer MUST NOT selectively ignore, weaken, or bypass any principle unless an RFC 2119 exception explicitly defined within that principle applies.
-  2. **Mutual Alignment & Non-Contradiction** *[Maintainer]*: Every principle MUST align with all other principles. No principle may introduce requirements, constraints, or definitions that conflict with, weaken, or subvert another principle. In any perceived friction, principles MUST be resolved toward systemic harmony, coherence, and non-contradiction.
-  3. **Cross-Principle Impact Verification Gate** *[Maintainer]*: Whenever any principle is added, modified, or removed, the change MUST be evaluated against every other active principle in `GUIDELINES.md` before committing, verifying that no existing invariant, security shield, or verification gate is undermined.
-  4. **Code Quality & Craftsmanship Primacy** *[Agent + Maintainer]*: Principles exist to safeguard and elevate software engineering excellence. Principles MUST NOT be interpreted or enforced in a manner that degrades code quality, encourages fragile workarounds, bloats complexity, or diminishes testing rigor. Governance serves craftsmanship, never vice versa.
-
----
-
 ## 🛠️ AI Task Checklists
 
 ### 🛫 Pre-Flight Checklist (Run at Cold Start / Before Coding)
+- [ ] **Meta-Principle Integrity & Systemic Quality**: Am I adhering to all principles, verifying cross-principle alignment, and ensuring governance enhances rather than compromises code quality (**PRINCIPLE-000**)?
 - [ ] **Instruction & Context Budget Check**: Are prompt rules, summaries, and outputs compact to prevent context bloat and preserve LLM focus (**PRINCIPLE-001**)?
 - [ ] **Lifecycle Alignment**: Am I following the 5 execution phases in chronological order (**PRINCIPLE-002**)?
 - [ ] **Empirical Grounding (Read-Before-Write)**: Have I verified code definitions, imports, paths, and signatures on disk before writing or modifying code (**PRINCIPLE-003**)?
@@ -381,9 +382,9 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] **Rule Freshness Baseline**: Have I confirmed the rule sync and codebase map are fresh at cold start (`python scripts/sync_principles.py --check`, `python scripts/update_knowledge_base.py --check`) so pre-existing drift is never misattributed to my changes (**PRINCIPLE-017**)?
 - [ ] **Delivery Baseline & Rollback Path**: Is the working tree clean (`git status --short`) on a tracked branch with a known-good `HEAD` to recoil to via `git reset --soft` (**PRINCIPLE-018**)?
 - [ ] **Secret Exposure Plan**: Will any credential, token or auth header touch code, fixtures, logs, prompts or ledger free-text, and is it supplied by env/secret store and referenced only by name (**PRINCIPLE-019**)?
-- [ ] **Meta-Principle Integrity & Systemic Quality**: Am I adhering to all principles, verifying cross-principle alignment, and ensuring governance enhances rather than compromises code quality (**PRINCIPLE-020**)?
 
 ### 🛬 Post-Flight Checklist (Run Before Completion)
+- [ ] Are all **principles strictly adhered, mutually aligned, verified against cross-principle regressions, and upholding code quality primacy** (**PRINCIPLE-000**)?
 - [ ] Is governance overhead **lean and progressively disclosed** without prompt bloat (**PRINCIPLE-001**)?
 - [ ] Was the task executed according to the **temporal lifecycle flow** (**PRINCIPLE-002**)?
 - [ ] Is all code **empirically grounded** with verified symbols, zero hallucinations, and AST validation (**PRINCIPLE-003**)?
@@ -403,7 +404,6 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] Have all **AI guideline files been verified fresh and synchronized with zero schema drift and triad parity** (**PRINCIPLE-017**)?
 - [ ] Has code been **explicitly staged (no blind 'git add .'), committed with Conventional Commits, verified via pre-commit triad, and pushed safely without force** (**PRINCIPLE-018**)?
 - [ ] Did **`scripts/check_secrets.py` pass on the staged diff and ledger**, with any exposed credential rotated rather than merely reverted (**PRINCIPLE-019**)?
-- [ ] Are all **principles strictly adhered, mutually aligned, verified against cross-principle regressions, and upholding code quality primacy** (**PRINCIPLE-020**)?
 
 ---
 

@@ -133,7 +133,7 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertEqual(len(principles), EXPECTED_PRINCIPLE_COUNT,
                          f"Expected {EXPECTED_PRINCIPLE_COUNT} principles, got {len(principles)}")
         p_ids = [p["id"] for p in principles]
-        for i in range(1, EXPECTED_PRINCIPLE_COUNT + 1):
+        for i in range(0, EXPECTED_PRINCIPLE_COUNT):
             expected_id = f"PRINCIPLE-{i:03d}"
             self.assertIn(expected_id, p_ids, f"Missing {expected_id} in {SSOT_MD.name}")
         for p in principles:
@@ -290,15 +290,15 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertIn("pre-commit delivery triad", p18["invariant"].lower())
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
-    def test_principle_020_meta_principle_capsule(self):
-        # Enforces PRINCIPLE-020: verified invariant capsule with universal adherence, mutual alignment, impact audit, and code quality primacy
+    def test_principle_000_meta_principle_capsule(self):
+        # Enforces PRINCIPLE-000: verified invariant capsule with universal adherence, mutual alignment, impact audit, and code quality primacy
         principles = parse_principles(SSOT_MD)
-        p20 = next((p for p in principles if p["id"] == "PRINCIPLE-020"), None)
-        self.assertIsNotNone(p20)
-        self.assertIn("universal adherence", p20["invariant"].lower())
-        self.assertIn("mutual alignment", p20["invariant"].lower())
-        self.assertIn("cross-principle impact audit", p20["invariant"].lower())
-        self.assertIn("code quality primacy", p20["invariant"].lower())
+        p0 = next((p for p in principles if p["id"] == "PRINCIPLE-000"), None)
+        self.assertIsNotNone(p0)
+        self.assertIn("universal adherence", p0["invariant"].lower())
+        self.assertIn("mutual alignment", p0["invariant"].lower())
+        self.assertIn("cross-principle impact audit", p0["invariant"].lower())
+        self.assertIn("code quality primacy", p0["invariant"].lower())
 
     def test_guideline_targets_freshness_gate(self):
         # Enforces PRINCIPLE-017: every generated Tier 1 target must be 100% in sync with the SSOT.

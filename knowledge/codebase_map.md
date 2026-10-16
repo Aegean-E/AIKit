@@ -221,7 +221,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `2377` lines (`128996` bytes)
+**Size**: `2377` lines (`128986` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -237,7 +237,7 @@
   - Method `.test_principle_016_knowledge_base_capsule()`
   - Method `.test_principle_017_auto_sync_capsule()`
   - Method `.test_principle_018_git_workflow_capsule()`
-  - Method `.test_principle_020_meta_principle_capsule()`
+  - Method `.test_principle_000_meta_principle_capsule()`
   - Method `.test_guideline_targets_freshness_gate()`
   - Method `.test_triad_consistency_gate()`
   - Method `.test_checklists_cover_every_principle()`

@@ -141,6 +141,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🏛️ Phase 1: Meta-Governance & Attentional Grounding
 | Principle | Title | Core Concept |
 |---|---|---|
+| **PRINCIPLE-000** | Meta-Principle Integrity & Mutual Alignment | Universal adherence; mutual alignment across all principles; cross-principle impact audit on rule changes; code quality primacy over procedural formalism. |
 | **PRINCIPLE-001** | Progressive Disclosure & Governance Frugality | Two-tier progressive disclosure (<1,600 tokens); self-sufficient invariant capsules; deterministic grep anchors; autonomous retrieval triggers. |
 | **PRINCIPLE-002** | Lifecycle-Aligned Instruction Ordering | Monotonic 5-phase gate (Phase 4 passes before delivery); Track A/B/C computed by `--track`; urgency never skips gates. |
 | **PRINCIPLE-003** | Empirical Grounding & Anti-Hallucination | Slice freshness & call-site check; manifest dependency grounding; platform parity; strict AST gate. |
@@ -176,7 +177,6 @@ The principles are strictly organized across **5 chronological execution phases*
 | **PRINCIPLE-017** | Living Principles System (Auto-Sync) | Multi-IDE rule sync; schema validation; freshness test gate; triad parity; Tier 1B domain rules. |
 | **PRINCIPLE-018** | Automatic Git Workflow | Conventional Commits; explicit staging (zero blind add); pre-commit triad; adaptive push. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; ignore-list baseline; pre-commit secret scan; rotate-not-revert. |
-| **PRINCIPLE-020** | Meta-Principle Integrity & Mutual Alignment | Universal adherence; mutual alignment across all principles; cross-principle impact audit on rule changes; code quality primacy over procedural formalism. |
 
 ---
 

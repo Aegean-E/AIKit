@@ -1,72 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "meta-principle-020",
+    "task_id": "p000-zeroth-law",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792176224.3909514,
-    "completed_at": 1792176271.7768197
+    "status": "in_progress",
+    "updated_at": 1792176626.7156353
   },
   "checkpoints": [
-    {
-      "task_id": "p004-unambiguity",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p004-unambiguity' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792173288.153177,
-      "timestamp_str": "2026-10-16 20:54:48"
-    },
-    {
-      "task_id": "task",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] plan = latest Phase 2 checkpoint whose --desc starts with [1/ (code, rule, tests, ADR-060)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792173458.9010172,
-      "timestamp_str": "2026-10-16 20:57:38"
-    },
-    {
-      "task_id": "p004-pass2",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "gates green; ADR-060",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792173650.2084408,
-      "timestamp_str": "2026-10-16 21:00:50"
-    },
-    {
-      "task_id": "p004-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p004-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792173650.3357768,
-      "timestamp_str": "2026-10-16 21:00:50"
-    },
-    {
-      "task_id": "p004-pass3",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] one cold-start command, one owner per limit, defined terms in R1-R5 (ADR-061)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174038.2237742,
-      "timestamp_str": "2026-10-16 21:07:18"
-    },
-    {
-      "task_id": "p004-pass3",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792174038.364361,
-      "timestamp_str": "2026-10-16 21:07:18"
-    },
     {
       "task_id": "p004-pass3",
       "phase": "completed",
@@ -212,6 +153,72 @@
       "status": "completed",
       "timestamp": 1792176271.7768219,
       "timestamp_str": "2026-10-16 21:44:31"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Phase 2: Move PRINCIPLE-020 to PRINCIPLE-000 in Phase 1 and update checklists",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176401.7604039,
+      "timestamp_str": "2026-10-16 21:46:41",
+      "impact_assessment": {
+        "why": "Move meta-principle from PRINCIPLE-020 (Phase 5) to PRINCIPLE-000 (Phase 1) for cognitive primacy and meta-governance grounding",
+        "benefits": "Places overarching integrity and code quality rules at top of context before operational rules, aligns with Phase 1 Meta-Governance",
+        "risks": "Checklist ordering drift, test range failure, target desync",
+        "mitigation": "Update test ranges to 000..019, checklists with 000 first, run full test suite and read-only gates"
+      }
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/3] Phase 3: Relocate meta-principle to PRINCIPLE-000 under Phase 1 in GUIDELINES.md",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176405.9324121,
+      "timestamp_str": "2026-10-16 21:46:45"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/3] Phase 3: Update test_kit.py and README.md for PRINCIPLE-000",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176469.0794134,
+      "timestamp_str": "2026-10-16 21:47:49"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[3/3] Phase 3: Regenerate Tier 1 targets with sync_principles.py and append ADR-065",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176520.7828853,
+      "timestamp_str": "2026-10-16 21:48:40"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "Phase 4 Verification: Run complete test suite and read-only gates for PRINCIPLE-000",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176558.2576773,
+      "timestamp_str": "2026-10-16 21:49:18"
+    },
+    {
+      "task_id": "p000-zeroth-law",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "Phase 5 Delivery: Stage, commit, and push PRINCIPLE-000 relocation",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792176626.7156353,
+      "timestamp_str": "2026-10-16 21:50:26"
     }
   ]
 }
