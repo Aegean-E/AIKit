@@ -457,6 +457,21 @@ def resolve_active_phase(active_task: Optional[Dict[str, Any]], default: int = 1
     return default
 
 
+def repo_relative(path: Any) -> str:
+    """
+    A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators
+    when it lies inside the repository, unchanged otherwise. Absolute paths used to be stored as
+    given, writing the user's home directory into a tracked file.
+    """
+    candidate = Path(path)
+    if candidate.is_absolute():
+        try:
+            return candidate.resolve().relative_to(ROOT_DIR.resolve()).as_posix()
+        except ValueError:
+            return str(path)
+    return candidate.as_posix()
+
+
 def record_checkpoint(
     task_id: str,
     phase: str,
@@ -481,7 +496,7 @@ def record_checkpoint(
         "phase": phase,
         "phase_num": resolved_phase,
         "description": description,
-        "files_affected": [str(f) for f in (files_affected or [])],
+        "files_affected": [repo_relative(f) for f in (files_affected or [])],
         "status": status,
         "timestamp": time.time(),
         "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),

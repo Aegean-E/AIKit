@@ -1198,6 +1198,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "present": [
                 "Rules R1, R2, R4, R6 bind code that calls an LLM API; R3, R5 and R7 bind the agent",
                 "at or below 16,000 characters",
+                "the variable tail of one request (R2)",
+                "These limits apply together with PRINCIPLE-004 R5's 100 lines per command",
+                "The ledger converts absolute paths inside the repository itself (`repo_relative`)",
                 "the prefix MUST be byte-identical across requests",
                 "at most 3 lines of context per hunk",
                 "a search shows at most 50 matches",
@@ -2830,6 +2833,15 @@ class TestDisruptionRecovery(unittest.TestCase):
                     "feat(x): do it [milestone 1/2]", "feat(x): [milestone 1/2]"):
             with self.subTest(msg=msg):
                 self.assertFalse(validate_conventional_commit(msg)[0])
+
+    def test_ledger_stores_repository_relative_paths(self):
+        # Red-green pin (ADR-097): absolute paths were persisted as given, writing the user's home
+        # directory into the tracked ledger (PRINCIPLE-012 R5).
+        outside = Path(tempfile.gettempdir()) / "elsewhere.txt"
+        cp = record_checkpoint("t", "implementation", "x", phase_num=3, ledger_file=self.ledger_file,
+                               files_affected=[ROOT_DIR / "scripts" / "dogfood.py", "service.py", outside])
+        self.assertEqual(cp["files_affected"][:2], ["scripts/dogfood.py", "service.py"])
+        self.assertEqual(cp["files_affected"][2], str(outside))
 
     def test_lock_retries_through_windows_delete_pending_permission_error(self):
         # Red-green pin (ADR-077): EACCES while another process deletes the lock file is

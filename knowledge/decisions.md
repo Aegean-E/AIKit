@@ -1224,3 +1224,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The triad lines are identified by their first non-blank text, `Why:` and `Fix:`, on stdout or stderr; a usage error (exit 2) prints on stderr. All six CLIs were checked with an unknown flag: each exits 2 with one `Why:` and one `Fix:` line on stderr.
 - **Consequences**: No code change. Pinned in the P011 table entry.
 - Cross-principle check: PRINCIPLE-003 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-012 (R4 schema mismatch uses this message; no conflict), PRINCIPLE-013 (R2/R7 failure messages; no conflict), PRINCIPLE-015 (R6 no traceback; no conflict), PRINCIPLE-019 (R7 missing credential message; no conflict).
+
+### ADR-097: PRINCIPLE-012 Second Pass - Combined Output Limits; the Ledger Stores Relative Paths
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Three scenarios still had two answers after ADR-085. R1 capped "each dynamic part" of a request without defining a part. R3's 50-match search limit and PRINCIPLE-004 R5's 100-line cap overlapped without saying how: 50 matches with three context lines is 200 lines. R5 required repository-relative paths in persisted files, yet `record_checkpoint` stored `files_affected` exactly as given; an absolute path wrote the user's home directory into the tracked ledger.
+- **Decision**: R1 applies 16,000 characters to the whole variable tail of one request. R3's limits apply together with PRINCIPLE-004 R5, and the first limit reached stops the output. `repo_relative` converts absolute paths inside the repository to `/`-separated relative paths before the ledger stores them; paths outside the repository stay as given, the exception R5 allows.
+- **Consequences**: The committed ledger held no absolute path. Pinned by a unit test of the conversion and the P012 table entry; both fail on the previous text and code.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-004 (R5's 100-line cap applies together with R3; resolves the overlap), PRINCIPLE-006 (ledger checkpoints; no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-015 (no conflict).

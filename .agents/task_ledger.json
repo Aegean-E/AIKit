@@ -1,69 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p011-pass2",
+    "task_id": "p012-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792189429.3060803,
-    "completed_at": 1792189444.0216632
+    "updated_at": 1792189508.4464974,
+    "completed_at": 1792189523.6158323
   },
   "checkpoints": [
-    {
-      "task_id": "p008-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: scenario test P008",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189200.172847,
-      "timestamp_str": "2026-10-17 01:20:00"
-    },
-    {
-      "task_id": "p008-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P008 pass 2: define nesting levels (parent = 0, max 3), milestone may span more than one layer only with a stated reason, a revision past 6 milestones splits the rest into a new task; ADR-093",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189200.320672,
-      "timestamp_str": "2026-10-17 01:20:00",
-      "impact_assessment": {
-        "why": "scenarios gave two answers: nesting count origin, three-layer milestone, re-plan to M'>6",
-        "benefits": "one answer per scenario",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "pins; cross-principle ADR line"
-      }
-    },
-    {
-      "task_id": "p008-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189200.4476323,
-      "timestamp_str": "2026-10-17 01:20:00"
-    },
-    {
-      "task_id": "p008-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792189217.6729498,
-      "timestamp_str": "2026-10-17 01:20:17"
-    },
-    {
-      "task_id": "p008-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p008-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792189231.6050372,
-      "timestamp_str": "2026-10-17 01:20:31"
-    },
     {
       "task_id": "p009-pass2",
       "phase": "in_progress",
@@ -228,6 +173,61 @@
       "status": "completed",
       "timestamp": 1792189444.0216646,
       "timestamp_str": "2026-10-17 01:24:04"
+    },
+    {
+      "task_id": "p012-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: scenarios for P012",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189482.8146644,
+      "timestamp_str": "2026-10-17 01:24:42"
+    },
+    {
+      "task_id": "p012-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P012 pass 2: payload limit applies to the whole variable tail; search limits add to P004 R5's 100 lines; ledger stores repo-relative paths (code fix); ADR-097",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189482.9433858,
+      "timestamp_str": "2026-10-17 01:24:42",
+      "impact_assessment": {
+        "why": "R1 'each dynamic part' undefined; 50 matches with context can exceed 100 lines; ledger stored absolute paths incl. user home",
+        "benefits": "one reading; R5 true in code",
+        "risks": "contract: files_affected stored repo-relative; dependency: none; concurrency: none; state: ledger values change form for new entries only",
+        "mitigation": "existing ledger has no absolute paths; unit test"
+      }
+    },
+    {
+      "task_id": "p012-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189483.0969496,
+      "timestamp_str": "2026-10-17 01:24:43"
+    },
+    {
+      "task_id": "p012-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792189508.4464974,
+      "timestamp_str": "2026-10-17 01:25:08"
+    },
+    {
+      "task_id": "p012-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p012-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792189523.615833,
+      "timestamp_str": "2026-10-17 01:25:23"
     }
   ]
 }
