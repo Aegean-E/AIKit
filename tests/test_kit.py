@@ -655,6 +655,12 @@ class TestPrinciple005Unambiguity(unittest.TestCase):
             "a directory shown with none is collapsed and exempt",
             "The R1 check compares the tree with `git ls-files`",
             "MUST NOT restate the rules of one",
+            # Second pass (ADR-065): "under it" had two readings, and the adopter had none.
+            "inside the section it opens (up to the next heading of the same or a higher level)",
+            "No `<FILL:` placeholder from the R6 template may remain",
+            "MUST start its Quick Reference and tree from `.agents/rules/readme_quickref.md.template`",
+            "MUST NOT copy AIKit's own Quick Reference",
+            "the build and run commands the project has",
         ):
             with self.subTest(definition=definition):
                 self.assertIn(definition, self.rules)
