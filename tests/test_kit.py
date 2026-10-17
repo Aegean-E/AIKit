@@ -853,6 +853,18 @@ class TestKnowledgeCitations(unittest.TestCase):
                     stale.append(f"{rel}: {pid} R{number}")
         self.assertEqual(stale, [])
 
+    def test_every_benchmark_row_names_its_source_or_says_unverified(self):
+        # PRINCIPLE-009 R6 (ADR-114): scores were presented as verified with no per-row source.
+        text = (ROOT_DIR / "knowledge" / "model_benchmarks.md").read_text(encoding="utf-8")
+        table = text[text.index("| Model Identifier |"):].split("\n\n")[0].splitlines()
+        self.assertTrue(table[0].rstrip().endswith("Source |"))
+        rows = [r for r in table[2:] if r.startswith("|")]
+        self.assertGreater(len(rows), 0)
+        for row in rows:
+            with self.subTest(row=row[:40]):
+                source = row.rstrip().rstrip("|").rsplit("|", 1)[1].strip()
+                self.assertTrue(source == "`unverified`" or source.startswith(("http://", "https://")), source)
+
     def test_every_code_name_a_knowledge_document_cites_exists(self):
         # architecture.md had restated rules and cited numbers long after they changed.
         code = "".join((ROOT_DIR / "scripts" / p.name).read_text(encoding="utf-8")
@@ -1269,8 +1281,11 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "a constructor parameter that defaults to `None`",
                 "Code MUST NOT assign to another module's or object's `_private` attribute",
                 "fails on a junk-drawer module name, a role outside 1 to 5 methods and an import cycle",
-                "Adding or integrating an external AI model service or provider",
-                "Ground-Truth Benchmark & Multi-Agent Verification",
+                # ADR-114 replaced two pins of the concurrent session's R6 wording under PRINCIPLE-014
+                # R2's exception (user approval to fix the principles; the ADR names them).
+                "A project that calls an external AI model provider MUST",
+                "for every benchmark score, the URL the score was read from",
+                "A score without that URL is marked `unverified` and is never a reason to choose a model",
                 "Agent Host Environment & Client Portability",
             ],
 
@@ -1326,9 +1341,10 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "store repository-relative paths",
                 "MUST define a maximum step count and a maximum token count as named parameters",
                 "a function whose body only calls another function with the same arguments",
-                "delegate multi-file pattern searches, raw file indexing, boilerplate drafting",
-                "consult `knowledge/model_benchmarks.md`",
-                "verified ground-truth benchmarks and published context window capacities",
+                # ADR-114 replaced three pins of R8's earlier wording (PRINCIPLE-014 R2 exception).
+                "MAY delegate pattern searches, file indexing, boilerplate drafting or linting",
+                "whose context window, as listed in `knowledge/model_benchmarks.md`, holds the brief",
+                "it compares only sourced benchmark scores (PRINCIPLE-009 R6)",
             ],
 
             "gone": ["target <4,000 tokens", "guaranteeing", "top-k relevant", "~70%", "maximize syntactic density",

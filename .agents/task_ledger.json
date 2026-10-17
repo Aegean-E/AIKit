@@ -3,46 +3,12 @@
   "active_task": {
     "task_id": "p000-005-pass3",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792223814.8117733
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792223951.275969,
+    "completed_at": 1792223967.0806584
   },
   "checkpoints": [
-    {
-      "task_id": "p018-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p018-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792223480.2691677,
-      "timestamp_str": "2026-10-17 10:51:20"
-    },
-    {
-      "task_id": "p019-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: apply R4 to the secret scanner's own output",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223526.557238,
-      "timestamp_str": "2026-10-17 10:52:06"
-    },
-    {
-      "task_id": "p019-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P019 pass 2: check_secrets findings show redacted excerpts (first 4 chars + ***), R4 names it; ADR-110",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223526.7137382,
-      "timestamp_str": "2026-10-17 10:52:06",
-      "impact_assessment": {
-        "why": "the scanner printed every credential it caught in full, breaking R4",
-        "benefits": "the gate no longer leaks what it guards",
-        "risks": "contract: finding excerpts change form; dependency: none; concurrency: none; state: none",
-        "mitigation": "unit test with pragma'd fixtures"
-      }
-    },
     {
       "task_id": "p019-pass2",
       "phase": "in_progress",
@@ -227,6 +193,35 @@
       "status": "in_progress",
       "timestamp": 1792223814.8117733,
       "timestamp_str": "2026-10-17 10:56:54"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223836.579605,
+      "timestamp_str": "2026-10-17 10:57:16"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223951.275969,
+      "timestamp_str": "2026-10-17 10:59:11"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p000-005-pass3' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792223967.0806596,
+      "timestamp_str": "2026-10-17 10:59:27"
     }
   ]
 }

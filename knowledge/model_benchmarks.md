@@ -33,20 +33,20 @@ Model selection MUST match the task's token footprint and required context reten
 
 ## 📈 Empirical Model Benchmark Table
 
-All benchmark figures reflect published evaluation reports from official leaderboards and technical cards:
+These figures were entered without a per-row source. Each row is `unverified` until its Source column holds the URL its scores were read from; an unverified score is never a reason to choose a model (**PRINCIPLE-009 R6**, ADR-114):
 
-| Model Identifier | Provider / Engine | Cost Tier | Context Window | SWE-bench Verified (%) | LiveCodeBench (%) | HumanEval (%) | Throughput | Specialized Subagent Profile |
-|---|---|---|---|---|---|---|---|---|
-| **`openrouter/deepseek/deepseek-r1:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **49.2%** | **65.9%** | **92.8%** | Deliberate (~25 t/s) | **`architect`**: Deep reasoning on system design, ADR preparation, and subtle test failure diagnostics |
-| **`openrouter/qwen/qwen-2.5-coder-32b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **39.8%** | **49.3%** | **92.7%** | Moderate (~55 t/s) | **`coder`** / **`tester`**: High-fidelity code generation, refactoring, and regression test suites |
-| **`opencode/deepseek-v4.1-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **36.4%** | **46.8%** | **91.2%** | Very Fast (~110 t/s) | **`worker`**: General-purpose background worker for code drafting and file audits |
-| **`openrouter/meta-llama/llama-3.3-70b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **37.8%** | **45.2%** | **88.6%** | Fast (~70 t/s) | **`reviewer`**: Large-context documentation review, schema audits, and knowledge base sync |
-| **`opencode/glm-5.3-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **33.1%** | **44.2%** | **88.5%** | Fast (~85 t/s) | **`reviewer`**: Markdown link verification, AST integrity checks, and test log triage |
-| **`opencode/mimo-v2.6-flash-free`** | OpenCode Native | **Free ($0.00)** | **32k** | **29.8%** | **41.5%** | **86.4%** | Ultra-Fast (~140 t/s) | **`explorer`**: High-speed symbol lookup, directory tree mapping, and grep filtering |
-| **`ollama/qwen2.5-coder:latest`** | Local Ollama | **Free / Offline** | **32k** (up to 128k) | **28.6%** | **38.4%** | **88.4%** | Hardware-dependent | **Offline `coder` / `tester`**: Zero network access, air-gapped security, zero credential risk |
-| **`ollama/deepseek-r1:latest`** | Local Ollama | **Free / Offline** | **64k** | **44.0%** | **58.2%** | **89.4%** | Hardware-dependent | **Offline `architect`**: Local architectural analysis and complex reasoning |
-| *`claude-3-7-sonnet` (Frontier Ref)* | Anthropic (Paid) | Paid / Quota | 200k | 70.3% | 71.4% | 94.2% | Fast (~75 t/s) | **Parent Orchestrator**: Sole authority for planning, commits, and ledger updates |
-| *`gpt-4o` (Frontier Ref)* | OpenAI (Paid) | Paid / Quota | 128k | 45.1% | 62.5% | 92.6% | Fast (~80 t/s) | **Parent Orchestrator Fallback** |
+| Model Identifier | Provider / Engine | Cost Tier | Context Window | SWE-bench Verified (%) | LiveCodeBench (%) | HumanEval (%) | Throughput | Specialized Subagent Profile | Source |
+|---|---|---|---|---|---|---|---|---|---|
+| **`openrouter/deepseek/deepseek-r1:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **49.2%** | **65.9%** | **92.8%** | Deliberate (~25 t/s) | **`architect`**: Deep reasoning on system design, ADR preparation, and subtle test failure diagnostics | `unverified` |
+| **`openrouter/qwen/qwen-2.5-coder-32b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **39.8%** | **49.3%** | **92.7%** | Moderate (~55 t/s) | **`coder`** / **`tester`**: High-fidelity code generation, refactoring, and regression test suites | `unverified` |
+| **`opencode/deepseek-v4.1-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **36.4%** | **46.8%** | **91.2%** | Very Fast (~110 t/s) | **`worker`**: General-purpose background worker for code drafting and file audits | `unverified` |
+| **`openrouter/meta-llama/llama-3.3-70b-instruct:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **37.8%** | **45.2%** | **88.6%** | Fast (~70 t/s) | **`reviewer`**: Large-context documentation review, schema audits, and knowledge base sync | `unverified` |
+| **`opencode/glm-5.3-flash-free`** | OpenCode Native | **Free ($0.00)** | **128k** | **33.1%** | **44.2%** | **88.5%** | Fast (~85 t/s) | **`reviewer`**: Markdown link verification, AST integrity checks, and test log triage | `unverified` |
+| **`opencode/mimo-v2.6-flash-free`** | OpenCode Native | **Free ($0.00)** | **32k** | **29.8%** | **41.5%** | **86.4%** | Ultra-Fast (~140 t/s) | **`explorer`**: High-speed symbol lookup, directory tree mapping, and grep filtering | `unverified` |
+| **`ollama/qwen2.5-coder:latest`** | Local Ollama | **Free / Offline** | **32k** (up to 128k) | **28.6%** | **38.4%** | **88.4%** | Hardware-dependent | **Offline `coder` / `tester`**: Zero network access, air-gapped security, zero credential risk | `unverified` |
+| **`ollama/deepseek-r1:latest`** | Local Ollama | **Free / Offline** | **64k** | **44.0%** | **58.2%** | **89.4%** | Hardware-dependent | **Offline `architect`**: Local architectural analysis and complex reasoning | `unverified` |
+| *`claude-3-7-sonnet` (Frontier Ref)* | Anthropic (Paid) | Paid / Quota | 200k | 70.3% | 71.4% | 94.2% | Fast (~75 t/s) | **Parent Orchestrator**: Sole authority for planning, commits, and ledger updates | `unverified` |
+| *`gpt-4o` (Frontier Ref)* | OpenAI (Paid) | Paid / Quota | 128k | 45.1% | 62.5% | 92.6% | Fast (~80 t/s) | **Parent Orchestrator Fallback** | `unverified` |
 
 ---
 

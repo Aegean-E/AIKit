@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `45`
 - **Total Functions / Methods**: `116`
-- **Total Source Lines**: `7935`
+- **Total Source Lines**: `7951`
 
 ---
 
@@ -246,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3341` lines (`186357` bytes)
+**Size**: `3357` lines (`187568` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -311,6 +311,7 @@
   - Method `.test_rule_numbers_match_code_constants()`
 - `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
   - Method `.test_every_rule_citation_names_an_existing_rule()`
+  - Method `.test_every_benchmark_row_names_its_source_or_says_unverified()`
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
 - `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099).*
   - Method `.setUpClass()`
