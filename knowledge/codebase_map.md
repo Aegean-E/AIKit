@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `12`
 - **Total Classes**: `61`
-- **Total Functions / Methods**: `164`
-- **Total Source Lines**: `9474`
+- **Total Functions / Methods**: `165`
+- **Total Source Lines**: `9587`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `224` lines (`9496` bytes)
+**Size**: `236` lines (`10018` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -247,10 +247,11 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `905` lines (`40605` bytes)
+**Size**: `933` lines (`42309` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
+- `def write_generated_file(file_path, content)` - *Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1).*
 - `def render_signature(node, drop_self)` - *Render a complete call signature from an AST function node (PRINCIPLE-003, PRINCIPLE-016).*
 - `def parse_source(content, filename)` - *`ast.parse` at the minimum supported grammar (PRINCIPLE-003 R7), cached by content.*
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
@@ -259,8 +260,8 @@
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
 - `def audit_adr_register(decisions)` - *ADR IDs must be unique and consecutive (PRINCIPLE-016 R3, PRINCIPLE-000 R3). Two sessions that*
-- `def check_codebase_map_freshness(knowledge_dir, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
-- `def update_and_validate(knowledge_dir, strict)`
+- `def check_codebase_map_freshness(knowledge_dir, root, strict)` - *Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).*
+- `def update_and_validate(knowledge_dir, root, strict)`
 - `def _names(nodes)` - *Bare names of decorators or base classes (`abc.abstractmethod` -> `abstractmethod`).*
 - `def audit_lazy_code(source, rel)` - *PRINCIPLE-007 R3 as a gate: a `TODO`/`FIXME`/`XXX`/`HACK` comment marker, a `# type: ignore`*
 - `def _is_stub(fn)` - *A body (after any docstring) that is only `pass`, `...` or `raise NotImplementedError`.*
@@ -281,7 +282,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `683` lines (`33352` bytes)
+**Size**: `704` lines (`34548` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -342,6 +343,7 @@
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
 - `class TestProjectFixCommand` - *`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates.*
   - Method `.test_fix_self_heals_missing_memory_and_cleans_buffers()`
+  - Method `.test_project_with_custom_readme_passes_aikit_check()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
@@ -352,7 +354,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3751` lines (`209583` bytes)
+**Size**: `3803` lines (`212431` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -416,6 +418,8 @@
   - Method `.test_workspace_audits_lazy_code_architecture_and_adr_register()`
   - Method `.test_clean_workspace_passes_lazy_and_architecture()`
   - Method `.test_aikit_dir_is_ignored_by_python_file_discovery()`
+  - Method `.test_write_generated_file_persists_atomically()`
+  - Method `.test_workspace_codebase_map_freshness()`
 - `class TestSecretBaselineAndRuleSchema` - *PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092).*
   - Method `.test_gitignore_holds_every_baseline_pattern_the_rule_lists()`
   - Method `.test_a_rule_without_audience_is_rejected()`
@@ -674,6 +678,8 @@
   - Method `.test_cli_reports_triad_and_exit_codes()`
   - Method `.test_project_memory_holds_ledger_and_decisions()`
   - Method `.test_status_names_unknown_and_missing_projects()`
+  - Method `.test_fix_cli_reports_triad_on_unknown_project()`
+  - Method `.test_fix_in_process_heals_missing_files_and_cleans_buffers()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`

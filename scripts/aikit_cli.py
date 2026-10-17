@@ -29,8 +29,14 @@ from scripts.project_registry import (
     write_memory,
     AGENTS_FILENAME,
     AGENTS_TEMPLATE,
+    DECISIONS_FILENAME,
+    PROJECT_MEMORY_DIRNAME,
 )
-from scripts.update_knowledge_base import generate_codebase_map
+from scripts.update_knowledge_base import (
+    find_python_files,
+    generate_codebase_map,
+    write_generated_file,
+)
 
 
 def report_error(error: ProjectError) -> int:
@@ -183,11 +189,18 @@ def cmd_fix(args: argparse.Namespace) -> int:
     print(f"Self-checking & fixing project '{project.name}' ({project.path}):")
     fixes: List[str] = []
 
+    had_gitignore = (project.path / ".gitignore").exists()
+    had_decisions = (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists()
     agents_path = project.path / AGENTS_FILENAME
     had_agents = agents_path.exists()
+
     created = write_memory(project.path, project.name, project.test_command)
     if created:
         fixes.append("initialized missing .aikit/project.json")
+    if not had_gitignore and (project.path / ".gitignore").exists():
+        fixes.append("created .gitignore with transient state patterns")
+    if not had_decisions and (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists():
+        fixes.append("seeded .aikit/decisions.md register")
     if not had_agents and agents_path.exists():
         fixes.append("seeded AGENTS.md guidelines")
 
@@ -195,11 +208,10 @@ def cmd_fix(args: argparse.Namespace) -> int:
     if cleaned:
         fixes.append(f"cleaned {len(cleaned)} dangling temporary buffer(s)")
 
-    if any(project.path.glob("**/*.py")):
+    if find_python_files(project.path):
         map_content = generate_codebase_map(root=project.path, strict=False)
         map_path = project.path / ".aikit" / "codebase_map.md"
-        with open(map_path, "w", encoding="utf-8") as f:
-            f.write(map_content)
+        write_generated_file(map_path, map_content)
         fixes.append("synchronized .aikit/codebase_map.md")
 
     if fixes:

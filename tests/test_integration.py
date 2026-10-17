@@ -646,6 +646,27 @@ class TestProjectFixCommand(unittest.TestCase):
         self.assertTrue((root / "AGENTS.md").is_file())
         self.assertFalse((root / "state.json.tmp_dangling").exists())
 
+    def test_project_with_custom_readme_passes_aikit_check(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_custom_readme_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "A", "GIT_AUTHOR_EMAIL": "a@example.com",
+                    "GIT_COMMITTER_NAME": "A", "GIT_COMMITTER_EMAIL": "a@example.com"}
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        root, _ = create_project("customapp", test_command='python -c "exit(0)"', workspace=kit)
+        (root / "README.md").write_text("# Custom App\n\nExternal user application.\n", encoding="utf-8")
+        (root / "main.py").write_text("def run():\n    return 'ok'\n", encoding="utf-8")
+
+        res = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "aikit.py"), "check", "customapp"],
+            cwd=str(kit), capture_output=True, text=True, timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("[PASS] guidelines", res.stdout)
+        self.assertIn("[PASS] secrets", res.stdout)
+        self.assertIn("[PASS] test", res.stdout)
+
 class TestProjectSecretScan(unittest.TestCase):
     """`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121)."""
 

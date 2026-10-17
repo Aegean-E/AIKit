@@ -16,6 +16,7 @@ import subprocess  # imported only to refuse process spawns; see setUpModule
 import tempfile
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
 # The unit tier must never start a process (PRINCIPLE-014 R3), directly or indirectly. While this
@@ -151,6 +152,7 @@ from scripts.update_knowledge_base import (
     parse_source,
     find_python_files,
     parse_readme_tree,
+    write_generated_file,
 )
 
 
@@ -856,6 +858,22 @@ class TestKnowledgeBaseWorkspaceAudits(unittest.TestCase):
         (self.tmp / "main.py").write_text("def ok() -> None:\n    return None\n", encoding="utf-8")
         py_files = find_python_files(self.tmp)
         self.assertEqual([p.name for p in py_files], ["main.py"])
+
+    def test_write_generated_file_persists_atomically(self):
+        dest = self.tmp / "sub" / "output.txt"
+        write_generated_file(dest, "atomic-content")
+        self.assertTrue(dest.is_file())
+        self.assertEqual(dest.read_text(encoding="utf-8"), "atomic-content")
+
+    def test_workspace_codebase_map_freshness(self):
+        (self.tmp / "service.py").write_text("class Worker:\n    def run(self): pass\n", encoding="utf-8")
+        map_content = generate_codebase_map(root=self.tmp, strict=False)
+        (self.tmp / ".aikit").mkdir(parents=True)
+        write_generated_file(self.tmp / ".aikit" / "codebase_map.md", map_content)
+        self.assertTrue(check_codebase_map_freshness(self.tmp / ".aikit", root=self.tmp, strict=False))
+        # Modify service.py to make it stale
+        (self.tmp / "service.py").write_text("class Worker:\n    def run(self): pass\n    def stop(self): pass\n", encoding="utf-8")
+        self.assertFalse(check_codebase_map_freshness(self.tmp / ".aikit", root=self.tmp, strict=False))
 
 
 class TestSecretBaselineAndRuleSchema(unittest.TestCase):
@@ -3660,6 +3678,40 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "svc", workspace=self.kit)
         shutil.rmtree(folder)
         self.assertFalse(find_project("svc", self.kit).present)
+
+    def test_fix_cli_reports_triad_on_unknown_project(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            self.assertEqual(aikit_main(["fix", "nonexistent"]), 2)
+        self.assertIn("Why:", stderr.getvalue())
+        self.assertIn("Fix:", stderr.getvalue())
+
+    def test_fix_in_process_heals_missing_files_and_cleans_buffers(self):
+        folder = self.make_folder()
+        attach_project(folder, "myapp", workspace=self.kit)
+        # Create a dangling buffer
+        (folder / "state.json.tmp_dangling").write_text("buffer", encoding="utf-8")
+        # Remove AGENTS.md and .aikit/decisions.md
+        (folder / "AGENTS.md").unlink()
+        (folder / ".aikit" / "decisions.md").unlink()
+        # Add a python source file
+        (folder / "core.py").write_text("def work(): return 1\n", encoding="utf-8")
+
+        stdout = io.StringIO()
+        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
+             mock.patch("scripts.aikit_cli.cmd_check", return_value=0), \
+             contextlib.redirect_stdout(stdout):
+            exit_code = aikit_main(["fix", "myapp"])
+        self.assertEqual(exit_code, 0)
+        out = stdout.getvalue()
+        self.assertIn("seeded AGENTS.md guidelines", out)
+        self.assertIn("seeded .aikit/decisions.md register", out)
+        self.assertIn("cleaned 1 dangling temporary buffer", out)
+        self.assertIn("synchronized .aikit/codebase_map.md", out)
+        self.assertTrue((folder / "AGENTS.md").is_file())
+        self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
+        self.assertTrue((folder / ".aikit" / "codebase_map.md").is_file())
+        self.assertFalse((folder / "state.json.tmp_dangling").exists())
 
 class TestProjectGates(unittest.TestCase):
     """A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122)."""

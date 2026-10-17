@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -79,6 +80,18 @@ def fsync_dir(dir_path: Path) -> None:
                 os.close(fd)
             except OSError:
                 pass
+
+
+def write_generated_file(file_path: Path, content: str) -> None:
+    """Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1)."""
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = file_path.with_suffix(file_path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, file_path)
+    fsync_dir(file_path.parent)
 
 
 def render_signature(node: Any, drop_self: bool = False) -> List[str]:
@@ -348,12 +361,13 @@ def audit_adr_register(decisions: str) -> List[str]:
     return errors
 
 
-def check_codebase_map_freshness(knowledge_dir: Optional[Path] = None, strict: bool = True) -> bool:
+def check_codebase_map_freshness(knowledge_dir: Optional[Path] = None, root: Optional[Path] = None, strict: bool = True) -> bool:
     """
     Check if codebase_map.md accurately reflects current codebase AST (PRINCIPLE-016).
     Returns True if fresh. If stale and strict=True, raises ValueError. If stale and strict=False, returns False.
     """
-    k_dir = knowledge_dir or KNOWLEDGE_DIR
+    target_root = root or ROOT_DIR
+    k_dir = knowledge_dir or (target_root / "knowledge")
     map_path = k_dir / "codebase_map.md"
     if not map_path.exists():
         if strict:
@@ -361,32 +375,27 @@ def check_codebase_map_freshness(knowledge_dir: Optional[Path] = None, strict: b
         return False
 
     current_content = map_path.read_text(encoding="utf-8").replace("\r\n", "\n").strip()
-    generated_content = generate_codebase_map(strict=strict).replace("\r\n", "\n").strip()
+    generated_content = generate_codebase_map(root=target_root, strict=strict).replace("\r\n", "\n").strip()
     is_fresh = (current_content == generated_content)
     if not is_fresh and strict:
         raise ValueError(
-            "[PRINCIPLE-016 CODEBASE MAP STALE] knowledge/codebase_map.md is out of sync with AST. "
+            f"[PRINCIPLE-016 CODEBASE MAP STALE] {map_path.name} is out of sync with AST. "
             "Run 'python scripts/update_knowledge_base.py' to synchronize."
         )
     return is_fresh
 
 
-def update_and_validate(knowledge_dir: Optional[Path] = None, strict: bool = True):
-    k_dir = knowledge_dir or KNOWLEDGE_DIR
+def update_and_validate(knowledge_dir: Optional[Path] = None, root: Optional[Path] = None, strict: bool = True):
+    target_root = root or ROOT_DIR
+    k_dir = knowledge_dir or (target_root / "knowledge")
     k_dir.mkdir(parents=True, exist_ok=True)
     map_path = k_dir / "codebase_map.md"
 
     # 1. Update codebase_map.md atomically (fsync + replace) with strict AST verification (PRINCIPLE-003)
-    map_content = generate_codebase_map(strict=strict)
-    tmp_map = map_path.with_suffix(f".tmp_{os.getpid()}")
-    with open(tmp_map, "w", encoding="utf-8") as f:
-        f.write(map_content)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_map, map_path)
-    fsync_dir(map_path.parent)
+    map_content = generate_codebase_map(root=target_root, strict=strict)
+    write_generated_file(map_path, map_content)
     try:
-        rel_str = str(map_path.relative_to(ROOT_DIR))
+        rel_str = str(map_path.relative_to(target_root))
     except ValueError:
         rel_str = str(map_path)
     print(f"[UPDATED] {rel_str}")
@@ -828,9 +837,13 @@ if __name__ == "__main__":
     if "--check" in sys.argv:
         try:
             fresh = True
-            k_map = target_root / "knowledge" / "codebase_map.md"
-            if k_map.exists():
-                fresh = check_codebase_map_freshness(target_root / "knowledge", strict=False)
+            k_map = None
+            for cand in (target_root / ".aikit" / "codebase_map.md", target_root / "knowledge" / "codebase_map.md"):
+                if cand.is_file():
+                    k_map = cand
+                    break
+            if k_map:
+                fresh = check_codebase_map_freshness(k_map.parent, root=target_root, strict=False)
                 if fresh:
                     print(f"[OK] {k_map.relative_to(target_root)} is fresh and synchronized with AST.")
                 else:
@@ -843,8 +856,16 @@ if __name__ == "__main__":
                     print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
 
             readme_ok = True
-            if (target_root / "README.md").is_file() or target_root == ROOT_DIR:
+            if target_root == ROOT_DIR:
                 readme_ok = report_readme(check_readme(target_root))
+            elif (target_root / "README.md").is_file():
+                readme_text = (target_root / "README.md").read_text(encoding="utf-8")
+                readme_errors = []
+                if len(readme_text) > README_MAX_CHARS:
+                    readme_errors.append(f"README.md has {len(readme_text):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
+                if README_PLACEHOLDER in readme_text:
+                    readme_errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder (R1)")
+                readme_ok = report_readme(readme_errors)
             lazy_ok = report_lazy_code(check_lazy_code(target_root))
             arch_ok = report_architecture(check_architecture(target_root))
 
@@ -871,7 +892,7 @@ if __name__ == "__main__":
     k_dir = target_root / "knowledge"
     if k_dir.is_dir() or target_root == ROOT_DIR:
         try:
-            update_and_validate(k_dir, strict=not is_lenient)
+            update_and_validate(k_dir, root=target_root, strict=not is_lenient)
         except ValueError as gate_error:
             # PRINCIPLE-003 R7 halts here; PRINCIPLE-011 R6 forbids doing it with a raw traceback.
             # Each failure gets its own Why/Fix: an ADR-ID or link error used to be reported as a
@@ -891,13 +912,20 @@ if __name__ == "__main__":
     elif (target_root / ".aikit").is_dir():
         map_content = generate_codebase_map(root=target_root, strict=not is_lenient)
         map_path = target_root / ".aikit" / "codebase_map.md"
-        with open(map_path, "w", encoding="utf-8") as f:
-            f.write(map_content)
+        write_generated_file(map_path, map_content)
         print(f"[UPDATED] {map_path.relative_to(target_root)}")
 
     readme_ok = True
-    if (target_root / "README.md").is_file() or target_root == ROOT_DIR:
+    if target_root == ROOT_DIR:
         readme_ok = report_readme(check_readme(target_root))
+    elif (target_root / "README.md").is_file():
+        readme_text = (target_root / "README.md").read_text(encoding="utf-8")
+        readme_errors = []
+        if len(readme_text) > README_MAX_CHARS:
+            readme_errors.append(f"README.md has {len(readme_text):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
+        if README_PLACEHOLDER in readme_text:
+            readme_errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder (R1)")
+        readme_ok = report_readme(readme_errors)
     lazy_ok = report_lazy_code(check_lazy_code(target_root))
     arch_ok = report_architecture(check_architecture(target_root))
     if not (readme_ok and lazy_ok and arch_ok) and not is_lenient:
