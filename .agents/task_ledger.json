@@ -1,49 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "free-providers",
+    "task_id": "secret-leak-fix",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792251692.7205641,
-    "completed_at": 1792251692.8866055
+    "updated_at": 1792251844.6404212,
+    "completed_at": 1792251844.7913444
   },
   "checkpoints": [
-    {
-      "task_id": "review-project-kit",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-project-kit' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792242854.2855394,
-      "timestamp_str": "2026-10-17 16:14:14"
-    },
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: P000 R6 order, P001 R4 tiers, Tier 1B domain.md is AIKit-folder wide; projects have no own rule tier",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250226.2731237,
-      "timestamp_str": "2026-10-17 18:17:06"
-    },
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] mechanism: .aikit/guidelines.md seeded with memory, guideline_errors audit (size, G-NNN format, unique IDs, override attempts) in check_workspace, add_guideline + aikit guideline <name> <rule> --source, status/resume print them; tests; [2/2] rules: P001 R4 project tier, P000 R6 rank, P011 R8 read before coding; docs, ADR-129",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250226.4216082,
-      "timestamp_str": "2026-10-17 18:17:06",
-      "impact_assessment": {
-        "why": "projects need their own rules (stack, conventions) without editing AIKit's universal principles or the shared Tier 1B",
-        "benefits": "per-project rules written by people or AI, loaded at cold start, mechanically checked, never able to weaken a principle",
-        "risks": "contract: new guideline command and .aikit/guidelines.md format; dependency: none; concurrency: appends under file_lock; state: new memory file, older projects get it from fix or attach",
-        "mitigation": "format and override audit in the guidelines gate; template states the rank; failing-first tests"
-      }
-    },
     {
       "task_id": "project-guidelines",
       "phase": "in_progress",
@@ -222,6 +187,41 @@
       "status": "completed",
       "timestamp": 1792251692.8866076,
       "timestamp_str": "2026-10-17 18:41:32"
+    },
+    {
+      "task_id": "secret-leak-fix",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] remove the real key from the test fixture, add the bare-literal detector, P019 R1 fixture rule (ADR-133); [2/2] user revokes the key",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251844.3858414,
+      "timestamp_str": "2026-10-17 18:44:04",
+      "impact_assessment": {
+        "why": "a real Gemini key was committed inside a split test literal",
+        "benefits": "the fixture is fake and the scanner now catches split random literals",
+        "risks": "contract: scanner flags more literals; dependency: none; concurrency: none; state: key stays in private history until revoked",
+        "mitigation": "measured over all tracked files: one fake fixture flagged and pragma-marked; user told to rotate first"
+      }
+    },
+    {
+      "task_id": "secret-leak-fix",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed; awaiting key revocation by the user",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251844.6404212,
+      "timestamp_str": "2026-10-17 18:44:04"
+    },
+    {
+      "task_id": "secret-leak-fix",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'secret-leak-fix' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792251844.7913458,
+      "timestamp_str": "2026-10-17 18:44:04"
     }
   ]
 }

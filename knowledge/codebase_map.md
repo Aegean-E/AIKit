@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `13`
 - **Total Classes**: `67`
-- **Total Functions / Methods**: `189`
-- **Total Source Lines**: `10414`
+- **Total Functions / Methods**: `190`
+- **Total Source Lines**: `10447`
 
 ---
 
@@ -73,13 +73,14 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `403` lines (`17617` bytes)
+**Size**: `419` lines (`18593` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
 - `def is_strongly_allowlisted(line)` - *An explicit pragma or an unambiguous placeholder suppresses every detector.*
 - `def is_weakly_allowlisted(line)` - *A hint like "example" suppresses only the low-confidence entropy fallback.*
 - `def scan_text(label, text)` - *Return (label, line_no, detector, excerpt) for every finding in a blob of text.*
+- `def looks_random(value)` - *A token shaped like a generated key: mixed case and digits, and high entropy. Hex digests*
 - `def redact(line, start, end)` - *The line with the secret span cut to its first 4 characters plus `***` (PRINCIPLE-019 R4).*
 - `def should_skip(path_str)`
 - `def git_output(args, repo)`
@@ -315,7 +316,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `787` lines (`39293` bytes)
+**Size**: `787` lines (`39315` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -395,7 +396,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4069` lines (`228366` bytes)
+**Size**: `4086` lines (`229451` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -760,6 +761,7 @@
   - Method `.test_delegate_refuses_a_paid_model_before_running_anything()`
   - Method `.test_gemini_key_comes_only_from_the_environment()`
   - Method `.test_text_report_keeps_only_the_answer()`
+  - Method `.test_a_key_split_across_a_concatenation_is_still_caught()`
   - Method `.test_scanner_catches_a_bare_gemini_key()`
 
 **Functions:**

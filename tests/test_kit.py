@@ -1640,6 +1640,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "rules": 7,
             "present": [
                 "Credentials live only in the environment or a secret store",
+                # ADR-133: a real key, split in a test fixture, was committed.
+                "a secret detector's test sample is fabricated or generated at run time",
                 "A unit test checks that each is present",
                 "MUST NOT contain its value, an authorization header or a raw provider response",
                 "shows at most its first 4 characters followed by `***`",
@@ -4060,8 +4062,23 @@ class TestFreeModelPolicy(unittest.TestCase):
         self.assertEqual(answer_text(stream), "`scripts/project_registry.py` owns it.")
         self.assertEqual(answer_text("plain output"), "plain output")
 
+    def test_a_key_split_across_a_concatenation_is_still_caught(self):
+        # ADR-133: `"AQ." + "<rest of a real key>"` passed every detector and was committed. The
+        # sample is generated, so this file holds no key-shaped literal.
+        import base64
+        import hashlib
+        fake = base64.urlsafe_b64encode(hashlib.sha256(b"aikit").digest()).decode().rstrip("=")
+        findings = scan_text("t.py", f'key = "AQ." + "{fake}"')
+        self.assertIn("high-entropy string literal", [f[2] for f in findings])
+        self.assertNotIn(fake, findings[0][3], "the excerpt is redacted")
+        for benign in (f'digest = "{hashlib.sha256(b"x").hexdigest()}"',
+                       'name = "test_codebase_map_freshness_stale_detection_for_projects"'):
+            with self.subTest(line=benign[:20]):
+                self.assertEqual(scan_text("t.py", benign), [])
+
     def test_scanner_catches_a_bare_gemini_key(self):
-        key = "AQ." + "Ab8RN6K_TpL0MioW4rDO1GJwP7QXkOWdk5WoIW4jami8exICOg"  # split: no key literal here
+        # A fabricated value: a real key, even split in two, is a committed credential (ADR-133).
+        key = "AQ." + "FakeKey0" * 6 + "xy"
         self.assertTrue(scan_text("notes.md", key))
 
 

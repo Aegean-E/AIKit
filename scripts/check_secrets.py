@@ -79,6 +79,8 @@ INTERPOLATION_ONLY_RE = re.compile(
 ASSIGNMENT_RE = re.compile(
     r"(?i)\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)[A-Z0-9_]*)\s*[:=]\s*[\"']?([^\s\"',;]{16,})[\"']?"
 )
+# A quoted token long enough to be a generated key; `looks_random` decides whether it is one.
+BARE_LITERAL_RE = re.compile(r"[\"']([A-Za-z0-9_\-]{40,})[\"']")
 
 # Allowlisting is risk-tiered, because a weak word must never veto a high-confidence match.
 # A red-check caught this: "AKIAIOSFODNN7EXAMPLE" was missed purely because the line contained
@@ -164,7 +166,21 @@ def scan_text(label: str, text: str) -> List[Tuple[str, int, str, str]]:
             if len(value) >= 20 and shannon_entropy(value) >= 3.8:
                 findings.append((label, lineno, f"high-entropy value for {name}",
                                  redact(line, match.start(2), match.end(2))))
+                continue
+        # A long random-looking string literal with no key name beside it: a real Gemini key, split
+        # in two inside a test, passed every check above and was committed (ADR-133).
+        bare = BARE_LITERAL_RE.search(line)
+        if bare and looks_random(bare.group(1)):
+            findings.append((label, lineno, "high-entropy string literal",
+                             redact(line, bare.start(1), bare.end(1))))
     return findings
+
+
+def looks_random(value: str) -> bool:
+    """A token shaped like a generated key: mixed case and digits, and high entropy. Hex digests
+    and long identifiers lack the mix, so they do not trip it."""
+    return (shannon_entropy(value) >= 4.5 and any(c.islower() for c in value)
+            and any(c.isupper() for c in value) and any(c.isdigit() for c in value))
 
 
 def redact(line: str, start: int, end: int) -> str:
