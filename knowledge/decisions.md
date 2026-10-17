@@ -1328,3 +1328,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: A branch without an upstream is pushed with `git push -u origin <branch>` when a remote named `origin` exists; with no remote the commit is reported as local only; with remotes but none named `origin`, the agent asks which to use.
 - **Consequences**: Pinned in the P018 table entry.
 - Cross-principle check: PRINCIPLE-001 (no conflict), PRINCIPLE-002 (no conflict), PRINCIPLE-003 (R6 ask when the remote is ambiguous; no conflict), PRINCIPLE-006 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-015 (no conflict), PRINCIPLE-016 (no conflict), PRINCIPLE-017 (no conflict), PRINCIPLE-019 (no conflict).
+
+### ADR-110: PRINCIPLE-019 Second Pass - The Secret Scanner Stops Echoing Secrets
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: Applying R4 (redacted diagnostics) to AIKit's own tools showed the secret scanner breaking it: each finding's excerpt was the raw line, so `check_secrets.py` printed every credential it caught in full to the terminal, the agent transcript and any log capturing its output, the leak path the gate exists to close.
+- **Decision**: `redact` cuts the matched span (a pattern hit, or the assigned value for the entropy detector) to its first 4 characters plus `***` before the excerpt is stored. R4 states that the scanner is bound by the same redaction.
+- **Consequences**: A unit test with two pragma-allowlisted fixture credentials asserts neither appears in its finding and the 4-character prefix does; it fails on the previous scanner. The repository scan stays clean.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-009 (provider credentials stay in the environment; no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-018 (R3 gate output; no conflict).

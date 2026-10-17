@@ -1395,6 +1395,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "A unit test checks that each is present",
                 "MUST NOT contain its value, an authorization header or a raw provider response",
                 "shows at most its first 4 characters followed by `***`",
+                "This binds the secret scanner too: its findings print the redacted line (`redact`)",
                 "A false positive is allowed only by a `# aikit:allow-secret` comment",
                 "It MUST NOT present `git reset`, a force-push or a deleted file as the remedy",
                 "A step that only reads uses a read-only credential",
@@ -2313,6 +2314,19 @@ class TestSecretHygieneScanner(unittest.TestCase):
     syntactically valid credential *shape* using published documentation values or invented
     strings - no live secret appears in this repository.
     """
+
+    def test_findings_never_echo_the_secret(self):
+        # Red-green pin (ADR-110): the scanner printed each caught credential in full (P019 R4).
+        lines = {
+            'AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7NOTREAL"': "AKIAIOSFODNN7NOTREAL",  # aikit:allow-secret
+            'token_value = "q8Zx3LmP0vR7tK2wY9nB4cH6jF1dS5aE"': "q8Zx3LmP0vR7tK2wY9nB4cH6jF1dS5aE",  # aikit:allow-secret
+        }
+        for line, secret in lines.items():
+            with self.subTest(line=line):
+                findings = scan_text("fixture.py", line)
+                self.assertEqual(len(findings), 1)
+                self.assertNotIn(secret, findings[0][3])
+                self.assertIn(secret[:4] + "***", findings[0][3])
 
     def test_a_scan_that_skipped_a_surface_never_reports_clean(self):
         # Red-green pin (PRINCIPLE-000 R5): with git failing, --staged and --all printed [OK] and

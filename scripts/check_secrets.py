@@ -136,8 +136,9 @@ def scan_text(label: str, text: str) -> List[Tuple[str, int, str, str]]:
 
         matched = False
         for detector, pattern in SECRET_PATTERNS:
-            if re.search(pattern, line):
-                findings.append((label, lineno, detector, stripped[:88]))
+            hit = re.search(pattern, line)
+            if hit:
+                findings.append((label, lineno, detector, redact(line, hit.start(), hit.end())))
                 matched = True
                 break
         if matched:
@@ -153,8 +154,18 @@ def scan_text(label: str, text: str) -> List[Tuple[str, int, str, str]]:
             if value.startswith(("$", "{", "%", "<")) or "os.getenv" in line or "os.environ" in line:
                 continue  # an indirection, not a literal
             if len(value) >= 20 and shannon_entropy(value) >= 3.8:
-                findings.append((label, lineno, f"high-entropy value for {name}", stripped[:88]))
+                findings.append((label, lineno, f"high-entropy value for {name}",
+                                 redact(line, match.start(2), match.end(2))))
     return findings
+
+
+def redact(line: str, start: int, end: int) -> str:
+    """
+    The line with the secret span cut to its first 4 characters plus `***` (PRINCIPLE-019 R4).
+    Findings used to print the raw line, so the scanner itself echoed every credential it caught
+    into the terminal, the transcript and the dogfood log.
+    """
+    return (line[:start] + line[start:end][:4] + "***" + line[end:]).strip()[:88]
 
 
 def should_skip(path_str: str) -> bool:

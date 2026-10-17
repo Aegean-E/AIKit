@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `44`
-- **Total Functions / Methods**: `114`
-- **Total Source Lines**: `7850`
+- **Total Functions / Methods**: `115`
+- **Total Source Lines**: `7875`
 
 ---
 
@@ -35,13 +35,14 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `368` lines (`15654` bytes)
+**Size**: `379` lines (`16164` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
 - `def is_strongly_allowlisted(line)` - *An explicit pragma or an unambiguous placeholder suppresses every detector.*
 - `def is_weakly_allowlisted(line)` - *A hint like "example" suppresses only the low-confidence entropy fallback.*
 - `def scan_text(label, text)` - *Return (label, line_no, detector, excerpt) for every finding in a blob of text.*
+- `def redact(line, start, end)` - *The line with the secret span cut to its first 4 characters plus `***` (PRINCIPLE-019 R4).*
 - `def should_skip(path_str)`
 - `def git_output(args)`
 - `def scan_staged(gaps)` - *Scan staged content only - the surface about to become permanent history.*
@@ -244,7 +245,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3286` lines (`182994` bytes)
+**Size**: `3300` lines (`183815` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -446,6 +447,7 @@
   - Method `.test_grep_anchor_contract_survives_in_every_target()`
   - Method `.test_capsules_retain_their_mechanisms_after_condensation()`
 - `class TestSecretHygieneScanner` - *PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner*
+  - Method `.test_findings_never_echo_the_secret()`
   - Method `.test_a_scan_that_skipped_a_surface_never_reports_clean()`
   - Method `.test_detects_known_credential_shapes()`
   - Method `.test_does_not_flag_indirection_or_placeholders()`
