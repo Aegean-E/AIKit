@@ -114,6 +114,7 @@ from scripts.disruption_recovery import (
 )
 from scripts.aikit_cli import main as aikit_main
 from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
+from scripts.project_publish import publish_project
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
@@ -1507,6 +1508,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 # ADR-130: the project's own guidelines are read before code and recorded with `guideline`.
                 "Before writing code in a project, the agent reads its guidelines",
                 "records it with `python aikit.py guideline <name>",
+                # ADR-134: publishing is outward-facing, private by default, scanned first.
+                "`python aikit.py publish <name>` uploads the project's commits to its own GitHub repository",
+                "the agent runs it only when the user asks",
             ],
             "gone": ["Third-party packages must be strictly optional", "sensible", "Systems should embed",
                      "banning hardcoded"],
@@ -4080,6 +4084,72 @@ class TestFreeModelPolicy(unittest.TestCase):
         # A fabricated value: a real key, even split in two, is a committed credential (ADR-133).
         key = "AQ." + "FakeKey0" * 6 + "xy"
         self.assertTrue(scan_text("notes.md", key))
+
+class TestProjectPublish(unittest.TestCase):
+    """`aikit publish`: a project in its own GitHub repository, private unless asked (ADR-134)."""
+
+    def runner(self, **replies):
+        """A scripted stand-in for git, gh and the secret scan; records every call."""
+        self.calls = []
+        defaults = {"rev-parse": (0, "abc123"), "status": (0, ""), "check_secrets.py": (0, "[OK]"),
+                    "get-url": (1, ""), "auth": (0, "Logged in"), "create": (0, "https://github.com/me/app"),
+                    "push": (0, "")}
+        defaults.update(replies)
+
+        # Most specific first: `gh auth status` must not match `status`, nor `--push` match `push`.
+        order = ("auth", "create", "push", "get-url", "check_secrets.py", "rev-parse", "status")
+
+        def run(argv, cwd):
+            self.calls.append(argv)
+            for key in order:
+                if key in argv or any(key in str(a) for a in argv):
+                    return defaults[key]
+            return 0, ""
+        return run
+
+    def made(self, word):
+        return [c for c in self.calls if word in c]
+
+    def test_new_repository_is_private_scanned_first_and_pushed(self):
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner())
+        self.assertEqual(code, 0, report)
+        create = self.made("create")[0]
+        self.assertEqual(create[:3], ["gh", "repo", "create"])
+        for flag in ("--private", "--push"):
+            self.assertIn(flag, create)
+        self.assertEqual(create[create.index("--remote") + 1], "origin")
+        scan_at = next(i for i, c in enumerate(self.calls) if any("check_secrets.py" in str(a) for a in c))
+        self.assertLess(scan_at, self.calls.index(create), "the scan runs before anything is uploaded")
+        self.assertIn("--all", self.calls[scan_at])
+
+    def test_public_only_when_asked(self):
+        publish_project(Path("/p/app"), "app", public=True, runner=self.runner())
+        self.assertIn("--public", self.made("create")[0])
+        self.assertNotIn("--private", self.made("create")[0])
+
+    def test_existing_remote_is_pushed_never_recreated_or_forced(self):
+        code, report = publish_project(Path("/p/app"), "app",
+                                       runner=self.runner(**{"get-url": (0, "https://github.com/me/app.git")}))
+        self.assertEqual(code, 0, report)
+        self.assertEqual(self.made("create"), [])
+        push = self.made("push")[0]
+        self.assertEqual(push, ["git", "push", "-u", "origin", "HEAD"])
+
+    def test_refusals_upload_nothing(self):
+        cases = {"no commit": {"rev-parse": (128, "")},
+                 "secret found": {"check_secrets.py": (1, "[FAIL] 1 potential secret")},
+                 "gh not logged in": {"auth": (1, "not logged in")}}
+        for case, replies in cases.items():
+            with self.subTest(case=case):
+                code, report = publish_project(Path("/p/app"), "app", runner=self.runner(**replies))
+                self.assertEqual(code, 1, report)
+                self.assertIn("Fix:", report)
+                self.assertEqual(self.made("create") + self.made("push"), [])
+
+    def test_uncommitted_work_is_named_in_the_report(self):
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(status=(0, " M app.py")))
+        self.assertEqual(code, 0)
+        self.assertIn("uncommitted", report)
 
 
 if __name__ == "__main__":

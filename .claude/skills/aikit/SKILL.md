@@ -32,6 +32,7 @@ python aikit.py attach <path>        # an existing folder
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, guidelines, secret scan; exit 0 to commit
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
+python aikit.py publish <name> [--public]   # its own GitHub repo; only when the user asks
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger
 python aikit.py resume <name>        # disruption resume on the project

@@ -1,54 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "secret-leak-fix",
+    "task_id": "project-publish",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792251844.6404212,
-    "completed_at": 1792251844.7913444
+    "updated_at": 1792252093.6403913,
+    "completed_at": 1792252093.7842338
   },
   "checkpoints": [
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250226.5715063,
-      "timestamp_str": "2026-10-17 18:17:06"
-    },
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2] committed: .aikit/guidelines.md, guideline command, audit, cold-start print (ADR-129)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250475.2088988,
-      "timestamp_str": "2026-10-17 18:21:15"
-    },
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]: P000 R6, P001 R4, P011 R8 text",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250485.6989894,
-      "timestamp_str": "2026-10-17 18:21:25"
-    },
-    {
-      "task_id": "project-guidelines",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[2/2] committed: P000 R6, P001 R4, P011 R8, P017 R6 (ADR-130)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250632.937964,
-      "timestamp_str": "2026-10-17 18:23:52"
-    },
     {
       "task_id": "project-guidelines",
       "phase": "completed",
@@ -222,6 +182,51 @@
       "status": "completed",
       "timestamp": 1792251844.7913458,
       "timestamp_str": "2026-10-17 18:44:04"
+    },
+    {
+      "task_id": "project-publish",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] scripts/project_publish.py + aikit publish <name> [--public]: needs a commit, full secret scan of the project, gh auth; creates the project's own private GitHub repo (gh repo create --source --remote origin --push) or pushes to its existing origin; unit tests with an injected runner; [2/2] P011 R8 names publish; docs; ADR-134",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251972.249771,
+      "timestamp_str": "2026-10-17 18:46:12",
+      "impact_assessment": {
+        "why": "projects live only on this disk; the user wants each in its own GitHub repository",
+        "benefits": "one command backs up and shares a project in its own repo, private unless asked, never with a credential in it",
+        "risks": "contract: new publish command; dependency: gh CLI (declared optional, checked at run time); concurrency: none; state: creates a remote repository, which is outward-facing",
+        "mitigation": "private by default, secret scan of every tracked file first, no force push, refusal triads; tests never call gh"
+      }
+    },
+    {
+      "task_id": "project-publish",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251972.378404,
+      "timestamp_str": "2026-10-17 18:46:12"
+    },
+    {
+      "task_id": "project-publish",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed: project_publish.py, aikit publish, P011 R8 (ADR-134)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792252093.6403913,
+      "timestamp_str": "2026-10-17 18:48:13"
+    },
+    {
+      "task_id": "project-publish",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-publish' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792252093.7842355,
+      "timestamp_str": "2026-10-17 18:48:13"
     }
   ]
 }

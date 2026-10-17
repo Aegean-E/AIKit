@@ -22,6 +22,7 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.project_gates import failure_tail, resolve_gates, run_gates
+from scripts.project_publish import publish_project
 from scripts.project_registry import (
     Project,
     ProjectError,
@@ -113,6 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     project_command("check", "run every gate of a project (its Phase 4)")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
+    publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
+    publish.add_argument("--public", action="store_true", help="create the repository as public")
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
     delegate.add_argument("role", help="a profile name in .opencode/agents/")
@@ -290,6 +293,13 @@ def cmd_fix(args: argparse.Namespace) -> int:
     return cmd_check(args)
 
 
+def cmd_publish(args: argparse.Namespace) -> int:
+    project = present_project(args.name, args.workspace)
+    code, report = publish_project(project.path, project.name, public=args.public)
+    print(report, file=sys.stdout if code == 0 else sys.stderr)
+    return code
+
+
 def cmd_delegate(args: argparse.Namespace) -> int:
     code, report = delegate_subagent(args.role, args.prompt, file=args.file, project_name=args.project,
                                      model=args.model, timeout=args.timeout, output_format=args.format,
@@ -310,6 +320,7 @@ HANDLERS = {
     "guideline": cmd_guideline,
     "check": cmd_check,
     "fix": cmd_fix,
+    "publish": cmd_publish,
     "delegate": cmd_delegate,
 }
 

@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `13`
-- **Total Classes**: `67`
-- **Total Functions / Methods**: `190`
-- **Total Source Lines**: `10447`
+- **Total Python Modules**: `14`
+- **Total Classes**: `68`
+- **Total Functions / Methods**: `194`
+- **Total Source Lines**: `10612`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `322` lines (`14902` bytes)
+**Size**: `333` lines (`15465` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -47,6 +47,7 @@
 - `def cmd_clean(args)`
 - `def cmd_check(args)`
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
+- `def cmd_publish(args)`
 - `def cmd_delegate(args)`
 - `def main(argv)`
 
@@ -180,6 +181,18 @@
 - `def run_shell(command, cwd, timeout)` - *Run `command` through the platform shell with stdin closed; on timeout the whole process*
 - `def run_gates(project_root, gates, runner, timeout)` - *Run every gate, even after a failure, so one report lists all of them.*
 - `def failure_tail(output, lines)` - *The last `lines` non-empty lines of a gate's output, where its error normally is.*
+
+---
+
+### [`scripts/project_publish.py`](scripts/project_publish.py)
+> *Publish a project to its own GitHub repository (ADR-134).*
+
+**Size**: `84` lines (`4724` bytes)
+
+**Functions:**
+- `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
+- `def _triad(what, why, fix)`
+- `def publish_project(project_root, name, public, runner)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
 ---
 
@@ -396,7 +409,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4086` lines (`229451` bytes)
+**Size**: `4156` lines (`233145` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -763,6 +776,14 @@
   - Method `.test_text_report_keeps_only_the_answer()`
   - Method `.test_a_key_split_across_a_concatenation_is_still_caught()`
   - Method `.test_scanner_catches_a_bare_gemini_key()`
+- `class TestProjectPublish` - *`aikit publish`: a project in its own GitHub repository, private unless asked (ADR-134).*
+  - Method `.runner(**replies)` - *A scripted stand-in for git, gh and the secret scan; records every call.*
+  - Method `.made(word)`
+  - Method `.test_new_repository_is_private_scanned_first_and_pushed()`
+  - Method `.test_public_only_when_asked()`
+  - Method `.test_existing_remote_is_pushed_never_recreated_or_forced()`
+  - Method `.test_refusals_upload_nothing()`
+  - Method `.test_uncommitted_work_is_named_in_the_report()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`
