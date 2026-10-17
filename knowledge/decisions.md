@@ -1344,3 +1344,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: R6: before every commit the agent compares `git status --short` with the files it changed in this task; a change it did not make stays unstaged and is named in its final message; when `HEAD` moved since the task began, the agent re-reads every file it will commit and the ADR register before committing (the register gate of ADR-069 catches a collision, this rule prevents it).
 - **Consequences**: Pinned in `TestPrinciple006Unambiguity`; the pins fail on the previous text.
 - Cross-principle check: PRINCIPLE-002 (no conflict), PRINCIPLE-004 (no conflict), PRINCIPLE-008 (sub-agents never write the ledger; no conflict), PRINCIPLE-012 (R6 checkpoint on a tripped cap; no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-018 (R2 staging by name, R3 item 3; no conflict).
+
+### ADR-112: PRINCIPLE-007 Second Pass - A Skipped Assessment Is Visible
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: ADR-079 made `--checkpoint` refuse a task's first plan checkpoint without the full impact assessment, but a Track C task that never recorded a plan and went straight to a Phase 3 checkpoint bypassed both PRINCIPLE-004 R1 and R6 of this principle silently. Refusing is wrong: a Track B task records its only checkpoint at Phase 3 with no plan (PRINCIPLE-002 R4), and the CLI cannot tell the track without git.
+- **Decision**: `missing_impact_warning` prints a `[WARN]` on stderr when a task reaches Phase 3 or later with no assessment recorded for it; the checkpoint is still written. R1, `--help` and README's checkpoint row say so (PRINCIPLE-005 R2).
+- **Consequences**: Pinned by a unit test of the four cases and the R1 wording; both fail on the previous code and text.
+- Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-002 (R4 Track B checkpoint keeps working; no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-004 (R1 plan; no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-010 (no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-014 (no conflict), PRINCIPLE-018 (no conflict).

@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
 - **Total Classes**: `44`
-- **Total Functions / Methods**: `115`
-- **Total Source Lines**: `7878`
+- **Total Functions / Methods**: `116`
+- **Total Source Lines**: `7906`
 
 ---
 
@@ -56,7 +56,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1304` lines (`57823` bytes)
+**Size**: `1323` lines (`58950` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -92,6 +92,7 @@
 - `def report_operational_error(exc_type, exc, tb)` - *`sys.excepthook` for the CLI (PRINCIPLE-011 R6, PRINCIPLE-013 R2/R5): an operational failure*
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
+- `def missing_impact_warning(task_id, phase_num, has_prior_impact, has_impact_now)` - *PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
 
 ---
@@ -245,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3303` lines (`184119` bytes)
+**Size**: `3312` lines (`184805` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -293,6 +294,7 @@
   - Method `.test_this_readme_table_is_generated_and_fresh()`
 - `class TestPrinciple007Tooling` - *PRINCIPLE-007 R3 and R6 as checks every model meets the same way (ADR-079).*
   - Method `.test_first_plan_needs_the_whole_assessment()`
+  - Method `.test_reaching_phase_3_without_an_assessment_warns()`
   - Method `.test_only_the_first_plan_checkpoint_is_checked()`
   - Method `.test_lazy_code_markers_stubs_and_unnamed_suppressions_fail()`
   - Method `.test_protocols_abstract_methods_and_named_suppressions_pass()`

@@ -96,6 +96,7 @@ from scripts.disruption_recovery import (
     validate_argv,
     argv_value_errors,
     impact_errors,
+    missing_impact_warning,
     report_operational_error,
     RISK_DIMENSIONS,
 )
@@ -692,6 +693,13 @@ class TestPrinciple007Tooling(unittest.TestCase):
             "--risks must give a verdict for 'state:' (write 'none' when there is no risk)",
         ])
 
+    def test_reaching_phase_3_without_an_assessment_warns(self):
+        # Red-green pin (ADR-112): a Track C task that never recorded a plan bypassed R6 silently.
+        self.assertIn("entered Phase 3 with no impact assessment", missing_impact_warning("t", 3, False, False))
+        self.assertIsNone(missing_impact_warning("t", 2, False, False))   # planning itself
+        self.assertIsNone(missing_impact_warning("t", 4, True, False))    # assessment on record
+        self.assertIsNone(missing_impact_warning("t", 3, False, True))    # recorded now
+
     def test_only_the_first_plan_checkpoint_is_checked(self):
         empty = {"why": None, "benefits": None, "risks": None, "mitigation": None}
         self.assertEqual(impact_errors("[1/3] revised", 2, empty, True), [])   # revision
@@ -1167,6 +1175,7 @@ class TestPrinciple007Unambiguity(unittest.TestCase):
                 self.assertIn(f"`{label}`", self.rules)
         for definition in (
             "The *impact assessment* is four fields: why, benefits, risks and mitigation",
+            "`--checkpoint` warns when a task reaches Phase 3 or later with no assessment on record",
             "every concrete risk MUST have an entry in the mitigation field",
             "unless it is abstract, an overload, or declared in a Protocol or ABC",
             "`python scripts/update_knowledge_base.py` fails on each of them",

@@ -1032,7 +1032,8 @@ Actions (default: --audit):
   --checkpoint <task_id>     Record a task checkpoint in .agents/task_ledger.json; a task's
                              first plan (--phase-num 2, --desc starting '[1/') needs --why,
                              --benefits, --mitigation and --risks with 'contract:', 'dependency:',
-                             'concurrency:' and 'state:' verdicts, else exit 2 (PRINCIPLE-007 R6)
+                             'concurrency:' and 'state:' verdicts, else exit 2 (PRINCIPLE-007 R6);
+                             a task reaching Phase 3+ with no assessment gets a warning
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task
   --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
@@ -1110,6 +1111,20 @@ def impact_errors(description: str, phase_num: Optional[int], fields: Dict[str, 
         errors += [f"--risks must give a verdict for '{label}' (write 'none' when there is no risk)"
                    for label in RISK_DIMENSIONS if label not in risks]
     return errors
+
+
+def missing_impact_warning(task_id: str, phase_num: Optional[int], has_prior_impact: bool,
+                           has_impact_now: bool) -> Optional[str]:
+    """
+    PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task
+    that reaches Phase 3+ with none skipped that step, unless it is Track B (PRINCIPLE-002 R4), which
+    this CLI cannot tell without git; so this warns instead of refusing.
+    """
+    if phase_num is None or phase_num < 3 or has_prior_impact or has_impact_now:
+        return None
+    return (f"[WARN] Task '{task_id}' entered Phase {phase_num} with no impact assessment on record. "
+            f"A Track C task records it on its first plan checkpoint (PRINCIPLE-007 R1, R6); "
+            f"a Track B task has none.")
 
 
 def argv_value_errors(argv: List[str]) -> List[str]:
@@ -1236,6 +1251,10 @@ if __name__ == "__main__":
         _impact = impact_errors(desc, resolve_phase_num(phase, phase_num),
                                 {"why": why, "benefits": benefits, "risks": risks, "mitigation": mitigation},
                                 _prior)
+        _warning = missing_impact_warning(task_id, resolve_phase_num(phase, phase_num), _prior,
+                                          bool(why or benefits or risks or mitigation))
+        if _warning:
+            print(_warning, file=sys.stderr)
         if _impact:
             print(f"[INCOMPLETE IMPACT] {'; '.join(_impact)}", file=sys.stderr)
             print("Why: the first plan of a Track C task records why, benefits, risks and mitigation "
