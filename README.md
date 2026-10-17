@@ -92,6 +92,7 @@ portable_agent_kit/
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
+│   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
@@ -121,7 +122,8 @@ python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ m
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, open changes, last decision
-python aikit.py check my-app        # every gate its config declares + secret scan
+python aikit.py check my-app        # its tests and configured checks, AIKit's guidelines, secret scan
+python aikit.py fix my-app          # restore memory/README, refresh map, then check
 ```
 A project's memory is its `.aikit/` folder (record, ledger, decisions), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
 

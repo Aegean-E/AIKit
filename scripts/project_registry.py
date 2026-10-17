@@ -27,12 +27,12 @@ from scripts.disruption_recovery import (
     atomic_write_json,
     file_lock,
 )
+from scripts.update_knowledge_base import write_generated_file
 
 PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
 DECISIONS_FILENAME = "decisions.md"
-AGENTS_FILENAME = "AGENTS.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
 DECISIONS_TEMPLATE = (
     "# Decisions\n\n"
@@ -47,37 +47,49 @@ DECISIONS_TEMPLATE = (
     "- **Consequences**: <what follows, including what it costs>\n"
     "-->\n"
 )
-# Deprecated: AIKit workspace hosts universal principles directly; projects stay clean.
-PROJECT_INSTRUCTION_TARGETS: Dict[str, str] = {}
-
 
 def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
-    test_cmd = test_command or f"python aikit.py check {name}"
+    """
+    A README that passes PRINCIPLE-005's audit as created: Quick Reference with a versioned
+    prerequisite and a fenced test command, and a tree of every tracked top-level entry. `.aikit/`
+    is listed without children, so a new memory file never makes the tree incomplete.
+    """
     return (
         f"# {name}\n\n"
         "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
-        "- **Runtime Prerequisites**: Git, Python 3.8+ (for AIKit memory and gates)\n"
+        "- **Runtime Prerequisites**: git and Python 3.10+ (AIKit's gates); add this project's own.\n"
         "- **Canonical Regression Shield Gate**:\n"
         "  ```bash\n"
-        f"  {test_cmd}\n"
+        f"  {test_command or f'python aikit.py check {name}'}\n"
         "  ```\n\n"
-        "### 🛠️ AIKit Gates\n"
+        "### 🛠️ AIKit Commands (run from the AIKit folder)\n"
         "| Role | Command |\n"
         "|---|---|\n"
-        f"| Project status and gates | `python aikit.py status {name}` |\n"
-        f"| Run Phase 4 verification | `python aikit.py check {name}` |\n"
-        f"| Self-heal project memory | `python aikit.py fix {name}` |\n"
-        f"| Resume interrupted task | `python aikit.py resume {name}` |\n\n"
+        f"| Status, task and gates | `python aikit.py status {name}` |\n"
+        f"| Phase 4: every gate | `python aikit.py check {name}` |\n"
+        f"| Repair memory and map, then check | `python aikit.py fix {name}` |\n"
+        f"| Resume an interrupted task | `python aikit.py resume {name}` |\n\n"
         "## 📦 What's Inside\n\n"
         "```text\n"
         f"{name}/\n"
+        "├── .gitignore                <- transient AIKit state excluded\n"
         "├── README.md\n"
-        "└── .aikit/\n"
-        "    ├── project.json\n"
-        "    ├── task_ledger.json\n"
-        "    └── decisions.md\n"
+        "└── .aikit/                   <- this project's memory: record, ledger, decisions\n"
         "```\n"
     )
+
+
+def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
+    """
+    Write the template README when the project has none; returns whether it did. `new` and `fix`
+    call it, `attach` never does: attaching leaves an existing folder's files alone.
+    """
+    readme = project_root / "README.md"
+    if readme.exists():
+        return False
+    write_generated_file(readme, render_project_readme(name, test_command))
+    return True
+
 
 SCHEMA_VERSION = 1
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -244,9 +256,9 @@ def _ensure_gitignore(project_root: Path) -> None:
 
 def write_memory(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
     """
-    Create the project's `.aikit/project.json`, `.aikit/decisions.md`, `.aikit/task_ledger.json`,
-    and `README.md` unless they exist.
-    Returns whether `project.json` was created: existing memory is never overwritten.
+    Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`
+    unless they exist. Returns whether `project.json` was created: existing memory is never
+    overwritten.
     """
     path = config_path(project_root)
     _ensure_gitignore(project_root)
@@ -258,9 +270,6 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     if not ledger_path.exists():
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(ledger_path, {"version": 1, "active_task": None, "checkpoints": []})
-    readme_path = project_root / "README.md"
-    if not readme_path.exists():
-        readme_path.write_text(render_project_readme(name, test_command), encoding="utf-8")
     if path.exists():
         return False
     atomic_write_json(path, {
@@ -375,6 +384,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     project_root.mkdir(parents=True)
     try:
         write_memory(project_root, name, test_command)
+        seed_readme(project_root, name, test_command)
         warning = git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.

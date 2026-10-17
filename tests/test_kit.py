@@ -69,8 +69,6 @@ from scripts.sync_principles import (
     render_tier1_target,
     is_generated_target,
     involved_principles,
-    sync_workspace,
-    sync_project,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -105,11 +103,8 @@ from scripts.disruption_recovery import (
     sweep_files,
     workspace_ledger_path,
 )
-from scripts.aikit_cli import (
-    VALID_SUBAGENT_ROLES,
-    delegate_subagent,
-    main as aikit_main,
-)
+from scripts.aikit_cli import main as aikit_main
+from scripts.subagent_delegate import delegate_subagent, subagent_roles
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
@@ -1076,40 +1071,6 @@ class TestKnowledgeCitations(unittest.TestCase):
         self.assertEqual(missing, [])
 
 
-class TestSuiteHygiene(unittest.TestCase):
-    """PRINCIPLE-014 R3 and R5 made mechanical (ADR-099)."""
-
-    NETWORK_MODULES = {"socket", "http", "urllib", "requests", "httpx", "aiohttp"}
-    MODULES = ("test_kit.py", "test_integration.py")
-
-    @classmethod
-    def setUpClass(cls):
-        # Shared, content-keyed parse cache: the codebase-map test parses these files too.
-        cls.trees = {name: parse_source((ROOT_DIR / "tests" / name).read_text(encoding="utf-8"), name)
-                     for name in cls.MODULES}
-
-    def test_every_test_method_asserts(self):
-        silent = []
-        for name, tree in self.trees.items():
-            for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
-                for fn in (n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")):
-                    calls = {c.func.attr for c in ast.walk(fn)
-                             if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)}
-                    if not any(a.startswith("assert") or a == "fail" for a in calls) and \
-                            not any(isinstance(n, ast.Assert) for n in ast.walk(fn)):
-                        silent.append(f"{name}:{fn.lineno} {cls.name}.{fn.name}")
-        self.assertEqual(silent, [], "a test without an assertion proves nothing (PRINCIPLE-014 R5)")
-
-    def test_no_test_module_imports_a_network_library(self):
-        found = []
-        for name, tree in self.trees.items():
-            for node in ast.walk(tree):
-                names = ([a.name for a in node.names] if isinstance(node, ast.Import)
-                         else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
-                found += [f"{name}: {n}" for n in names if n.split(".")[0] in self.NETWORK_MODULES]
-        self.assertEqual(found, [], "tests make no network call (PRINCIPLE-014 R3)")
-
-
 class TestChaosCoverage(unittest.TestCase):
     """PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite."""
 
@@ -1523,6 +1484,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 # ADR-123: one command is the project's Phase 4; it includes the secret scan.
                 "its Phase 4 gate is `python aikit.py check <name>`",
                 "which runs the project's test command, the checks its own configuration declares and the secret scan",
+                # ADR-128: the guidelines gate holds a project to AIKit's own audits, README included.
+                "the README rules, unfinished code, code structure and the decision register exactly as for AIKit",
+                "fails when a task ledger changed during the run",
                 "asks the user which project, or the name of a new one, before writing code",
                 "apply only to changes to AIKit itself",
             ],
@@ -3282,7 +3246,8 @@ class TestKnowledgeBase(unittest.TestCase):
                 else:
                     doc_path.write_text(f"# {doc}\n", encoding="utf-8")
             with contextlib.redirect_stdout(io.StringIO()):
-                update_and_validate(knowledge_dir=temp_k_dir, strict=True)
+                # Hermetic: the sandbox is the root, so no repository file is mapped.
+                update_and_validate(knowledge_dir=temp_k_dir, root=temp_k_dir, strict=True)
             codebase_map = temp_k_dir / "codebase_map.md"
             self.assertTrue(codebase_map.exists())
             content = codebase_map.read_text(encoding="utf-8")
@@ -3290,24 +3255,18 @@ class TestKnowledgeBase(unittest.TestCase):
         finally:
             shutil.rmtree(temp_k_dir, ignore_errors=True)
 
-    def test_codebase_map_freshness_gate(self):
-        # Enforces PRINCIPLE-016: codebase_map.md must be 100% synchronized with physical codebase AST
-        self.assertTrue(
-            check_codebase_map_freshness(strict=True),
-            "knowledge/codebase_map.md must be fresh and match current AST"
-        )
-
     def test_codebase_map_freshness_stale_detection(self):
         # Negative path (PRINCIPLE-014): verify that stale codebase_map is detected and rejected
         temp_k_dir = Path(tempfile.mkdtemp(prefix="test_freshness_"))
         try:
             stale_map = temp_k_dir / "codebase_map.md"
             stale_map.write_text("# Stale Codebase Map\nNo metrics here.\n", encoding="utf-8")
-            # In lenient mode, returns False
-            self.assertFalse(check_codebase_map_freshness(knowledge_dir=temp_k_dir, strict=False))
+            # The sandbox is the root, so the map compared against is a sandbox's, not all of AIKit's
+            # (generating AIKit's twice made this the slowest unit test). Lenient mode returns False.
+            self.assertFalse(check_codebase_map_freshness(knowledge_dir=temp_k_dir, root=temp_k_dir, strict=False))
             # In strict mode, raises ValueError
             with self.assertRaises(ValueError) as ctx:
-                check_codebase_map_freshness(knowledge_dir=temp_k_dir, strict=True)
+                check_codebase_map_freshness(knowledge_dir=temp_k_dir, root=temp_k_dir, strict=True)
             self.assertIn("[PRINCIPLE-016 CODEBASE MAP STALE]", str(ctx.exception))
         finally:
             shutil.rmtree(temp_k_dir, ignore_errors=True)
@@ -3668,7 +3627,8 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "svc", workspace=self.kit)
         self.assertEqual(workspace_ledger_path(folder), folder / ".aikit" / "task_ledger.json")
         self.assertEqual(workspace_ledger_path(self.kit), self.kit / ".agents" / "task_ledger.json")
-        self.assertTrue((folder / "README.md").is_file())
+        # attach adds only .aikit/ and .gitignore lines; `fix` seeds a README when asked (ADR-128).
+        self.assertFalse((folder / "README.md").exists())
         self.assertTrue((folder / ".aikit" / "task_ledger.json").is_file())
         self.assertTrue((folder / ".aikit" / "project.json").is_file())
         self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
@@ -3696,101 +3656,77 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("Why:", stderr.getvalue())
         self.assertIn("Fix:", stderr.getvalue())
 
-    def test_fix_in_process_heals_missing_files_and_cleans_buffers(self):
+    def run_cli(self, *argv):
+        """`aikit` in-process against this test's kit; returns (exit code, stdout, stderr)."""
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = aikit_main(["--workspace", str(self.kit), *argv])
+        return code, out.getvalue(), err.getvalue()
+
+    def stale(self, path):
+        path.write_text("buffer", encoding="utf-8")
+        old = time.time() - 3600
+        os.utime(path, (old, old))
+        return path
+
+    def test_fix_restores_memory_and_readme_and_removes_only_stale_buffers(self):
         folder = self.make_folder()
         attach_project(folder, "myapp", workspace=self.kit)
-        # Create a dangling buffer
-        (folder / "state.json.tmp_dangling").write_text("buffer", encoding="utf-8")
-        # Remove .aikit/decisions.md
+        self.assertFalse((folder / "README.md").exists(), "attach leaves the folder's files alone")
+        stale = self.stale(folder / "state.json.tmp_1_1")
+        fresh = folder / "other.json.tmp_2_2"
+        fresh.write_text("in-flight write", encoding="utf-8")
         (folder / ".aikit" / "decisions.md").unlink()
-        # Add a python source file
-        (folder / "core.py").write_text("def work(): return 1\n", encoding="utf-8")
+        (folder / "core.py").write_text("def work():\n    return 1\n", encoding="utf-8")
+        with mock.patch("scripts.aikit_cli.cmd_check", return_value=0):
+            code, out, _ = self.run_cli("fix", "myapp")
+        self.assertEqual(code, 0)
+        for fixed in ("restored .aikit/decisions.md", "seeded README.md", "removed stale buffer",
+                      "regenerated .aikit/codebase_map.md"):
+            self.assertIn(fixed, out)
+        self.assertFalse(stale.exists())
+        self.assertTrue(fresh.exists(), "a young buffer may be another agent's write in flight")
+        # The seeded README passes PRINCIPLE-005's audit as written (pure form: no git spawn here).
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        tracked = [".gitignore", "README.md", ".aikit/project.json", ".aikit/decisions.md"]
+        self.assertEqual(audit_readme(readme, tracked, lambda rel: (folder / rel).exists(), lambda rel: None), [])
 
-        stdout = io.StringIO()
-        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
-             mock.patch("scripts.aikit_cli.cmd_check", return_value=0), \
-             contextlib.redirect_stdout(stdout):
-            exit_code = aikit_main(["fix", "myapp"])
-        self.assertEqual(exit_code, 0)
-        out = stdout.getvalue()
-        self.assertIn("seeded .aikit/decisions.md register", out)
-        self.assertIn("cleaned 1 dangling temporary buffer", out)
-        self.assertIn("synchronized .aikit/codebase_map.md", out)
-        self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
-        self.assertTrue((folder / ".aikit" / "codebase_map.md").is_file())
-        self.assertFalse((folder / "state.json.tmp_dangling").exists())
-
-    def test_cockpit_lifecycle_checkpoint_resume_complete_clean(self):
+    def test_project_ledger_commands_keep_the_impact_gate(self):
         folder = self.make_folder()
         attach_project(folder, "demo", workspace=self.kit)
-
-        # 1. Checkpoint
-        stdout = io.StringIO()
-        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
-             contextlib.redirect_stdout(stdout):
-            exit_code = aikit_main([
-                "checkpoint", "demo",
-                "--task", "task-alpha",
-                "--phase-num", "2",
-                "--desc", "[1/2] setup database",
-                "--why", "needed for storage",
-                "--benefits", "persistent state",
-                "--risks", "contract: none dependency: none concurrency: none state: none",
-                "--mitigation", "none",
-            ])
-        self.assertEqual(exit_code, 0)
-        self.assertIn("[OK] Checkpoint recorded for 'demo'", stdout.getvalue())
+        plan = ["checkpoint", "demo", "--task", "task-alpha", "--phase-num", "2", "--desc", "[1/2] setup database"]
+        code, _, err = self.run_cli(*plan)
+        self.assertEqual(code, 2, "a first plan without an impact assessment is refused (PRINCIPLE-007 R6)")
+        self.assertIn("[INCOMPLETE IMPACT]", err)
+        code, out, _ = self.run_cli(*plan, "--why", "storage", "--benefits", "state", "--mitigation", "tests",
+                                    "--risks", "contract: none; dependency: none; concurrency: none; state: new db")
+        self.assertEqual(code, 0)
+        self.assertIn("Checkpoint recorded: Task 'task-alpha'", out)
         ledger = load_ledger(folder / ".aikit" / "task_ledger.json")
-        self.assertEqual(ledger["active_task"]["task_id"], "task-alpha")
-        self.assertEqual(ledger["active_task"]["active_phase"], 2)
+        self.assertEqual((ledger["active_task"]["task_id"], ledger["active_task"]["active_phase"]),
+                         ("task-alpha", 2))
+        self.assertIn("setup database", self.run_cli("resume", "demo")[1])
+        self.assertEqual(self.run_cli("complete", "demo", "--task", "other")[0], 1)
+        self.assertEqual(self.run_cli("complete", "demo", "--task", "task-alpha")[0], 0)
+        self.assertEqual(load_ledger(folder / ".aikit" / "task_ledger.json")["active_task"]["status"], "completed")
+        stale = self.stale(folder / "temp.json.tmp_1_1")
+        fresh = folder / "young.json.tmp_2_2"
+        fresh.write_text("x", encoding="utf-8")
+        self.assertEqual(self.run_cli("clean", "demo")[0], 0)
+        self.assertEqual((stale.exists(), fresh.exists()), (False, True))
 
-        # 2. Resume
-        stdout = io.StringIO()
-        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
-             contextlib.redirect_stdout(stdout):
-            exit_code = aikit_main(["resume", "demo"])
-        self.assertEqual(exit_code, 0)
-        self.assertIn("task-alpha", stdout.getvalue())
-        self.assertIn("setup database", stdout.getvalue())
-
-        # 3. Complete
-        stdout = io.StringIO()
-        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
-             contextlib.redirect_stdout(stdout):
-            exit_code = aikit_main(["complete", "demo"])
-        self.assertEqual(exit_code, 0)
-        self.assertIn("Marked task 'task-alpha' completed", stdout.getvalue())
-        ledger = load_ledger(folder / ".aikit" / "task_ledger.json")
-        self.assertEqual(ledger["active_task"]["status"], "completed")
-
-        # 4. Clean
-        (folder / "temp.tmp_12345").write_text("temporary", encoding="utf-8")
-        stdout = io.StringIO()
-        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
-             contextlib.redirect_stdout(stdout):
-            exit_code = aikit_main(["clean", "demo", "--force"])
-        self.assertEqual(exit_code, 0)
-        self.assertIn("Purged 1 temporary file(s)", stdout.getvalue())
-        self.assertFalse((folder / "temp.tmp_12345").exists())
-
-    def test_sync_principles_workspace_sync_and_check(self):
-        folder = self.make_folder()
-        attach_project(folder, "proj", workspace=self.kit)
-
-        # Projects inherit principles directly from AIKit workspace root; no instruction files exist or sync
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 0)
-            self.assertEqual(sync_workspace(folder, check_only=False, exit_on_mismatch=False), 0)
-            self.assertEqual(sync_project(folder, check_only=True, exit_on_mismatch=False), 0)
-
-        # AIKit workspace with GUIDELINES.md triggers sync_all
-        aikit_dir = self.make_folder()
-        (aikit_dir / "GUIDELINES.md").write_text("# Universal AI Development Guidelines\n\n```yaml\nid: PRINCIPLE-000\n```\n", encoding="utf-8")
-        with contextlib.redirect_stdout(io.StringIO()):
-            # Without valid principles/targets, sync_all checks and returns non-zero error/mismatch
-            res = sync_workspace(aikit_dir, check_only=True, exit_on_mismatch=False)
-            self.assertEqual(res, 1)
-
+    def test_workspace_is_explicit_never_the_working_directory(self):
+        # A `projects/` folder in the working directory used to become the registry (ADR-128).
+        stray = self.make_folder()
+        (stray / "projects" / "ghost" / ".aikit").mkdir(parents=True)
+        (stray / "projects" / "ghost" / ".aikit" / "project.json").write_text(
+            '{"schema": 1, "name": "ghost"}', encoding="utf-8")
+        cwd = os.getcwd()
+        os.chdir(stray)
+        self.addCleanup(os.chdir, cwd)
+        code, out, _ = self.run_cli("list")
+        self.assertEqual(code, 0)
+        self.assertNotIn("ghost", out)
 
 
 class TestProjectGates(unittest.TestCase):
@@ -3880,150 +3816,78 @@ class TestProjectsStayOutOfKitState(unittest.TestCase):
 
 
 class TestSubagentDelegation(unittest.TestCase):
-    """PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5, PRINCIPLE-012 R8: safe subagent delegation."""
+    """`aikit delegate`: bounded OpenCode sub-agent runs (ADR-126, ADR-128)."""
 
     def setUp(self):
         self.kit = Path(tempfile.mkdtemp(prefix="test_delegate_kit_"))
         self.addCleanup(shutil.rmtree, self.kit, ignore_errors=True)
         (self.kit / ".agents").mkdir(parents=True)
-        (self.kit / ".agents" / "task_ledger.json").write_text(
-            json.dumps({"version": 1, "active_task": None, "checkpoints": []}), encoding="utf-8"
-        )
+        self.ledger = self.kit / ".agents" / "task_ledger.json"
+        self.ledger.write_text(json.dumps({"version": 1, "active_task": None, "checkpoints": []}),
+                               encoding="utf-8")
+        self.calls = []
 
-    def test_invalid_role_refused_with_triad(self):
-        exit_code, output = delegate_subagent(
-            role="hacker",
-            prompt="do something",
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 2)
-        self.assertIn("Error: unknown subagent role 'hacker'", output)
-        self.assertIn("Why: role must be one of", output)
+    def runner(self, returncode=0, stdout="ok", effect=None):
+        def run(cmd, cwd, timeout):
+            self.calls.append((cmd, cwd, timeout))
+            if effect:
+                effect()
+            return subprocess.CompletedProcess(cmd, returncode, stdout, "")
+        return run
+
+    def delegate(self, role="worker", prompt="summarize docs", **kwargs):
+        return delegate_subagent(role, prompt, workspace=self.kit, **kwargs)
+
+    def test_roles_are_the_opencode_profiles(self):
+        self.assertEqual(subagent_roles(), tuple(sorted(p.stem for p in (ROOT_DIR / ".opencode" / "agents").glob("*.md"))))
+        code, output = self.delegate(role="hacker")
+        self.assertEqual(code, 2)
+        self.assertIn("unknown subagent role 'hacker'", output)
         self.assertIn("Fix:", output)
 
-    def test_empty_prompt_refused_with_triad(self):
-        exit_code, output = delegate_subagent(
-            role="worker",
-            prompt="   ",
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 2)
-        self.assertIn("Error: empty prompt provided", output)
-        self.assertIn("Why:", output)
-        self.assertIn("Fix:", output)
+    def test_refuses_empty_brief_unknown_project_and_missing_file(self):
+        for kwargs, expected in (({"prompt": "  "}, "empty prompt"),
+                                 ({"project_name": "nope"}, "No project named 'nope'"),
+                                 ({"file": "not_here.py"}, "'not_here.py' does not exist")):
+            with self.subTest(kwargs=kwargs):
+                code, output = self.delegate(runner=self.runner(), **kwargs)
+                self.assertEqual(code, 2)
+                self.assertIn(expected, output)
+        self.assertEqual(self.calls, [], "nothing runs after a refused brief")
 
-    def test_successful_delegation_with_mock_runner(self):
-        def mock_runner(cmd, cwd, timeout):
-            return subprocess.CompletedProcess(cmd, returncode=0, stdout='{"result": "ok"}', stderr="")
+    def test_runs_opencode_headless_with_the_brief(self):
+        (self.kit / "sample.py").write_text("print('hi')", encoding="utf-8")
+        code, output = self.delegate(role="reviewer", prompt="check code", file="sample.py",
+                                     model="m/x", runner=self.runner(stdout="inspected"))
+        self.assertEqual(code, 0)
+        self.assertIn("[SUBAGENT OK (reviewer", output)
+        cmd, cwd, timeout = self.calls[0]
+        self.assertEqual(cmd[1:7], ["run", "--standalone", "--format", "json", "--agent", "reviewer"])
+        self.assertEqual(cmd[-1], "check code")
+        self.assertIn("--file", cmd)
+        self.assertEqual((cwd, timeout), (self.kit, 120))
 
-        exit_code, output = delegate_subagent(
-            role="worker",
-            prompt="summarize docs",
-            runner=mock_runner,
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 0)
-        self.assertIn("[SUBAGENT OK (worker", output)
-        self.assertIn('{"result": "ok"}', output)
-
-    def test_json_format_output(self):
-        def mock_runner(cmd, cwd, timeout):
-            return subprocess.CompletedProcess(cmd, returncode=0, stdout="findings here", stderr="")
-
-        exit_code, output = delegate_subagent(
-            role="explorer",
-            prompt="search symbols",
-            output_format="json",
-            runner=mock_runner,
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 0)
+    def test_json_report(self):
+        code, output = self.delegate(role="explorer", output_format="json", runner=self.runner(stdout="found"))
+        self.assertEqual(code, 0)
         data = json.loads(output)
-        self.assertEqual(data["status"], "success")
-        self.assertEqual(data["agent"], "explorer")
-        self.assertEqual(data["ledger_shield"], "unmutated")
-        self.assertEqual(data["output"], "findings here")
+        self.assertEqual((data["status"], data["agent"], data["output"]), ("success", "explorer", "found"))
 
-    def test_subagent_ledger_mutation_is_reverted_and_flagged(self):
-        ledger = self.kit / ".agents" / "task_ledger.json"
-        original_ledger_content = ledger.read_text(encoding="utf-8")
+    def test_a_changed_ledger_is_reported_and_never_overwritten(self):
+        # The ledger may hold a parallel session's checkpoint; restoring a snapshot erased it (ADR-128).
+        def write():
+            self.ledger.write_text('{"parallel": "checkpoint"}', encoding="utf-8")
+        code, output = self.delegate(runner=self.runner(effect=write))
+        self.assertEqual(code, 1)
+        self.assertIn("task ledger changed during the subagent run", output)
+        self.assertEqual(self.ledger.read_text(encoding="utf-8"), '{"parallel": "checkpoint"}')
 
-        def corrupting_runner(cmd, cwd, timeout):
-            # Subagent illicitly mutates task_ledger.json
-            ledger.write_text('{"corrupted": true}', encoding="utf-8")
-            return subprocess.CompletedProcess(cmd, returncode=0, stdout="done", stderr="")
-
-        exit_code, output = delegate_subagent(
-            role="coder",
-            prompt="fix bug",
-            runner=corrupting_runner,
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 1)
-        self.assertIn("Error: subagent attempted to mutate protected ledger", output)
-        self.assertIn("Why: subagents are strictly forbidden from writing to task ledgers", output)
-        # Check that the ledger was automatically restored to pristine state!
-        self.assertEqual(ledger.read_text(encoding="utf-8"), original_ledger_content)
-
-    def test_invalid_project_name_returns_triad(self):
-        exit_code, output = delegate_subagent(
-            role="worker",
-            prompt="do task",
-            project_name="unknown_project",
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 2)
-        self.assertIn("No project named 'unknown_project'", output)
-        self.assertIn("Why:", output)
-        self.assertIn("Fix:", output)
-
-    def test_nonexistent_file_returns_triad(self):
-        exit_code, output = delegate_subagent(
-            role="worker",
-            prompt="inspect missing",
-            file="not_here.py",
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 2)
-        self.assertIn("Error: target file 'not_here.py' does not exist", output)
-        self.assertIn("Why: subagent cannot inspect a non-existent file", output)
-        self.assertIn("Fix:", output)
-
-    def test_delegation_with_valid_file(self):
-        target_file = self.kit / "sample.py"
-        target_file.write_text("print('hello')", encoding="utf-8")
-        captured_cmd = []
-
-        def mock_runner(cmd, cwd, timeout):
-            captured_cmd.extend(cmd)
-            return subprocess.CompletedProcess(cmd, returncode=0, stdout="inspected", stderr="")
-
-        exit_code, output = delegate_subagent(
-            role="reviewer",
-            prompt="check code",
-            file="sample.py",
-            runner=mock_runner,
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 0)
-        self.assertIn("--file", captured_cmd)
-        self.assertIn("sample.py", captured_cmd)
-
-    def test_subagent_timeout_handled(self):
-        def timing_out_runner(cmd, cwd, timeout):
-            raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout)
-
-        exit_code, output = delegate_subagent(
-            role="tester",
-            prompt="run test",
-            timeout=5,
-            runner=timing_out_runner,
-            workspace=self.kit,
-        )
-        self.assertEqual(exit_code, 1)
-        self.assertIn("Error: subagent execution timed out after 5 seconds", output)
-        self.assertIn("Why: long-running tasks without bounds exhaust process resources", output)
-        self.assertIn("Fix:", output)
+    def test_timeout_is_reported(self):
+        def hang(cmd, cwd, timeout):
+            raise subprocess.TimeoutExpired(cmd, timeout)
+        code, output = self.delegate(timeout=5, runner=hang)
+        self.assertEqual(code, 1)
+        self.assertIn("timed out after 5s", output)
 
 
 if __name__ == "__main__":

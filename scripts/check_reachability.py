@@ -106,7 +106,22 @@ def parse_module(path: Path) -> ast.Module:
         if len(_TREE_CACHE) > 256:
             _TREE_CACHE.clear()
         _TREE_CACHE[key] = ast.parse(source, filename=str(path))
+        _NODES_CACHE.clear()  # keyed by tree identity: a replaced tree must not hit an old entry
     return _TREE_CACHE[key]
+
+
+_NODES_CACHE: Dict[int, List[ast.AST]] = {}
+
+
+def module_nodes(path: Path) -> List[ast.AST]:
+    """
+    Every node of the module, walked once per parsed tree: references, state keys and literals
+    each walked every tree again, and those walks were most of the shield's time (ADR-128).
+    """
+    tree = parse_module(path)
+    if id(tree) not in _NODES_CACHE:
+        _NODES_CACHE[id(tree)] = list(ast.walk(tree))
+    return _NODES_CACHE[id(tree)]
 
 
 def production_modules() -> List[Path]:
@@ -137,8 +152,7 @@ def collect_references(files: List[Path]) -> Set[str]:
     """
     referenced: Set[str] = set()
     for path in files:
-        tree = parse_module(path)
-        for node in ast.walk(tree):
+        for node in module_nodes(path):
             if isinstance(node, ast.Name):
                 referenced.add(node.id)
             elif isinstance(node, ast.Attribute):
@@ -173,8 +187,7 @@ def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:
     reads: Dict[str, str] = {}
     writes: Set[str] = set()
     for path in files:
-        tree = parse_module(path)
-        for node in ast.walk(tree):
+        for node in module_nodes(path):
             # dict literal writes: {"k": v}
             if isinstance(node, ast.Dict):
                 for key in node.keys:
@@ -203,8 +216,7 @@ def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
     # legacy data, so only flag a key with no writer anywhere at all.
     all_literals: Set[str] = set()
     for path in files:
-        tree = parse_module(path)
-        for node in ast.walk(tree):
+        for node in module_nodes(path):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 all_literals.add(node.value)
     phantom = []

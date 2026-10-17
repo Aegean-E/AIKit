@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `12`
-- **Total Classes**: `64`
-- **Total Functions / Methods**: `174`
-- **Total Source Lines**: `10275`
+- **Total Python Modules**: `13`
+- **Total Classes**: `63`
+- **Total Functions / Methods**: `180`
+- **Total Source Lines**: `9973`
 
 ---
 
@@ -23,9 +23,9 @@
 ---
 
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
-> *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
+> *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `541` lines (`23081` bytes)
+**Size**: `297` lines (`13781` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -34,19 +34,17 @@
 **Functions:**
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
-- `def _active_workspace()`
+- `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
 - `def cmd_list(args)`
-- `def present_project(name)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def cmd_status(args)`
 - `def cmd_resume(args)`
 - `def cmd_checkpoint(args)`
 - `def cmd_complete(args)`
 - `def cmd_clean(args)`
 - `def cmd_check(args)`
-- `def cmd_fix(args)` - *Self-heal project memory, clean dangling temporary buffers, and sync codebase map.*
-- `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Safely delegate a background task to a subagent under PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5,*
+- `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_delegate(args)`
 - `def main(argv)`
 
@@ -55,10 +53,11 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `296` lines (`11789` bytes)
+**Size**: `308` lines (`12250` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
+- `def module_nodes(path)` - *Every node of the module, walked once per parsed tree: references, state keys and literals*
 - `def production_modules()` - *Production source files whose reachability is audited (excludes this checker itself).*
 - `def collect_definitions(files)` - *Map every top-level function name to the module that defines it.*
 - `def collect_references(files)` - *Every name referenced in production code, however it is reached.*
@@ -93,7 +92,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1357` lines (`60370` bytes)
+**Size**: `1360` lines (`60833` bytes)
 
 **Functions:**
 - `def workspace_ledger_path(workspace)` - *The ledger of `workspace`: `<workspace>/.aikit/task_ledger.json` for a project AIKit builds,*
@@ -133,6 +132,7 @@
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
 - `def missing_impact_warning(task_id, phase_num, has_prior_impact, has_impact_now)` - *PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task*
+- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
 
 ---
@@ -183,7 +183,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `468` lines (`19672` bytes)
+**Size**: `478` lines (`20259` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -192,7 +192,8 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command)`
+- `def render_project_readme(name, test_command)` - *A README that passes PRINCIPLE-005's audit as created: Quick Reference with a versioned*
+- `def seed_readme(project_root, name, test_command)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
 - `def node_runner(root)` - *The package manager the project's lockfile names: pnpm, yarn, or npm by default.*
@@ -205,7 +206,7 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md`, `.aikit/task_ledger.json`,*
+- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
@@ -220,10 +221,24 @@
 
 ---
 
+### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
+> *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
+
+**Size**: `131` lines (`6233` bytes)
+
+**Functions:**
+- `def subagent_roles(agents_dir)` - *The roles OpenCode can run: one per profile in `.opencode/agents/` (the single source).*
+- `def _triad(what, why, fix)`
+- `def opencode_command(runner_bin, role, prompt, file, model)` - *The `opencode run` argv for one headless sub-agent call.*
+- `def _run_supervised(cmd, cwd, timeout)`
+- `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Run `role` on `prompt` in AIKit or in project `project_name`; returns (exit code, report).*
+
+---
+
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `791` lines (`38457` bytes)
+**Size**: `761` lines (`37508` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -239,9 +254,7 @@
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
-- `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file, workspace)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
-- `def sync_project(workspace, check_only, exit_on_mismatch)` - *No-op: projects inherit principles directly from the AIKit workspace root.*
-- `def sync_workspace(workspace, check_only, exit_on_mismatch, domain_path)` - *Synchronize or verify instruction targets for any workspace or project folder.*
+- `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
 - `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
 - `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
 - `def citing_principles(ssot_text, pid)` - *The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose*
@@ -256,7 +269,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `933` lines (`42309` bytes)
+**Size**: `921` lines (`41505` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -284,6 +297,8 @@
 - `def audit_readme(readme, tracked, exists, script_source)` - *Every PRINCIPLE-005 rule a program can decide, as one error per violation. Pure: the caller*
 - `def check_readme(root)` - *Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3).*
 - `def report_readme(errors)` - *Print README findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
+- `def memory_dir(root)` - *Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`.*
+- `def check_workspace(root)` - *Every read-only audit of `--check`, for AIKit or for a project it builds: the codebase map*
 - `def _validate_argv(argv, known, help_text)` - *Short-circuit on --help and reject unknown flags with exit 2 (PRINCIPLE-011, PRINCIPLE-015).*
 
 ---
@@ -291,7 +306,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `782` lines (`38606` bytes)
+**Size**: `746` lines (`37296` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -340,6 +355,12 @@
 - `class TestAstGateCli` - *PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback.*
   - Method `.test_syntax_error_halts_cleanly()`
   - Method `.test_workspace_cli_check_detects_violations_and_passes_when_clean()`
+- `class TestRepositoryCodebaseMap` - *PRINCIPLE-016 live invariant. Integration tier with the other whole-repository scans: mapping*
+  - Method `.test_codebase_map_freshness_gate()`
+- `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099). Integration tier: it parses the*
+  - Method `.setUpClass()`
+  - Method `.test_every_test_method_asserts()`
+  - Method `.test_no_test_module_imports_a_network_library()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestReadmeDriftShield` - *PRINCIPLE-005 live invariant. Integration tier: completeness shells out to `git ls-files`.*
@@ -350,24 +371,19 @@
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
-- `class TestProjectCockpitCli` - *`aikit checkpoint/resume/complete/clean` CLI lifecycle commands for projects.*
-  - Method `.test_cockpit_cli_workflow()`
-- `class TestProjectFixCommand` - *`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates.*
-  - Method `.test_fix_self_heals_missing_memory_and_cleans_buffers()`
-  - Method `.test_project_with_custom_readme_passes_aikit_check()`
+- `class TestProjectSelfCheck` - *`aikit fix` repairs what it can, `aikit check` applies AIKit's guidelines (ADR-124, ADR-128).*
+  - Method `.test_fix_then_check_and_the_guidelines_gate_reads_the_readme()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
   - Method `.test_shell_keeps_quotes_and_reports_exit_codes()`
-- `class TestSubagentDelegateCli` - *`aikit delegate` CLI handles help and invalid args across real subprocess calls.*
-  - Method `.test_delegate_cli_help_and_usage_error()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4031` lines (`222156` bytes)
+**Size**: `3895` lines (`217958` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -451,10 +467,6 @@
   - Method `.test_audit_ledger_labels_predictions_as_predictions()`
   - Method `.test_every_benchmark_row_names_its_source_or_says_unverified()`
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
-- `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099).*
-  - Method `.setUpClass()`
-  - Method `.test_every_test_method_asserts()`
-  - Method `.test_no_test_module_imports_a_network_library()`
 - `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite.*
   - Method `.test_every_named_fault_has_a_test()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
@@ -648,7 +660,6 @@
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
-  - Method `.test_codebase_map_freshness_gate()`
   - Method `.test_codebase_map_freshness_stale_detection()`
   - Method `.test_ast_symbol_extraction()`
   - Method `.test_ast_strict_mode_fails_on_syntax_error()`
@@ -692,9 +703,11 @@
   - Method `.test_project_memory_holds_ledger_and_decisions()`
   - Method `.test_status_names_unknown_and_missing_projects()`
   - Method `.test_fix_cli_reports_triad_on_unknown_project()`
-  - Method `.test_fix_in_process_heals_missing_files_and_cleans_buffers()`
-  - Method `.test_cockpit_lifecycle_checkpoint_resume_complete_clean()`
-  - Method `.test_sync_principles_workspace_sync_and_check()`
+  - Method `.run_cli(*argv)` - *`aikit` in-process against this test's kit; returns (exit code, stdout, stderr).*
+  - Method `.stale(path)`
+  - Method `.test_fix_restores_memory_and_readme_and_removes_only_stale_buffers()`
+  - Method `.test_project_ledger_commands_keep_the_impact_gate()`
+  - Method `.test_workspace_is_explicit_never_the_working_directory()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`
@@ -707,17 +720,16 @@
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`
-- `class TestSubagentDelegation` - *PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5, PRINCIPLE-012 R8: safe subagent delegation.*
+- `class TestSubagentDelegation` - *`aikit delegate`: bounded OpenCode sub-agent runs (ADR-126, ADR-128).*
   - Method `.setUp()`
-  - Method `.test_invalid_role_refused_with_triad()`
-  - Method `.test_empty_prompt_refused_with_triad()`
-  - Method `.test_successful_delegation_with_mock_runner()`
-  - Method `.test_json_format_output()`
-  - Method `.test_subagent_ledger_mutation_is_reverted_and_flagged()`
-  - Method `.test_invalid_project_name_returns_triad()`
-  - Method `.test_nonexistent_file_returns_triad()`
-  - Method `.test_delegation_with_valid_file()`
-  - Method `.test_subagent_timeout_handled()`
+  - Method `.runner(returncode, stdout, effect)`
+  - Method `.delegate(role, prompt, **kwargs)`
+  - Method `.test_roles_are_the_opencode_profiles()`
+  - Method `.test_refuses_empty_brief_unknown_project_and_missing_file()`
+  - Method `.test_runs_opencode_headless_with_the_brief()`
+  - Method `.test_json_report()`
+  - Method `.test_a_changed_ledger_is_reported_and_never_overwritten()`
+  - Method `.test_timeout_is_reported()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

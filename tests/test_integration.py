@@ -11,6 +11,7 @@ nothing here is hidden or opt-in. Every spawned process is bounded by an explici
 (PRINCIPLE-010 R3, PRINCIPLE-015 R2) so a hung child can never stall the suite.
 """
 
+import ast
 import contextlib
 import io
 import json
@@ -29,8 +30,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.check_secrets import run_scan  # noqa: E402
+from scripts.update_knowledge_base import check_codebase_map_freshness, check_workspace, parse_source  # noqa: E402
 from scripts.project_gates import Gate, run_gates  # noqa: E402
-from scripts.project_registry import create_project  # noqa: E402
+from scripts.project_registry import create_project, render_project_readme  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
     record_checkpoint,
@@ -504,9 +506,12 @@ class TestAstGateCli(unittest.TestCase):
         )
         self.assertEqual(res_fail.returncode, 1)
         self.assertIn("function 'bad' is a stub", res_fail.stdout)
+        self.assertIn("README.md does not exist", res_fail.stdout, "projects get PRINCIPLE-005 too (ADR-128)")
 
-        # 2. Passing case: clean function and valid ADR in .aikit/decisions.md
+        # 2. Passing case: clean function, the template README, and valid ADRs in .aikit/decisions.md
         (sandbox / "app.py").write_text("def ok() -> int:\n    return 42\n", encoding="utf-8")
+        (sandbox / ".gitignore").write_text(".aikit/*.lock\n", encoding="utf-8")
+        (sandbox / "README.md").write_text(render_project_readme("ws"), encoding="utf-8")
         (sandbox / ".aikit").mkdir(parents=True)
         (sandbox / ".aikit" / "decisions.md").write_text(
             "# Decisions\n\n### ADR-001: Init\n\n### ADR-002: Next\n", encoding="utf-8"
@@ -519,6 +524,54 @@ class TestAstGateCli(unittest.TestCase):
         )
         self.assertEqual(res_pass.returncode, 0)
         self.assertIn("ADR IDs are unique and consecutive", res_pass.stdout)
+
+
+class TestRepositoryCodebaseMap(unittest.TestCase):
+    """PRINCIPLE-016 live invariant. Integration tier with the other whole-repository scans: mapping
+    every file, the test modules included, costs ~0.1s cold, which the unit tier's 1s cannot carry
+    (ADR-128)."""
+
+    def test_codebase_map_freshness_gate(self):
+        # Enforces PRINCIPLE-016: codebase_map.md must be 100% synchronized with physical codebase AST
+        self.assertTrue(
+            check_codebase_map_freshness(strict=True),
+            "knowledge/codebase_map.md must be fresh and match current AST"
+        )
+
+
+class TestSuiteHygiene(unittest.TestCase):
+    """PRINCIPLE-014 R3 and R5 made mechanical (ADR-099). Integration tier: it parses the
+    test modules themselves, a whole-repository scan (ADR-128)."""
+
+    NETWORK_MODULES = {"socket", "http", "urllib", "requests", "httpx", "aiohttp"}
+    MODULES = ("test_kit.py", "test_integration.py")
+
+    @classmethod
+    def setUpClass(cls):
+        # Shared, content-keyed parse cache: the codebase-map test parses these files too.
+        cls.trees = {name: parse_source((ROOT_DIR / "tests" / name).read_text(encoding="utf-8"), name)
+                     for name in cls.MODULES}
+
+    def test_every_test_method_asserts(self):
+        silent = []
+        for name, tree in self.trees.items():
+            for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
+                for fn in (n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")):
+                    calls = {c.func.attr for c in ast.walk(fn)
+                             if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)}
+                    if not any(a.startswith("assert") or a == "fail" for a in calls) and \
+                            not any(isinstance(n, ast.Assert) for n in ast.walk(fn)):
+                        silent.append(f"{name}:{fn.lineno} {cls.name}.{fn.name}")
+        self.assertEqual(silent, [], "a test without an assertion proves nothing (PRINCIPLE-014 R5)")
+
+    def test_no_test_module_imports_a_network_library(self):
+        found = []
+        for name, tree in self.trees.items():
+            for node in ast.walk(tree):
+                names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                         else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+                found += [f"{name}: {n}" for n in names if n.split(".")[0] in self.NETWORK_MODULES]
+        self.assertEqual(found, [], "tests make no network call (PRINCIPLE-014 R3)")
 
 
 class TestRepositorySecretHygiene(unittest.TestCase):
@@ -625,60 +678,10 @@ class TestProjectCreation(unittest.TestCase):
                          "the project's checkpoint is bookkeeping, not a change")
 
 
-class TestProjectCockpitCli(unittest.TestCase):
-    """`aikit checkpoint/resume/complete/clean` CLI lifecycle commands for projects."""
+class TestProjectSelfCheck(unittest.TestCase):
+    """`aikit fix` repairs what it can, `aikit check` applies AIKit's guidelines (ADR-124, ADR-128)."""
 
-    def test_cockpit_cli_workflow(self):
-        kit = Path(tempfile.mkdtemp(prefix="test_cockpit_cli_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
-        identity = {"GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@example.com",
-                    "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
-        patcher = mock.patch.dict(os.environ, identity)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        root, _ = create_project("demo", test_command='python -c "exit(0)"', workspace=kit)
-        aikit_bin = [sys.executable, str(ROOT_DIR / "aikit.py")]
-
-        # 1. checkpoint
-        res = subprocess.run(
-            aikit_bin + ["checkpoint", "demo", "--task", "work-1", "--phase-num", "2", "--desc", "[1/2] first milestone"],
-            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("[OK] Checkpoint recorded for 'demo'", res.stdout)
-
-        # 2. resume
-        res = subprocess.run(
-            aikit_bin + ["resume", "demo"],
-            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("work-1", res.stdout)
-        self.assertIn("first milestone", res.stdout)
-
-        # 3. complete
-        res = subprocess.run(
-            aikit_bin + ["complete", "demo"],
-            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("Marked task 'work-1' completed", res.stdout)
-
-        # 4. clean
-        (root / "buffer.tmp_999").write_text("junk", encoding="utf-8")
-        res = subprocess.run(
-            aikit_bin + ["clean", "demo", "--force"],
-            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("Purged 1 temporary file(s)", res.stdout)
-        self.assertFalse((root / "buffer.tmp_999").exists())
-
-
-class TestProjectFixCommand(unittest.TestCase):
-    """`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates."""
-
-    def test_fix_self_heals_missing_memory_and_cleans_buffers(self):
+    def test_fix_then_check_and_the_guidelines_gate_reads_the_readme(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_fix_"))
         self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
@@ -686,44 +689,25 @@ class TestProjectFixCommand(unittest.TestCase):
         patcher = mock.patch.dict(os.environ, identity)
         patcher.start()
         self.addCleanup(patcher.stop)
-        root, _ = create_project("app", test_command='python -c "exit(0)"', workspace=kit)
-        # Create a dangling buffer
-        (root / "state.json.tmp_dangling").write_text("junk", encoding="utf-8")
-        # Remove .aikit/decisions.md
+        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
         (root / ".aikit" / "decisions.md").unlink()
 
-        res = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "aikit.py"), "fix", "app"],
-            cwd=str(kit), capture_output=True, text=True, timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("seeded .aikit/decisions.md register", res.stdout)
-        self.assertIn("cleaned 1 dangling temporary buffer", res.stdout)
-        self.assertTrue((root / ".aikit" / "decisions.md").is_file())
-        self.assertFalse((root / "AGENTS.md").exists())
-        self.assertFalse((root / "state.json.tmp_dangling").exists())
-
-
-    def test_project_with_custom_readme_passes_aikit_check(self):
-        kit = Path(tempfile.mkdtemp(prefix="test_project_custom_readme_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
-        identity = {"GIT_AUTHOR_NAME": "A", "GIT_AUTHOR_EMAIL": "a@example.com",
-                    "GIT_COMMITTER_NAME": "A", "GIT_COMMITTER_EMAIL": "a@example.com"}
-        patcher = mock.patch.dict(os.environ, identity)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        root, _ = create_project("customapp", test_command='python -c "exit(0)"', workspace=kit)
-        (root / "README.md").write_text("# Custom App\n\nExternal user application.\n", encoding="utf-8")
-        (root / "main.py").write_text("def run():\n    return 'ok'\n", encoding="utf-8")
-
-        res = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "aikit.py"), "check", "customapp"],
-            cwd=str(kit), capture_output=True, text=True, timeout=PROC_TIMEOUT
-        )
-        self.assertEqual(res.returncode, 0, res.stderr)
+        # The real entry point, as a host runs it: memory restored, then every gate passes.
+        res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "fix", "app"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=PROC_TIMEOUT)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertIn("restored .aikit/decisions.md", res.stdout)
         self.assertIn("[PASS] guidelines", res.stdout)
-        self.assertIn("[PASS] secrets", res.stdout)
-        self.assertIn("[PASS] test", res.stdout)
+
+        # A README without PRINCIPLE-005's Quick Reference and tree fails the guidelines gate, whose
+        # audit (`check_workspace`) runs in-process here: the spawned run above proved the wiring.
+        (root / "README.md").write_text("# App\n\nSome text.\n", encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertFalse(check_workspace(root), out.getvalue())
+        self.assertIn("Cold-Start Quick Reference", out.getvalue())
+
 
 class TestProjectSecretScan(unittest.TestCase):
     """`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121)."""
@@ -756,26 +740,6 @@ class TestProjectGateShell(unittest.TestCase):
         results = run_gates(folder, [Gate("q", quoted, "t")], timeout=PROC_TIMEOUT)
         self.assertEqual(results[0].returncode, 3)
         self.assertEqual(Path(results[0].output.strip()).resolve(), folder.resolve())
-
-
-class TestSubagentDelegateCli(unittest.TestCase):
-    """`aikit delegate` CLI handles help and invalid args across real subprocess calls."""
-
-    def test_delegate_cli_help_and_usage_error(self):
-        cli = [sys.executable, str(ROOT_DIR / "aikit.py"), "delegate", "--help"]
-        res = subprocess.run(cli, capture_output=True, text=True, timeout=PROC_TIMEOUT,
-                             encoding="utf-8", errors="replace")
-        self.assertEqual(res.returncode, 0)
-        self.assertIn("safely delegate a background task to a subagent", res.stdout)
-
-        # Invalid role
-        bad_cli = [sys.executable, str(ROOT_DIR / "aikit.py"), "delegate", "invalid_role", "do task"]
-        bad_res = subprocess.run(bad_cli, capture_output=True, text=True, timeout=PROC_TIMEOUT,
-                                 encoding="utf-8", errors="replace")
-        self.assertEqual(bad_res.returncode, 2)
-        self.assertIn("Error: unknown subagent role 'invalid_role'", bad_res.stderr)
-        self.assertIn("Why:", bad_res.stderr)
-        self.assertIn("Fix:", bad_res.stderr)
 
 
 if __name__ == "__main__":

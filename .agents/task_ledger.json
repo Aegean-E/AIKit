@@ -1,75 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "lean-project-principles-inheritance",
+    "task_id": "review-project-kit",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792240821.0631065,
-    "impact_assessment": {
-      "why": "AIKit workspace already hosts all 8 Tier 1 principles and governs project building directly; copying duplicate instruction files into project repos creates unnecessary clutter",
-      "benefits": "Clean project repositories containing only source code, tests, and .aikit/ memory; principles applied directly from workspace cockpit via aikit check",
-      "risks": "contract: project creation no longer generates instruction markdown files; .aikit/ memory and CLI contracts preserved. dependency: none; stdlib only. concurrency: none. state: project memory intact",
-      "mitigation": "Comprehensive unit and integration test coverage verifying project isolation and Phase 4 gate verification"
-    },
-    "completed_at": 1792241370.4034111
+    "status": "in_progress",
+    "updated_at": 1792242819.6308172
   },
   "checkpoints": [
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[2/5] guidelines gate integrated into project_gates.py",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792228231.3448696,
-      "timestamp_str": "2026-10-17 12:10:31"
-    },
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[3/5] project guidelines seeding and aikit fix complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792228648.4939659,
-      "timestamp_str": "2026-10-17 12:17:28"
-    },
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[4/5] documentation, principles, and ADR-124 updated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792228911.7167172,
-      "timestamp_str": "2026-10-17 12:21:51"
-    },
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-guidelines-parity' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792228955.0731514,
-      "timestamp_str": "2026-10-17 12:22:35"
-    },
-    {
-      "task_id": "project-principles-cockpit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] multi-IDE instructions seeding, project memory and sync_principles --workspace",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792229792.0083363,
-      "timestamp_str": "2026-10-17 12:36:32",
-      "impact_assessment": {
-        "why": "apply AIKit self-building functions and cross-IDE principles to projects",
-        "benefits": "projects gain full multi-IDE guidelines parity, initialized ledgers and cockpit lifecycle commands",
-        "risks": "contract: none dependency: none concurrency: none state: none",
-        "mitigation": "none"
-      }
-    },
     {
       "task_id": "project-principles-cockpit",
       "phase": "in_progress",
@@ -233,6 +171,62 @@
       "status": "completed",
       "timestamp": 1792241370.4034128,
       "timestamp_str": "2026-10-17 15:49:30"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: reviewed ADR-124..127 commits; gates fail tier budgets; 9 defects verified",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792241777.3672283,
+      "timestamp_str": "2026-10-17 15:56:17"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] aikit CLI correctness: explicit --workspace (no cwd guess), checkpoint impact/phase validation parity, stale-only temp cleanup, delegate report-only shield in own module with roles from .opencode/agents, attach leaves README alone, dead code, opencode status command; [2/4] projects get the full PRINCIPLE-005 README audit, one code path, correct stale-map remedy, seeded README fixed; [3/4] sync_principles --workspace no-op removed, .claude skill mirrored by sync; [4/4] tiers under budget, docs, ADR-128, nexus-flow README",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792241777.4980175,
+      "timestamp_str": "2026-10-17 15:56:17",
+      "impact_assessment": {
+        "why": "the other session's project tooling bypasses AIKit's own gates and can lose data",
+        "benefits": "projects really get AIKit's guidelines; no gate reports clean without checking",
+        "risks": "contract: aikit gains --workspace, checkpoint requires --task/--phase-num, clean loses --force, sync_principles loses --workspace; dependency: none; concurrency: delegate no longer overwrites a ledger another session writes; state: no schema change",
+        "mitigation": "failing-first tests per defect; weakened assertions named in ADR-128 with the user's fix request"
+      }
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/4]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792241777.6524198,
+      "timestamp_str": "2026-10-17 15:56:17"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] re-plan: all review fixes in AIKit (CLI correctness, full project README audit, sync no-op removed, skill mirror, tiers, quadratic cross-check) as one commit; [2/2] nexus-flow README corrected in its own repository",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792242805.0666249,
+      "timestamp_str": "2026-10-17 16:13:25"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed: review fixes ADR-128",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792242819.6308172,
+      "timestamp_str": "2026-10-17 16:13:39"
     }
   ]
 }

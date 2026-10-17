@@ -770,6 +770,47 @@ def report_readme(errors: List[str]) -> bool:
     return False
 
 
+def memory_dir(root: Path) -> Path:
+    """Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`."""
+    return root / ".aikit" if (root / ".aikit").is_dir() else root / "knowledge"
+
+
+def check_workspace(root: Path = ROOT_DIR) -> bool:
+    """
+    Every read-only audit of `--check`, for AIKit or for a project it builds: the codebase map
+    (a project's only once `aikit fix` has written one), the full PRINCIPLE-005 README audit,
+    unfinished code, code structure and the ADR register. One code path, so a project is held to
+    exactly AIKit's checks; a size-only README check let a README listing nine deleted files pass
+    (ADR-128). Reports every failure before returning, never stopping at the first.
+    """
+    memory = memory_dir(root)
+    ok = True
+    map_path = memory / "codebase_map.md"
+    if map_path.is_file() or root == ROOT_DIR:
+        rel = map_path.relative_to(root)
+        if check_codebase_map_freshness(memory, root=root, strict=False):
+            print(f"[OK] {rel} is fresh and synchronized with the AST.")
+        else:
+            # The exact command for this folder: a project's stale map used to point at AIKit's.
+            remedy = ("python scripts/update_knowledge_base.py" if root == ROOT_DIR
+                      else f'python scripts/update_knowledge_base.py --workspace "{root}"')
+            print(f"[FAIL] {rel} is stale. Fix: run `{remedy}`.")
+            ok = False
+    ok = report_readme(check_readme(root)) and ok
+    ok = report_lazy_code(check_lazy_code(root)) and ok
+    ok = report_architecture(check_architecture(root)) and ok
+    decisions = memory / "decisions.md"
+    if decisions.is_file():
+        rel = decisions.relative_to(root)
+        errors = audit_adr_register(decisions.read_text(encoding="utf-8"))
+        for error in errors:
+            print(f"[FAIL] {rel}: {error} (PRINCIPLE-016 R3)")
+        if not errors:
+            print(f"[OK] {rel}: ADR IDs are unique and consecutive.")
+        ok = ok and not errors
+    return ok
+
+
 KNOWN_FLAGS = {"--check", "--lenient", "--workspace", "--help", "-h"}
 
 HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
@@ -832,60 +873,17 @@ if __name__ == "__main__":
         target_root = Path(sys.argv[widx + 1]).resolve()
         if not target_root.is_dir():
             print(f"[INVALID USAGE] --workspace '{target_root}' does not exist or is not a directory.", file=sys.stderr)
+            print("Why: the audits read that folder's files and git repository.", file=sys.stderr)
+            print("Fix: pass an existing project folder, e.g. --workspace projects/<name>.", file=sys.stderr)
             sys.exit(2)
 
     if "--check" in sys.argv:
         try:
-            fresh = True
-            k_map = None
-            for cand in (target_root / ".aikit" / "codebase_map.md", target_root / "knowledge" / "codebase_map.md"):
-                if cand.is_file():
-                    k_map = cand
-                    break
-            if k_map:
-                fresh = check_codebase_map_freshness(k_map.parent, root=target_root, strict=False)
-                if fresh:
-                    print(f"[OK] {k_map.relative_to(target_root)} is fresh and synchronized with AST.")
-                else:
-                    print(f"[FAIL] {k_map.relative_to(target_root)} is stale. Run 'python scripts/update_knowledge_base.py' to update.")
-            elif target_root == ROOT_DIR:
-                fresh = check_codebase_map_freshness(strict=False)
-                if fresh:
-                    print("[OK] knowledge/codebase_map.md is fresh and synchronized with AST.")
-                else:
-                    print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
-
-            readme_ok = True
-            if target_root == ROOT_DIR:
-                readme_ok = report_readme(check_readme(target_root))
-            elif (target_root / "README.md").is_file():
-                readme_text = (target_root / "README.md").read_text(encoding="utf-8")
-                readme_errors = []
-                if len(readme_text) > README_MAX_CHARS:
-                    readme_errors.append(f"README.md has {len(readme_text):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
-                if README_PLACEHOLDER in readme_text:
-                    readme_errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder (R1)")
-                readme_ok = report_readme(readme_errors)
-            lazy_ok = report_lazy_code(check_lazy_code(target_root))
-            arch_ok = report_architecture(check_architecture(target_root))
-
-            decisions_path = None
-            for cand in (target_root / ".aikit" / "decisions.md", target_root / "knowledge" / "decisions.md"):
-                if cand.is_file():
-                    decisions_path = cand
-                    break
-
-            adr_errors = []
-            if decisions_path:
-                adr_errors = audit_adr_register(decisions_path.read_text(encoding="utf-8"))
-                for adr_error in adr_errors:
-                    print(f"[FAIL] {decisions_path.relative_to(target_root)}: {adr_error} (PRINCIPLE-016 R3)")
-                if not adr_errors:
-                    print(f"[OK] {decisions_path.relative_to(target_root)}: ADR IDs are unique and consecutive.")
-
-            sys.exit(0 if fresh and readme_ok and lazy_ok and arch_ok and not adr_errors else 1)
+            sys.exit(0 if check_workspace(target_root) else 1)
         except Exception as e:
-            print(f"[FAIL] Error checking codebase map freshness: {e}")
+            print(f"[FAIL] The read-only checks could not finish: {e}")
+            print("Why: a check that did not run proves nothing, so it is reported as a failure.")
+            print("Fix: correct the cause named above (often an unreadable file), then re-run --check.")
             sys.exit(1)
 
     is_lenient = "--lenient" in sys.argv
@@ -915,17 +913,7 @@ if __name__ == "__main__":
         write_generated_file(map_path, map_content)
         print(f"[UPDATED] {map_path.relative_to(target_root)}")
 
-    readme_ok = True
-    if target_root == ROOT_DIR:
-        readme_ok = report_readme(check_readme(target_root))
-    elif (target_root / "README.md").is_file():
-        readme_text = (target_root / "README.md").read_text(encoding="utf-8")
-        readme_errors = []
-        if len(readme_text) > README_MAX_CHARS:
-            readme_errors.append(f"README.md has {len(readme_text):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
-        if README_PLACEHOLDER in readme_text:
-            readme_errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder (R1)")
-        readme_ok = report_readme(readme_errors)
+    readme_ok = report_readme(check_readme(target_root))
     lazy_ok = report_lazy_code(check_lazy_code(target_root))
     arch_ok = report_architecture(check_architecture(target_root))
     if not (readme_ok and lazy_ok and arch_ok) and not is_lenient:

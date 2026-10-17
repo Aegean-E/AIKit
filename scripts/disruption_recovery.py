@@ -1161,6 +1161,35 @@ def missing_impact_warning(task_id: str, phase_num: Optional[int], has_prior_imp
             f"a Track B task has none.")
 
 
+def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc: str,
+                       impact: Dict[str, Optional[str]], ledger_file: Optional[Path] = None) -> int:
+    """
+    Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one
+    path for every CLI that records checkpoints (`--checkpoint` here, `aikit checkpoint`): a second
+    copy recorded first plans with no impact assessment (ADR-128).
+    """
+    prior = any(c.get("task_id") == task_id and c.get("impact_assessment")
+                for c in load_ledger(ledger_file).get("checkpoints", []))
+    resolved = resolve_phase_num(phase, phase_num)
+    errors = impact_errors(desc, resolved, impact, prior)
+    warning = missing_impact_warning(task_id, resolved, prior, any(impact.values()))
+    if warning:
+        print(warning, file=sys.stderr)
+    if errors:
+        print(f"[INCOMPLETE IMPACT] {'; '.join(errors)}", file=sys.stderr)
+        print("Why: the first plan of a Track C task records why, benefits, risks and mitigation "
+              "(PRINCIPLE-007 R6) so they survive compaction.", file=sys.stderr)
+        print('Fix: add --why, --benefits, --mitigation and --risks "contract: ...; dependency: ...; '
+              'concurrency: ...; state: ..."', file=sys.stderr)
+        return 2
+    cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
+                           why=impact.get("why"), benefits=impact.get("benefits"),
+                           risks=impact.get("risks"), mitigation=impact.get("mitigation"),
+                           ledger_file=ledger_file)
+    print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
+    return 0
+
+
 def argv_value_errors(argv: List[str]) -> List[str]:
     """
     Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to
@@ -1280,35 +1309,9 @@ if __name__ == "__main__":
             if len(sys.argv) > midx + 1 and not sys.argv[midx + 1].startswith("--"):
                 mitigation = sys.argv[midx + 1]
 
-        _prior = any(c.get("task_id") == task_id and c.get("impact_assessment")
-                     for c in load_ledger(_ledger).get("checkpoints", []))
-        _impact = impact_errors(desc, resolve_phase_num(phase, phase_num),
-                                {"why": why, "benefits": benefits, "risks": risks, "mitigation": mitigation},
-                                _prior)
-        _warning = missing_impact_warning(task_id, resolve_phase_num(phase, phase_num), _prior,
-                                          bool(why or benefits or risks or mitigation))
-        if _warning:
-            print(_warning, file=sys.stderr)
-        if _impact:
-            print(f"[INCOMPLETE IMPACT] {'; '.join(_impact)}", file=sys.stderr)
-            print("Why: the first plan of a Track C task records why, benefits, risks and mitigation "
-                  "(PRINCIPLE-007 R6) so they survive compaction.", file=sys.stderr)
-            print('Fix: add --why, --benefits, --mitigation and --risks "contract: ...; dependency: ...; '
-                  'concurrency: ...; state: ..."', file=sys.stderr)
-            sys.exit(2)
-
-        cp = record_checkpoint(
-            task_id=task_id,
-            phase=phase,
-            phase_num=phase_num,
-            description=desc,
-            why=why,
-            benefits=benefits,
-            risks=risks,
-            mitigation=mitigation,
-            ledger_file=_ledger,
-        )
-        print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
+        sys.exit(checkpoint_command(task_id, phase, phase_num, desc,
+                                    {"why": why, "benefits": benefits, "risks": risks,
+                                     "mitigation": mitigation}, _ledger))
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1]

@@ -7,7 +7,6 @@ budget, rejects duplicate principle IDs, checks README parity, injects optional 
 rules, and refuses to overwrite any target it did not generate.
 """
 
-import json
 import os
 import re
 import sys
@@ -20,7 +19,6 @@ GUIDELINES_MD = ROOT_DIR / "GUIDELINES.md"
 README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 
-# Projects inherit universal principles directly from the AIKit workspace root (PRINCIPLE-011 R8).
 
 # Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
 # thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
@@ -38,7 +36,7 @@ SSOT_MD = GUIDELINES_MD
 
 # Markers proving a file was written by this tool (current, then legacy pre-ADR-048 headers).
 # Anything else is hand-authored and must never be overwritten by a sync.
-GENERATED_MARKERS = ("Generated from `", "(Tier 1 Invariants)", "Governed by AIKit")
+GENERATED_MARKERS = ("Generated from `", "(Tier 1 Invariants)")
 
 
 def is_generated_target(text: str) -> bool:
@@ -279,6 +277,11 @@ def validate_triad_consistency(
 # Every always-injected Tier 1 target: repo-relative path -> heading. One renderer keeps all
 # targets in lock-step; five near-identical generators previously had to be edited in parallel,
 # and the header text they shared had drifted into contradicting PRINCIPLE-001.
+# Generated copy -> source, relative to the repository: the runbook in a host's own skill folder.
+RUNBOOK_MIRRORS: Dict[str, str] = {
+    ".claude/skills/aikit/SKILL.md": ".agents/skills/aikit/SKILL.md",
+}
+
 TIER1_TARGETS: Dict[str, str] = {
     # Auto-loaded by tools following the AGENTS.md convention (e.g. OpenAI Codex, GitHub Copilot's
     # coding agent), so it must be a budgeted Tier 1 file, never the full specification.
@@ -381,17 +384,17 @@ def sync_all(
     exit_on_mismatch: bool = True,
     domain_path: Optional[Path] = None,
     readme_file: Optional[Path] = None,
-    workspace: Optional[Path] = None,
 ) -> int:
     """
     Generate every always-injected Tier 1 target from the principle SSOT.
 
     Returns the number of problems found - 0 means success in both write and check modes. With
-    `exit_on_mismatch=True` (the CLI) any problem exits 1 instead of returning.
+    `exit_on_mismatch=True` (the CLI) any problem exits 1 instead of returning. Only AIKit has
+    Tier 1 files: projects are worked on from AIKit's folder, whose files every host loads (ADR-127).
     """
-    root = (workspace or ROOT_DIR).resolve()
-    ssot_file = root / "GUIDELINES.md" if workspace else SSOT_MD
-    agents_file = root / "AGENTS.md" if workspace else AGENTS_MD
+    root = ROOT_DIR.resolve()
+    ssot_file = SSOT_MD
+    agents_file = AGENTS_MD
     readme_file = readme_file or (root / "README.md")
     domain_path = domain_path or (root / ".agents" / "rules" / "domain.md")
 
@@ -513,6 +516,11 @@ def sync_all(
         readme_expected = sync_readme_table(readme_file.read_text(encoding="utf-8"), principles)
         if readme_expected is not None:
             written[readme_file] = readme_expected
+    # Hosts that load skills only from their own folder get an exact copy of the one runbook, so
+    # an edit to it cannot leave theirs stale (ADR-128); `--check` reports a drifted copy.
+    for mirror, source in RUNBOOK_MIRRORS.items():
+        if (root / source).is_file():
+            written[root / mirror] = (root / source).read_text(encoding="utf-8")
 
     mismatches = 0
     for target_path, expected_content in written.items():
@@ -551,33 +559,6 @@ def sync_all(
     # returned the number of files updated in write mode, making a successful sync look like a
     # failure to any programmatic caller.
     return 0
-
-
-def sync_project(
-    workspace: Path,
-    check_only: bool = False,
-    exit_on_mismatch: bool = True,
-) -> int:
-    """No-op: projects inherit principles directly from the AIKit workspace root."""
-    return 0
-
-
-def sync_workspace(
-    workspace: Path,
-    check_only: bool = False,
-    exit_on_mismatch: bool = True,
-    domain_path: Optional[Path] = None,
-) -> int:
-    """Synchronize or verify instruction targets for any workspace or project folder."""
-    workspace = workspace.resolve()
-    if (workspace / "GUIDELINES.md").is_file():
-        return sync_all(
-            check_only=check_only,
-            exit_on_mismatch=exit_on_mismatch,
-            domain_path=domain_path,
-            workspace=workspace,
-        )
-    return sync_project(workspace, check_only=check_only, exit_on_mismatch=exit_on_mismatch)
 
 
 INVOLVEMENT_FALLBACK = "PRINCIPLE-003"
@@ -649,7 +630,9 @@ def cross_check_errors(old_text: str, new_text: str, old_decisions: str, new_dec
     changed = changed_principles(old_text, new_text)
     if not changed:
         return []
-    added = [body for adr, body in _adr_blocks(new_decisions).items() if adr not in _adr_blocks(old_decisions)]
+    # Parsed once: re-parsing the old register for every ADR took ~0.9s at 128 ADRs (ADR-128).
+    old_ids = set(_adr_blocks(old_decisions))
+    added = [body for adr, body in _adr_blocks(new_decisions).items() if adr not in old_ids]
     if not added:
         return [f"{', '.join(changed)} changed but no ADR was added to knowledge/decisions.md (PRINCIPLE-004 R4)"]
     lines = [m.group(1) for body in added for m in re.finditer(r"Cross-principle check:([^\n]*)", body)]
@@ -689,7 +672,6 @@ Options:
                    changed since the last commit has an ADR naming its --citing set (PRINCIPLE-000 R3);
                    exits 1 on either
   --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
-  --workspace <dir> Specify workspace or project folder to sync or verify (default: AIKit root)
   --involved TEXT  List the principles TEXT involves (PRINCIPLE-001 R3); must be the first argument,
                    and every later argument is TEXT: paths to change, commands to run, failing output
   --citing ID      List the principles a change to principle ID must be checked against: those
@@ -727,7 +709,7 @@ if __name__ == "__main__":
         print_help()
         sys.exit(0)
 
-    _known = {"--check", "--domain", "--workspace", "--help", "-h"}
+    _known = {"--check", "--domain", "--help", "-h"}
     _argv = sys.argv[1:]
     _unknown = []
     _i = 0
@@ -736,7 +718,7 @@ if __name__ == "__main__":
         if _tok.startswith("-"):
             if _tok not in _known:
                 _unknown.append(_tok)
-            elif _tok in ("--domain", "--workspace"):
+            elif _tok == "--domain":
                 _i += 1  # consume the path value
         _i += 1
     if _unknown:
@@ -755,18 +737,6 @@ if __name__ == "__main__":
             sys.stderr.write("Error: --domain requires a file path argument.\n")
             sys.exit(1)
 
-    workspace_dir = None
-    if "--workspace" in sys.argv:
-        try:
-            idx = sys.argv.index("--workspace")
-            workspace_dir = Path(sys.argv[idx + 1])
-        except (IndexError, ValueError):
-            sys.stderr.write("Error: --workspace requires a folder path argument.\n")
-            sys.exit(1)
-
-    if workspace_dir and workspace_dir.resolve() != ROOT_DIR.resolve():
-        code = sync_workspace(workspace_dir, check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)
-        sys.exit(code)
 
     sync_all(check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)
 

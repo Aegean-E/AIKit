@@ -1,43 +1,39 @@
 """
-`aikit` command line: create, attach, list, report on and check the projects AIKit builds
-(ADR-119, ADR-120, ADR-122).
+`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects
+AIKit builds (ADR-119 to ADR-128).
 
 Run through the root shim: `python aikit.py <command>`. Exit codes: 0 success, 1 the request
 could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
 """
 
 import argparse
-import json
-import shutil
-import subprocess
 import sys
-import time
 from pathlib import Path
-from typing import Callable, Dict, List, NoReturn, Optional, Tuple
+from typing import List, NoReturn, Optional
 
 from scripts.disruption_recovery import (
     ROOT_DIR,
+    TEMP_STALE_SECONDS,
+    checkpoint_command,
     clean_dangling_temp_files,
     format_resume_report,
-    load_ledger,
     mark_task_completed,
-    record_checkpoint,
     run_disruption_audit,
+    workspace_ledger_path,
 )
 from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
+    Project,
     ProjectError,
     attach_project,
-    config_path,
     create_project,
-    Project,
     find_project,
     latest_decision,
     list_projects,
+    seed_readme,
     write_memory,
-    DECISIONS_FILENAME,
-    PROJECT_MEMORY_DIRNAME,
 )
+from scripts.subagent_delegate import delegate_subagent
 from scripts.update_knowledge_base import (
     find_python_files,
     generate_codebase_map,
@@ -66,16 +62,22 @@ class TriadArgumentParser(argparse.ArgumentParser):
         )))
 
 
-VALID_SUBAGENT_ROLES: Tuple[str, ...] = ("worker", "architect", "coder", "tester", "reviewer", "explorer")
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = TriadArgumentParser(
         prog="python aikit.py",
         description="Create and manage the projects AIKit builds. Each project is its own folder "
                     "and git repository with its memory in .aikit/.",
     )
+    # Explicit, never guessed from the working directory: a stray `projects/` folder elsewhere
+    # must not become the registry (ADR-128).
+    parser.add_argument("--workspace", type=Path, default=ROOT_DIR, metavar="DIR",
+                        help="AIKit checkout whose projects/ to use (default: this one; for sandboxes)")
     commands = parser.add_subparsers(dest="command", required=True, parser_class=TriadArgumentParser)
+
+    def project_command(name: str, help_text: str) -> argparse.ArgumentParser:
+        sub = commands.add_parser(name, help=help_text)
+        sub.add_argument("name", help="project name, as `list` shows it")
+        return sub
 
     new = commands.add_parser("new", help="create projects/<name>/ as a new git repository")
     new.add_argument("name", help="folder name: lowercase letters, digits, '-' or '_'")
@@ -87,62 +89,50 @@ def build_parser() -> argparse.ArgumentParser:
     attach.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
 
     commands.add_parser("list", help="show every project, its stacks and test command")
+    project_command("status", "a project's task, uncommitted work, latest decision and gates")
+    project_command("resume", "the cold-start report for a project (PRINCIPLE-004 R2)")
 
-    status = commands.add_parser("status", help="a project's task, uncommitted work and next step")
-    status.add_argument("name", help="project name, as `list` shows it")
+    checkpoint = project_command("checkpoint", "record a checkpoint in the project's ledger")
+    checkpoint.add_argument("--task", required=True, help="task ID")
+    checkpoint.add_argument("--phase-num", type=int, required=True, choices=[1, 2, 3, 4, 5],
+                            help="lifecycle phase 1-5")
+    checkpoint.add_argument("--desc", required=True, help="what was done; a plan starts '[1/M]'")
+    for field in ("why", "benefits", "risks", "mitigation"):
+        checkpoint.add_argument(f"--{field}", default=None,
+                                help="impact assessment, required on a task's first plan (PRINCIPLE-007 R6)")
 
-    resume = commands.add_parser("resume", help="show disruption recovery guidance and active task status for a project")
-    resume.add_argument("name", help="project name, as `list` shows it")
+    complete = project_command("complete", "mark the project's active task completed")
+    complete.add_argument("--task", required=True, help="the active task's ID")
 
-    checkpoint = commands.add_parser("checkpoint", help="record an atomic milestone checkpoint in project task ledger")
-    checkpoint.add_argument("name", help="project name, as `list` shows it")
-    checkpoint.add_argument("--task", default=None, help="task ID (default: active task in ledger or 'project-work')")
-    checkpoint.add_argument("--phase-num", type=int, default=2, choices=[1, 2, 3, 4, 5], help="lifecycle phase 1-5 (default: 2)")
-    checkpoint.add_argument("--desc", required=True, help="description of the milestone / task step")
-    checkpoint.add_argument("--why", default=None, help="rationale (Pre-Flight Impact Assessment)")
-    checkpoint.add_argument("--benefits", default=None, help="expected benefits")
-    checkpoint.add_argument("--risks", default=None, help="identified risks across contract/dependency/concurrency/state")
-    checkpoint.add_argument("--mitigation", default=None, help="risk mitigation strategy")
+    project_command("clean", f"delete the project's temp buffers older than {TEMP_STALE_SECONDS}s")
+    project_command("check", "run every gate of a project (its Phase 4)")
+    project_command("fix", "restore missing project memory and README, refresh its map, then check")
 
-    complete = commands.add_parser("complete", help="mark active task completed in project task ledger")
-    complete.add_argument("name", help="project name, as `list` shows it")
-    complete.add_argument("--task", default=None, help="task ID (default: active task in ledger)")
-
-    clean = commands.add_parser("clean", help="purge dangling temporary files in project workspace")
-    clean.add_argument("name", help="project name, as `list` shows it")
-    clean.add_argument("--force", action="store_true", help="delete buffers immediately regardless of age")
-
-    check = commands.add_parser("check", help="run every gate of a project (its Phase 4)")
-    check.add_argument("name", help="project name, as `list` shows it")
-
-    fix = commands.add_parser("fix", help="self-heal project memory, clean stale temporary buffers, and sync codebase map")
-    fix.add_argument("name", help="project name, as `list` shows it")
-
-    delegate = commands.add_parser("delegate",
-                                   help="safely delegate a background task to a subagent",
-                                   description="safely delegate a background task to a subagent")
-    delegate.add_argument("role", help=f"subagent role: {', '.join(VALID_SUBAGENT_ROLES)}")
-    delegate.add_argument("prompt", help="task prompt or instruction for the subagent")
-    delegate.add_argument("--file", "-f", dest="file", default=None,
-                          help="target file to attach or inspect")
-    delegate.add_argument("--project", "-p", dest="project", default=None,
-                          help="target registered project name")
-    delegate.add_argument("--model", "-m", dest="model", default=None,
-                          help="model identifier (e.g. ollama/qwen2.5-coder:latest)")
-    delegate.add_argument("--timeout", type=int, default=120,
-                          help="execution timeout in seconds (default: 120)")
-    delegate.add_argument("--format", dest="format", choices=["text", "json"], default="text",
-                          help="output format (default: text)")
+    delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
+    delegate.add_argument("role", help="a profile name in .opencode/agents/")
+    delegate.add_argument("prompt", help="the brief for the sub-agent")
+    delegate.add_argument("--file", "-f", default=None, help="file to attach to the brief")
+    delegate.add_argument("--project", "-p", default=None, help="run inside this registered project")
+    delegate.add_argument("--model", "-m", default=None, help="model ID, e.g. ollama/qwen2.5-coder")
+    delegate.add_argument("--timeout", type=int, default=120, help="seconds before the run is killed")
+    delegate.add_argument("--format", choices=["text", "json"], default="text", help="report format")
     return parser
 
 
-def _active_workspace() -> Path:
-    cwd = Path.cwd()
-    return cwd if (cwd / "projects").is_dir() else ROOT_DIR
+def present_project(name: str, workspace: Path) -> Project:
+    """The registered project `name`, refusing one whose folder or record is gone."""
+    project = find_project(name, workspace)
+    if not project.present:
+        raise ProjectError(
+            f"Project '{project.name}' is missing at {project.path}.",
+            "its folder or .aikit/project.json is gone, so there is no memory to use.",
+            "restore the folder, or attach its new location with `python aikit.py attach <path>`.",
+        )
+    return project
 
 
 def cmd_new(args: argparse.Namespace) -> int:
-    root, warning = create_project(args.name, args.test, workspace=_active_workspace())
+    root, warning = create_project(args.name, args.test, workspace=args.workspace)
     print(f"[OK] Created project '{args.name}' at {root}")
     if warning:
         print(f"[WARN] {warning}", file=sys.stderr)
@@ -151,14 +141,14 @@ def cmd_new(args: argparse.Namespace) -> int:
 
 
 def cmd_attach(args: argparse.Namespace) -> int:
-    name, folder, created = attach_project(args.path, args.name, args.test, workspace=_active_workspace())
-    state = "new .aikit/ memory created" if created else "existing .aikit/ memory kept"
+    name, folder, created = attach_project(args.path, args.name, args.test, workspace=args.workspace)
+    state = "created .aikit/ memory" if created else "kept its existing .aikit/ memory"
     print(f"[OK] Attached '{name}' at {folder} ({state})")
     return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    projects = list_projects(_active_workspace())
+    projects = list_projects(args.workspace)
     if not projects:
         print("No projects yet. Create one with `python aikit.py new <name>`.")
         return 0
@@ -173,110 +163,58 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def present_project(name: str) -> Project:
-    """The registered project `name`, refusing one whose folder or record is gone."""
-    project = find_project(name, _active_workspace())
-    if not project.present:
-        raise ProjectError(
-            f"Project '{project.name}' is missing at {project.path}.",
-            "its folder or .aikit/project.json is gone, so there is no memory to use.",
-            "restore the folder, or attach its new location with `python aikit.py attach <path>`.",
-        )
-    return project
-
-
 def cmd_status(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
+    project = present_project(args.name, args.workspace)
     stacks = ",".join(s.name for s in project.stacks) or "none detected"
     print(f"Project:   {project.name}  ({project.path})")
     print(f"Stacks:    {stacks}")
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
     print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
-    # PRINCIPLE-011 R8: project cockpit lifecycle commands
-    print("Project cockpit lifecycle commands:")
-    print(f"  python aikit.py resume {project.name}")
-    print(f'  python aikit.py checkpoint {project.name} --desc "[1/M] <plan>"')
-    print(f"  python aikit.py complete {project.name}")
-    print(f"  python aikit.py clean {project.name}")
+    # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
+    print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
     gates = ", ".join(gate.name for gate in resolve_gates(project))
     print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
     return 0
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
-    report = format_resume_report(run_disruption_audit(workspace_dir=project.path))
-    print(report)
+    project = present_project(args.name, args.workspace)
+    print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
     return 0
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
-    ledger_path = project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
-    task_id = args.task
-    if not task_id:
-        ledger = load_ledger(ledger_path)
-        active = ledger.get("active_task")
-        if active and active.get("task_id"):
-            task_id = active["task_id"]
-        else:
-            task_id = "project-work"
-    record_checkpoint(
-        task_id=task_id,
-        phase=f"phase {args.phase_num}",
-        description=args.desc,
-        phase_num=args.phase_num,
-        ledger_file=ledger_path,
-        why=args.why,
-        benefits=args.benefits,
-        risks=args.risks,
-        mitigation=args.mitigation,
-    )
-    print(f"[OK] Checkpoint recorded for '{project.name}': Task '{task_id}', Phase {args.phase_num} - {args.desc}")
-    return 0
+    project = present_project(args.name, args.workspace)
+    impact = {"why": args.why, "benefits": args.benefits, "risks": args.risks,
+              "mitigation": args.mitigation}
+    return checkpoint_command(args.task, f"phase {args.phase_num}", args.phase_num, args.desc, impact,
+                              workspace_ledger_path(project.path))
 
 
 def cmd_complete(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
-    ledger_path = project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
-    task_id = args.task
-    if not task_id:
-        ledger = load_ledger(ledger_path)
-        active = ledger.get("active_task")
-        if active and active.get("task_id"):
-            task_id = active["task_id"]
-        else:
-            print(f"Error: No active task in '{project.name}' ledger to complete.", file=sys.stderr)
-            print("Why: complete requires an active task or an explicit --task ID.", file=sys.stderr)
-            print("Fix: pass --task <task_id> or start a task with checkpoint first.", file=sys.stderr)
-            return 1
-    success = mark_task_completed(task_id, ledger_file=ledger_path)
-    if success:
-        print(f"[OK] Marked task '{task_id}' completed for project '{project.name}'.")
+    project = present_project(args.name, args.workspace)
+    if mark_task_completed(args.task, ledger_file=workspace_ledger_path(project.path)):
+        print(f"[OK] Task '{args.task}' marked as completed in '{project.name}'.")
         return 0
-    else:
-        print(f"Error: Task '{task_id}' is not the active task for project '{project.name}'.", file=sys.stderr)
-        print("Why: only an active task can be completed.", file=sys.stderr)
-        print(f"Fix: check active task with `python aikit.py status {project.name}`.", file=sys.stderr)
-        return 1
+    print(f"Error: task '{args.task}' is not the active task of '{project.name}'.", file=sys.stderr)
+    print("Why: only the active task can be completed; nothing was changed.", file=sys.stderr)
+    print(f"Fix: run `python aikit.py resume {project.name}` to see the active task's ID.", file=sys.stderr)
+    return 1
 
 
 def cmd_clean(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
-    min_age = 0.0 if args.force else 60.0
-    cleaned = clean_dangling_temp_files(project.path, min_age_seconds=min_age)
-    if cleaned:
-        print(f"[CLEAN] Purged {len(cleaned)} temporary file(s) in '{project.name}':")
-        for f in cleaned:
-            print(f"  • {f}")
-    else:
-        print(f"[OK] No dangling temporary files found in '{project.name}'.")
+    project = present_project(args.name, args.workspace)
+    # Only stale buffers: a younger one may be another agent's atomic write in flight (PRINCIPLE-013).
+    cleaned = clean_dangling_temp_files(project.path)
+    for rel in cleaned:
+        print(f"[CLEAN] {rel}")
+    print(f"[OK] {len(cleaned)} stale temporary file(s) removed from '{project.name}'.")
     return 0
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    project = present_project(args.name)
+    project = present_project(args.name, args.workspace)
     results = run_gates(project.path, resolve_gates(project))
     for result in results:
         mark = "PASS" if result.passed else "FAIL"
@@ -292,8 +230,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Error: gate(s) failed: {', '.join(failed)}", file=sys.stderr)
         print("Why: a project commits only when every gate passes (PRINCIPLE-011 R8, PRINCIPLE-014 R1).",
               file=sys.stderr)
-        print(f"Fix: fix the cause in the output above, then rerun `python aikit.py check {project.name}`.",
-              file=sys.stderr)
+        print(f"Fix: run `python aikit.py fix {project.name}` for memory and map drift; fix any other "
+              "cause shown above by hand, then rerun the check.", file=sys.stderr)
         return 1
     if not any(result.gate.name == "test" for result in results):
         print("Error: the project has no test gate.", file=sys.stderr)
@@ -305,217 +243,35 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 
 def cmd_fix(args: argparse.Namespace) -> int:
-    """Self-heal project memory, clean dangling temporary buffers, and sync codebase map."""
-    project = present_project(args.name)
-    print(f"Self-checking & fixing project '{project.name}' ({project.path}):")
+    """
+    Repair what AIKit can repair mechanically, then run the gates: everything left is the
+    agent's to fix by hand, guided by each gate's output.
+    """
+    project = present_project(args.name, args.workspace)
     fixes: List[str] = []
-
-    had_config = config_path(project.path).exists()
-    had_gitignore = (project.path / ".gitignore").exists()
-    had_decisions = (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists()
-    had_ledger = (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists()
-    had_readme = (project.path / "README.md").exists()
-
-    created = write_memory(project.path, project.name, project.test_command)
-    if created or (not had_config and config_path(project.path).exists()):
-        fixes.append("initialized missing .aikit/project.json")
-    if not had_gitignore and (project.path / ".gitignore").exists():
-        fixes.append("created .gitignore with transient state patterns")
-    if not had_decisions and (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists():
-        fixes.append("seeded .aikit/decisions.md register")
-    if not had_ledger and (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists():
-        fixes.append("seeded .aikit/task_ledger.json")
-    if not had_readme and (project.path / "README.md").exists():
-        fixes.append("seeded README.md quick-reference")
-
-    cleaned = clean_dangling_temp_files(project.path, min_age_seconds=0)
-    if cleaned:
-        fixes.append(f"cleaned {len(cleaned)} dangling temporary buffer(s)")
-
+    memory = project.path / ".aikit"
+    expected = ["project.json", "decisions.md", "task_ledger.json"]
+    missing = [name for name in expected if not (memory / name).is_file()]
+    write_memory(project.path, project.name, project.test_command)
+    fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
+    if seed_readme(project.path, project.name, project.test_command):
+        fixes.append("seeded README.md from the project template (complete it by hand)")
+    fixes += [f"removed stale buffer {rel}" for rel in clean_dangling_temp_files(project.path)]
     if find_python_files(project.path):
-        map_content = generate_codebase_map(root=project.path, strict=False)
-        map_path = project.path / ".aikit" / "codebase_map.md"
-        write_generated_file(map_path, map_content)
-        fixes.append("synchronized .aikit/codebase_map.md")
-
-    if fixes:
-        for fix in fixes:
-            print(f"  [FIXED] {fix}")
-    else:
-        print("  [CLEAN] No memory or temporary buffer anomalies detected.")
-
-    print(f"Running Phase 4 verification for '{project.name}':")
+        write_generated_file(memory / "codebase_map.md", generate_codebase_map(root=project.path, strict=False))
+        fixes.append("regenerated .aikit/codebase_map.md")
+    for fix in fixes:
+        print(f"[FIXED] {fix}")
+    print(f"Checking '{project.name}' after {len(fixes)} repair(s):")
     return cmd_check(args)
 
 
-def delegate_subagent(
-    role: str,
-    prompt: str,
-    file: Optional[str] = None,
-    project_name: Optional[str] = None,
-    model: Optional[str] = None,
-    timeout: int = 120,
-    output_format: str = "text",
-    runner: Optional[Callable[..., subprocess.CompletedProcess]] = None,
-    workspace: Path = ROOT_DIR,
-) -> Tuple[int, str]:
-    """
-    Safely delegate a background task to a subagent under PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5,
-    and PRINCIPLE-012 R8. Enforces closed stdin, timeout, and verifies task ledgers are unmutated.
-    """
-    if role not in VALID_SUBAGENT_ROLES:
-        err = (
-            f"Error: unknown subagent role '{role}'.\n"
-            f"Why: role must be one of: {', '.join(VALID_SUBAGENT_ROLES)}.\n"
-            f"Fix: specify a valid role (e.g. `python aikit.py delegate worker \"...\"`)."
-        )
-        return 2, err
-
-    if not prompt or not prompt.strip():
-        err = (
-            "Error: empty prompt provided.\n"
-            "Why: subagent delegation requires a clear task description (PRINCIPLE-008 R6).\n"
-            "Fix: supply non-empty prompt text in quotes."
-        )
-        return 2, err
-
-    target_cwd = workspace
-    if project_name:
-        try:
-            project = find_project(project_name, workspace=workspace)
-            target_cwd = project.path
-        except ProjectError as exc:
-            return exc.exit_code, f"Error: {exc}\nWhy: {exc.why}\nFix: {exc.fix}"
-
-    if file:
-        file_path = Path(file)
-        if not file_path.is_absolute():
-            file_path = (target_cwd / file).resolve()
-        if not file_path.exists():
-            err = (
-                f"Error: target file '{file}' does not exist.\n"
-                "Why: subagent cannot inspect a non-existent file.\n"
-                "Fix: check the file path or omit the --file parameter."
-            )
-            return 2, err
-
-    ledgers = [
-        workspace / ".agents" / "task_ledger.json",
-        target_cwd / ".aikit" / "task_ledger.json",
-    ]
-    snapshots = {lp: lp.read_bytes() for lp in ledgers if lp.is_file()}
-
-    runner_bin = None
-    if runner is None:
-        runner_bin = shutil.which("opencode") or shutil.which("opencode.cmd") or shutil.which("opencode.ps1")
-        if not runner_bin:
-            err = (
-                "Error: OpenCode subagent runner not found.\n"
-                "Why: the `opencode` CLI is required for native subagent process execution (PRINCIPLE-009 R6).\n"
-                "Fix: install OpenCode via npm (`npm install -g opencode`) or configure an alternative runner."
-            )
-            return 1, err
-
-    cmd = [
-        runner_bin or "opencode", "run", "--standalone",
-        "--format", "json",
-        "--agent", role,
-    ]
-    if file:
-        cmd.extend(["--file", str(file)])
-    if model:
-        cmd.extend(["--model", str(model)])
-    cmd.append(prompt)
-
-    t0 = time.time()
-    try:
-        if runner is not None:
-            proc = runner(cmd, cwd=str(target_cwd), timeout=timeout)
-        else:
-            from scripts.dogfood import supervised, terminate_process_tree
-            with supervised(cmd, target_cwd) as popen_proc:
-                try:
-                    stdout, stderr = popen_proc.communicate(timeout=timeout)
-                    proc = subprocess.CompletedProcess(
-                        args=cmd,
-                        returncode=popen_proc.returncode,
-                        stdout=stdout or "",
-                        stderr=stderr or "",
-                    )
-                except subprocess.TimeoutExpired:
-                    terminate_process_tree(popen_proc)
-                    raise
-    except subprocess.TimeoutExpired:
-        err = (
-            f"Error: subagent execution timed out after {timeout} seconds.\n"
-            "Why: long-running tasks without bounds exhaust process resources (PRINCIPLE-010 R3).\n"
-            "Fix: bound the brief scope (<=50 files, PRINCIPLE-008 R1) or increase --timeout."
-        )
-        return 1, err
-    except OSError as exc:
-        err = (
-            f"Error: failed to execute subagent process: {exc}\n"
-            "Why: system error while spawning process.\n"
-            "Fix: check runner permissions and environment."
-        )
-        return 1, err
-    duration = time.time() - t0
-
-    # Invariant: sub-agents NEVER write the ledger (PRINCIPLE-008 R6)
-    for lp, original_data in snapshots.items():
-        if lp.is_file() and lp.read_bytes() != original_data:
-            lp.write_bytes(original_data)
-            err = (
-                f"Error: subagent attempted to mutate protected ledger at {lp}!\n"
-                "Why: subagents are strictly forbidden from writing to task ledgers (PRINCIPLE-008 R6).\n"
-                "Fix: the ledger was automatically restored; review the subagent brief and permissions."
-            )
-            return 1, err
-
-    for lp in ledgers:
-        if lp not in snapshots and lp.is_file():
-            lp.unlink(missing_ok=True)
-            err = (
-                f"Error: subagent attempted to create protected ledger at {lp}!\n"
-                "Why: subagents are strictly forbidden from writing to task ledgers (PRINCIPLE-008 R6).\n"
-                "Fix: the newly created ledger was purged; review subagent permissions."
-            )
-            return 1, err
-
-    if output_format == "json":
-        payload = {
-            "status": "success" if proc.returncode == 0 else "error",
-            "agent": role,
-            "exit_code": proc.returncode,
-            "duration_seconds": round(duration, 3),
-            "output": proc.stdout.strip(),
-            "ledger_shield": "unmutated",
-        }
-        return proc.returncode, json.dumps(payload, indent=2)
-    else:
-        out = proc.stdout.strip()
-        if proc.returncode != 0:
-            err_msg = proc.stderr.strip() or out or f"Subagent exited with code {proc.returncode}"
-            return proc.returncode, f"[SUBAGENT ERROR ({role}, {duration:.1f}s)]\n{err_msg}"
-        return 0, f"[SUBAGENT OK ({role}, {duration:.1f}s)]\n{out}"
-
-
 def cmd_delegate(args: argparse.Namespace) -> int:
-    exit_code, output = delegate_subagent(
-        role=args.role,
-        prompt=args.prompt,
-        file=args.file,
-        project_name=args.project,
-        model=args.model,
-        timeout=args.timeout,
-        output_format=args.format,
-        workspace=_active_workspace(),
-    )
-    if exit_code == 0:
-        print(output)
-    else:
-        print(output, file=sys.stderr)
-    return exit_code
+    code, report = delegate_subagent(args.role, args.prompt, file=args.file, project_name=args.project,
+                                     model=args.model, timeout=args.timeout, output_format=args.format,
+                                     workspace=args.workspace)
+    print(report, file=sys.stdout if code == 0 else sys.stderr)
+    return code
 
 
 HANDLERS = {

@@ -79,7 +79,7 @@ python aikit.py delegate <role> "<task_prompt>" [--file <target>] [--project <na
 ```
 
 ### Mechanical Safety Invariants
-1. **Ledger Shield**: The delegation engine takes byte-level snapshots of task ledgers (`.agents/task_ledger.json` and `<project>/.aikit/task_ledger.json`) before subagent execution. If a subagent attempts to write, mutate, or create a ledger, the change is instantly reverted and flagged as a security violation.
+1. **Ledger Check**: `scripts/subagent_delegate.py` compares both task ledgers (`.agents/task_ledger.json` and `<project>/.aikit/task_ledger.json`) before and after the run and exits 1 when either changed. It never writes the ledger back: a parallel session may have checkpointed meanwhile, and restoring a snapshot erased that work (ADR-128). The sub-agents' OpenCode permissions already deny ledger edits.
 2. **Non-Interactive Closed Stdin**: Subagents run with `stdin=subprocess.DEVNULL` to guarantee execution never blocks on terminal prompts.
 3. **Execution Timeout**: Enforces explicit subprocess timeout bounds (`--timeout 120`) to eliminate runaway loops.
 4. **Structured JSON Output**: Supports `--format json` emitting typed result payloads (`status`, `agent`, `exit_code`, `duration_seconds`, `output`, `ledger_shield`).
