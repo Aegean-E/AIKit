@@ -1,80 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "claude-subagents",
+    "task_id": "free-providers",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792251104.5324914,
-    "completed_at": 1792251104.6892183
+    "updated_at": 1792251692.7205641,
+    "completed_at": 1792251692.8866055
   },
   "checkpoints": [
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: reviewed ADR-124..127 commits; gates fail tier budgets; 9 defects verified",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792241777.3672283,
-      "timestamp_str": "2026-10-17 15:56:17"
-    },
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] aikit CLI correctness: explicit --workspace (no cwd guess), checkpoint impact/phase validation parity, stale-only temp cleanup, delegate report-only shield in own module with roles from .opencode/agents, attach leaves README alone, dead code, opencode status command; [2/4] projects get the full PRINCIPLE-005 README audit, one code path, correct stale-map remedy, seeded README fixed; [3/4] sync_principles --workspace no-op removed, .claude skill mirrored by sync; [4/4] tiers under budget, docs, ADR-128, nexus-flow README",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792241777.4980175,
-      "timestamp_str": "2026-10-17 15:56:17",
-      "impact_assessment": {
-        "why": "the other session's project tooling bypasses AIKit's own gates and can lose data",
-        "benefits": "projects really get AIKit's guidelines; no gate reports clean without checking",
-        "risks": "contract: aikit gains --workspace, checkpoint requires --task/--phase-num, clean loses --force, sync_principles loses --workspace; dependency: none; concurrency: delegate no longer overwrites a ledger another session writes; state: no schema change",
-        "mitigation": "failing-first tests per defect; weakened assertions named in ADR-128 with the user's fix request"
-      }
-    },
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/4]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792241777.6524198,
-      "timestamp_str": "2026-10-17 15:56:17"
-    },
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] re-plan: all review fixes in AIKit (CLI correctness, full project README audit, sync no-op removed, skill mirror, tiers, quadratic cross-check) as one commit; [2/2] nexus-flow README corrected in its own repository",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792242805.0666249,
-      "timestamp_str": "2026-10-17 16:13:25"
-    },
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2] committed: review fixes ADR-128",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792242819.6308172,
-      "timestamp_str": "2026-10-17 16:13:39"
-    },
-    {
-      "task_id": "review-project-kit",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[2/2] committed in nexus-flow (15aa79a): README tree matches tracked files; aikit check nexus-flow passes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792242854.1570125,
-      "timestamp_str": "2026-10-17 16:14:14"
-    },
     {
       "task_id": "review-project-kit",
       "phase": "completed",
@@ -223,6 +157,71 @@
       "status": "completed",
       "timestamp": 1792251104.6892202,
       "timestamp_str": "2026-10-17 18:31:44"
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: Gemini key works (3.8-flash, 3.5-flash-lite free; pro 429); OpenAI-compatible endpoint verified; OpenCode runs gemini/* and opencode/*-free; 4 roles pointed at OpenRouter without a key; scanner misses bare AQ. keys",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251464.8089185,
+      "timestamp_str": "2026-10-17 18:37:44"
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] gemini provider in opencode.jsonc (env GEMINI_API_KEY), role models on verified free models, is_free_model policy enforced by aikit delegate, AQ. key detector; tests; [2/2] P012 R8 states the free-only refusal; model_benchmarks Gemini rows from models.list; docs; ADR-132",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251464.9566112,
+      "timestamp_str": "2026-10-17 18:37:44",
+      "impact_assessment": {
+        "why": "the user wants Gemini and OpenCode free models for delegation, and only free ones",
+        "benefits": "sub-agents run on verified free models; a paid model is refused before any call; a leaked Gemini key is caught",
+        "risks": "contract: delegate refuses non-free --model; dependency: Gemini API and OpenCode Zen availability; concurrency: none; state: opencode.jsonc provider entry, no key stored in the repo",
+        "mitigation": "key only in the environment; models verified by live calls today; policy unit-tested; scanner pattern tested"
+      }
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251465.097455,
+      "timestamp_str": "2026-10-17 18:37:45"
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]: P012 R8 text, model table, docs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251570.6073751,
+      "timestamp_str": "2026-10-17 18:39:30"
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[2/2] committed: gemini provider, free roles, is_free_model, AQ. detector, P012 R8 (ADR-132)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251692.7205641,
+      "timestamp_str": "2026-10-17 18:41:32"
+    },
+    {
+      "task_id": "free-providers",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'free-providers' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792251692.8866076,
+      "timestamp_str": "2026-10-17 18:41:32"
     }
   ]
 }

@@ -1,7 +1,7 @@
 ---
 description: Audits documentation, links, schemas and diffs against the principles and reports findings
 mode: subagent
-model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+model: gemini/gemini-3.8-flash
 steps: 8
 permissions:
   - action: edit

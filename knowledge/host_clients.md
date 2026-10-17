@@ -79,6 +79,9 @@ Under **PRINCIPLE-008 R1/R6**, **PRINCIPLE-011 R5**, and **PRINCIPLE-012 R8**, p
 python aikit.py delegate <role> "<task_prompt>" [--file <target>] [--project <name>] [--model <model>] [--format {text,json}]
 ```
 
+### Free Models Only
+`aikit delegate` refuses a `--model` that `is_free_model` does not accept: OpenCode `-free`, OpenRouter `:free`, local Ollama or LM Studio, or a free-tier Gemini model listed in `opencode.jsonc` (provider `gemini`, key from `GEMINI_API_KEY`). The text report keeps only the sub-agent's answer (ADR-132).
+
 ### Mechanical Safety Invariants
 1. **Ledger Check**: `scripts/subagent_delegate.py` compares both task ledgers (`.agents/task_ledger.json` and `<project>/.aikit/task_ledger.json`) before and after the run and exits 1 when either changed. It never writes the ledger back: a parallel session may have checkpointed meanwhile, and restoring a snapshot erased that work (ADR-128). The sub-agents' OpenCode permissions already deny ledger edits.
 2. **Non-Interactive Closed Stdin**: Subagents run with `stdin=subprocess.DEVNULL` to guarantee execution never blocks on terminal prompts.

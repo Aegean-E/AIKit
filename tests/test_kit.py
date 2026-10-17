@@ -113,7 +113,7 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.aikit_cli import main as aikit_main
-from scripts.subagent_delegate import delegate_subagent, subagent_roles
+from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
@@ -1518,6 +1518,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 # ADR-131: the Claude Code delegation path.
                 "In Claude Code the sub-agents are the generated `.claude/agents/<role>.md` profiles",
                 "elsewhere `python aikit.py delegate <role>` runs the role through OpenCode",
+                # ADR-132: free models only, refused before any call; keys from the environment.
+                "`aikit delegate` refuses any other model before it calls one",
+                "a provider's key is read only from its environment variable",
                 "at or below 16,000 characters",
                 "the variable tail of one request (R2)",
                 "These limits apply together with PRINCIPLE-004 R5's 100 lines per command",
@@ -3867,7 +3870,7 @@ class TestSubagentDelegation(unittest.TestCase):
     def test_runs_opencode_headless_with_the_brief(self):
         (self.kit / "sample.py").write_text("print('hi')", encoding="utf-8")
         code, output = self.delegate(role="reviewer", prompt="check code", file="sample.py",
-                                     model="m/x", runner=self.runner(stdout="inspected"))
+                                     model="opencode/glm-5.3-flash-free", runner=self.runner(stdout="inspected"))
         self.assertEqual(code, 0)
         self.assertIn("[SUBAGENT OK (reviewer", output)
         cmd, cwd, timeout = self.calls[0]
@@ -4003,6 +4006,63 @@ class TestClaudeSubagents(unittest.TestCase):
     def test_no_agent_may_edit_a_task_ledger(self):
         settings = json.loads((ROOT_DIR / ".claude" / "settings.json").read_text(encoding="utf-8"))
         self.assertIn("Edit(**/task_ledger.json)", settings["permissions"]["deny"])
+
+class TestFreeModelPolicy(unittest.TestCase):
+    """Sub-agents run only on free models (PRINCIPLE-012 R8, ADR-132)."""
+
+    CONFIG = json.loads((ROOT_DIR / "opencode.jsonc").read_text(encoding="utf-8"))
+
+    def test_policy_names_free_and_paid_models(self):
+        free = ["opencode/deepseek-v4.1-flash-free", "openrouter/qwen/qwen-2.5-coder-32b-instruct:free",
+                "ollama/qwen2.5-coder:latest", "lmstudio/any-model", "gemini/gemini-3.8-flash",
+                "gemini/gemini-3.5-flash-lite"]
+        paid = ["gemini/gemini-3.1-pro-preview", "openrouter/google/gemini-2.5-pro", "opencode/claude-sonnet",
+                "anthropic/claude-opus", "gemini/", "", "free"]
+        for model in free:
+            with self.subTest(model=model):
+                self.assertTrue(is_free_model(model, self.CONFIG))
+        for model in paid:
+            with self.subTest(model=model):
+                self.assertFalse(is_free_model(model, self.CONFIG))
+
+    def test_every_role_and_the_default_run_on_a_free_model(self):
+        models = {"default": self.CONFIG["model"]}
+        for path in (ROOT_DIR / ".opencode" / "agents").glob("*.md"):
+            models[path.stem] = re.search(r"^model:\s*(\S+)", path.read_text(encoding="utf-8"), re.M).group(1)
+        for role, model in models.items():
+            with self.subTest(role=role):
+                self.assertTrue(is_free_model(model, self.CONFIG), model)
+
+    def test_delegate_refuses_a_paid_model_before_running_anything(self):
+        calls = []
+
+        def runner(cmd, cwd, timeout):
+            calls.append(cmd)
+            return subprocess.CompletedProcess(cmd, 0, "ok", "")
+        code, output = delegate_subagent("worker", "summarize", model="gemini/gemini-3.1-pro-preview", runner=runner)
+        self.assertEqual(code, 2)
+        self.assertIn("not a free model", output)
+        self.assertEqual(calls, [])
+        self.assertEqual(delegate_subagent("worker", "summarize", model="gemini/gemini-3.8-flash", runner=runner)[0], 0)
+
+    def test_gemini_key_comes_only_from_the_environment(self):
+        gemini = self.CONFIG["providers"]["gemini"]
+        self.assertEqual(gemini["env"], ["GEMINI_API_KEY"])
+        text = (ROOT_DIR / "opencode.jsonc").read_text(encoding="utf-8")
+        self.assertNotRegex(text, r"AQ\.[0-9A-Za-z_-]{20}|AIza[0-9A-Za-z_-]{20}|apiKey")
+
+    def test_text_report_keeps_only_the_answer(self):
+        stream = "\n".join(json.dumps(e) for e in (
+            {"type": "step_start", "part": {}},
+            {"type": "tool_use", "part": {"tool": "glob", "state": {"output": "a\nb\n" * 50}}},
+            {"type": "text", "part": {"text": "`scripts/project_registry.py` owns it."}},
+        ))
+        self.assertEqual(answer_text(stream), "`scripts/project_registry.py` owns it.")
+        self.assertEqual(answer_text("plain output"), "plain output")
+
+    def test_scanner_catches_a_bare_gemini_key(self):
+        key = "AQ." + "Ab8RN6K_TpL0MioW4rDO1GJwP7QXkOWdk5WoIW4jami8exICOg"  # split: no key literal here
+        self.assertTrue(scan_text("notes.md", key))
 
 
 if __name__ == "__main__":

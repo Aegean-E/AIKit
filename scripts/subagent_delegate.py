@@ -13,12 +13,38 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from scripts.disruption_recovery import ROOT_DIR, workspace_ledger_path
 from scripts.project_registry import ProjectError, find_project
 
 AGENTS_DIR = ROOT_DIR / ".opencode" / "agents"
+OPENCODE_CONFIG = ROOT_DIR / "opencode.jsonc"
+# Providers that run on this machine, so every model they serve costs nothing (ADR-132).
+LOCAL_PROVIDERS = ("ollama", "lmstudio")
+# Providers whose models in `opencode.jsonc` are only the free-tier ones verified by a live call.
+DECLARED_FREE_PROVIDERS = ("gemini",)
+
+
+def load_opencode_config(path: Path = OPENCODE_CONFIG) -> Dict[str, Any]:
+    """The OpenCode configuration; its `providers` declare which Gemini models are free-tier."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def is_free_model(model: str, config: Dict[str, Any]) -> bool:
+    """
+    Whether `model` (`provider/name`) costs nothing to call: an OpenCode `-free` or OpenRouter
+    `:free` model, any local model, or a model `opencode.jsonc` lists under a declared free-tier
+    provider. Anything else is treated as paid (PRINCIPLE-012 R8: free models only).
+    """
+    provider, _, name = model.partition("/")
+    if not provider or not name:
+        return False
+    if provider in LOCAL_PROVIDERS or name.endswith(("-free", ":free")):
+        return True
+    if provider in DECLARED_FREE_PROVIDERS:
+        return name in config.get("providers", {}).get(provider, {}).get("models", {})
+    return False
 
 
 def subagent_roles(agents_dir: Path = AGENTS_DIR) -> Tuple[str, ...]:
@@ -68,6 +94,12 @@ def delegate_subagent(
         return 2, _triad(f"unknown subagent role '{role}'.",
                          f"roles are the profiles in .opencode/agents/: {', '.join(roles)}.",
                          'name one of them, e.g. `python aikit.py delegate worker "..."`.')
+    if model and not is_free_model(model, load_opencode_config()):
+        return 2, _triad(f"'{model}' is not a free model.",
+                         "sub-agents run only on free models: OpenCode '-free', OpenRouter ':free', local "
+                         "models, or the free-tier Gemini models opencode.jsonc lists (PRINCIPLE-012 R8).",
+                         "omit --model to use the role's own free model, or name a free one, e.g. "
+                         "gemini/gemini-3.8-flash or opencode/deepseek-v4.1-flash-free.")
     if not prompt.strip():
         return 2, _triad("empty prompt provided.",
                          "a sub-agent needs a bounded brief (PRINCIPLE-008 R6).",
@@ -128,4 +160,22 @@ def delegate_subagent(
     if proc.returncode != 0:
         detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
         return proc.returncode, f"[SUBAGENT ERROR ({role}, {seconds:.1f}s)]\n{detail}"
-    return 0, f"[SUBAGENT OK ({role}, {seconds:.1f}s)]\n{proc.stdout.strip()}"
+    return 0, f"[SUBAGENT OK ({role}, {seconds:.1f}s)]\n{answer_text(proc.stdout)}"
+
+
+def answer_text(stdout: str) -> str:
+    """
+    The sub-agent's own words from OpenCode's `--format json` event stream: the `text` parts in
+    order. The raw stream also holds every tool call and its full output, which cost the lead agent
+    tokens for nothing (PRINCIPLE-012). Output that is not that stream is returned unchanged.
+    """
+    texts = []
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            return stdout.strip()
+        part = event.get("part") if isinstance(event, dict) else None
+        if isinstance(event, dict) and event.get("type") == "text" and isinstance(part, dict):
+            texts.append(str(part.get("text", "")))
+    return "\n".join(texts).strip() or stdout.strip()

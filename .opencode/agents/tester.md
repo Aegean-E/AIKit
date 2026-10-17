@@ -1,7 +1,7 @@
 ---
 description: Writes and runs tests for a behaviour change, failing first, within the unit and integration tier budgets
 mode: subagent
-model: openrouter/qwen/qwen-2.5-coder-32b-instruct:free
+model: opencode/deepseek-v4.1-flash-free
 steps: 10
 permissions:
   - action: edit

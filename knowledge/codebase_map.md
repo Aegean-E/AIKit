@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `13`
-- **Total Classes**: `66`
-- **Total Functions / Methods**: `186`
-- **Total Source Lines**: `10299`
+- **Total Classes**: `67`
+- **Total Functions / Methods**: `189`
+- **Total Source Lines**: `10414`
 
 ---
 
@@ -55,7 +55,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `308` lines (`12250` bytes)
+**Size**: `310` lines (`12450` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -73,7 +73,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `400` lines (`17419` bytes)
+**Size**: `403` lines (`17617` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -228,14 +228,17 @@
 ### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
 > *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
 
-**Size**: `131` lines (`6233` bytes)
+**Size**: `181` lines (`8800` bytes)
 
 **Functions:**
+- `def load_opencode_config(path)` - *The OpenCode configuration; its `providers` declare which Gemini models are free-tier.*
+- `def is_free_model(model, config)` - *Whether `model` (`provider/name`) costs nothing to call: an OpenCode `-free` or OpenRouter*
 - `def subagent_roles(agents_dir)` - *The roles OpenCode can run: one per profile in `.opencode/agents/` (the single source).*
 - `def _triad(what, why, fix)`
 - `def opencode_command(runner_bin, role, prompt, file, model)` - *The `opencode run` argv for one headless sub-agent call.*
 - `def _run_supervised(cmd, cwd, timeout)`
 - `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Run `role` on `prompt` in AIKit or in project `project_name`; returns (exit code, report).*
+- `def answer_text(stdout)` - *The sub-agent's own words from OpenCode's `--format json` event stream: the `text` parts in*
 
 ---
 
@@ -312,7 +315,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `787` lines (`39276` bytes)
+**Size**: `787` lines (`39293` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -392,7 +395,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4009` lines (`224990` bytes)
+**Size**: `4069` lines (`228366` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -751,6 +754,13 @@
   - Method `.test_read_only_roles_cannot_write()`
   - Method `.test_role_text_is_host_neutral_and_names_both_ledgers()`
   - Method `.test_no_agent_may_edit_a_task_ledger()`
+- `class TestFreeModelPolicy` - *Sub-agents run only on free models (PRINCIPLE-012 R8, ADR-132).*
+  - Method `.test_policy_names_free_and_paid_models()`
+  - Method `.test_every_role_and_the_default_run_on_a_free_model()`
+  - Method `.test_delegate_refuses_a_paid_model_before_running_anything()`
+  - Method `.test_gemini_key_comes_only_from_the_environment()`
+  - Method `.test_text_report_keeps_only_the_answer()`
+  - Method `.test_scanner_catches_a_bare_gemini_key()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

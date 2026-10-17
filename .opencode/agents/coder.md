@@ -1,7 +1,7 @@
 ---
 description: Implements a bounded code change in the files its brief names and returns the diff; never commits
 mode: subagent
-model: openrouter/qwen/qwen-2.5-coder-32b-instruct:free
+model: opencode/glm-5.3-flash-free
 steps: 12
 permissions:
   - action: edit

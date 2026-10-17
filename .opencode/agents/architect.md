@@ -1,7 +1,7 @@
 ---
 description: Read-only design analyst that decomposes a task, weighs trade-offs and drafts ADR text for the lead agent
 mode: subagent
-model: openrouter/deepseek/deepseek-r1:free
+model: gemini/gemini-3.8-flash
 steps: 10
 permissions:
   - action: edit

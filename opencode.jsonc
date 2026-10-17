@@ -57,6 +57,24 @@
         }
       }
     },
+    "gemini": {
+      "name": "Google Gemini API (free tier)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "env": [
+        "GEMINI_API_KEY"
+      ],
+      "settings": {
+        "baseURL": "https://generativelanguage.googleapis.com/v1beta/openai"
+      },
+      "models": {
+        "gemini-3.8-flash": {
+          "name": "Gemini 3.8 Flash (free tier)"
+        },
+        "gemini-3.5-flash-lite": {
+          "name": "Gemini 3.5 Flash-Lite (free tier)"
+        }
+      }
+    },
     "lmstudio": {
       "name": "LM Studio (Local Free)",
       "package": "@opencode/ai/providers/openai-compatible",

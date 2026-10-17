@@ -53,6 +53,9 @@ SECRET_PATTERNS: Tuple[Tuple[str, str], ...] = (
     ("GitHub fine-grained token", r"\bgithub_pat_[A-Za-z0-9_]{22,}\b"),
     ("Slack token", r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
     ("Google API key", r"\bAIza[0-9A-Za-z_\-]{35}\b"),
+    # The newer Google AI Studio key format (`AQ.` + 50 chars): a bare one has no key name for the
+    # entropy rule to catch (ADR-132).
+    ("Google AI Studio key", r"\bAQ\.[0-9A-Za-z_\-]{30,}"),
     ("Stripe secret key", r"\b(?:sk|rk)_(?:live|test)_[0-9A-Za-z]{20,}\b"),
     ("OpenAI-style API key", r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{32,}\b"),
     ("Anthropic-style API key", r"\bsk-ant-[A-Za-z0-9_\-]{32,}\b"),
