@@ -37,6 +37,8 @@ from scripts.disruption_recovery import (  # noqa: E402
     format_audit_report,
     format_resume_report,
     classify_git_status,
+    classify_track,
+    collect_working_changes,
     UNMERGED_CODES,
 )
 
@@ -558,18 +560,8 @@ class TestTierBudgetDiscipline(unittest.TestCase):
 class TestProjectCreation(unittest.TestCase):
     """`aikit new` makes a separate git repository with its memory (ADR-119)."""
 
-    def test_new_project_is_its_own_repository(self):
+    def test_new_project_is_its_own_clean_repository_with_its_own_ledger(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_new_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
-        root, _warning = create_project("app", workspace=kit)
-        self.assertTrue((root / ".git").is_dir())
-        self.assertTrue((root / ".aikit" / "project.json").is_file())
-        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=root, capture_output=True,
-                             text=True, timeout=PROC_TIMEOUT).stdout.strip()
-        self.assertEqual(Path(top).resolve(), root.resolve())
-
-    def test_project_ledger_is_the_projects_own_and_starts_clean(self):
-        kit = Path(tempfile.mkdtemp(prefix="test_project_ledger_"))
         self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
@@ -579,16 +571,40 @@ class TestProjectCreation(unittest.TestCase):
         self.addCleanup(patcher.stop)
         root, warning = create_project("app", workspace=kit)
         self.assertIsNone(warning)
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=root, capture_output=True,
+                             text=True, timeout=PROC_TIMEOUT).stdout.strip()
+        self.assertEqual(Path(top).resolve(), root.resolve(), "the project is its own repository")
         status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True,
                                 text=True, timeout=PROC_TIMEOUT).stdout
         self.assertEqual(status, "", "a new project starts with its memory committed")
+        # A real CLI process proves `--workspace` wiring; the track is then classified in-process.
         cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
         subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
                        capture_output=True, text=True, timeout=PROC_TIMEOUT, check=True)
         self.assertTrue((root / ".aikit" / "task_ledger.json").is_file())
         self.assertFalse((root / ".agents").exists())
-        track = subprocess.run(cli + ["--track"], capture_output=True, text=True, timeout=PROC_TIMEOUT)
-        self.assertIn("Track A", track.stdout, "the project's checkpoint is bookkeeping, not a change")
+        self.assertEqual(classify_track(collect_working_changes(root))[0], "A",
+                         "the project's checkpoint is bookkeeping, not a change")
+
+class TestProjectSecretScan(unittest.TestCase):
+    """`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121)."""
+
+    def test_scan_reads_the_projects_staged_changes_and_ledger(self):
+        repo = Path(tempfile.mkdtemp(prefix="test_project_secrets_"))
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        subprocess.run(["git", "init", "--quiet"], cwd=repo, timeout=PROC_TIMEOUT, check=True)
+        # Split so this file itself holds no credential-shaped literal.
+        key = "sk-" + "ant-api03-" + "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefghij"
+        (repo / "app.py").write_text("x = 1\n", encoding="utf-8")
+        subprocess.run(["git", "add", "app.py"], cwd=repo, timeout=PROC_TIMEOUT, check=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(run_scan(repo=repo), 0)
+        (repo / ".aikit").mkdir()
+        (repo / ".aikit" / "task_ledger.json").write_text(f'{{"why": "uses {key}"}}', encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(run_scan(repo=repo), 1, "a project's ledger is agent memory too")
+        self.assertIn("agent-memory:task_ledger.json", out.getvalue())
 
 
 if __name__ == "__main__":

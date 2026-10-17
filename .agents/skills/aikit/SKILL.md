@@ -18,7 +18,20 @@ This operational runbook provides the unified command matrix for driving AIKit a
 - **Antigravity**: Native chat harness. Discovers this skill via `.agents/skills/aikit/SKILL.md` and rule files in `.agents/rules/`.
 - **Claude (Code CLI / Desktop)**: Reads `CLAUDE.md` automatically on startup. Executes kit commands directly via terminal tool calls.
 - **OpenCode**: Runs headless subagent profiles (`architect`, `coder`, `tester`, etc.) via `opencode run --standalone`.
-- **State SSOT**: All clients interact with workspace state strictly through `python scripts/disruption_recovery.py` and `.agents/task_ledger.json`.
+- **State SSOT**: All clients interact with workspace state strictly through `python scripts/disruption_recovery.py` and `.agents/task_ledger.json` (a project's: `.aikit/task_ledger.json`).
+
+---
+
+## 🧱 Projects: Building Software Other Than AIKit (PRINCIPLE-011 R8)
+The user's software lives in its own project, never in AIKit's tree:
+```bash
+python aikit.py list                 # which projects exist
+python aikit.py new <name>           # projects/<name>/, its own git repository
+python aikit.py attach <path>        # an existing folder
+python aikit.py status <name>        # its task, changes, latest decision and its gate commands
+```
+- Request names no single project: ask which one, or the name of a new one, before writing code.
+- In the steps below, project work replaces the repository with the project: add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run the Phase 4 gates `status` prints (its test command and `check_secrets.py --workspace <project path>`). AIKit's other gates are for changes to AIKit only.
 
 ---
 

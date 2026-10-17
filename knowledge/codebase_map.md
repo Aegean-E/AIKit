@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `11`
-- **Total Classes**: `54`
+- **Total Classes**: `55`
 - **Total Functions / Methods**: `147`
-- **Total Source Lines**: `8850`
+- **Total Source Lines**: `8897`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list and report on the projects AIKit builds (ADR-119, ADR-120).*
 
-**Size**: `128` lines (`5294` bytes)
+**Size**: `132` lines (`5614` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -62,7 +62,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `379` lines (`16164` bytes)
+**Size**: `400` lines (`17419` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -71,12 +71,12 @@
 - `def scan_text(label, text)` - *Return (label, line_no, detector, excerpt) for every finding in a blob of text.*
 - `def redact(line, start, end)` - *The line with the secret span cut to its first 4 characters plus `***` (PRINCIPLE-019 R4).*
 - `def should_skip(path_str)`
-- `def git_output(args)`
-- `def scan_staged(gaps)` - *Scan staged content only - the surface about to become permanent history.*
-- `def iter_tracked_files(gaps)`
-- `def scan_all(gaps)`
-- `def scan_agent_memory(gaps)` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
-- `def run_scan(mode, target, verbose)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
+- `def git_output(args, repo)`
+- `def scan_staged(gaps, repo)` - *Scan staged content only - the surface about to become permanent history.*
+- `def iter_tracked_files(gaps, repo)`
+- `def scan_all(gaps, repo)`
+- `def scan_agent_memory(gaps, repo)` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
+- `def run_scan(mode, target, verbose, repo)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
 
 ---
 
@@ -250,7 +250,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `595` lines (`28458` bytes)
+**Size**: `611` lines (`29484` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -307,15 +307,16 @@
   - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
-  - Method `.test_new_project_is_its_own_repository()`
-  - Method `.test_project_ledger_is_the_projects_own_and_starts_clean()`
+  - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
+- `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
+  - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3625` lines (`202240` bytes)
+**Size**: `3631` lines (`202745` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

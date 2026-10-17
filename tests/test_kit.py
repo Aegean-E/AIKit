@@ -1434,7 +1434,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                      "without measurable profiling justification"],
         },
         "PRINCIPLE-011": {
-            "rules": 7,
+            "rules": 8,
             "present": [
                 "MUST run with only the dependencies declared under PRINCIPLE-003 R3",
                 "A dependency that only one adapter uses is imported inside that adapter",
@@ -1445,6 +1445,12 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "a line whose first non-blank text is `Why:` with the cause",
                 "A usage error (exit `2`) prints its message on stderr",
                 "In AIKit these are `python scripts/disruption_recovery.py --audit` and `python scripts/dogfood.py`",
+                # R8 (ADR-121): software other than AIKit is built in a registered project.
+                "is built in a project registered with `python aikit.py`, never in AIKit's own tree",
+                "ledger commands take `--workspace <project path>`",
+                "`python scripts/check_secrets.py --workspace <project path>`",
+                "asks the user which project, or the name of a new one, before writing code",
+                "apply only to changes to AIKit itself",
             ],
             "gone": ["Third-party packages must be strictly optional", "sensible", "Systems should embed",
                      "banning hardcoded"],
@@ -2514,7 +2520,7 @@ class TestSecretHygieneScanner(unittest.TestCase):
         # replaced, so no process is spawned.
         import scripts.check_secrets as secrets_module
         original = secrets_module.git_output
-        secrets_module.git_output = lambda args: None
+        secrets_module.git_output = lambda args, repo=None: None
         self.addCleanup(setattr, secrets_module, "git_output", original)
         for mode in ("staged", "all"):
             with self.subTest(mode=mode), contextlib.redirect_stdout(io.StringIO()) as out:

@@ -37,7 +37,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress |
-| **Secret Scan Gate** | `python scripts/check_secrets.py --staged` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
+| **Secret Scan Gate** | `python scripts/check_secrets.py --staged [--workspace <project>]` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
@@ -183,7 +183,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
 | **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <1s, integ <5s. |
-| **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s. |
+| **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
 ### 🛡️ Phase 4: Operational Verification & Resilience
@@ -191,13 +191,13 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | State files: >=10MB free, temp + fsync + os.replace (5 tries) + dir fsync, .bak, advisory locking 3s/30s stale, corrupt -> quarantine/.bak/migrate. Generated: temp + fsync + replace. |
 | **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <1s, no spawns/sleeps; integration <5s; tempdir + addCleanup; reachability shield (`scripts/check_reachability.py`). |
-| **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` (or the project's runner) as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
+| **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
-| **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Cross-IDE rule sync (`scripts/sync_principles.py`); context budget check; 5-section schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
+| **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Rule sync (`scripts/sync_principles.py`); context budget check; schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
 | **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (`--validate-commit`) + adaptive push, unless the user opts out, never forced; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
 <!-- principles:end -->
@@ -210,7 +210,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```bash
    python scripts/disruption_recovery.py --resume
    ```
-   It prints every `--audit` finding (conflicts, modified and untracked files, orphaned `.tmp_*` files, quarantined files; at most 20 entries per list), then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
+   It prints every `--audit` finding, then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
 2. **Everything else** (`--audit`, `--checkpoint`, `--complete`, `--reset`, `--clean`) is in the command matrix above; a task's first plan checkpoint must carry `--why --benefits --risks --mitigation`.
 3. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
 

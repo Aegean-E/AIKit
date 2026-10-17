@@ -34,8 +34,13 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-LEDGER_PATH = ROOT_DIR / ".agents" / "task_ledger.json"
-DOGFOOD_LOG = ROOT_DIR / ".agents" / "dogfood_last_run.log"
+# Agent working memory, relative to the scanned repository: AIKit's ledger and dogfood log, or a
+# project's `.aikit/` ledger (ADR-121). Whichever exist are scanned.
+AGENT_MEMORY_PATHS = (
+    Path(".agents") / "task_ledger.json",
+    Path(".agents") / "dogfood_last_run.log",
+    Path(".aikit") / "task_ledger.json",
+)
 
 PRAGMA = "aikit:allow-secret"
 PROC_TIMEOUT = 15
@@ -173,10 +178,10 @@ def should_skip(path_str: str) -> bool:
     return any(part in normalized for part in SKIP_PATH_PARTS)
 
 
-def git_output(args: List[str]) -> Optional[str]:
+def git_output(args: List[str], repo: Path = ROOT_DIR) -> Optional[str]:
     try:
         res = subprocess.run(
-            ["git", *args], cwd=str(ROOT_DIR), capture_output=True,
+            ["git", *args], cwd=str(repo), capture_output=True,
             text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT,
         )
     except (OSError, subprocess.SubprocessError):
@@ -184,9 +189,10 @@ def git_output(args: List[str]) -> Optional[str]:
     return res.stdout if res.returncode == 0 else None
 
 
-def scan_staged(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
+def scan_staged(gaps: Optional[List[str]] = None,
+                repo: Path = ROOT_DIR) -> List[Tuple[str, int, str, str]]:
     """Scan staged content only - the surface about to become permanent history."""
-    diff = git_output(["diff", "--cached", "--unified=0"])
+    diff = git_output(["diff", "--cached", "--unified=0"], repo)
     if diff is None:
         if gaps is not None:
             gaps.append("git diff --cached failed, so the staged changes were not scanned")
@@ -204,8 +210,8 @@ def scan_staged(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, s
     return findings
 
 
-def iter_tracked_files(gaps: Optional[List[str]] = None) -> Iterable[Path]:
-    listing = git_output(["ls-files"])
+def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR) -> Iterable[Path]:
+    listing = git_output(["ls-files"], repo)
     if listing is None:
         if gaps is not None:
             gaps.append("git ls-files failed, so no tracked file was scanned")
@@ -214,30 +220,32 @@ def iter_tracked_files(gaps: Optional[List[str]] = None) -> Iterable[Path]:
         rel = rel.strip()
         if not rel or should_skip(rel):
             continue
-        path = ROOT_DIR / rel
+        path = repo / rel
         if path.suffix.lower() in TEXT_SUFFIXES and path.is_file():
             yield path
 
 
-def scan_all(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
+def scan_all(gaps: Optional[List[str]] = None,
+             repo: Path = ROOT_DIR) -> List[Tuple[str, int, str, str]]:
     findings = []
-    for path in iter_tracked_files(gaps):
+    for path in iter_tracked_files(gaps, repo):
         try:
-            findings.extend(scan_text(str(path.relative_to(ROOT_DIR)),
+            findings.extend(scan_text(str(path.relative_to(repo)),
                                       path.read_text(encoding="utf-8", errors="replace")))
         except OSError as e:
             if gaps is not None:
-                gaps.append(f"{path.relative_to(ROOT_DIR)} could not be read: {e}")
+                gaps.append(f"{path.relative_to(repo)} could not be read: {e}")
     return findings
 
 
-def scan_agent_memory(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, str, str]]:
+def scan_agent_memory(gaps: Optional[List[str]] = None,
+                      repo: Path = ROOT_DIR) -> List[Tuple[str, int, str, str]]:
     """
     PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact
     fields are committed, so a credential quoted while explaining reasoning becomes permanent.
     """
     findings = []
-    for path in (LEDGER_PATH, DOGFOOD_LOG):
+    for path in (repo / rel for rel in AGENT_MEMORY_PATHS):
         if not path.exists():
             continue
         try:
@@ -250,7 +258,7 @@ def scan_agent_memory(gaps: Optional[List[str]] = None) -> List[Tuple[str, int, 
 
 
 def run_scan(mode: str = "staged", target: Optional[Path] = None,
-             verbose: bool = False) -> int:
+             verbose: bool = False, repo: Path = ROOT_DIR) -> int:
     """Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4)."""
     print("=" * 58)
     print("SECRET & SENSITIVE DATA SCAN (PRINCIPLE-019)")
@@ -262,7 +270,7 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
             print(f"[FAIL] No such file: {target}", file=sys.stderr)
             return 1
         try:
-            label = str(target.resolve().relative_to(ROOT_DIR))
+            label = str(target.resolve().relative_to(repo.resolve()))
         except ValueError:
             label = target.name
         try:
@@ -271,14 +279,15 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
             findings, gaps = [], [f"{label} could not be read: {e}"]
         scope = label
     elif mode == "all":
-        findings = scan_all(gaps)
+        findings = scan_all(gaps, repo)
         scope = "all tracked text files"
     else:
-        findings = scan_staged(gaps)
+        findings = scan_staged(gaps, repo)
         scope = "staged changes"
 
-    findings.extend(scan_agent_memory(gaps))
-    print(f"Scope: {scope} + agent working memory")
+    findings.extend(scan_agent_memory(gaps, repo))
+    where = "" if repo == ROOT_DIR else f" in {repo}"
+    print(f"Scope: {scope} + agent working memory{where}")
 
     # PRINCIPLE-000 R5: a scan that skipped a surface must not report clean. It used to warn,
     # print [OK] and exit 0 when git failed, so the pre-commit gate passed having scanned nothing.
@@ -314,8 +323,8 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
     return 1
 
 
-KNOWN_FLAGS = {"--staged", "--all", "--file", "--verbose", "-v", "--help", "-h"}
-VALUE_FLAGS = {"--file"}
+KNOWN_FLAGS = {"--staged", "--all", "--file", "--workspace", "--verbose", "-v", "--help", "-h"}
+VALUE_FLAGS = {"--file", "--workspace"}
 
 HELP_TEXT = """AIKit Secret & Sensitive Data Scanner (PRINCIPLE-019)
 
@@ -323,13 +332,15 @@ Usage:
   python scripts/check_secrets.py [OPTIONS]
 
 Scans for credential patterns and high-entropy literals, plus agent working memory
-(.agents/task_ledger.json free-text and the dogfood log), which is committed like any other
+(.agents/ or a project's .aikit/ task ledger, and the dogfood log), which is committed like any other
 file and is a real leak path for agent-authored rationale.
 
 Options:
   --staged         Scan staged changes only (default) - the surface about to become history
   --all            Scan every tracked text file
   --file <path>    Scan a single file
+  --workspace <dir>  Scan the git repository at <dir> instead of AIKit's, e.g. a project
+                   under projects/ (ADR-121)
   --verbose, -v    Print detector and allowlist counts
   -h, --help       Show this help message and exit
 
@@ -375,5 +386,15 @@ if __name__ == "__main__":
             sys.exit(2)
         scan_mode, scan_target = "file", Path(argv[idx + 1])
 
+    scan_repo = ROOT_DIR
+    if "--workspace" in argv:
+        idx = argv.index("--workspace")
+        if idx + 1 >= len(argv) or argv[idx + 1].startswith("-") or not Path(argv[idx + 1]).is_dir():
+            print("[INVALID USAGE] --workspace requires an existing directory.", file=sys.stderr)
+            print("Why: the repository to scan cannot be inferred without it.", file=sys.stderr)
+            print("Fix: pass '--workspace <dir>', e.g. --workspace projects/my-app", file=sys.stderr)
+            sys.exit(2)
+        scan_repo = Path(argv[idx + 1]).resolve()
+
     sys.exit(run_scan(mode=scan_mode, target=scan_target,
-                      verbose=("--verbose" in argv or "-v" in argv)))
+                      verbose=("--verbose" in argv or "-v" in argv), repo=scan_repo))

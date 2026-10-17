@@ -112,8 +112,12 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
     print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
+    # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
     print("Ledger commands for this project add the workspace flag, e.g.")
     print(f'  python scripts/disruption_recovery.py --workspace "{project.path}" --checkpoint <task> ...')
+    print("Phase 4 gates for this project:")
+    print(f"  {project.test_command or '<no test command: write tests, set test_command first>'}")
+    print(f'  python scripts/check_secrets.py --workspace "{project.path}"')
     return 0
 
 
