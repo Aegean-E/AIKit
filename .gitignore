@@ -40,3 +40,6 @@ secrets.*
 .aws/
 .gcloud/
 .azure/
+
+# The projects AIKit builds: each is its own git repository with its own .aikit/ memory (ADR-119)
+projects/

@@ -99,6 +99,18 @@ from scripts.disruption_recovery import (
     missing_impact_warning,
     report_operational_error,
     RISK_DIMENSIONS,
+    sweep_files,
+)
+from scripts.aikit_cli import main as aikit_main
+from scripts.project_registry import (
+    ProjectError,
+    Stack,
+    attach_project,
+    create_project,
+    detect_stacks,
+    list_projects,
+    load_config,
+    validate_name,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -3463,6 +3475,128 @@ class TestAstSignatureFidelity(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             rendered = generate_codebase_map(root=self.dir, strict=True)
         self.assertIn("async def pull(src)", rendered)
+
+
+class TestProjectRegistry(unittest.TestCase):
+    """Projects live outside AIKit's state and carry their own `.aikit/` memory (ADR-119)."""
+
+    def setUp(self):
+        self.kit = Path(tempfile.mkdtemp(prefix="test_projects_kit_"))
+        self.addCleanup(shutil.rmtree, self.kit, ignore_errors=True)
+        # Durability is PRINCIPLE-013's tests' subject; these test registry logic, so fsync is a
+        # no-op here to keep the unit tier under 1s. RAII-restored (PRINCIPLE-014 R4).
+        self.addCleanup(setattr, os, "fsync", os.fsync)
+        os.fsync = lambda fd: None
+
+    def make_folder(self, *files):
+        folder = Path(tempfile.mkdtemp(prefix="test_projects_ext_"))
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        for name, text in files:
+            (folder / name).write_text(text, encoding="utf-8")
+        return folder
+
+    def test_detects_every_stack_and_its_test_command(self):
+        folder = self.make_folder(
+            ("pyproject.toml", "[tool.pytest.ini_options]\n"),
+            ("package.json", '{"scripts": {"test": "vitest run"}}'),
+            ("yarn.lock", ""),
+            ("go.mod", "module x\n"),
+        )
+        self.assertEqual(
+            [(s.name, s.test_command) for s in detect_stacks(folder)],
+            [("python", "python -m pytest"), ("node", "yarn test"), ("go", "go test ./...")])
+
+    def test_npm_placeholder_is_not_a_test_command(self):
+        folder = self.make_folder(
+            ("package.json", '{"scripts": {"test": "echo \\"Error: no test specified\\" && exit 1"}}'))
+        self.assertEqual(detect_stacks(folder), (Stack("node", None),))
+
+    def test_name_must_be_one_portable_segment(self):
+        for bad in ("", "My App", "../x", "a/b", "-x", "x" * 65):
+            with self.assertRaises(ProjectError) as caught:
+                validate_name(bad)
+            self.assertEqual(caught.exception.exit_code, 2)
+        validate_name("my-app_2")
+
+    def test_attach_writes_memory_once_and_lists_the_project(self):
+        folder = self.make_folder(("Cargo.toml", "[package]\n"))
+        name, path, created = attach_project(folder, "svc", workspace=self.kit)
+        self.assertEqual((name, path, created), ("svc", folder.resolve(), True))
+        config = load_config(folder)
+        self.assertEqual((config["name"], config["test_command"]), ("svc", None))
+        self.assertIn(".aikit/*.lock", (folder / ".gitignore").read_text(encoding="utf-8"))
+        # Re-attaching keeps the existing memory and adds no duplicate ignore lines.
+        self.assertFalse(attach_project(folder, "svc", workspace=self.kit)[2])
+        self.assertEqual((folder / ".gitignore").read_text(encoding="utf-8").count(".aikit/*.lock"), 1)
+        [project] = list_projects(self.kit)
+        self.assertEqual((project.name, project.attached, project.test_command, project.present),
+                         ("svc", True, "cargo test", True))
+
+    def test_override_beats_detection_and_missing_folder_is_reported(self):
+        folder = self.make_folder(("go.mod", "module x\n"))
+        attach_project(folder, "svc", test_command="make test", workspace=self.kit)
+        self.assertEqual(list_projects(self.kit)[0].test_command, "make test")
+        shutil.rmtree(folder)
+        self.assertFalse(list_projects(self.kit)[0].present)
+
+    def test_attach_refuses_folders_overlapping_the_kit(self):
+        nested = self.kit / "scripts"
+        nested.mkdir()
+        for folder in (self.kit, nested):
+            with self.assertRaises(ProjectError) as caught:
+                attach_project(folder, "x", workspace=self.kit)
+            self.assertEqual(caught.exception.exit_code, 2)
+
+    def test_projects_folder_is_discovered_without_the_attached_file(self):
+        folder = self.kit / "projects" / "local-app"
+        folder.mkdir(parents=True)
+        attach_project(folder, workspace=self.kit)
+        self.assertFalse((self.kit / "projects" / "attached.json").exists())
+        self.assertEqual([(p.name, p.attached) for p in list_projects(self.kit)],
+                         [("local-app", False)])
+
+    def test_corrupt_attached_file_is_an_error_not_an_empty_list(self):
+        (self.kit / "projects").mkdir()
+        (self.kit / "projects" / "attached.json").write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            list_projects(self.kit)
+
+    def test_failed_git_init_leaves_no_half_made_project(self):
+        def refuse(project_root):
+            raise ProjectError("git missing", "why", "fix")
+        with self.assertRaises(ProjectError):
+            create_project("app", workspace=self.kit, git_init=refuse)
+        self.assertFalse((self.kit / "projects" / "app").exists())
+
+    def test_cli_reports_triad_and_exit_codes(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as caught:
+            aikit_main(["frobnicate"])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn("Why:", stderr.getvalue())
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            self.assertEqual(aikit_main(["new", "Bad Name"]), 2)
+        self.assertIn("Fix:", stderr.getvalue())
+
+
+class TestProjectsStayOutOfKitState(unittest.TestCase):
+    """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""
+
+    def test_codebase_scan_and_sweeps_prune_projects(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_projects_prune_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        (kit / "projects" / "app").mkdir(parents=True)
+        (kit / "projects" / "app" / "main.py").write_text("x = 1\n", encoding="utf-8")
+        (kit / "projects" / "app" / "state.json.tmp_1_2").write_text("", encoding="utf-8")
+        (kit / "tool.py").write_text("y = 2\n", encoding="utf-8")
+        (kit / "s.json.tmp_1_2").write_text("", encoding="utf-8")
+        self.assertEqual([p.name for p in find_python_files(kit)], ["tool.py"])
+        self.assertEqual([p.name for p in sweep_files(kit, "*.tmp_*")], ["s.json.tmp_1_2"])
+
+    def test_git_ignores_projects(self):
+        lines = (ROOT_DIR / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn("projects/", lines)
 
 
 if __name__ == "__main__":

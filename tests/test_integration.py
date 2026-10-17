@@ -28,6 +28,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.check_secrets import run_scan  # noqa: E402
+from scripts.project_registry import create_project  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
     record_checkpoint,
@@ -551,6 +552,20 @@ class TestTierBudgetDiscipline(unittest.TestCase):
             "every subprocess in the integration tier must declare an explicit timeout "
             "(PRINCIPLE-010 R3)",
         )
+
+
+class TestProjectCreation(unittest.TestCase):
+    """`aikit new` makes a separate git repository with its memory (ADR-119)."""
+
+    def test_new_project_is_its_own_repository(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_new_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        root = create_project("app", workspace=kit)
+        self.assertTrue((root / ".git").is_dir())
+        self.assertTrue((root / ".aikit" / "project.json").is_file())
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=root, capture_output=True,
+                             text=True, timeout=PROC_TIMEOUT).stdout.strip()
+        self.assertEqual(Path(top).resolve(), root.resolve())
 
 
 if __name__ == "__main__":

@@ -6,19 +6,45 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `8`
-- **Total Classes**: `47`
-- **Total Functions / Methods**: `116`
-- **Total Source Lines**: `8067`
+- **Total Python Modules**: `11`
+- **Total Classes**: `54`
+- **Total Functions / Methods**: `142`
+- **Total Source Lines**: `8696`
 
 ---
 
 ## 📦 Modules & Exported Symbols
 
+### [`aikit.py`](aikit.py)
+> *AIKit entry point: `python aikit.py --help`. The commands live in scripts/aikit_cli.py.*
+
+**Size**: `9` lines (`214` bytes)
+
+---
+
+### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
+> *`aikit` command line: create, attach and list the projects AIKit builds (ADR-119).*
+
+**Size**: `101` lines (`3835` bytes)
+
+**Classes:**
+- `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
+  - Method `.error(message)`
+
+**Functions:**
+- `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
+- `def build_parser()`
+- `def cmd_new(args)`
+- `def cmd_attach(args)`
+- `def cmd_list(args)`
+- `def main(argv)`
+
+---
+
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `288` lines (`11276` bytes)
+**Size**: `296` lines (`11789` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -56,7 +82,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1323` lines (`58950` bytes)
+**Size**: `1341` lines (`59700` bytes)
 
 **Functions:**
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
@@ -77,6 +103,8 @@
 - `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
 - `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006).*
+- `def _reraise(error)`
+- `def sweep_files(workspace_dir, pattern)` - *Files under `workspace_dir` matching `pattern`, pruning `SWEEP_PRUNED_DIRS` while walking, so a*
 - `def clean_dangling_temp_files(workspace_dir, min_age_seconds)` - *Purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006 R6, PRINCIPLE-013).*
 - `def git_porcelain_status(workspace)` - *Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3).*
 - `def run_disruption_audit(workspace_dir, git_status)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
@@ -100,7 +128,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `466` lines (`20462` bytes)
+**Size**: `467` lines (`20515` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -113,6 +141,39 @@
 - `def track_readonly_gates(jail, log)` - *Track 3: the two freshness gates the delivery triad depends on must run read-only from an*
 - `def track_help_startup_budget(jail, log)` - *Track 4: every entrypoint must answer --help safely and inside the PRINCIPLE-010 R5*
 - `def run_dogfood(verbose, keep_sandbox)` - *Execute every dogfood track and emit a terse dashboard (PRINCIPLE-015 Rule 7).*
+
+---
+
+### [`scripts/project_registry.py`](scripts/project_registry.py)
+> *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
+
+**Size**: `341` lines (`13910` bytes)
+
+**Classes:**
+- `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
+  - Method `.__init__(message, why, fix, exit_code)`
+- `class Stack` - *A toolchain detected in a project folder and the command that runs its tests.*
+- `class Project` - *A registered project as `aikit list` reports it.*
+
+**Functions:**
+- `def _python_test(root)`
+- `def _node_test(root)`
+- `def _gradle_test(root)`
+- `def _fixed(command)`
+- `def detect_stacks(root)` - *Every stack whose marker file sits in the project's top folder (polyglot repos list several).*
+- `def validate_name(name)` - *Reject names that are not one portable folder name.*
+- `def projects_dir(workspace)`
+- `def config_path(project_root)`
+- `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
+- `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
+- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json` unless it exists. Returns whether it was created:*
+- `def _attached_path(workspace)`
+- `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
+- `def _registered_names(workspace)`
+- `def _git_init(project_root)`
+- `def create_project(name, test_command, workspace, git_init)` - *Create `projects/<name>/` as a new git repository holding the project's `.aikit/` memory.*
+- `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
+- `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
 
 ---
 
@@ -150,7 +211,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `847` lines (`37792` bytes)
+**Size**: `849` lines (`37898` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -184,7 +245,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `557` lines (`26076` bytes)
+**Size**: `572` lines (`26867` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -240,13 +301,15 @@
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
+- `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
+  - Method `.test_new_project_is_its_own_repository()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3469` lines (`194507` bytes)
+**Size**: `3603` lines (`201012` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -548,6 +611,22 @@
   - Method `.test_full_signature_includes_varargs_kwonly_and_posonly()`
   - Method `.test_self_and_cls_are_dropped_from_method_signatures_only()`
   - Method `.test_generated_map_renders_async_keyword()`
+- `class TestProjectRegistry` - *Projects live outside AIKit's state and carry their own `.aikit/` memory (ADR-119).*
+  - Method `.setUp()`
+  - Method `.make_folder(*files)`
+  - Method `.test_detects_every_stack_and_its_test_command()`
+  - Method `.test_npm_placeholder_is_not_a_test_command()`
+  - Method `.test_name_must_be_one_portable_segment()`
+  - Method `.test_attach_writes_memory_once_and_lists_the_project()`
+  - Method `.test_override_beats_detection_and_missing_folder_is_reported()`
+  - Method `.test_attach_refuses_folders_overlapping_the_kit()`
+  - Method `.test_projects_folder_is_discovered_without_the_attached_file()`
+  - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
+  - Method `.test_failed_git_init_leaves_no_half_made_project()`
+  - Method `.test_cli_reports_triad_and_exit_codes()`
+- `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
+  - Method `.test_codebase_scan_and_sweeps_prune_projects()`
+  - Method `.test_git_ignores_projects()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

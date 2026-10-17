@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import time
+import fnmatch
 import shutil
 import contextlib
 import subprocess
@@ -597,6 +598,25 @@ def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional
 
 
 TEMP_STALE_SECONDS = 60
+# Not AIKit's state: git internals, and the projects AIKit builds, which keep their own (ADR-119).
+SWEEP_PRUNED_DIRS = {".git", "projects"}
+
+
+def _reraise(error: OSError) -> None:
+    raise error
+
+
+def sweep_files(workspace_dir: Path, pattern: str) -> List[Path]:
+    """
+    Files under `workspace_dir` matching `pattern`, pruning `SWEEP_PRUNED_DIRS` while walking, so a
+    project's `node_modules` is never descended. Walk errors raise, as `rglob` did, so callers
+    still report an unscanned tree instead of a clean one.
+    """
+    found: List[Path] = []
+    for dirpath, dirnames, filenames in os.walk(workspace_dir, onerror=_reraise):
+        dirnames[:] = [d for d in dirnames if d not in SWEEP_PRUNED_DIRS]
+        found += [Path(dirpath) / name for name in fnmatch.filter(filenames, pattern)]
+    return found
 
 
 def clean_dangling_temp_files(workspace_dir: Optional[Path] = None, min_age_seconds: float = TEMP_STALE_SECONDS) -> List[str]:
@@ -609,8 +629,8 @@ def clean_dangling_temp_files(workspace_dir: Optional[Path] = None, min_age_seco
     deleted = []
     now = time.time()
     try:
-        for p in ws.rglob("*.tmp_*"):
-            if ".git" not in str(p) and p.is_file() and now - p.stat().st_mtime >= min_age_seconds:
+        for p in sweep_files(ws, "*.tmp_*"):
+            if p.is_file() and now - p.stat().st_mtime >= min_age_seconds:
                 try:
                     rel = str(p.relative_to(ws))
                     p.unlink()
@@ -704,17 +724,15 @@ def run_disruption_audit(
 
     # 3. Check for Quarantined Corrupted Artifacts (.corrupt_ files)
     try:
-        for p in ws.rglob("*.corrupt_*"):
-            if ".git" not in str(p):
-                audit["quarantined_files"].append(str(p.relative_to(ws)))
+        for p in sweep_files(ws, "*.corrupt_*"):
+            audit["quarantined_files"].append(str(p.relative_to(ws)))
     except OSError as e:
         audit["scan_errors"].append(f"quarantine scan: {e}")
 
     # 4. Check for Dangling Temporary Files (*.tmp_*) from interrupted atomic writes
     try:
-        for p in ws.rglob("*.tmp_*"):
-            if ".git" not in str(p):
-                audit["dangling_temp_files"].append(str(p.relative_to(ws)))
+        for p in sweep_files(ws, "*.tmp_*"):
+            audit["dangling_temp_files"].append(str(p.relative_to(ws)))
     except OSError as e:
         audit["scan_errors"].append(f"temp-buffer scan: {e}")
 

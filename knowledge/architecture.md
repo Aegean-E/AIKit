@@ -13,11 +13,20 @@ GUIDELINES.md ──sync_principles.py──▶ AGENTS.md, CLAUDE.md, GEMINI.md,
 repository *.py ──update_knowledge_base.py──▶ knowledge/codebase_map.md
                   └─ audits: README, ADR register, unfinished code, code structure
 
-agent ──disruption_recovery.py──▶ .agents/task_ledger.json (the only state file)
+agent ──disruption_recovery.py──▶ .agents/task_ledger.json (AIKit's only state file)
+
+user ──aikit.py──▶ projects/<name>/ (own git repo) with .aikit/project.json; projects/attached.json
 
 Phase 4 gates: both test tiers, sync_principles.py --check, update_knowledge_base.py --check,
                check_reachability.py, check_secrets.py, dogfood.py   (PRINCIPLE-018 R3)
 ```
+
+## 🧭 Projects: AIKit as the Workspace
+AIKit is the folder a person opens in an AI host; the software it builds lives in `projects/<name>/`, each its own git repository with its memory in `.aikit/`. See [ADR-119](decisions.md).
+
+- **Isolation**: `projects/` is in `.gitignore`, in `IGNORE_DIRS` (codebase map, structure audits) and in `SWEEP_PRUNED_DIRS` (temp-file and quarantine sweeps), so no project file reaches AIKit's gates, map or ledger, and `--track` never sees one.
+- **Discovery**: a folder under `projects/` is a project when it holds `.aikit/project.json`; only folders elsewhere are listed in `projects/attached.json`. `attach` refuses a folder that contains or sits inside AIKit outside `projects/`.
+- **Detection**: `DETECTORS` maps marker files to a stack and its test command; a new stack is one row.
 
 ## 🗂️ Single Source of Truth & Generated Tier 1 Files
 The rules live in exactly one hand-edited file. See [ADR-048](decisions.md).

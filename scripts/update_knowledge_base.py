@@ -45,6 +45,8 @@ IGNORE_DIRS = {
     "env",
     "build",
     "dist",
+    # The projects AIKit builds: each has its own map and gates, never AIKit's (ADR-119).
+    "projects",
 }
 
 

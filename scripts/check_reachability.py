@@ -33,6 +33,8 @@ from typing import Dict, List, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PROD_DIR = ROOT_DIR / "scripts"
+# Entry points outside scripts/: what they call is reached, so they are audited too (ADR-119).
+ROOT_ENTRYPOINTS = ("aikit.py",)
 
 # Deliberately public API: imported by consumers (tests, adopter projects, other tooling) rather
 # than called internally. Each entry is a conscious decision, not a silenced warning.
@@ -81,6 +83,10 @@ PUBLIC_API_ALLOWLIST: Set[str] = {
     "print_help",
 }
 
+# Keys of third-party files AIKit reads and never writes, so no AIKit writer can exist: the
+# project's own `package.json` (`scripts.test`, read by project_registry stack detection).
+EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test"}
+
 # Generator/content functions referenced only through data structures or f-strings.
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")
 
@@ -105,7 +111,9 @@ def parse_module(path: Path) -> ast.Module:
 
 def production_modules() -> List[Path]:
     """Production source files whose reachability is audited (excludes this checker itself)."""
-    return sorted(p for p in PROD_DIR.glob("*.py") if p.name != Path(__file__).name)
+    modules = [p for p in PROD_DIR.glob("*.py") if p.name != Path(__file__).name]
+    modules += [ROOT_DIR / name for name in ROOT_ENTRYPOINTS if (ROOT_DIR / name).is_file()]
+    return sorted(modules)
 
 
 def collect_definitions(files: List[Path]) -> Dict[str, str]:
@@ -201,7 +209,7 @@ def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
                 all_literals.add(node.value)
     phantom = []
     for key, module in sorted(reads.items()):
-        if key in writes:
+        if key in writes or key in EXTERNAL_SCHEMA_KEYS:
             continue
         # A key appearing only once in the whole codebase (its single read) has no producer.
         occurrences = sum(1 for lit in all_literals if lit == key)

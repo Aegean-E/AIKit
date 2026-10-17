@@ -40,6 +40,7 @@ SYNC_CLI = ROOT_DIR / "scripts" / "sync_principles.py"
 KB_CLI = ROOT_DIR / "scripts" / "update_knowledge_base.py"
 REACH_CLI = ROOT_DIR / "scripts" / "check_reachability.py"
 SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
+AIKIT_CLI = ROOT_DIR / "aikit.py"
 LOG_PATH = ROOT_DIR / ".agents" / "dogfood_last_run.log"
 
 PROC_TIMEOUT = 10  # PRINCIPLE-010 R3: no unbounded subprocess
@@ -331,7 +332,7 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     budget_ms = 200  # PRINCIPLE-010 R5, measured as a fresh process; medians were 47-71ms (ADR-083)
     failures = []
     slowest = 0.0
-    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI):
+    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI, AIKIT_CLI):
         start = time.perf_counter()
         code, out, err = run_cli(script, ["--help"], jail)
         elapsed = (time.perf_counter() - start) * 1000
@@ -341,7 +342,7 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
             failures.append(f"{script.name} --help rc={code}")
         if err.strip():
             failures.append(f"{script.name} --help wrote to stderr")
-        if "Usage:" not in out:
+        if "usage:" not in out.lower():
             failures.append(f"{script.name} --help printed no usage block")
         if elapsed > budget_ms:
             failures.append(f"{script.name} --help took {elapsed:.0f}ms > {budget_ms}ms")

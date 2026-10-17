@@ -20,6 +20,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ### 🛠️ Core Operational Command Matrix
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
+| **Start a Project** | `python aikit.py new <name>` | Creates `projects/<name>/` as its own git repo |
 | **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~5s) |
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
@@ -55,6 +56,7 @@ verification runs through `--check` on `sync_principles.py` and `update_knowledg
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
+├── aikit.py                            <- Project CLI: new, attach, list; creates git-ignored projects/
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
@@ -85,6 +87,8 @@ portable_agent_kit/
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
+│   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
+│   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
@@ -105,19 +109,22 @@ portable_agent_kit/
 
 ---
 
-## 🚀 How to Apply to Another Project (2-Minute Setup)
+## 🚀 Start a Project
+
+Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it.
+
+```bash
+python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ memory
+python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
+python aikit.py list                # every project, its detected stack and test command
+```
+A project's memory is its `.aikit/` folder, committed in the project's repository. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
+
+## 📥 Alternative: Copy AIKit Into an Existing Project
 
 ### Step 1: Copy Governance Assets
 
-- **Option A (New Greenfield Project)**:
-  Copy all files directly into the target project:
-  ```bash
-  cp -r portable_agent_kit/* /path/to/target/
-  cp -r portable_agent_kit/.* /path/to/target/ 2>/dev/null || true
-  ```
-
-- **Option B (Existing Project / Non-Destructive Merge)**:
-  Copy only the source of truth and tooling; the Tier 1 files are generated in Step 3, never copied:
+- Copy only the source of truth and tooling; the Tier 1 files are generated in Step 3, never copied:
   ```bash
   cd portable_agent_kit
   mkdir -p /path/to/target/.agents
@@ -203,24 +210,8 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    python scripts/disruption_recovery.py --resume
    ```
    It prints every `--audit` finding (conflicts, modified and untracked files, orphaned `.tmp_*` files, quarantined files; at most 20 entries per list), then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
-2. **Findings Only**: `python scripts/disruption_recovery.py --audit` prints the same findings without resumption guidance.
-3. **Recording In-Flight Checkpoints & Impact Rationale**: During multi-step implementations, record milestones cleanly (including optional pre-flight impact assessment):
-   ```bash
-   python scripts/disruption_recovery.py --checkpoint "task_name" --phase-num 2 --desc "description" --why "why" --benefits "benefits" --risks "risks" --mitigation "mitigation"
-   ```
-4. **Marking Completion**: When a task finishes successfully:
-   ```bash
-   python scripts/disruption_recovery.py --complete "task_name"
-   ```
-5. **Resetting In-Flight Tasks**: To abandon or reset a task without manually editing JSON:
-   ```bash
-   python scripts/disruption_recovery.py --reset "Superseded by new requirements"
-   ```
-6. **Purging Dangling Temp Files**: Safely remove orphaned `.tmp_*` files:
-   ```bash
-   python scripts/disruption_recovery.py --clean
-   ```
-7. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
+2. **Everything else** (`--audit`, `--checkpoint`, `--complete`, `--reset`, `--clean`) is in the command matrix above; a task's first plan checkpoint must carry `--why --benefits --risks --mitigation`.
+3. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
 
 ---
 

@@ -1,59 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-fixes",
+    "task_id": "workspace-projects",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792224923.9047632,
-    "completed_at": 1792224937.1058736
+    "status": "in_progress",
+    "updated_at": 1792225877.4120653
   },
   "checkpoints": [
-    {
-      "task_id": "p007-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p007-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792223750.2305007,
-      "timestamp_str": "2026-10-17 10:55:50"
-    },
-    {
-      "task_id": "p000-005-pass3",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "consistency pass: P000-P005 against the sweep's standards",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223791.1707149,
-      "timestamp_str": "2026-10-17 10:56:31"
-    },
-    {
-      "task_id": "p000-005-pass3",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] rule-number parity test (budget, Tier 1B, README size, ledger size, --clean age, role size, --help budget) for P000-P005 and later principles; [2/2] rewrite concurrent additions P008 R6, P009 R6/R7, P012 R8 to one reading; ADR-113/114",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223791.2979615,
-      "timestamp_str": "2026-10-17 10:56:31",
-      "impact_assessment": {
-        "why": "numbers in rules and constants in code drifted before (1,500 vs 1,600); new rules from a concurrent session were never reviewed",
-        "benefits": "a changed number fails until rule and code agree; every rule meets the standard",
-        "risks": "contract: tests only for [1/2]; rule text for [2/2]; dependency: none; concurrency: none; state: none",
-        "mitigation": "constants read from code, not copied"
-      }
-    },
-    {
-      "task_id": "p000-005-pass3",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223791.4538543,
-      "timestamp_str": "2026-10-17 10:56:31"
-    },
     {
       "task_id": "p000-005-pass3",
       "phase": "in_progress",
@@ -222,6 +176,52 @@
       "status": "completed",
       "timestamp": 1792224937.1058753,
       "timestamp_str": "2026-10-17 11:15:37"
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: cockpit model, projects/<name> with .aikit memory",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792225216.9317513,
+      "timestamp_str": "2026-10-17 11:20:16"
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] scripts/project_registry.py + root aikit.py CLI (new, attach, list): stack detection, project.json, git per project; projects/ ignored by AIKit git and gates; tests; [2/3] per-project memory .aikit/ (ledger, decisions), disruption_recovery --project, aikit status; docs; [3/3] Tier 1 header + P005 rule tell every host the workflow; ADRs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792225217.0776048,
+      "timestamp_str": "2026-10-17 11:20:17",
+      "impact_assessment": {
+        "why": "AIKit has no target-project concept: a project under it pollutes AIKit's map, runs AIKit's tests, and shares AIKit's ledger",
+        "benefits": "open AIKit in any host, describe a project, work happens isolated in projects/<name> with its own memory",
+        "risks": "contract: new aikit.py CLI and --project flag; dependency: none (stdlib, git); concurrency: per-project ledgers reduce collisions; state: new per-project .aikit/ files (schema in data_models.md)",
+        "mitigation": "argparse with triad errors; pure functions unit-tested; integration test in a temp dir; AIKit gates ignore projects/"
+      }
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/3]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792225217.2297962,
+      "timestamp_str": "2026-10-17 11:20:17"
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/3] committed: aikit.py new/attach/list, projects/ isolated from AIKit gates (ADR-119)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792225877.4120653,
+      "timestamp_str": "2026-10-17 11:31:17"
     }
   ]
 }
