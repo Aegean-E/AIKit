@@ -46,6 +46,7 @@ from scripts.sync_principles import (
     parse_principles,
     citing_principles,
     principle_sections,
+    MAX_DOMAIN_CHARS,
     changed_principles,
     cross_check_errors,
     render_readme_table,
@@ -1361,7 +1362,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "present": [
                 "`- **Problem**:`, `- **Concept**:`, `- **Invariant**:` (its capsule) and `- **Rules**:`",
                 "each tagged with its audience and written as PRINCIPLE-000 R7 requires",
-                "exits 1 on a missing section, an empty title or a duplicate ID",
+                "exits 1 on a missing section, a rule without an audience tag, an empty title or a duplicate ID",
+                "a host is supported by adding its file to this generator's target list (`TIER1_TARGETS`)",
+                "exits 1 with PRINCIPLE-011 R6's message when the file is longer",
                 "A commit MUST NOT be made while either fails (PRINCIPLE-018 R3)",
                 "A principle belongs to the nearest `## ... Phase N:` heading above it",
                 "at most 1,200 characters",
@@ -2112,6 +2115,18 @@ class TestSyncWriteSafety(unittest.TestCase):
 
     def _written_targets(self):
         return [rel for rel in TIER1_TARGETS if (self.sandbox / rel).exists()]
+
+    def test_oversized_domain_rules_report_the_triad(self):
+        # Red-green pin (ADR-108): a domain.md over the limit ended sync in a raw traceback.
+        domain = self.sandbox / "domain.md"
+        domain.write_text("x" * (MAX_DOMAIN_CHARS + 1), encoding="utf-8")
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            result = sync_principles_module.sync_all(check_only=True, exit_on_mismatch=False,
+                                                     readme_file=README_MD, domain_path=domain)
+        self.assertEqual(result, 1)
+        self.assertIn("[DOMAIN RULES TOO LONG]", err.getvalue())
+        self.assertIn("Fix:", err.getvalue())
 
     def test_clean_sandbox_generates_every_target(self):
         result, _ = self._sync()

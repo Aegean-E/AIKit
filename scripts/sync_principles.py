@@ -409,8 +409,8 @@ def sync_all(
         else:
             sys.stderr.write(
                 f"[SCHEMA ERROR] {schema_error}\n"
-                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-NNN:', Concept, Invariant "
-                f"and numbered Rules (PRINCIPLE-017 R1).\n"
+                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-NNN:', Problem, Concept, "
+                f"Invariant and numbered Rules, each rule tagged with its audience (PRINCIPLE-017 R1).\n"
                 f"Fix: complete the section named above, then re-run.\n"
             )
         if exit_on_mismatch:
@@ -437,7 +437,21 @@ def sync_all(
             # Mode transparency (PRINCIPLE-011 R3): say why the check did not apply.
             print("[INFO] README.md documents no principles (adopter README); parity check not applicable")
 
-    domain_rules = load_tier_1b_domain_rules(domain_path)
+    try:
+        domain_rules = load_tier_1b_domain_rules(domain_path)
+    except ValueError as budget_error:
+        # An oversized domain.md is an adopter's likeliest first error; it used to end in a raw
+        # traceback (PRINCIPLE-011 R6, PRINCIPLE-017 R6).
+        sys.stderr.write(
+            f"[DOMAIN RULES TOO LONG] {budget_error}\n"
+            f"Why: Tier 1B is injected into every Tier 1 file and must fit the reserved "
+            f"{MAX_DOMAIN_CHARS} characters (PRINCIPLE-017 R6).\n"
+            f"Fix: shorten .agents/rules/domain.md to at most {MAX_DOMAIN_CHARS} characters, "
+            f"moving detail to knowledge/, then re-run.\n"
+        )
+        if exit_on_mismatch:
+            sys.exit(1)
+        return 1
     if domain_rules:
         print(f"[LOADED] Injected Tier 1B domain rules ({len(domain_rules)} chars)")
 

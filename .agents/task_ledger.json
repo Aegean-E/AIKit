@@ -1,98 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "seven-pass-twenty-principle-deep-audit",
+    "task_id": "p017-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792194184.2347486,
-    "completed_at": 1792194334.1251905
+    "updated_at": 1792223392.7905412,
+    "completed_at": 1792223431.0860288
   },
   "checkpoints": [
-    {
-      "task_id": "opencode-v2-native-config",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'opencode-v2-native-config' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792191346.4300363,
-      "timestamp_str": "2026-10-17 01:55:46"
-    },
-    {
-      "task_id": "opencode-pin-free-models",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Pin OpenCode worker subagent and config to free models",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792191837.4899309,
-      "timestamp_str": "2026-10-17 02:03:57",
-      "impact_assessment": {
-        "why": "Enforce zero-cost model usage by pinning worker profile and workspace config to verified free models",
-        "benefits": "Guarantees subagent tasks never fail with 403 on unbilled endpoints and consume zero primary model tokens",
-        "risks": "contract: zero; dependency: zero; concurrency: zero; state: zero",
-        "mitigation": "Tested headless execution against opencode/deepseek-v4.1-flash-free and glm-5.3-flash-free"
-      }
-    },
-    {
-      "task_id": "opencode-pin-free-models",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'opencode-pin-free-models' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792191934.0898962,
-      "timestamp_str": "2026-10-17 02:05:34"
-    },
-    {
-      "task_id": "multi-provider-free-models",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Configure multi-provider free models (OpenRouter, Ollama, LM Studio)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792192108.4849024,
-      "timestamp_str": "2026-10-17 02:08:28",
-      "impact_assessment": {
-        "why": "Enable flexible usage of any free models across OpenCode, OpenRouter, and local offline providers",
-        "benefits": "Allows delegating subagent work to any free provider model without locking into a single service",
-        "risks": "contract: zero; dependency: zero; concurrency: zero; state: zero",
-        "mitigation": "Tested OpenCode native free models, local Ollama, and OpenRouter catalog discovery"
-      }
-    },
-    {
-      "task_id": "multi-provider-free-models",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'multi-provider-free-models' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792192135.1087067,
-      "timestamp_str": "2026-10-17 02:08:55"
-    },
-    {
-      "task_id": "ai-providers-principle-and-benchmark-db",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Codify AI provider integration lifecycle principle and model benchmark database",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792192273.3849838,
-      "timestamp_str": "2026-10-17 02:11:13",
-      "impact_assessment": {
-        "why": "Establish standard 5-step lifecycle principle for adding AI providers and provide empirical benchmark database for subagent selection",
-        "benefits": "Ensures future AI services are integrated in proper order with credential isolation, headless execution, ledger fences, and data-backed model selection",
-        "risks": "contract: rule count assertion update; dependency: zero; concurrency: zero; state: zero",
-        "mitigation": "Sync Tier 1 files, update test_kit assertions, and verify 100% pass across all gates"
-      }
-    },
-    {
-      "task_id": "ai-providers-principle-and-benchmark-db",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ai-providers-principle-and-benchmark-db' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792192518.027562,
-      "timestamp_str": "2026-10-17 02:15:18"
-    },
     {
       "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
       "phase": "in_progress",
@@ -237,6 +153,80 @@
       "status": "completed",
       "timestamp": 1792194334.125192,
       "timestamp_str": "2026-10-17 02:45:34"
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223225.1941166,
+      "timestamp_str": "2026-10-17 10:47:05"
+    },
+    {
+      "task_id": "p016-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p016-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792223294.173534,
+      "timestamp_str": "2026-10-17 10:48:14"
+    },
+    {
+      "task_id": "p017-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: P017 after concurrent edits",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223307.5560813,
+      "timestamp_str": "2026-10-17 10:48:27"
+    },
+    {
+      "task_id": "p017-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P017 pass 2: oversized domain.md reports the triad (was a traceback); schema-error Why lists Problem and audience tags; R1 names the tag check; R2 replaces the unfalsifiable portability guarantee with the target list as the host contract; ADR-108",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223354.797621,
+      "timestamp_str": "2026-10-17 10:49:14",
+      "impact_assessment": {
+        "why": "domain.md over 1,200 chars crashed sync with a traceback; R2 'guarantees portability across all harnesses' is untestable",
+        "benefits": "adopter's likeliest error explains itself; R2 checkable",
+        "risks": "contract: sync exits 1 with a message instead of a traceback; dependency: none; concurrency: none; state: none",
+        "mitigation": "verified with a 1,300-char domain file; unit test"
+      }
+    },
+    {
+      "task_id": "p017-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223354.9462664,
+      "timestamp_str": "2026-10-17 10:49:14"
+    },
+    {
+      "task_id": "p017-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223392.7905412,
+      "timestamp_str": "2026-10-17 10:49:52"
+    },
+    {
+      "task_id": "p017-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p017-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792223431.08603,
+      "timestamp_str": "2026-10-17 10:50:31"
     }
   ]
 }
