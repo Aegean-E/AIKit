@@ -52,17 +52,23 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── aikit.py                            <- Project CLI: new, attach, list, status, check, fix; projects/
+├── aikit.py                            <- Project CLI: new, attach, list, status, check, fix, delegate
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
 ├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
 ├── CLAUDE.md                           <- Anthropic Claude Code configuration
 ├── .cursorrules                        <- Cursor IDE instructions
+├── .windsurfrules                      <- Codeium Windsurf IDE instructions
+├── .clinerules                         <- Cline / Roo Code IDE instructions
 ├── .github/
 │   ├── copilot-instructions.md         <- GitHub Copilot instructions
 │   └── workflows/
 │       └── ci.yml                      <- Continuous verification gate (both tiers + freshness)
+├── .claude/
+│   └── skills/
+│       └── aikit/
+│           └── SKILL.md                <- Claude Code operational runbook (native skill)
 ├── .agents/
 │   ├── rules/
 │   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
@@ -78,7 +84,7 @@ portable_agent_kit/
 │   └── agents/                         <- Native OpenCode specialized subagent profiles (architect, coder, etc.)
 ├── opencode.jsonc                      <- OpenCode v2 provider, model and permissions configuration
 ├── scripts/
-│   ├── sync_principles.py              <- Generates all 6 Tier 1 files from GUIDELINES.md, budget-gated
+│   ├── sync_principles.py              <- Generates all 8 Tier 1 files from GUIDELINES.md, budget-gated
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
@@ -130,11 +136,10 @@ A project's memory is its `.aikit/` folder (record, ledger, decisions), committe
   cp -r GUIDELINES.md scripts knowledge /path/to/target/
   cp -r .agents/rules .agents/skills /path/to/target/.agents/
   ```
-  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json`: they test, build and record *this* repository (verified: AIKit's suite fails 19 checks inside a fresh adopter repo). Your project keeps its own suite; AIKit's enforcement travels as the CLI gates, which all pass in an adopter repo: `sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all` and `dogfood.py`. Replace the copied `knowledge/` documents with your own project's after Step 4.
-  Then copy `.agents/rules/readme_quickref.md.template` into the top of your existing `README.md` and replace every placeholder that begins with `<FILL` with your project's values; it holds only what travels (the two labels, AIKit's gate commands and a tree skeleton), never AIKit's own test modules. `update_knowledge_base.py --check` fails while any such placeholder remains or the tree misses a tracked top-level entry (PRINCIPLE-005 R1, R5, R6).
+  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (they test and record AIKit itself). Enforcement travels via CLI gates (`sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all`, `dogfood.py`). Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
-If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules` or `.github/copilot-instructions.md`, move their project-specific rules into `.agents/rules/domain.md` (start from `.agents/rules/domain.md.template`, at most 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites a file it did not generate: it stops with `[PROTECTED]` and names the file, so nothing is lost.
+If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules` or `.clinerules`, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites hand-authored files without a generated header (`[PROTECTED]`).
 
 ### Step 3: Run Principle Synchronization
 Generate every Tier 1 file from `GUIDELINES.md`:
@@ -142,7 +147,7 @@ Generate every Tier 1 file from `GUIDELINES.md`:
 ```bash
 python scripts/sync_principles.py
 ```
-This writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.agents/rules/principles.md` and `.github/copilot-instructions.md`, each within 1,600 est. tokens including your Tier 1B block.
+This writes all 8 Tier 1 files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules`, `.clinerules`, `.agents/rules/principles.md`), each <=1,600 tokens including Tier 1B.
 
 ### Step 4: Generate Your Knowledge Base
 Run the knowledge base AST scanner to automatically index your project's classes and functions:
@@ -219,4 +224,4 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
 1. Add `### PRINCIPLE-0XX: [Title]` (the next free ID) to `GUIDELINES.md` only, with `Problem`, `Concept`, `Invariant` and numbered `Rules`, under the right lifecycle heading.
 2. Raise `MIN_PRINCIPLES` in `scripts/sync_principles.py` and `EXPECTED_PRINCIPLE_COUNT` in `tests/test_kit.py`; add the ID to this README and both checklists.
 3. Run `python scripts/sync_principles.py`. On `[TOKEN EXCEEDED]` or `[TIER 1B HEADROOM]`, pay for the new capsule by condensing existing capsule narrative (PRINCIPLE-001 R9).
-4. All six generated Tier 1 files then carry the new capsule.
+4. All 8 generated Tier 1 files then carry the new capsule.

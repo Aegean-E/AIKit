@@ -1,43 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "multi-agent-workspace-usage",
+    "task_id": "review-fixes-and-hardening",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792232322.4060996,
-    "completed_at": 1792232365.139947
+    "updated_at": 1792232814.9841745,
+    "completed_at": 1792232959.3408818
   },
   "checkpoints": [
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]: R8 names aikit check as project Phase 4",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792227185.1153638,
-      "timestamp_str": "2026-10-17 11:53:05"
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[2/2] committed: R8 names python aikit.py check <name> (ADR-123)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792227307.6627707,
-      "timestamp_str": "2026-10-17 11:55:07"
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-gates' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792227307.8167183,
-      "timestamp_str": "2026-10-17 11:55:07"
-    },
     {
       "task_id": "project-guidelines-parity",
       "phase": "in_progress",
@@ -222,6 +193,41 @@
       "status": "completed",
       "timestamp": 1792232365.1399484,
       "timestamp_str": "2026-10-17 13:19:25"
+    },
+    {
+      "task_id": "review-fixes-and-hardening",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] plan: review implementations, fix README drift, harden subagent supervision and self-healing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792232721.5929594,
+      "timestamp_str": "2026-10-17 13:25:21",
+      "impact_assessment": {
+        "why": "Ensure newly introduced multi-agent delegation, instruction targets, and project tools are robust, leak-free, and pass all living documentation and process gates",
+        "benefits": "Eliminate README tree drift, prevent zombie subagent processes on timeout, provide graceful project resolution in delegation, and enhance project self-healing",
+        "risks": "contract: none; CLI and schemas preserved. dependency: none; stdlib only. concurrency: safe process tree termination prevents leaked orphan workers. state: atomic write patterns preserved across project memory",
+        "mitigation": "Thorough unit testing with doubles, RAII process supervision, and full gate validation"
+      }
+    },
+    {
+      "task_id": "review-fixes-and-hardening",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] README drift eliminated and What's Inside tree synchronized across all 8 host clients",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792232814.9841745,
+      "timestamp_str": "2026-10-17 13:26:54"
+    },
+    {
+      "task_id": "review-fixes-and-hardening",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-fixes-and-hardening' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792232959.340884,
+      "timestamp_str": "2026-10-17 13:29:19"
     }
   ]
 }

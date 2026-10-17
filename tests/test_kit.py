@@ -3966,6 +3966,67 @@ class TestSubagentDelegation(unittest.TestCase):
         # Check that the ledger was automatically restored to pristine state!
         self.assertEqual(ledger.read_text(encoding="utf-8"), original_ledger_content)
 
+    def test_invalid_project_name_returns_triad(self):
+        exit_code, output = delegate_subagent(
+            role="worker",
+            prompt="do task",
+            project_name="unknown_project",
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 2)
+        self.assertIn("No project named 'unknown_project'", output)
+        self.assertIn("Why:", output)
+        self.assertIn("Fix:", output)
+
+    def test_nonexistent_file_returns_triad(self):
+        exit_code, output = delegate_subagent(
+            role="worker",
+            prompt="inspect missing",
+            file="not_here.py",
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Error: target file 'not_here.py' does not exist", output)
+        self.assertIn("Why: subagent cannot inspect a non-existent file", output)
+        self.assertIn("Fix:", output)
+
+    def test_delegation_with_valid_file(self):
+        target_file = self.kit / "sample.py"
+        target_file.write_text("print('hello')", encoding="utf-8")
+        captured_cmd = []
+
+        def mock_runner(cmd, cwd, timeout):
+            captured_cmd.extend(cmd)
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="inspected", stderr="")
+
+        exit_code, output = delegate_subagent(
+            role="reviewer",
+            prompt="check code",
+            file="sample.py",
+            runner=mock_runner,
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("--file", captured_cmd)
+        self.assertIn("sample.py", captured_cmd)
+
+    def test_subagent_timeout_handled(self):
+        def timing_out_runner(cmd, cwd, timeout):
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout)
+
+        exit_code, output = delegate_subagent(
+            role="tester",
+            prompt="run test",
+            timeout=5,
+            runner=timing_out_runner,
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Error: subagent execution timed out after 5 seconds", output)
+        self.assertIn("Why: long-running tasks without bounds exhaust process resources", output)
+        self.assertIn("Fix:", output)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -9,7 +9,7 @@
 - **Total Python Modules**: `12`
 - **Total Classes**: `64`
 - **Total Functions / Methods**: `175`
-- **Total Source Lines**: `10343`
+- **Total Source Lines**: `10428`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `533` lines (`22754` bytes)
+**Size**: `554` lines (`23759` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -183,7 +183,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `515` lines (`22819` bytes)
+**Size**: `518` lines (`22921` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -368,7 +368,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3971` lines (`219901` bytes)
+**Size**: `4032` lines (`222157` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -715,6 +715,10 @@
   - Method `.test_successful_delegation_with_mock_runner()`
   - Method `.test_json_format_output()`
   - Method `.test_subagent_ledger_mutation_is_reverted_and_flagged()`
+  - Method `.test_invalid_project_name_returns_triad()`
+  - Method `.test_nonexistent_file_returns_triad()`
+  - Method `.test_delegation_with_valid_file()`
+  - Method `.test_subagent_timeout_handled()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

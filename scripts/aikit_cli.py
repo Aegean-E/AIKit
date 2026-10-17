@@ -348,6 +348,9 @@ def cmd_fix(args: argparse.Namespace) -> int:
         write_generated_file(map_path, map_content)
         fixes.append("synchronized .aikit/codebase_map.md")
 
+    from scripts.sync_principles import sync_project
+    sync_project(project.path, check_only=False, exit_on_mismatch=False)
+
     if fixes:
         for fix in fixes:
             print(f"  [FIXED] {fix}")
@@ -391,8 +394,23 @@ def delegate_subagent(
 
     target_cwd = workspace
     if project_name:
-        project = find_project(project_name, workspace=workspace)
-        target_cwd = project.path
+        try:
+            project = find_project(project_name, workspace=workspace)
+            target_cwd = project.path
+        except ProjectError as exc:
+            return exc.exit_code, f"Error: {exc}\nWhy: {exc.why}\nFix: {exc.fix}"
+
+    if file:
+        file_path = Path(file)
+        if not file_path.is_absolute():
+            file_path = (target_cwd / file).resolve()
+        if not file_path.exists():
+            err = (
+                f"Error: target file '{file}' does not exist.\n"
+                "Why: subagent cannot inspect a non-existent file.\n"
+                "Fix: check the file path or omit the --file parameter."
+            )
+            return 2, err
 
     ledgers = [
         workspace / ".agents" / "task_ledger.json",
@@ -400,6 +418,7 @@ def delegate_subagent(
     ]
     snapshots = {lp: lp.read_bytes() for lp in ledgers if lp.is_file()}
 
+    runner_bin = None
     if runner is None:
         runner_bin = shutil.which("opencode") or shutil.which("opencode.cmd") or shutil.which("opencode.ps1")
         if not runner_bin:
@@ -411,7 +430,7 @@ def delegate_subagent(
             return 1, err
 
     cmd = [
-        "opencode", "run", "--standalone",
+        runner_bin or "opencode", "run", "--standalone",
         "--format", "json",
         "--agent", role,
     ]
@@ -426,17 +445,19 @@ def delegate_subagent(
         if runner is not None:
             proc = runner(cmd, cwd=str(target_cwd), timeout=timeout)
         else:
-            proc = subprocess.run(
-                cmd,
-                cwd=str(target_cwd),
-                stdin=subprocess.DEVNULL,
-                timeout=timeout,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                shell=(sys.platform == "win32"),
-            )
+            from scripts.dogfood import supervised, terminate_process_tree
+            with supervised(cmd, target_cwd) as popen_proc:
+                try:
+                    stdout, stderr = popen_proc.communicate(timeout=timeout)
+                    proc = subprocess.CompletedProcess(
+                        args=cmd,
+                        returncode=popen_proc.returncode,
+                        stdout=stdout or "",
+                        stderr=stderr or "",
+                    )
+                except subprocess.TimeoutExpired:
+                    terminate_process_tree(popen_proc)
+                    raise
     except subprocess.TimeoutExpired:
         err = (
             f"Error: subagent execution timed out after {timeout} seconds.\n"
