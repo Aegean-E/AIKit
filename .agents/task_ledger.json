@@ -1,43 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p000-005-pass3",
+    "task_id": "tier-budget-fix",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792223951.275969,
-    "completed_at": 1792223967.0806584
+    "updated_at": 1792224152.9973464,
+    "completed_at": 1792224165.7444117
   },
   "checkpoints": [
-    {
-      "task_id": "p019-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223526.850696,
-      "timestamp_str": "2026-10-17 10:52:06"
-    },
-    {
-      "task_id": "p019-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223543.1927605,
-      "timestamp_str": "2026-10-17 10:52:23"
-    },
-    {
-      "task_id": "p019-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p019-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792223582.7450364,
-      "timestamp_str": "2026-10-17 10:53:02"
-    },
     {
       "task_id": "p006-pass2",
       "phase": "in_progress",
@@ -222,6 +193,41 @@
       "status": "completed",
       "timestamp": 1792223967.0806596,
       "timestamp_str": "2026-10-17 10:59:27"
+    },
+    {
+      "task_id": "tier-budget-fix",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] restore unit-tier headroom after 1.009s breach: prune ignored dirs in find_python_files (also fixes absolute-path exclusion bug), shorter lock wait, per-test fsync stub; ADR-115",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224152.8572323,
+      "timestamp_str": "2026-10-17 11:02:32",
+      "impact_assessment": {
+        "why": "commit 0aa51d0 went out with the unit tier at 1.009s under gate load (P010 R6 breach)",
+        "benefits": "unit tier 0.72-0.77s; clones under build/ or env/ are scanned",
+        "risks": "contract: find_python_files result order/content unchanged here; dependency: none; concurrency: none; state: none",
+        "mitigation": "equality check old vs new on this repo; regression test"
+      }
+    },
+    {
+      "task_id": "tier-budget-fix",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224152.9973464,
+      "timestamp_str": "2026-10-17 11:02:32"
+    },
+    {
+      "task_id": "tier-budget-fix",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'tier-budget-fix' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792224165.7444134,
+      "timestamp_str": "2026-10-17 11:02:45"
     }
   ]
 }

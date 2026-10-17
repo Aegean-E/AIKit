@@ -131,6 +131,7 @@ from scripts.update_knowledge_base import (
     audit_lazy_code,
     audit_architecture,
     parse_source,
+    find_python_files,
     parse_readme_tree,
 )
 
@@ -833,6 +834,21 @@ class TestRuleNumberParity(unittest.TestCase):
         for pid, phrase in cases:
             with self.subTest(pid=pid, phrase=phrase):
                 self.assertIn(phrase, sections[pid])
+
+
+class TestPythonFileDiscovery(unittest.TestCase):
+    """`find_python_files` prunes ignored directories relative to the root (ADR-115)."""
+
+    def test_a_repository_under_an_ignored_name_is_still_scanned(self):
+        # Red-green pin: ignored names were matched anywhere in the absolute path, so a clone
+        # under a directory called `build` or `env` catalogued nothing.
+        root = Path(tempfile.mkdtemp(prefix="test_discovery_")) / "build" / "repo"
+        self.addCleanup(shutil.rmtree, root.parent.parent, ignore_errors=True)
+        (root / "pkg").mkdir(parents=True)
+        (root / "pkg" / "mod.py").write_text("x = 1\n", encoding="utf-8")
+        (root / "venv").mkdir()
+        (root / "venv" / "skip.py").write_text("x = 1\n", encoding="utf-8")
+        self.assertEqual([p.relative_to(root).as_posix() for p in find_python_files(root)], ["pkg/mod.py"])
 
 
 class TestKnowledgeCitations(unittest.TestCase):
@@ -2741,7 +2757,7 @@ class TestDisruptionRecovery(unittest.TestCase):
             # Nested attempt on same file must fail acquisition within its bounded timeout.
             # The timeout is kept short deliberately: the contract under test is refusal, and a
             # longer wall-clock wait only inflates the sub-second suite gate (PRINCIPLE-014 R3).
-            with file_lock(test_file, timeout_seconds=0.03, poll_interval=0.005) as acquired2:
+            with file_lock(test_file, timeout_seconds=0.005, poll_interval=0.001) as acquired2:
                 self.assertFalse(acquired2)
         # Once released, lock should be immediately re-acquirable
         with file_lock(test_file, timeout_seconds=1.0) as acquired3:
@@ -3181,6 +3197,10 @@ class TestConcurrencyAndResumptionCorrectness(unittest.TestCase):
     def test_resume_reports_the_phase_actually_recorded(self):
         # PRINCIPLE-002 R4 / PRINCIPLE-004 R2: readers looked for a 'last_phase_num' key that was
         # never written, so every resumption reported Phase 2 and could send agents backwards.
+        # Only the recorded phase is under test, so fsync is a no-op here (RAII-restored); this
+        # class's fsync_dir test keeps the real call.
+        self.addCleanup(setattr, os, "fsync", os.fsync)
+        os.fsync = lambda fd: None
         for recorded, label in ((3, "implementation"), (4, "verification"), (5, "delivery")):
             with self.subTest(phase=recorded):
                 # Record through the real write path, then read the phase back off disk.

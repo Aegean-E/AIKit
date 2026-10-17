@@ -202,14 +202,16 @@ def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Di
 
 
 def find_python_files(root: Path) -> List[Path]:
-    """Dynamically discover all source python files across the repository."""
-    py_files = []
-    for path in root.rglob("*.py"):
-        # Ignore excluded directories
-        parts = set(path.parts)
-        if any(ignored in parts for ignored in IGNORE_DIRS):
-            continue
-        py_files.append(path)
+    """
+    Every Python file under `root`, skipping `IGNORE_DIRS`. Ignored directories are pruned while
+    walking, relative to `root`: `rglob` descended into `.git` and friends (16ms vs 0.8ms here) and
+    matched ignored names anywhere in the absolute path, so a clone under `C:\\build\\` or
+    `/home/u/env/` would have catalogued nothing.
+    """
+    py_files: List[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
+        py_files += [Path(dirpath) / name for name in filenames if name.endswith(".py")]
     return sorted(py_files)
 
 
