@@ -770,6 +770,47 @@ def report_readme(errors: List[str]) -> bool:
     return False
 
 
+# A project's own rules (PRINCIPLE-001 R4 project tier): read at every project cold start, so they
+# stay small (PRINCIPLE-012), and each is one identifiable line.
+PROJECT_GUIDELINES_MAX_CHARS = 4_000
+_GUIDELINE_RULE = re.compile(r"^- \*\*(G-\d{3})\*\* \(([^()\n]+)\): (\S.*)$")
+# Wording that would make a project rule weaken a principle; rules may only add to them.
+_GUIDELINE_OVERRIDE = re.compile(
+    r"\b(ignore|ignores|override|overrides|skip|skips|disable|disables|bypass|bypasses|waive|waives|"
+    r"exempt|exempts|suspend|suspends|relax|relaxes)\b[^\n]*\bPRINCIPLE-\d{3}"
+    r"|\bPRINCIPLE-\d{3}[^\n]*\b(does not apply|do not apply|no longer applies|is waived|is optional|"
+    r"is suspended|is relaxed)\b", re.I)
+
+
+def guideline_errors(text: str) -> List[str]:
+    """
+    Problems in a project's `.aikit/guidelines.md`: over the size limit, a line under `## Rules`
+    that is not `- **G-NNN** (source): rule`, a reused ID, or a rule worded to override a principle,
+    which it never can (PRINCIPLE-000 R6). Pure, so `add_guideline` refuses what this rejects.
+    """
+    errors: List[str] = []
+    if len(text) > PROJECT_GUIDELINES_MAX_CHARS:
+        errors.append(f"it has {len(text):,} chars; the limit is {PROJECT_GUIDELINES_MAX_CHARS:,} (PRINCIPLE-001 R4)")
+    heading = re.search(r"^## Rules[ \t]*$", text, re.M)
+    if not heading:
+        return errors + ["it has no '## Rules' heading (PRINCIPLE-001 R4)"]
+    seen: Dict[str, int] = {}
+    for line in (l.strip() for l in text[heading.end():].splitlines()):
+        if not line:
+            continue
+        rule = _GUIDELINE_RULE.match(line)
+        if not rule:
+            errors.append(f"'{line[:60]}' is not '- **G-NNN** (source): rule' (PRINCIPLE-001 R4)")
+            continue
+        gid = rule.group(1)
+        seen[gid] = seen.get(gid, 0) + 1
+        if seen[gid] == 2:
+            errors.append(f"{gid} is used twice; each rule keeps its own ID (PRINCIPLE-001 R4)")
+        if _GUIDELINE_OVERRIDE.search(rule.group(3)):
+            errors.append(f"{gid} overrides a principle; project guidelines only add to them (PRINCIPLE-000 R6)")
+    return errors
+
+
 def memory_dir(root: Path) -> Path:
     """Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`."""
     return root / ".aikit" if (root / ".aikit").is_dir() else root / "knowledge"
@@ -799,6 +840,19 @@ def check_workspace(root: Path = ROOT_DIR) -> bool:
     ok = report_readme(check_readme(root)) and ok
     ok = report_lazy_code(check_lazy_code(root)) and ok
     ok = report_architecture(check_architecture(root)) and ok
+    guidelines = memory / "guidelines.md"
+    if guidelines.is_file():
+        rel = guidelines.relative_to(root)
+        errors = guideline_errors(guidelines.read_text(encoding="utf-8"))
+        for error in errors:
+            print(f"[FAIL] {rel}: {error}")
+        if errors:
+            print("   Why: a project's guidelines add rules below AIKit's principles; a broken or overriding "
+                  "rule would be read differently by each agent.")
+            print("   Fix: correct each line above, or rewrite the rule as a constraint the principles allow.")
+        else:
+            print(f"[OK] {rel}: every rule is well-formed and adds to the principles.")
+        ok = ok and not errors
     decisions = memory / "decisions.md"
     if decisions.is_file():
         rel = decisions.relative_to(root)

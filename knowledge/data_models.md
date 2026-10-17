@@ -29,6 +29,9 @@ The project's decision register is `<project>/.aikit/decisions.md`, created from
 
 Stacks and test commands are never stored: `detect_stacks` reads the marker files each time, so they cannot go stale.
 
+### Project Guidelines (`<project>/.aikit/guidelines.md`)
+The project tier of PRINCIPLE-001 R4: the project's own rules, written by people or agents, ranked below every principle (PRINCIPLE-000 R6). Created from `GUIDELINES_TEMPLATE`; everything after `## Rules` is one rule per line, `- **G-NNN** (source): rule`, where source is `user`, `ADR-NNN` or a person. IDs are never reused. `guideline_errors` (the guidelines gate) rejects a malformed line, a reused ID, a rule worded to override a principle, and a file over `PROJECT_GUIDELINES_MAX_CHARS`; `add_guideline` refuses the same before writing.
+
 ### Attached Projects (`projects/attached.json`)
 Local to one AIKit checkout (git-ignored). Lists only folders outside `projects/`; folders inside it are found by their `.aikit/project.json`. Written under `file_lock`, atomically. Unreadable content is an error, never an empty list.
 

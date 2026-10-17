@@ -25,11 +25,13 @@ from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     Project,
     ProjectError,
+    add_guideline,
     attach_project,
     create_project,
     find_project,
     latest_decision,
     list_projects,
+    project_guidelines,
     seed_readme,
     write_memory,
 )
@@ -105,6 +107,10 @@ def build_parser() -> argparse.ArgumentParser:
     complete.add_argument("--task", required=True, help="the active task's ID")
 
     project_command("clean", f"delete the project's temp buffers older than {TEMP_STALE_SECONDS}s")
+    guideline = project_command("guideline", "add a rule to the project's guidelines (below the principles)")
+    guideline.add_argument("rule", help="the rule, one line")
+    guideline.add_argument("--source", required=True, help="where it comes from: user, ADR-NNN or a person")
+
     project_command("check", "run every gate of a project (its Phase 4)")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
 
@@ -129,6 +135,15 @@ def present_project(name: str, workspace: Path) -> Project:
             "restore the folder, or attach its new location with `python aikit.py attach <path>`.",
         )
     return project
+
+
+def print_guidelines(project: Project) -> None:
+    """The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2)."""
+    rules = project_guidelines(project.path)
+    print(f"Guidelines: {len(rules)} rule(s) in .aikit/guidelines.md; they add to and rank below "
+          f"AIKit's principles (PRINCIPLE-000 R6).")
+    for rule in rules:
+        print(f"  {rule}")
 
 
 def cmd_new(args: argparse.Namespace) -> int:
@@ -170,6 +185,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Stacks:    {stacks}")
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
+    print_guidelines(project)
     print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
     # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
     print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
@@ -180,7 +196,15 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_resume(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
+    print_guidelines(project)
     print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
+    return 0
+
+
+def cmd_guideline(args: argparse.Namespace) -> int:
+    project = present_project(args.name, args.workspace)
+    gid = add_guideline(project.path, args.rule, args.source)
+    print(f"[OK] {gid} added to the guidelines of '{project.name}'; it ranks below AIKit's principles.")
     return 0
 
 
@@ -250,7 +274,7 @@ def cmd_fix(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
     fixes: List[str] = []
     memory = project.path / ".aikit"
-    expected = ["project.json", "decisions.md", "task_ledger.json"]
+    expected = ["project.json", "guidelines.md", "decisions.md", "task_ledger.json"]
     missing = [name for name in expected if not (memory / name).is_file()]
     write_memory(project.path, project.name, project.test_command)
     fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
@@ -283,6 +307,7 @@ HANDLERS = {
     "checkpoint": cmd_checkpoint,
     "complete": cmd_complete,
     "clean": cmd_clean,
+    "guideline": cmd_guideline,
     "check": cmd_check,
     "fix": cmd_fix,
     "delegate": cmd_delegate,

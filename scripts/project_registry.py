@@ -27,13 +27,23 @@ from scripts.disruption_recovery import (
     atomic_write_json,
     file_lock,
 )
-from scripts.update_knowledge_base import write_generated_file
+from scripts.update_knowledge_base import guideline_errors, write_generated_file
 
 PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
 DECISIONS_FILENAME = "decisions.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
+GUIDELINES_FILENAME = "guidelines.md"
+# The project tier of PRINCIPLE-001 R4: rules for this project only, below every principle.
+GUIDELINES_TEMPLATE = (
+    "# Project Guidelines\n\n"
+    "Rules for this project only, written by people or AI agents. They add to AIKit's principles and\n"
+    "rank below them: a guideline never overrides a principle (PRINCIPLE-000 R6, PRINCIPLE-001 R4).\n"
+    "Add one with `python aikit.py guideline <name> \"<rule>\" --source <user|ADR-NNN|person>`, or by\n"
+    "hand as one line below in the form `- **G-NNN** (source): rule`; IDs are never reused.\n\n"
+    "## Rules\n"
+)
 DECISIONS_TEMPLATE = (
     "# Decisions\n\n"
     "Why this project is built the way it is, oldest first. One entry per decision that changes a\n"
@@ -262,6 +272,9 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     """
     path = config_path(project_root)
     _ensure_gitignore(project_root)
+    guidelines = project_root / PROJECT_MEMORY_DIRNAME / GUIDELINES_FILENAME
+    if not guidelines.exists():
+        write_generated_file(guidelines, GUIDELINES_TEMPLATE)
     decisions = project_root / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME
     if not decisions.exists():
         decisions.parent.mkdir(parents=True, exist_ok=True)
@@ -465,6 +478,47 @@ def find_project(name: str, workspace: Path = ROOT_DIR) -> Project:
         exit_code=2,
     )
 
+
+
+def project_guidelines(project_root: Path) -> List[str]:
+    """The project's rule lines (`- **G-NNN** (source): rule`), oldest first; [] when it has none."""
+    path = project_root / PROJECT_MEMORY_DIRNAME / GUIDELINES_FILENAME
+    if not path.is_file():
+        return []
+    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+            if re.match(r"^- \*\*G-\d{3}\*\* \(", line.strip())]
+
+
+def add_guideline(project_root: Path, rule: str, source: str) -> str:
+    """
+    Append one rule to the project's guidelines and return its new ID. Whatever the guidelines
+    gate would reject, an override of a principle above all, is refused before anything is written.
+    """
+    rule, source = rule.strip(), source.strip()
+    if not rule or "\n" in rule or not source or any(c in source for c in "()\n"):
+        raise ProjectError(
+            "A guideline needs a one-line rule and a source.",
+            "each rule is one identifiable line that says where it came from (PRINCIPLE-001 R4).",
+            'pass the rule as one quoted line and --source user, ADR-NNN or a person\'s name.',
+            exit_code=2,
+        )
+    path = project_root / PROJECT_MEMORY_DIRNAME / GUIDELINES_FILENAME
+    with file_lock(path):
+        text = path.read_text(encoding="utf-8") if path.is_file() else GUIDELINES_TEMPLATE
+        used = [int(n) for n in re.findall(r"^- \*\*G-(\d{3})\*\*", text, re.M)]
+        gid = f"G-{max(used, default=0) + 1:03d}"
+        updated = text.rstrip("\n") + f"\n- **{gid}** ({source}): {rule}\n"
+        errors = guideline_errors(updated)
+        if errors:
+            raise ProjectError(
+                f"The guideline was not added: {'; '.join(errors)}.",
+                "project guidelines add rules below AIKit's principles and can never override one "
+                "(PRINCIPLE-000 R6).",
+                "state the rule as a constraint the principles allow, or ask the user whether a "
+                "principle itself should change.",
+            )
+        write_generated_file(path, updated)
+    return gid
 
 
 def latest_decision(project_root: Path) -> Optional[str]:

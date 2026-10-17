@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `13`
-- **Total Classes**: `63`
-- **Total Functions / Methods**: `180`
-- **Total Source Lines**: `9973`
+- **Total Classes**: `65`
+- **Total Functions / Methods**: `185`
+- **Total Source Lines**: `10187`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `297` lines (`13781` bytes)
+**Size**: `322` lines (`14902` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -35,11 +35,13 @@
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
+- `def print_guidelines(project)` - *The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2).*
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
 - `def cmd_list(args)`
 - `def cmd_status(args)`
 - `def cmd_resume(args)`
+- `def cmd_guideline(args)`
 - `def cmd_checkpoint(args)`
 - `def cmd_complete(args)`
 - `def cmd_clean(args)`
@@ -183,7 +185,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `478` lines (`20259` bytes)
+**Size**: `532` lines (`23141` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -217,6 +219,8 @@
 - `def _build_project(name, path, attached)`
 - `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
 - `def find_project(name, workspace)` - *The registered project called `name`; only that project's folder is inspected.*
+- `def project_guidelines(project_root)` - *The project's rule lines (`- **G-NNN** (source): rule`), oldest first; [] when it has none.*
+- `def add_guideline(project_root, rule, source)` - *Append one rule to the project's guidelines and return its new ID. Whatever the guidelines*
 - `def latest_decision(project_root)` - *The last `### ADR-NNN: ...` heading in the project's decision register, if any.*
 
 ---
@@ -269,7 +273,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `921` lines (`41505` bytes)
+**Size**: `975` lines (`44349` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -297,6 +301,7 @@
 - `def audit_readme(readme, tracked, exists, script_source)` - *Every PRINCIPLE-005 rule a program can decide, as one error per violation. Pure: the caller*
 - `def check_readme(root)` - *Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3).*
 - `def report_readme(errors)` - *Print README findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
+- `def guideline_errors(text)` - *Problems in a project's `.aikit/guidelines.md`: over the size limit, a line under `## Rules`*
 - `def memory_dir(root)` - *Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`.*
 - `def check_workspace(root)` - *Every read-only audit of `--check`, for AIKit or for a project it builds: the codebase map*
 - `def _validate_argv(argv, known, help_text)` - *Short-circuit on --help and reject unknown flags with exit 2 (PRINCIPLE-011, PRINCIPLE-015).*
@@ -306,7 +311,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `746` lines (`37296` bytes)
+**Size**: `787` lines (`39276` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -361,6 +366,9 @@
   - Method `.setUpClass()`
   - Method `.test_every_test_method_asserts()`
   - Method `.test_no_test_module_imports_a_network_library()`
+- `class TestRepositoryReachability` - *PRINCIPLE-014 R7 live invariant over the whole repository. Integration tier with the other*
+  - Method `.test_this_repository_passes_the_shield()`
+  - Method `.test_allowlist_entries_still_exist()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestReadmeDriftShield` - *PRINCIPLE-005 live invariant. Integration tier: completeness shells out to `git ls-files`.*
@@ -383,7 +391,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3895` lines (`217958` bytes)
+**Size**: `3935` lines (`220621` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -618,8 +626,6 @@
   - Method `.test_detects_capability_with_zero_production_call_sites()`
   - Method `.test_detects_state_key_read_with_no_producer()`
   - Method `.test_key_with_a_producer_is_not_flagged()`
-  - Method `.test_this_repository_passes_the_shield()`
-  - Method `.test_allowlist_entries_still_exist()`
 - `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*
   - Method `.setUpClass()`
   - Method `.test_workflow_exists()`
@@ -730,6 +736,13 @@
   - Method `.test_json_report()`
   - Method `.test_a_changed_ledger_is_reported_and_never_overwritten()`
   - Method `.test_timeout_is_reported()`
+- `class TestProjectGuidelines` - *A project's own rules, below AIKit's principles (PRINCIPLE-001 R4, PRINCIPLE-000 R6, ADR-129).*
+  - Method `.setUp()`
+  - Method `.rules(*lines)`
+  - Method `.test_memory_starts_with_the_template_which_passes_the_audit()`
+  - Method `.test_audit_names_each_broken_rule()`
+  - Method `.test_add_numbers_rules_and_refuses_an_override()`
+  - Method `.test_cold_start_commands_print_the_rules_and_their_rank()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

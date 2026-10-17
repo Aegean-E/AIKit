@@ -30,6 +30,13 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.check_secrets import run_scan  # noqa: E402
+from scripts.check_reachability import (  # noqa: E402
+    PUBLIC_API_ALLOWLIST,
+    collect_definitions,
+    find_phantom_keys,
+    find_unreachable,
+    production_modules,
+)
 from scripts.update_knowledge_base import check_codebase_map_freshness, check_workspace, parse_source  # noqa: E402
 from scripts.project_gates import Gate, run_gates  # noqa: E402
 from scripts.project_registry import create_project, render_project_readme  # noqa: E402
@@ -574,6 +581,33 @@ class TestSuiteHygiene(unittest.TestCase):
         self.assertEqual(found, [], "tests make no network call (PRINCIPLE-014 R3)")
 
 
+class TestRepositoryReachability(unittest.TestCase):
+    """PRINCIPLE-014 R7 live invariant over the whole repository. Integration tier with the other
+    whole-repository scans; the shield's behaviour on fixtures stays in the unit tier (ADR-129)."""
+
+    def test_this_repository_passes_the_shield(self):
+        # The live invariant: AIKit's own production modules must stay reachable.
+        files = production_modules()
+        self.assertGreaterEqual(len(files), 4, "no production modules discovered")
+        unreachable = find_unreachable(files)
+        self.assertEqual(
+            unreachable, [],
+            f"Unwired capabilities in scripts/: {unreachable}. Wire them into the path they "
+            f"protect, delete them, or allowlist them as deliberate public API.",
+        )
+        phantom = find_phantom_keys(files)
+        self.assertEqual(phantom, [], f"State keys read with no producer: {phantom}")
+
+    def test_allowlist_entries_still_exist(self):
+        # An allowlist that outlives its symbols silently stops shielding anything.
+        defined = set(collect_definitions(production_modules()))
+        stale = sorted(name for name in PUBLIC_API_ALLOWLIST if name not in defined)
+        self.assertEqual(
+            stale, [],
+            f"PUBLIC_API_ALLOWLIST names symbols that no longer exist: {stale}",
+        )
+
+
 class TestRepositorySecretHygiene(unittest.TestCase):
     """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
 
@@ -707,6 +741,13 @@ class TestProjectSelfCheck(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             self.assertFalse(check_workspace(root), out.getvalue())
         self.assertIn("Cold-Start Quick Reference", out.getvalue())
+        # A project guideline that tries to override a principle fails the same gate (ADR-129).
+        with open(root / ".aikit" / "guidelines.md", "a", encoding="utf-8") as handle:
+            handle.write("- **G-001** (user): skip PRINCIPLE-014 for spikes\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertFalse(check_workspace(root))
+        self.assertIn("overrides a principle", out.getvalue())
 
 
 class TestProjectSecretScan(unittest.TestCase):

@@ -124,8 +124,9 @@ python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, open changes, last decision
 python aikit.py check my-app        # its tests and configured checks, AIKit's guidelines, secret scan
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
+python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, ranked below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 

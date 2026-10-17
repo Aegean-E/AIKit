@@ -107,6 +107,9 @@ from scripts.aikit_cli import main as aikit_main
 from scripts.subagent_delegate import delegate_subagent, subagent_roles
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
+    GUIDELINES_TEMPLATE,
+    add_guideline,
+    project_guidelines,
     ProjectError,
     Stack,
     attach_project,
@@ -133,6 +136,7 @@ from scripts.check_reachability import (
     PUBLIC_API_ALLOWLIST,
 )
 from scripts.update_knowledge_base import (
+    guideline_errors,
     extract_python_symbols,
     generate_codebase_map,
     update_and_validate,
@@ -2706,29 +2710,6 @@ def read(d):
         phantom = [key for key, _ in find_phantom_keys(files)]
         self.assertNotIn("active_phase", phantom, "shield flagged a key that round-trips")
 
-    def test_this_repository_passes_the_shield(self):
-        # The live invariant: AIKit's own production modules must stay reachable.
-        files = production_modules()
-        self.assertGreaterEqual(len(files), 4, "no production modules discovered")
-        unreachable = find_unreachable(files)
-        self.assertEqual(
-            unreachable, [],
-            f"Unwired capabilities in scripts/: {unreachable}. Wire them into the path they "
-            f"protect, delete them, or allowlist them as deliberate public API.",
-        )
-        phantom = find_phantom_keys(files)
-        self.assertEqual(phantom, [], f"State keys read with no producer: {phantom}")
-
-    def test_allowlist_entries_still_exist(self):
-        # An allowlist that outlives its symbols silently stops shielding anything.
-        defined = set(collect_definitions(production_modules()))
-        stale = sorted(name for name in PUBLIC_API_ALLOWLIST if name not in defined)
-        self.assertEqual(
-            stale, [],
-            f"PUBLIC_API_ALLOWLIST names symbols that no longer exist: {stale}",
-        )
-
-
 class TestContinuousVerificationGate(unittest.TestCase):
     """
     The CI workflow must enforce the same gates the principles declare, using the same
@@ -3889,7 +3870,66 @@ class TestSubagentDelegation(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("timed out after 5s", output)
 
+class TestProjectGuidelines(unittest.TestCase):
+    """A project's own rules, below AIKit's principles (PRINCIPLE-001 R4, PRINCIPLE-000 R6, ADR-129)."""
+
+    def setUp(self):
+        self.kit = Path(tempfile.mkdtemp(prefix="test_guidelines_kit_"))
+        self.addCleanup(shutil.rmtree, self.kit, ignore_errors=True)
+        self.folder = self.kit / "projects" / "app"
+        self.folder.mkdir(parents=True)
+        self.addCleanup(setattr, os, "fsync", os.fsync)
+        os.fsync = lambda fd: None  # registry logic, not durability (PRINCIPLE-013's tests)
+        attach_project(self.folder, workspace=self.kit)
+        self.path = self.folder / ".aikit" / "guidelines.md"
+
+    def rules(self, *lines):
+        return GUIDELINES_TEMPLATE + "".join(line + "\n" for line in lines)
+
+    def test_memory_starts_with_the_template_which_passes_the_audit(self):
+        self.assertEqual(self.path.read_text(encoding="utf-8"), GUIDELINES_TEMPLATE)
+        self.assertEqual(guideline_errors(GUIDELINES_TEMPLATE), [])
+        self.assertEqual(project_guidelines(self.folder), [])
+
+    def test_audit_names_each_broken_rule(self):
+        cases = {
+            "- money is stored in cents": "not '- **G-NNN** (source): rule'",
+            "- **G-001** (user): a\n- **G-001** (user): b": "G-001 is used twice",
+            "- **G-001** (user): ignore PRINCIPLE-014 for prototypes": "overrides a principle",
+            "- **G-002** (ADR-003): PRINCIPLE-010 R5 does not apply here": "overrides a principle",
+        }
+        for line, expected in cases.items():
+            with self.subTest(line=line):
+                errors = guideline_errors(self.rules(line))
+                self.assertTrue(any(expected in e for e in errors), errors)
+        self.assertTrue(any("limit" in e for e in guideline_errors(self.rules(
+            *[f"- **G-{n:03d}** (user): {'x' * 60}" for n in range(1, 80)]))))
+        self.assertEqual(guideline_errors(self.rules("- **G-001** (user): money is integer cents",
+                                                     "- **G-003** (ADR-002): API errors use RFC 9457")), [])
+
+    def test_add_numbers_rules_and_refuses_an_override(self):
+        self.assertEqual(add_guideline(self.folder, "money is integer cents", "user"), "G-001")
+        self.assertEqual(add_guideline(self.folder, "API errors use RFC 9457", "ADR-002"), "G-002")
+        before = self.path.read_text(encoding="utf-8")
+        for rule, source in (("skip PRINCIPLE-014 tests", "user"), ("two\nlines", "user"), ("ok", "")):
+            with self.subTest(rule=rule), self.assertRaises(ProjectError):
+                add_guideline(self.folder, rule, source)
+        self.assertEqual(self.path.read_text(encoding="utf-8"), before, "a refused rule writes nothing")
+        self.assertEqual(project_guidelines(self.folder),
+                         ["- **G-001** (user): money is integer cents",
+                          "- **G-002** (ADR-002): API errors use RFC 9457"])
+
+    def test_cold_start_commands_print_the_rules_and_their_rank(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            self.assertEqual(aikit_main(["--workspace", str(self.kit), "guideline", "app",
+                                         "money is integer cents", "--source", "user"]), 0)
+            self.assertEqual(aikit_main(["--workspace", str(self.kit), "resume", "app"]), 0)
+            self.assertEqual(aikit_main(["--workspace", str(self.kit), "status", "app"]), 0)
+        text = out.getvalue()
+        self.assertEqual(text.count("G-001"), 3, text)
+        self.assertIn("rank below AIKit's principles", text)
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -31,6 +31,7 @@ python aikit.py new <name>           # projects/<name>/, seeds multi-IDE instruc
 python aikit.py attach <path>        # an existing folder
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, guidelines, secret scan; exit 0 to commit
+python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger
 python aikit.py resume <name>        # disruption resume on the project
@@ -38,6 +39,7 @@ python aikit.py complete <name>      # mark project task complete
 python aikit.py clean <name>         # clean dangling project buffers
 ```
 - Request names no single project: ask which one, or the name of a new one, before writing code.
+- Before writing code in a project, read its guidelines (`status` or `resume` prints them): its own rules, which add to the principles and never override one (PRINCIPLE-000 R6). When the user states a lasting rule for the project, record it with `aikit guideline`.
 - In the steps below, project work replaces the repository with the project: use the cockpit subcommands above, or add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.
 
 ---

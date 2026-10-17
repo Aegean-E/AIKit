@@ -1,59 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-project-kit",
+    "task_id": "project-guidelines",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792242854.1570125,
-    "completed_at": 1792242854.2855372
+    "status": "in_progress",
+    "updated_at": 1792250475.2088988
   },
   "checkpoints": [
-    {
-      "task_id": "project-principles-cockpit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[4/5] documentation, principles, and ADR-125 updated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792230949.6953015,
-      "timestamp_str": "2026-10-17 12:55:49"
-    },
-    {
-      "task_id": "project-principles-cockpit",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-principles-cockpit' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792231025.8594437,
-      "timestamp_str": "2026-10-17 12:57:05"
-    },
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] host client parity: Windsurf (.windsurfrules) and Cline (.clinerules) targets",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792231400.6353786,
-      "timestamp_str": "2026-10-17 13:03:20",
-      "impact_assessment": {
-        "why": "Enable all AI agents to use the workspace with native instruction and skill parity, and provide safe subagent delegation",
-        "benefits": "Zero-friction multi-agent portability across 7 IDEs, native Claude skill discovery, OpenCode commands, and safe subagent delegation",
-        "risks": "contract: none, additive CLI commands and target files; dependency: none, pure standard library; concurrency: subagent process races prevented by advisory locking and ledger guards; state: subagent ledger mutation prevented by read-only enforcement",
-        "mitigation": "Budget checks enforce <1600 tokens per target, closed stdin and timeouts on spawns, pre/post ledger mutation checks"
-      }
-    },
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] host client parity: Windsurf (.windsurfrules) and Cline (.clinerules) targets complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792231669.3848233,
-      "timestamp_str": "2026-10-17 13:07:49"
-    },
     {
       "task_id": "multi-agent-workspace-usage",
       "phase": "in_progress",
@@ -227,6 +181,52 @@
       "status": "completed",
       "timestamp": 1792242854.2855394,
       "timestamp_str": "2026-10-17 16:14:14"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: P000 R6 order, P001 R4 tiers, Tier 1B domain.md is AIKit-folder wide; projects have no own rule tier",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250226.2731237,
+      "timestamp_str": "2026-10-17 18:17:06"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] mechanism: .aikit/guidelines.md seeded with memory, guideline_errors audit (size, G-NNN format, unique IDs, override attempts) in check_workspace, add_guideline + aikit guideline <name> <rule> --source, status/resume print them; tests; [2/2] rules: P001 R4 project tier, P000 R6 rank, P011 R8 read before coding; docs, ADR-129",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250226.4216082,
+      "timestamp_str": "2026-10-17 18:17:06",
+      "impact_assessment": {
+        "why": "projects need their own rules (stack, conventions) without editing AIKit's universal principles or the shared Tier 1B",
+        "benefits": "per-project rules written by people or AI, loaded at cold start, mechanically checked, never able to weaken a principle",
+        "risks": "contract: new guideline command and .aikit/guidelines.md format; dependency: none; concurrency: appends under file_lock; state: new memory file, older projects get it from fix or attach",
+        "mitigation": "format and override audit in the guidelines gate; template states the rank; failing-first tests"
+      }
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250226.5715063,
+      "timestamp_str": "2026-10-17 18:17:06"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed: .aikit/guidelines.md, guideline command, audit, cold-start print (ADR-129)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250475.2088988,
+      "timestamp_str": "2026-10-17 18:21:15"
     }
   ]
 }
