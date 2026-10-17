@@ -1320,3 +1320,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `sync_all` reports an oversized domain file as `[DOMAIN RULES TOO LONG]` with `Why:`/`Fix:` and returns or exits 1. The schema `Why:` lists all five sections and the audience tag. R1 names the tag check, R6 the exit on an oversized file, and R2 states the checkable form of portability: the six generated files are the hosts' instruction surfaces, and a host is supported by adding its file to `TIER1_TARGETS`, never by a hand-written copy (PRINCIPLE-009 R7).
 - **Consequences**: Pinned by a sandboxed unit test (fails on the previous code) and the P017 table entry.
 - Cross-principle check: PRINCIPLE-000 (R7 removes an untestable guarantee; no conflict), PRINCIPLE-005 (README table; no conflict), PRINCIPLE-009 (R7 host contract is met through `TIER1_TARGETS`; no conflict), PRINCIPLE-011 (R6 triad for the oversized file; resolves the traceback), PRINCIPLE-013 (generated files; no conflict), PRINCIPLE-018 (no conflict).
+
+### ADR-109: PRINCIPLE-018 Second Pass - Pushing a Branch Without an Upstream
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: R4 pushed "to the current branch's upstream" without covering a new branch that has none, where `git push` fails: one model would stop, another would set an upstream, a third would push to any remote.
+- **Decision**: A branch without an upstream is pushed with `git push -u origin <branch>` when a remote named `origin` exists; with no remote the commit is reported as local only; with remotes but none named `origin`, the agent asks which to use.
+- **Consequences**: Pinned in the P018 table entry.
+- Cross-principle check: PRINCIPLE-001 (no conflict), PRINCIPLE-002 (no conflict), PRINCIPLE-003 (R6 ask when the remote is ambiguous; no conflict), PRINCIPLE-006 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-015 (no conflict), PRINCIPLE-016 (no conflict), PRINCIPLE-017 (no conflict), PRINCIPLE-019 (no conflict).

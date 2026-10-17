@@ -1380,6 +1380,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "It MUST NOT run `git add .`, `git add -A`, `git add --all`, `git add -u` or `git commit -a`",
                 "No hook enforces this; the agent MUST NOT commit until all three hold",
                 "it runs `git rebase --abort` and asks the user",
+                "A branch without an upstream is pushed with `git push -u origin <branch>`",
+                "with remotes but none named `origin` it asks the user which to use",
                 "to undo a pushed commit, `git revert <hash>`",
                 "says whether it was pushed",
             ],

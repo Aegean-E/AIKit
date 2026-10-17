@@ -1,75 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p017-pass2",
+    "task_id": "p018-pass2",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792223392.7905412,
-    "completed_at": 1792223431.0860288
+    "updated_at": 1792223464.5109694,
+    "completed_at": 1792223480.2691658
   },
   "checkpoints": [
-    {
-      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Codify verified benchmark ground-truth, context window selection, and multi-subagent registry in GUIDELINES.md; [2/5] Update knowledge/model_benchmarks.md with factual verified benchmarks, context windows, and citations; [3/5] Configure multi-subagent suite in opencode.jsonc and .opencode/agents/; [4/5] Update tests in tests/test_kit.py and record ADR-105 in knowledge/decisions.md; [5/5] Synchronize principles, update knowledge base, and pass all verification gates.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792192761.6352181,
-      "timestamp_str": "2026-10-17 02:19:21",
-      "impact_assessment": {
-        "why": "Ensure model benchmarks are empirically verified ground-truth facts, model selection factors in context window capacity, and specialized subagents are available for distinct engineering roles",
-        "benefits": "Guarantees reliable unhallucinated subagent routing, matches model context windows to task payloads to prevent clipping, and provides specialized agent roles with mechanical guardrails",
-        "risks": "contract: principle wording changes must pass test_kit assertions; dependency: all models remain in declared free/local providers; concurrency: multi-subagent headless runs must maintain ledger isolation; state: task_ledger updated atomically",
-        "mitigation": "Sync tests with exact principle rule text, maintain closed stdin on all subagent profiles, verify 100% test pass rate"
-      }
-    },
-    {
-      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[1/5] Codifying verified benchmark ground-truth, context window selection, and multi-subagent registry in GUIDELINES.md",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792192766.745044,
-      "timestamp_str": "2026-10-17 02:19:26"
-    },
-    {
-      "task_id": "ground-truth-benchmarks-context-and-multi-subagents",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ground-truth-benchmarks-context-and-multi-subagents' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792193147.6997638,
-      "timestamp_str": "2026-10-17 02:25:47"
-    },
-    {
-      "task_id": "multi-host-client-portability-and-skill-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Codify Host Client Portability & Cross-Environment Skill Parity as PRINCIPLE-009 R7 and update PRINCIPLE-017 R2 in GUIDELINES.md; [2/5] Create knowledge/host_clients.md and register in INDEX.md, CORE_DOCS, and README.md; [3/5] Universalize .agents/skills/aikit/SKILL.md to support Antigravity, Claude, and future host harnesses; [4/5] Update tests in tests/test_kit.py and record ADR-106 in knowledge/decisions.md; [5/5] Synchronize principles, update knowledge base, and pass all verification gates.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792193368.0593188,
-      "timestamp_str": "2026-10-17 02:29:28",
-      "impact_assessment": {
-        "why": "Enable seamless host environment portability across Antigravity, Claude, and future agent clients while preserving unified disruption recovery and skill parity",
-        "benefits": "Eliminates single-vendor lock-in, projects operational skills and Tier 1 rules into Claude and other IDEs, and guarantees zero disruption state loss when switching host clients",
-        "risks": "contract: rule count and wording changes in PRINCIPLE-009 must pass test_kit; dependency: all host integrations remain stdlib without external packages; concurrency: multi-client state synchronized through shared WAL ledger; state: task_ledger updated atomically",
-        "mitigation": "Sync tests with exact principle rule text, maintain advisory file locking, verify 100% test pass rate"
-      }
-    },
-    {
-      "task_id": "multi-host-client-portability-and-skill-parity",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[1/5] Codifying Host Client Portability & Cross-Environment Skill Parity as PRINCIPLE-009 R7 and update PRINCIPLE-017 R2 in GUIDELINES.md",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792193373.8004055,
-      "timestamp_str": "2026-10-17 02:29:33"
-    },
     {
       "task_id": "multi-host-client-portability-and-skill-parity",
       "phase": "completed",
@@ -227,6 +166,61 @@
       "status": "completed",
       "timestamp": 1792223431.08603,
       "timestamp_str": "2026-10-17 10:50:31"
+    },
+    {
+      "task_id": "p018-pass2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "pass 2: push scenarios",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223453.456459,
+      "timestamp_str": "2026-10-17 10:50:53"
+    },
+    {
+      "task_id": "p018-pass2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] P018 pass 2: a branch without upstream is pushed with -u to origin; several remotes and no upstream -> ask; ADR-109",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223453.5801744,
+      "timestamp_str": "2026-10-17 10:50:53",
+      "impact_assessment": {
+        "why": "R4 left the no-upstream case open",
+        "benefits": "one push behaviour",
+        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
+        "mitigation": "pins; cross-principle line"
+      }
+    },
+    {
+      "task_id": "p018-pass2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223453.7048414,
+      "timestamp_str": "2026-10-17 10:50:53"
+    },
+    {
+      "task_id": "p018-pass2",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223464.5109694,
+      "timestamp_str": "2026-10-17 10:51:04"
+    },
+    {
+      "task_id": "p018-pass2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'p018-pass2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792223480.2691677,
+      "timestamp_str": "2026-10-17 10:51:20"
     }
   ]
 }
