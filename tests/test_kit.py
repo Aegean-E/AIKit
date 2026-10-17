@@ -4216,13 +4216,52 @@ class TestProjectPublish(unittest.TestCase):
             self.assertEqual(len(extracted), 200)
             self.assertTrue(extracted.endswith("..."))
 
+            # Badges and images are stripped, finding the real description
+            badge_md = (
+                "# my-app\n\n"
+                "[![CI Status](https://img.shields.io/ci)](https://example.com)\n"
+                "![License](https://img.shields.io/license)\n\n"
+                "A clean tool built with [Python](https://python.org).\n\n"
+                "## Usage\n"
+            )
+            (root / "README.md").write_text(badge_md, encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "A clean tool built with Python.")
+
+            # HTML comments and tags are cleaned
+            html_md = "# my-app\n\n<!-- intro --> <p>Fast and robust library.</p>\n"
+            (root / "README.md").write_text(html_md, encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "Fast and robust library.")
+
+            # README without # header
+            no_header_md = "A standalone tool with no top heading.\n\nMore details later.\n"
+            (root / "README.md").write_text(no_header_md, encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "A standalone tool with no top heading.")
+
     def test_get_project_repo_url(self):
         root = Path("/p/app")
         # No remote
         self.assertIsNone(get_project_repo_url(root, runner=self.runner(**{"get-url": (1, "")})))
-        # Configured remote
+        # Configured remote via runner
         url = get_project_repo_url(root, runner=self.runner(**{"get-url": (0, "https://github.com/me/app.git\n")}))
         self.assertEqual(url, "https://github.com/me/app.git")
+
+        # Direct .git/config parsing (zero process spawns) with duplicate fetch entries and comments
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            git_dir = tmp_root / ".git"
+            git_dir.mkdir()
+            config = (
+                "# Repository configuration\n"
+                "[core]\n"
+                "\trepositoryformatversion = 0\n"
+                "[remote \"origin\"]\n"
+                "\turl = https://github.com/team/core-app.git\n"
+                "\tfetch = +refs/heads/*:refs/remotes/origin/*\n"
+                "\tfetch = +refs/tags/*:refs/tags/*\n"
+                "; trailing comment\n"
+            )
+            (git_dir / "config").write_text(config, encoding="utf-8")
+            self.assertEqual(get_project_repo_url(tmp_root), "https://github.com/team/core-app.git")
 
     def test_publish_passes_extracted_description(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -4240,8 +4279,20 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(self.made("push"), [])
 
-        # 2. Up to date -> returncode 0, no push
-        # 'get-url' succeeds, '@{u}' succeeds, 'log' returns empty
+        # 2. No commits on HEAD -> returncode 0, no push
+        def no_commit_runner(argv, cwd):
+            self.calls.append(argv)
+            if "get-url" in argv:
+                return 0, "https://github.com/me/app.git"
+            if "rev-parse" in argv and "HEAD" in argv:
+                return 128, "fatal: ambiguous argument 'HEAD'"
+            return 0, ""
+        self.calls = []
+        code, msg = auto_push_project(root, "app", runner=no_commit_runner)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.made("push"), [])
+
+        # 3. Up to date with upstream -> returncode 0, no push
         def up_to_date_runner(argv, cwd):
             self.calls.append(argv)
             if "get-url" in argv:
@@ -4256,7 +4307,7 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(self.made("push"), [])
 
-        # 3. Ahead -> runs push
+        # 4. Ahead of upstream -> runs git push origin HEAD
         def ahead_runner(argv, cwd):
             self.calls.append(argv)
             if "get-url" in argv:
@@ -4271,10 +4322,28 @@ class TestProjectPublish(unittest.TestCase):
         self.calls = []
         code, msg = auto_push_project(root, "app", runner=ahead_runner)
         self.assertEqual(code, 0)
-        self.assertEqual(len(self.made("push")), 1)
+        push_call = self.made("push")[0]
+        self.assertEqual(push_call, ["git", "push", "origin", "HEAD"])
         self.assertIn("Pushed 'app'", msg)
 
-        # 4. Push fails -> returns 1 with triad
+        # 5. Upstream not configured -> runs git push -u origin HEAD
+        def no_upstream_runner(argv, cwd):
+            self.calls.append(argv)
+            if "get-url" in argv:
+                return 0, "https://github.com/me/app.git"
+            if "@{u}" in argv:
+                return 128, "fatal: no upstream configured"
+            if "push" in argv:
+                return 0, "pushed successfully"
+            return 0, ""
+        self.calls = []
+        code, msg = auto_push_project(root, "app", runner=no_upstream_runner)
+        self.assertEqual(code, 0)
+        push_call = self.made("push")[0]
+        self.assertEqual(push_call, ["git", "push", "-u", "origin", "HEAD"])
+        self.assertIn("Pushed 'app'", msg)
+
+        # 6. Push fails -> returns 1 with triad
         def fail_runner(argv, cwd):
             self.calls.append(argv)
             if "get-url" in argv:

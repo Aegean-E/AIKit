@@ -783,5 +783,54 @@ class TestProjectGateShell(unittest.TestCase):
         self.assertEqual(Path(results[0].output.strip()).resolve(), folder.resolve())
 
 
+class TestProjectPublishLifecycle(unittest.TestCase):
+    """Publishing visibility and check --no-push with real processes and git checkouts (ADR-134, ADR-135)."""
+
+    def test_project_status_list_repo_and_check_no_push(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_publish_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
+
+        # 1. Status initially shows local only (no remote)
+        res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "status", "app"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=PROC_TIMEOUT)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertIn("Repo:      none (local only", res.stdout)
+
+        # 2. Add an origin remote
+        fake_url = "https://github.com/test-owner/test-app.git"
+        subprocess.run(["git", "remote", "add", "origin", fake_url], cwd=root, timeout=PROC_TIMEOUT, check=True)
+
+        # 3. Status now reveals the repo URL
+        res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "status", "app"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=PROC_TIMEOUT)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertIn(f"Repo:      {fake_url}", res.stdout)
+
+        # 4. List also displays the repo URL
+        res_list = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "list"],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                  timeout=PROC_TIMEOUT)
+        self.assertEqual(res_list.returncode, 0, res_list.stdout + res_list.stderr)
+        self.assertIn(f"repo: {fake_url}", res_list.stdout)
+
+        # 5. Check with --no-push runs gates and succeeds without attempting network push
+        res_check = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
+                                    "check", "app", "--no-push"],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                   timeout=PROC_TIMEOUT)
+        self.assertEqual(res_check.returncode, 0, res_check.stdout + res_check.stderr)
+        self.assertIn("gates passed for 'app'", res_check.stdout)
+        self.assertNotIn("auto-pushing", res_check.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

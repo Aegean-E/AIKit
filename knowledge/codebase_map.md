@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `14`
-- **Total Classes**: `68`
-- **Total Functions / Methods**: `197`
-- **Total Source Lines**: `10889`
+- **Total Classes**: `69`
+- **Total Functions / Methods**: `198`
+- **Total Source Lines**: `11040`
 
 ---
 
@@ -187,11 +187,12 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `190` lines (`8760` bytes)
+**Size**: `223` lines (`10336` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
+- `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
 - `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for the GitHub description.*
 - `def get_project_repo_url(project_root, runner)` - *Return the URL of the project's 'origin' remote, or None if not configured.*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
@@ -332,7 +333,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `787` lines (`39315` bytes)
+**Size**: `836` lines (`42272` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -406,13 +407,15 @@
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
   - Method `.test_shell_keeps_quotes_and_reports_exit_codes()`
+- `class TestProjectPublishLifecycle` - *Publishing visibility and check --no-push with real processes and git checkouts (ADR-134, ADR-135).*
+  - Method `.test_project_status_list_repo_and_check_no_push()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4297` lines (`239508` bytes)
+**Size**: `4366` lines (`242869` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

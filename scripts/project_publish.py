@@ -8,6 +8,7 @@ logged in, and a secret scan of every file the project tracks is clean (PRINCIPL
 never forced (PRINCIPLE-018 R4).
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +37,23 @@ def _triad(what: str, why: str, fix: str) -> str:
     return f"Error: {what}\nWhy: {why}\nFix: {fix}"
 
 
+def _clean_markdown_line(raw: str) -> str:
+    """Strip markdown formatting, badges, and html tags from a single line."""
+    line = re.sub(r"<!--.*?-->", "", raw)
+    line = re.sub(r"<[^>]+>", "", line)
+    # Strip clickable badges/images: [![alt](img_url)](link_url)
+    line = re.sub(r"\[\s*!\[.*?\](?:\(.*?\)|\[.*?\])\s*\](?:\(.*?\)|\[.*?\])", "", line)
+    # Strip standalone images and badges: ![alt](url) or ![alt][ref]
+    line = re.sub(r"!\[.*?\](?:\(.*?\)|\[.*?\])", "", line)
+    # Strip any empty links: [](url)
+    line = re.sub(r"\[\s*\](?:\(.*?\)|\[.*?\])", "", line)
+    # Replace markdown links [text](url) with text
+    line = re.sub(r"\[([^\]]+)\](?:\(.*?\)|\[.*?\])", r"\1", line)
+    # Remove markdown formatting characters
+    line = line.replace("**", "").replace("*", "").replace("`", "").replace("~~", "")
+    return line.lstrip(">*- \t").strip()
+
+
 def extract_readme_description(project_root: Path) -> str:
     """Extract a single-line summary from the project's README.md for the GitHub description."""
     readme = project_root / "README.md"
@@ -46,7 +64,8 @@ def extract_readme_description(project_root: Path) -> str:
     except OSError:
         return ""
     desc_lines: List[str] = []
-    past_header = False
+    has_header = any(line.strip().startswith("#") for line in content.splitlines())
+    past_header = not has_header
     for line in content.splitlines():
         stripped = line.strip()
         if not past_header:
@@ -59,7 +78,7 @@ def extract_readme_description(project_root: Path) -> str:
             continue
         if stripped.startswith("#"):
             break
-        clean = stripped.lstrip(">*- ").strip().replace("**", "").replace("*", "").replace("`", "")
+        clean = _clean_markdown_line(stripped)
         if clean:
             desc_lines.append(clean)
     text = " ".join(desc_lines).strip()
@@ -93,18 +112,25 @@ def get_project_repo_url(project_root: Path, runner: Optional[Runner] = None) ->
         return None
 
     try:
-        import configparser
-        cp = configparser.ConfigParser()
-        cp.read(config_file, encoding="utf-8")
-        for section in cp.sections():
-            if section.strip() == 'remote "origin"' and "url" in cp[section]:
-                return cp[section]["url"].strip()
-    except (OSError, configparser.Error):
+        lines = config_file.read_text(encoding="utf-8", errors="replace").splitlines()
+        in_origin = False
+        for raw_line in lines:
+            line = raw_line.strip()
+            if not line or line.startswith(("#", ";")):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                header = line[1:-1].strip()
+                normalized_header = re.sub(r"\s+", " ", header)
+                in_origin = (normalized_header == 'remote "origin"')
+                continue
+            if in_origin and "=" in line:
+                key, val = line.split("=", 1)
+                if key.strip() == "url":
+                    return val.strip()
+    except OSError:
         return None
 
     return None
-
-
 
 
 def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = None) -> Tuple[int, str]:
@@ -118,14 +144,21 @@ def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = 
     if not url:
         return 0, ""
 
+    # If HEAD cannot be resolved (no commits made yet), nothing to push
+    if run(["git", "rev-parse", "--verify", "HEAD"], project_root)[0] != 0:
+        return 0, ""
+
     # Check whether unpushed commits exist ahead of upstream
     code_up, _ = run(["git", "rev-parse", "--verify", "@{u}"], project_root)
     if code_up == 0:
         code_diff, diff_out = run(["git", "log", "@{u}..HEAD", "--oneline"], project_root)
         if code_diff == 0 and not diff_out.strip():
             return 0, ""
+        push_cmd = ["git", "push", "origin", "HEAD"]
+    else:
+        push_cmd = ["git", "push", "-u", "origin", "HEAD"]
 
-    code_push, push_out = run(["git", "push", "origin", "HEAD"], project_root)
+    code_push, push_out = run(push_cmd, project_root)
     if code_push != 0:
         return 1, _triad(
             f"auto-pushing '{name}' to {url} failed.\n{push_out[-400:]}",
