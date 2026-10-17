@@ -69,6 +69,8 @@ from scripts.sync_principles import (
     render_tier1_target,
     is_generated_target,
     involved_principles,
+    sync_workspace,
+    sync_project,
 )
 from scripts.disruption_recovery import (
     load_ledger,
@@ -116,6 +118,7 @@ from scripts.project_registry import (
     list_projects,
     load_config,
     validate_name,
+    PROJECT_INSTRUCTION_TARGETS,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -3664,6 +3667,10 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(workspace_ledger_path(self.kit), self.kit / ".agents" / "task_ledger.json")
         self.assertTrue((folder / "AGENTS.md").is_file())
         self.assertIn("Project Instructions (svc)", (folder / "AGENTS.md").read_text(encoding="utf-8"))
+        for rel in PROJECT_INSTRUCTION_TARGETS:
+            self.assertTrue((folder / rel).is_file(), f"Target {rel} not seeded")
+        self.assertTrue((folder / "README.md").is_file())
+        self.assertTrue((folder / ".aikit" / "task_ledger.json").is_file())
         # The template's commented example is not a decision; real entries are, newest last.
         self.assertIsNone(latest_decision(folder))
         with open(folder / ".aikit" / "decisions.md", "a", encoding="utf-8") as handle:
@@ -3712,6 +3719,76 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
         self.assertTrue((folder / ".aikit" / "codebase_map.md").is_file())
         self.assertFalse((folder / "state.json.tmp_dangling").exists())
+
+    def test_cockpit_lifecycle_checkpoint_resume_complete_clean(self):
+        folder = self.make_folder()
+        attach_project(folder, "demo", workspace=self.kit)
+
+        # 1. Checkpoint
+        stdout = io.StringIO()
+        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
+             contextlib.redirect_stdout(stdout):
+            exit_code = aikit_main([
+                "checkpoint", "demo",
+                "--task", "task-alpha",
+                "--phase-num", "2",
+                "--desc", "[1/2] setup database",
+                "--why", "needed for storage",
+                "--benefits", "persistent state",
+                "--risks", "contract: none dependency: none concurrency: none state: none",
+                "--mitigation", "none",
+            ])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("[OK] Checkpoint recorded for 'demo'", stdout.getvalue())
+        ledger = load_ledger(folder / ".aikit" / "task_ledger.json")
+        self.assertEqual(ledger["active_task"]["task_id"], "task-alpha")
+        self.assertEqual(ledger["active_task"]["active_phase"], 2)
+
+        # 2. Resume
+        stdout = io.StringIO()
+        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
+             contextlib.redirect_stdout(stdout):
+            exit_code = aikit_main(["resume", "demo"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("task-alpha", stdout.getvalue())
+        self.assertIn("setup database", stdout.getvalue())
+
+        # 3. Complete
+        stdout = io.StringIO()
+        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
+             contextlib.redirect_stdout(stdout):
+            exit_code = aikit_main(["complete", "demo"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Marked task 'task-alpha' completed", stdout.getvalue())
+        ledger = load_ledger(folder / ".aikit" / "task_ledger.json")
+        self.assertEqual(ledger["active_task"]["status"], "completed")
+
+        # 4. Clean
+        (folder / "temp.tmp_12345").write_text("temporary", encoding="utf-8")
+        stdout = io.StringIO()
+        with mock.patch("scripts.aikit_cli._active_workspace", return_value=self.kit), \
+             contextlib.redirect_stdout(stdout):
+            exit_code = aikit_main(["clean", "demo", "--force"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Purged 1 temporary file(s)", stdout.getvalue())
+        self.assertFalse((folder / "temp.tmp_12345").exists())
+
+    def test_sync_principles_workspace_sync_and_check(self):
+        folder = self.make_folder()
+        attach_project(folder, "proj", workspace=self.kit)
+
+        # Initially all 6 instruction files are in sync
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 0)
+
+            # Mutate one generated instruction target
+            claude_path = folder / "CLAUDE.md"
+            claude_path.write_text("# Claude Instructions (proj)\n\n> Governed by AIKit\n\nout of sync", encoding="utf-8")
+            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 1)
+
+            # Re-sync
+            self.assertEqual(sync_workspace(folder, check_only=False, exit_on_mismatch=False), 0)
+            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 0)
 
 class TestProjectGates(unittest.TestCase):
     """A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122)."""

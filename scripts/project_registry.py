@@ -48,19 +48,68 @@ DECISIONS_TEMPLATE = (
     "-->\n"
 )
 # Tier 1 project guidelines seeded for AI host agents (Claude, Gemini, Antigravity, Cursor, Copilot).
-AGENTS_TEMPLATE = (
-    "# Project Instructions ({name})\n\n"
+PROJECT_INSTRUCTION_TARGETS: Dict[str, str] = {
+    "AGENTS.md": "# Project Instructions ({name})",
+    "GEMINI.md": "# Gemini Instructions ({name})",
+    "CLAUDE.md": "# Claude Instructions ({name})",
+    ".cursorrules": "# Cursor Rules ({name})",
+    ".github/copilot-instructions.md": "# Copilot Instructions ({name})",
+    ".agents/rules/principles.md": "# Workspace Agent Rules ({name})",
+}
+
+PROJECT_INSTRUCTIONS_BODY = (
     "> Governed by AIKit architecture, quality principles, and disruption recovery.\n\n"
     "## Core Operational Invariants\n"
     "- **Phase 4 Quality Gate**: Every commit must pass all Phase 4 gates: `python aikit.py check {name}`. Zero uncommitted defects.\n"
     "- **Architectural Decisions (ADR)**: Architectural changes and design decisions are recorded as monotonic, sequential ADRs in `.aikit/decisions.md` (PRINCIPLE-016 R3).\n"
-    "- **Task Ledger & Disruption Recovery**: Long-running tasks and milestones are checkpointed in `.aikit/task_ledger.json` with `python scripts/disruption_recovery.py --workspace . --checkpoint <task> ...` (PRINCIPLE-006).\n"
+    "- **Task Ledger & Disruption Recovery**: Long-running tasks and milestones are checkpointed in `.aikit/task_ledger.json` with `python aikit.py checkpoint {name} ...` (PRINCIPLE-006).\n"
     "- **Code Quality Primacy**: No unfinished code markers (TODO/FIXME/XXX/HACK), no stub implementations (`pass`, `...`, `NotImplementedError` outside interfaces), and no unnamed suppressions (PRINCIPLE-007 R3).\n"
     "- **Modularity & Clean Architecture**: No junk-drawer modules (`utils`, `helpers`), role interfaces bounded to 1-5 methods, no circular imports (PRINCIPLE-009).\n"
     "- **Resource Optimization**: Explicit `timeout=` on every subprocess call; `open()` only in `with` statements (PRINCIPLE-010).\n"
     "- **Zero-Friction Reliability**: No bare `os.environ[...]` reads without safe defaults (PRINCIPLE-011).\n"
     "- **Secret & Sensitive Data Hygiene**: Zero credentials committed to git or logs; scanned on every check (PRINCIPLE-019).\n"
 )
+
+
+def render_project_instructions(name: str, heading_template: str) -> str:
+    heading = heading_template.format(name=name)
+    body = PROJECT_INSTRUCTIONS_BODY.format(name=name)
+    return f"{heading}\n\n{body}"
+
+
+AGENTS_TEMPLATE = render_project_instructions("{name}", PROJECT_INSTRUCTION_TARGETS["AGENTS.md"])
+
+
+def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
+    test_cmd = test_command or f"python aikit.py check {name}"
+    return (
+        f"# {name}\n\n"
+        "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
+        "- **Runtime Prerequisites**: Git, Python 3.8+ (for AIKit memory and gates)\n"
+        "- **Canonical Regression Shield Gate**:\n"
+        "  ```bash\n"
+        f"  {test_cmd}\n"
+        "  ```\n\n"
+        "### 🛠️ AIKit Gates\n"
+        "| Role | Command |\n"
+        "|---|---|\n"
+        f"| Project status and gates | `python aikit.py status {name}` |\n"
+        f"| Run Phase 4 verification | `python aikit.py check {name}` |\n"
+        f"| Self-heal project memory | `python aikit.py fix {name}` |\n"
+        f"| Resume interrupted task | `python aikit.py resume {name}` |\n\n"
+        "## 📦 What's Inside\n\n"
+        "```text\n"
+        f"{name}/\n"
+        "├── README.md\n"
+        "├── AGENTS.md\n"
+        "├── CLAUDE.md\n"
+        "├── GEMINI.md\n"
+        "├── .cursorrules\n"
+        "├── .github/\n"
+        "├── .agents/\n"
+        "└── .aikit/\n"
+        "```\n"
+    )
 SCHEMA_VERSION = 1
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 GIT_TIMEOUT_SECONDS = 30
@@ -226,7 +275,8 @@ def _ensure_gitignore(project_root: Path) -> None:
 
 def write_memory(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
     """
-    Create the project's `.aikit/project.json`, `.aikit/decisions.md`, and `AGENTS.md` unless they exist.
+    Create the project's `.aikit/project.json`, `.aikit/decisions.md`, `.aikit/task_ledger.json`,
+    multi-IDE instruction targets, and `README.md` unless they exist.
     Returns whether `project.json` was created: existing memory is never overwritten.
     """
     path = config_path(project_root)
@@ -235,9 +285,18 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     if not decisions.exists():
         decisions.parent.mkdir(parents=True, exist_ok=True)
         decisions.write_text(DECISIONS_TEMPLATE, encoding="utf-8")
-    agents_path = project_root / AGENTS_FILENAME
-    if not agents_path.exists():
-        agents_path.write_text(AGENTS_TEMPLATE.format(name=name), encoding="utf-8")
+    ledger_path = project_root / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
+    if not ledger_path.exists():
+        ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(ledger_path, {"version": 1, "active_task": None, "checkpoints": []})
+    for rel_path, heading_tmpl in PROJECT_INSTRUCTION_TARGETS.items():
+        target = project_root / rel_path
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(render_project_instructions(name, heading_tmpl), encoding="utf-8")
+    readme_path = project_root / "README.md"
+    if not readme_path.exists():
+        readme_path.write_text(render_project_readme(name, test_command), encoding="utf-8")
     if path.exists():
         return False
     atomic_write_json(path, {
@@ -304,7 +363,7 @@ def _run_git(project_root: Path, *args: str) -> "subprocess.CompletedProcess[str
 
 def _git_start(project_root: Path) -> Optional[str]:
     """
-    `git init`, then commit the project's `.aikit/` memory so a new project starts clean. Returns
+    `git init`, then commit the project's memory and instructions so a new project starts clean. Returns
     a warning when the commit could not be made (typically no git identity): the project is
     still usable, and AIKit never invents an author.
     """
@@ -315,7 +374,11 @@ def _git_start(project_root: Path) -> Optional[str]:
             "every project is its own git repository, separate from AIKit's.",
             "fix the git error above, then run the command again.",
         )
-    _run_git(project_root, "add", "--", ".gitignore", AGENTS_FILENAME, PROJECT_MEMORY_DIRNAME)
+    stage_items = [".gitignore", "README.md", PROJECT_MEMORY_DIRNAME]
+    for rel_path in PROJECT_INSTRUCTION_TARGETS:
+        stage_items.append(rel_path.split("/")[0])
+    stage_items = sorted(list(dict.fromkeys(stage_items)))
+    _run_git(project_root, "add", "--", *stage_items)
     result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
     if result.returncode != 0:
         # git's last stderr line is the cause; the lines before it are generic advice.

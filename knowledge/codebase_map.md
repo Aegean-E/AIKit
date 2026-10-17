@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `12`
-- **Total Classes**: `61`
-- **Total Functions / Methods**: `165`
-- **Total Source Lines**: `9587`
+- **Total Classes**: `62`
+- **Total Functions / Methods**: `173`
+- **Total Source Lines**: `10039`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `236` lines (`10018` bytes)
+**Size**: `354` lines (`15486` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -40,6 +40,10 @@
 - `def cmd_list(args)`
 - `def present_project(name)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def cmd_status(args)`
+- `def cmd_resume(args)`
+- `def cmd_checkpoint(args)`
+- `def cmd_complete(args)`
+- `def cmd_clean(args)`
 - `def cmd_check(args)`
 - `def cmd_fix(args)` - *Self-heal project memory, clean dangling temporary buffers, and sync codebase map.*
 - `def main(argv)`
@@ -177,7 +181,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `444` lines (`19674` bytes)
+**Size**: `507` lines (`22337` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -186,6 +190,8 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
+- `def render_project_instructions(name, heading_template)`
+- `def render_project_readme(name, test_command)`
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
 - `def node_runner(root)` - *The package manager the project's lockfile names: pnpm, yarn, or npm by default.*
@@ -198,12 +204,12 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md`, and `AGENTS.md` unless they exist.*
+- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md`, `.aikit/task_ledger.json`,*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
 - `def _run_git(project_root, *args)`
-- `def _git_start(project_root)` - *`git init`, then commit the project's `.aikit/` memory so a new project starts clean. Returns*
+- `def _git_start(project_root)` - *`git init`, then commit the project's memory and instructions so a new project starts clean. Returns*
 - `def create_project(name, test_command, workspace, git_start)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
 - `def _build_project(name, path, attached)`
@@ -216,7 +222,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `738` lines (`36394` bytes)
+**Size**: `879` lines (`43099` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -232,7 +238,9 @@
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
-- `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
+- `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file, workspace)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
+- `def sync_project(workspace, check_only, exit_on_mismatch)` - *Synchronize or verify multi-IDE instruction files for an AIKit-managed project workspace.*
+- `def sync_workspace(workspace, check_only, exit_on_mismatch, domain_path)` - *Synchronize or verify instruction targets for any workspace or project folder.*
 - `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
 - `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
 - `def citing_principles(ssot_text, pid)` - *The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose*
@@ -282,7 +290,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `704` lines (`34548` bytes)
+**Size**: `757` lines (`37198` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -341,6 +349,8 @@
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
+- `class TestProjectCockpitCli` - *`aikit checkpoint/resume/complete/clean` CLI lifecycle commands for projects.*
+  - Method `.test_cockpit_cli_workflow()`
 - `class TestProjectFixCommand` - *`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates.*
   - Method `.test_fix_self_heals_missing_memory_and_cleans_buffers()`
   - Method `.test_project_with_custom_readme_passes_aikit_check()`
@@ -354,7 +364,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3803` lines (`212431` bytes)
+**Size**: `3880` lines (`216217` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -680,6 +690,8 @@
   - Method `.test_status_names_unknown_and_missing_projects()`
   - Method `.test_fix_cli_reports_triad_on_unknown_project()`
   - Method `.test_fix_in_process_heals_missing_files_and_cleans_buffers()`
+  - Method `.test_cockpit_lifecycle_checkpoint_resume_complete_clean()`
+  - Method `.test_sync_principles_workspace_sync_and_check()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`

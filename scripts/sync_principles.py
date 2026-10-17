@@ -7,6 +7,7 @@ budget, rejects duplicate principle IDs, checks README parity, injects optional 
 rules, and refuses to overwrite any target it did not generate.
 """
 
+import json
 import os
 import re
 import sys
@@ -18,6 +19,34 @@ AGENTS_MD = ROOT_DIR / "AGENTS.md"
 GUIDELINES_MD = ROOT_DIR / "GUIDELINES.md"
 README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
+
+try:
+    from scripts.project_registry import PROJECT_INSTRUCTION_TARGETS, render_project_instructions
+except ImportError:
+    PROJECT_INSTRUCTION_TARGETS = {
+        "AGENTS.md": "# Project Instructions ({name})",
+        "GEMINI.md": "# Gemini Instructions ({name})",
+        "CLAUDE.md": "# Claude Instructions ({name})",
+        ".cursorrules": "# Cursor Rules ({name})",
+        ".github/copilot-instructions.md": "# Copilot Instructions ({name})",
+        ".agents/rules/principles.md": "# Workspace Agent Rules ({name})",
+    }
+
+    def render_project_instructions(name: str, heading_template: str) -> str:
+        heading = heading_template.format(name=name)
+        return (
+            f"{heading}\n\n"
+            "> Governed by AIKit architecture, quality principles, and disruption recovery.\n\n"
+            "## Core Operational Invariants\n"
+            f"- **Phase 4 Quality Gate**: Every commit must pass all Phase 4 gates: `python aikit.py check {name}`. Zero uncommitted defects.\n"
+            "- **Architectural Decisions (ADR)**: Architectural changes and design decisions are recorded as monotonic, sequential ADRs in `.aikit/decisions.md` (PRINCIPLE-016 R3).\n"
+            f"- **Task Ledger & Disruption Recovery**: Long-running tasks and milestones are checkpointed in `.aikit/task_ledger.json` with `python aikit.py checkpoint {name} ...` (PRINCIPLE-006).\n"
+            "- **Code Quality Primacy**: No unfinished code markers (TODO/FIXME/XXX/HACK), no stub implementations (`pass`, `...`, `NotImplementedError` outside interfaces), and no unnamed suppressions (PRINCIPLE-007 R3).\n"
+            "- **Modularity & Clean Architecture**: No junk-drawer modules (`utils`, `helpers`), role interfaces bounded to 1-5 methods, no circular imports (PRINCIPLE-009).\n"
+            "- **Resource Optimization**: Explicit `timeout=` on every subprocess call; `open()` only in `with` statements (PRINCIPLE-010).\n"
+            "- **Zero-Friction Reliability**: No bare `os.environ[...]` reads without safe defaults (PRINCIPLE-011).\n"
+            "- **Secret & Sensitive Data Hygiene**: Zero credentials committed to git or logs; scanned on every check (PRINCIPLE-019).\n"
+        )
 
 # Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
 # thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
@@ -35,7 +64,7 @@ SSOT_MD = GUIDELINES_MD
 
 # Markers proving a file was written by this tool (current, then legacy pre-ADR-048 headers).
 # Anything else is hand-authored and must never be overwritten by a sync.
-GENERATED_MARKERS = ("Generated from `", "(Tier 1 Invariants)")
+GENERATED_MARKERS = ("Generated from `", "(Tier 1 Invariants)", "Governed by AIKit")
 
 
 def is_generated_target(text: str) -> bool:
@@ -375,7 +404,8 @@ def sync_all(
     check_only: bool = False,
     exit_on_mismatch: bool = True,
     domain_path: Optional[Path] = None,
-    readme_file: Path = README_MD,
+    readme_file: Optional[Path] = None,
+    workspace: Optional[Path] = None,
 ) -> int:
     """
     Generate every always-injected Tier 1 target from the principle SSOT.
@@ -383,42 +413,48 @@ def sync_all(
     Returns the number of problems found - 0 means success in both write and check modes. With
     `exit_on_mismatch=True` (the CLI) any problem exits 1 instead of returning.
     """
-    if not SSOT_MD.exists():
-        print(f"Error: Master file {SSOT_MD} not found.")
+    root = (workspace or ROOT_DIR).resolve()
+    ssot_file = root / "GUIDELINES.md" if workspace else SSOT_MD
+    agents_file = root / "AGENTS.md" if workspace else AGENTS_MD
+    readme_file = readme_file or (root / "README.md")
+    domain_path = domain_path or (root / ".agents" / "rules" / "domain.md")
+
+    if not ssot_file.exists():
+        print(f"Error: Master file {ssot_file} not found.")
         if exit_on_mismatch:
             sys.exit(1)
         return 1
 
     try:
-        principles = parse_principles(SSOT_MD, strict=True)
+        principles = parse_principles(ssot_file, strict=True)
     except ValueError as schema_error:
         # Distinguish an unmigrated pre-ADR-048 layout (rules still in AGENTS.md) from a genuine
         # schema defect, and never surface either as a raw traceback (PRINCIPLE-011 R6).
         legacy = False
-        if AGENTS_MD.exists() and not is_generated_target(AGENTS_MD.read_text(encoding="utf-8")):
+        if agents_file.exists() and not is_generated_target(agents_file.read_text(encoding="utf-8")):
             try:
-                legacy = bool(parse_principles(AGENTS_MD, strict=True))
+                legacy = bool(parse_principles(agents_file, strict=True))
             except ValueError:
                 legacy = False
         if legacy:
             sys.stderr.write(
                 f"[MIGRATION REQUIRED] The principles still live in AGENTS.md (pre-ADR-048 layout).\n"
-                f"Why: {SSOT_MD.name} is now the single source of truth and AGENTS.md is generated, "
+                f"Why: {ssot_file.name} is now the single source of truth and AGENTS.md is generated, "
                 f"because AGENTS.md-convention agents auto-load it as always-on context.\n"
                 f"Fix: move each '### PRINCIPLE-NNN:' section (Concept/Invariant/Rules) from AGENTS.md "
-                f"into {SSOT_MD.name}, delete AGENTS.md, then re-run this script to regenerate it.\n"
+                f"into {ssot_file.name}, delete AGENTS.md, then re-run this script to regenerate it.\n"
             )
         else:
             sys.stderr.write(
                 f"[SCHEMA ERROR] {schema_error}\n"
-                f"Why: every principle in {SSOT_MD.name} needs '### PRINCIPLE-NNN:', Problem, Concept, "
+                f"Why: every principle in {ssot_file.name} needs '### PRINCIPLE-NNN:', Problem, Concept, "
                 f"Invariant and numbered Rules, each rule tagged with its audience (PRINCIPLE-017 R1).\n"
                 f"Fix: complete the section named above, then re-run.\n"
             )
         if exit_on_mismatch:
             sys.exit(1)
         return 1
-    print(f"Parsed {len(principles)} active principles from {SSOT_MD.name}:")
+    print(f"Parsed {len(principles)} active principles from {ssot_file.name}:")
     for p in principles:
         print(f" - {p['id']}: {p['title']}")
 
@@ -434,7 +470,7 @@ def sync_all(
     else:
         readme_text = readme_file.read_text(encoding="utf-8") if readme_file.exists() else ""
         if any(p["id"] in readme_text for p in principles):
-            print(f"[OK] Verified README.md lists every principle in {SSOT_MD.name}")
+            print(f"[OK] Verified README.md lists every principle in {ssot_file.name}")
         else:
             # Mode transparency (PRINCIPLE-011 R3): say why the check did not apply.
             print("[INFO] README.md documents no principles (adopter README); parity check not applicable")
@@ -458,7 +494,7 @@ def sync_all(
         print(f"[LOADED] Injected Tier 1B domain rules ({len(domain_rules)} chars)")
 
     targets = {
-        ROOT_DIR / rel: render_tier1_target(heading, principles, domain_rules)
+        root / rel: render_tier1_target(heading, principles, domain_rules)
         for rel, heading in TIER1_TARGETS.items()
     }
 
@@ -476,15 +512,15 @@ def sync_all(
         if target_path.exists():
             current = target_path.read_text(encoding="utf-8")
             if current.strip() != expected_content.strip() and not is_generated_target(current):
-                foreign.append(str(target_path.relative_to(ROOT_DIR)))
+                foreign.append(str(target_path.relative_to(root)))
     if foreign:
         sys.stderr.write(
             f"\n[PROTECTED] Refusing to overwrite hand-authored file(s): {', '.join(foreign)}\n"
             f"Why: sync only overwrites files it generated, so your own instructions are never lost. "
             f"Older AIKit layouts kept the full rules in AGENTS.md; AGENTS.md is now generated from "
-            f"{SSOT_MD.name}.\n"
+            f"{ssot_file.name}.\n"
             f"Fix: move project-specific instructions into .agents/rules/domain.md (Tier 1B, "
-            f"<={MAX_DOMAIN_CHARS} chars) and principle changes into {SSOT_MD.name}, then delete or "
+            f"<={MAX_DOMAIN_CHARS} chars) and principle changes into {ssot_file.name}, then delete or "
             f"rename the file(s) above and re-run.\n"
         )
         if exit_on_mismatch:
@@ -497,7 +533,7 @@ def sync_all(
     written = dict(targets)
     # Only the README of the repository being synced: a README outside ROOT_DIR (a test sandbox
     # reading the real one) is never written (PRINCIPLE-015 R4).
-    if readme_file.exists() and readme_file.resolve().is_relative_to(ROOT_DIR.resolve()):
+    if readme_file.exists() and readme_file.resolve().is_relative_to(root):
         readme_expected = sync_readme_table(readme_file.read_text(encoding="utf-8"), principles)
         if readme_expected is not None:
             written[readme_file] = readme_expected
@@ -509,12 +545,12 @@ def sync_all(
         if target_path.exists():
             current_content = target_path.read_text(encoding="utf-8")
             if current_content.strip() == expected_content.strip():
-                print(f"[OK] Synced: {target_path.relative_to(ROOT_DIR)}")
+                print(f"[OK] Synced: {target_path.relative_to(root)}")
                 continue
 
         mismatches += 1
         if check_only:
-            print(f"[OUT OF SYNC]: {target_path.relative_to(ROOT_DIR)}")
+            print(f"[OUT OF SYNC]: {target_path.relative_to(root)}")
         else:
             # Atomic fsync write (PRINCIPLE-006, PRINCIPLE-013)
             tmp_target = target_path.with_suffix(target_path.suffix + f".tmp_{os.getpid()}")
@@ -524,10 +560,10 @@ def sync_all(
                 os.fsync(f.fileno())
             os.replace(tmp_target, target_path)
             fsync_dir(target_path.parent)
-            print(f"[UPDATED]: {target_path.relative_to(ROOT_DIR)}")
+            print(f"[UPDATED]: {target_path.relative_to(root)}")
 
     if check_only and mismatches > 0:
-        print(f"\n{mismatches} file(s) out of sync with {SSOT_MD.name}.")
+        print(f"\n{mismatches} file(s) out of sync with {ssot_file.name}.")
         if exit_on_mismatch:
             sys.exit(1)
         return mismatches
@@ -539,6 +575,97 @@ def sync_all(
     # returned the number of files updated in write mode, making a successful sync look like a
     # failure to any programmatic caller.
     return 0
+
+
+def sync_project(
+    workspace: Path,
+    check_only: bool = False,
+    exit_on_mismatch: bool = True,
+) -> int:
+    """Synchronize or verify multi-IDE instruction files for an AIKit-managed project workspace."""
+    workspace = workspace.resolve()
+    name = workspace.name
+    cfg_path = workspace / ".aikit" / "project.json"
+    if cfg_path.is_file():
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+            if isinstance(cfg, dict) and isinstance(cfg.get("name"), str):
+                name = cfg["name"]
+        except (OSError, ValueError):
+            pass
+
+    targets = {
+        workspace / rel: render_project_instructions(name, heading_tmpl)
+        for rel, heading_tmpl in PROJECT_INSTRUCTION_TARGETS.items()
+    }
+
+    foreign = []
+    for target_path, expected_content in targets.items():
+        if target_path.exists():
+            current = target_path.read_text(encoding="utf-8")
+            if current.strip() != expected_content.strip() and not is_generated_target(current):
+                foreign.append(str(target_path.relative_to(workspace)))
+    if foreign:
+        sys.stderr.write(
+            f"\n[PROTECTED] Refusing to overwrite hand-authored file(s): {', '.join(foreign)}\n"
+            f"Why: sync only overwrites files it generated, so your own instructions are never lost.\n"
+            f"Fix: delete or rename the file(s) above, or add a generated header, then re-run.\n"
+        )
+        if exit_on_mismatch:
+            sys.exit(1)
+        return len(foreign)
+
+    mismatches = 0
+    for target_path, expected_content in targets.items():
+        rel = target_path.relative_to(workspace)
+        if not check_only:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+        if target_path.exists():
+            current_content = target_path.read_text(encoding="utf-8")
+            if current_content.strip() == expected_content.strip():
+                print(f"[OK] Synced: {rel}")
+                continue
+
+        mismatches += 1
+        if check_only:
+            print(f"[OUT OF SYNC]: {rel}")
+        else:
+            tmp_target = target_path.with_suffix(target_path.suffix + f".tmp_{os.getpid()}")
+            with open(tmp_target, "w", encoding="utf-8") as f:
+                f.write(expected_content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_target, target_path)
+            fsync_dir(target_path.parent)
+            print(f"[UPDATED]: {rel}")
+
+    if check_only and mismatches > 0:
+        print(f"\n{mismatches} file(s) out of sync with AIKit project principles.")
+        if exit_on_mismatch:
+            sys.exit(1)
+        return mismatches
+
+    print(f"\nAll {len(targets)} project AI guideline targets are synchronized successfully "
+          f"({mismatches} file(s) updated).")
+    return 0
+
+
+def sync_workspace(
+    workspace: Path,
+    check_only: bool = False,
+    exit_on_mismatch: bool = True,
+    domain_path: Optional[Path] = None,
+) -> int:
+    """Synchronize or verify instruction targets for any workspace or project folder."""
+    workspace = workspace.resolve()
+    if (workspace / "GUIDELINES.md").is_file():
+        return sync_all(
+            check_only=check_only,
+            exit_on_mismatch=exit_on_mismatch,
+            domain_path=domain_path,
+            workspace=workspace,
+        )
+    return sync_project(workspace, check_only=check_only, exit_on_mismatch=exit_on_mismatch)
 
 
 INVOLVEMENT_FALLBACK = "PRINCIPLE-003"
@@ -650,6 +777,7 @@ Options:
                    changed since the last commit has an ADR naming its --citing set (PRINCIPLE-000 R3);
                    exits 1 on either
   --domain <path>  Specify custom path to Tier 1B domain rules file (default: .agents/rules/domain.md)
+  --workspace <dir> Specify workspace or project folder to sync or verify (default: AIKit root)
   --involved TEXT  List the principles TEXT involves (PRINCIPLE-001 R3); must be the first argument,
                    and every later argument is TEXT: paths to change, commands to run, failing output
   --citing ID      List the principles a change to principle ID must be checked against: those
@@ -687,7 +815,7 @@ if __name__ == "__main__":
         print_help()
         sys.exit(0)
 
-    _known = {"--check", "--domain", "--help", "-h"}
+    _known = {"--check", "--domain", "--workspace", "--help", "-h"}
     _argv = sys.argv[1:]
     _unknown = []
     _i = 0
@@ -696,7 +824,7 @@ if __name__ == "__main__":
         if _tok.startswith("-"):
             if _tok not in _known:
                 _unknown.append(_tok)
-            elif _tok == "--domain":
+            elif _tok in ("--domain", "--workspace"):
                 _i += 1  # consume the path value
         _i += 1
     if _unknown:
@@ -714,6 +842,19 @@ if __name__ == "__main__":
         except (IndexError, ValueError):
             sys.stderr.write("Error: --domain requires a file path argument.\n")
             sys.exit(1)
+
+    workspace_dir = None
+    if "--workspace" in sys.argv:
+        try:
+            idx = sys.argv.index("--workspace")
+            workspace_dir = Path(sys.argv[idx + 1])
+        except (IndexError, ValueError):
+            sys.stderr.write("Error: --workspace requires a folder path argument.\n")
+            sys.exit(1)
+
+    if workspace_dir and workspace_dir.resolve() != ROOT_DIR.resolve():
+        code = sync_workspace(workspace_dir, check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)
+        sys.exit(code)
 
     sync_all(check_only=check_mode, exit_on_mismatch=True, domain_path=custom_domain)
 

@@ -609,14 +609,67 @@ class TestProjectCreation(unittest.TestCase):
         self.assertEqual(status, "", "a new project starts with its memory committed")
         self.assertTrue((root / "AGENTS.md").is_file())
         self.assertIn("Project Instructions (app)", (root / "AGENTS.md").read_text(encoding="utf-8"))
+        for target in ("GEMINI.md", "CLAUDE.md", ".cursorrules", ".github/copilot-instructions.md", ".agents/rules/principles.md"):
+            self.assertTrue((root / target).is_file())
+        self.assertTrue((root / "README.md").is_file())
         # A real CLI process proves `--workspace` wiring; the track is then classified in-process.
         cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
         subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
                        capture_output=True, text=True, timeout=PROC_TIMEOUT, check=True)
         self.assertTrue((root / ".aikit" / "task_ledger.json").is_file())
-        self.assertFalse((root / ".agents").exists())
+        self.assertFalse((root / ".agents" / "task_ledger.json").exists())
         self.assertEqual(classify_track(collect_working_changes(root))[0], "A",
                          "the project's checkpoint is bookkeeping, not a change")
+
+
+class TestProjectCockpitCli(unittest.TestCase):
+    """`aikit checkpoint/resume/complete/clean` CLI lifecycle commands for projects."""
+
+    def test_cockpit_cli_workflow(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_cockpit_cli_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        root, _ = create_project("demo", test_command='python -c "exit(0)"', workspace=kit)
+        aikit_bin = [sys.executable, str(ROOT_DIR / "aikit.py")]
+
+        # 1. checkpoint
+        res = subprocess.run(
+            aikit_bin + ["checkpoint", "demo", "--task", "work-1", "--phase-num", "2", "--desc", "[1/2] first milestone"],
+            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("[OK] Checkpoint recorded for 'demo'", res.stdout)
+
+        # 2. resume
+        res = subprocess.run(
+            aikit_bin + ["resume", "demo"],
+            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("work-1", res.stdout)
+        self.assertIn("first milestone", res.stdout)
+
+        # 3. complete
+        res = subprocess.run(
+            aikit_bin + ["complete", "demo"],
+            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("Marked task 'work-1' completed", res.stdout)
+
+        # 4. clean
+        (root / "buffer.tmp_999").write_text("junk", encoding="utf-8")
+        res = subprocess.run(
+            aikit_bin + ["clean", "demo", "--force"],
+            cwd=str(kit), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("Purged 1 temporary file(s)", res.stdout)
+        self.assertFalse((root / "buffer.tmp_999").exists())
 
 
 class TestProjectFixCommand(unittest.TestCase):

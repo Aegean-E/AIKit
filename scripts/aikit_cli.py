@@ -15,12 +15,16 @@ from scripts.disruption_recovery import (
     ROOT_DIR,
     clean_dangling_temp_files,
     format_resume_report,
+    load_ledger,
+    mark_task_completed,
+    record_checkpoint,
     run_disruption_audit,
 )
 from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
     attach_project,
+    config_path,
     create_project,
     Project,
     find_project,
@@ -30,6 +34,7 @@ from scripts.project_registry import (
     AGENTS_FILENAME,
     AGENTS_TEMPLATE,
     DECISIONS_FILENAME,
+    PROJECT_INSTRUCTION_TARGETS,
     PROJECT_MEMORY_DIRNAME,
 )
 from scripts.update_knowledge_base import (
@@ -82,6 +87,27 @@ def build_parser() -> argparse.ArgumentParser:
     status = commands.add_parser("status", help="a project's task, uncommitted work and next step")
     status.add_argument("name", help="project name, as `list` shows it")
 
+    resume = commands.add_parser("resume", help="show disruption recovery guidance and active task status for a project")
+    resume.add_argument("name", help="project name, as `list` shows it")
+
+    checkpoint = commands.add_parser("checkpoint", help="record an atomic milestone checkpoint in project task ledger")
+    checkpoint.add_argument("name", help="project name, as `list` shows it")
+    checkpoint.add_argument("--task", default=None, help="task ID (default: active task in ledger or 'project-work')")
+    checkpoint.add_argument("--phase-num", type=int, default=2, choices=[1, 2, 3, 4, 5], help="lifecycle phase 1-5 (default: 2)")
+    checkpoint.add_argument("--desc", required=True, help="description of the milestone / task step")
+    checkpoint.add_argument("--why", default=None, help="rationale (Pre-Flight Impact Assessment)")
+    checkpoint.add_argument("--benefits", default=None, help="expected benefits")
+    checkpoint.add_argument("--risks", default=None, help="identified risks across contract/dependency/concurrency/state")
+    checkpoint.add_argument("--mitigation", default=None, help="risk mitigation strategy")
+
+    complete = commands.add_parser("complete", help="mark active task completed in project task ledger")
+    complete.add_argument("name", help="project name, as `list` shows it")
+    complete.add_argument("--task", default=None, help="task ID (default: active task in ledger)")
+
+    clean = commands.add_parser("clean", help="purge dangling temporary files in project workspace")
+    clean.add_argument("name", help="project name, as `list` shows it")
+    clean.add_argument("--force", action="store_true", help="delete buffers immediately regardless of age")
+
     check = commands.add_parser("check", help="run every gate of a project (its Phase 4)")
     check.add_argument("name", help="project name, as `list` shows it")
 
@@ -106,6 +132,7 @@ def cmd_new(args: argparse.Namespace) -> int:
 
 def cmd_attach(args: argparse.Namespace) -> int:
     name, folder, created = attach_project(args.path, args.name, args.test, workspace=_active_workspace())
+    state = "new .aikit/ memory created" if created else "existing .aikit/ memory kept"
     print(f"[OK] Attached '{name}' at {folder} ({state})")
     return 0
 
@@ -146,11 +173,85 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
     print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
-    # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
-    print("Ledger commands for this project add the workspace flag, e.g.")
-    print(f'  python scripts/disruption_recovery.py --workspace "{project.path}" --checkpoint <task> ...')
+    # PRINCIPLE-011 R8: project cockpit lifecycle commands
+    print("Project cockpit lifecycle commands:")
+    print(f"  python aikit.py resume {project.name}")
+    print(f'  python aikit.py checkpoint {project.name} --desc "[1/M] <plan>"')
+    print(f"  python aikit.py complete {project.name}")
+    print(f"  python aikit.py clean {project.name}")
     gates = ", ".join(gate.name for gate in resolve_gates(project))
     print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
+    return 0
+
+
+def cmd_resume(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
+    report = format_resume_report(run_disruption_audit(workspace_dir=project.path))
+    print(report)
+    return 0
+
+
+def cmd_checkpoint(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
+    ledger_path = project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
+    task_id = args.task
+    if not task_id:
+        ledger = load_ledger(ledger_path)
+        active = ledger.get("active_task")
+        if active and active.get("task_id"):
+            task_id = active["task_id"]
+        else:
+            task_id = "project-work"
+    record_checkpoint(
+        task_id=task_id,
+        phase=f"phase {args.phase_num}",
+        description=args.desc,
+        phase_num=args.phase_num,
+        ledger_file=ledger_path,
+        why=args.why,
+        benefits=args.benefits,
+        risks=args.risks,
+        mitigation=args.mitigation,
+    )
+    print(f"[OK] Checkpoint recorded for '{project.name}': Task '{task_id}', Phase {args.phase_num} - {args.desc}")
+    return 0
+
+
+def cmd_complete(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
+    ledger_path = project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
+    task_id = args.task
+    if not task_id:
+        ledger = load_ledger(ledger_path)
+        active = ledger.get("active_task")
+        if active and active.get("task_id"):
+            task_id = active["task_id"]
+        else:
+            print(f"Error: No active task in '{project.name}' ledger to complete.", file=sys.stderr)
+            print("Why: complete requires an active task or an explicit --task ID.", file=sys.stderr)
+            print("Fix: pass --task <task_id> or start a task with checkpoint first.", file=sys.stderr)
+            return 1
+    success = mark_task_completed(task_id, ledger_file=ledger_path)
+    if success:
+        print(f"[OK] Marked task '{task_id}' completed for project '{project.name}'.")
+        return 0
+    else:
+        print(f"Error: Task '{task_id}' is not the active task for project '{project.name}'.", file=sys.stderr)
+        print("Why: only an active task can be completed.", file=sys.stderr)
+        print(f"Fix: check active task with `python aikit.py status {project.name}`.", file=sys.stderr)
+        return 1
+
+
+def cmd_clean(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
+    min_age = 0.0 if args.force else 60.0
+    cleaned = clean_dangling_temp_files(project.path, min_age_seconds=min_age)
+    if cleaned:
+        print(f"[CLEAN] Purged {len(cleaned)} temporary file(s) in '{project.name}':")
+        for f in cleaned:
+            print(f"  • {f}")
+    else:
+        print(f"[OK] No dangling temporary files found in '{project.name}'.")
     return 0
 
 
@@ -189,20 +290,27 @@ def cmd_fix(args: argparse.Namespace) -> int:
     print(f"Self-checking & fixing project '{project.name}' ({project.path}):")
     fixes: List[str] = []
 
+    had_config = config_path(project.path).exists()
     had_gitignore = (project.path / ".gitignore").exists()
     had_decisions = (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists()
-    agents_path = project.path / AGENTS_FILENAME
-    had_agents = agents_path.exists()
+    had_ledger = (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists()
+    had_readme = (project.path / "README.md").exists()
+    missing_targets = [rel for rel in PROJECT_INSTRUCTION_TARGETS if not (project.path / rel).exists()]
 
     created = write_memory(project.path, project.name, project.test_command)
-    if created:
+    if created or (not had_config and config_path(project.path).exists()):
         fixes.append("initialized missing .aikit/project.json")
     if not had_gitignore and (project.path / ".gitignore").exists():
         fixes.append("created .gitignore with transient state patterns")
     if not had_decisions and (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists():
         fixes.append("seeded .aikit/decisions.md register")
-    if not had_agents and agents_path.exists():
-        fixes.append("seeded AGENTS.md guidelines")
+    if not had_ledger and (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists():
+        fixes.append("seeded .aikit/task_ledger.json")
+    for rel in missing_targets:
+        if (project.path / rel).exists():
+            fixes.append(f"seeded {rel} guidelines")
+    if not had_readme and (project.path / "README.md").exists():
+        fixes.append("seeded README.md quick-reference")
 
     cleaned = clean_dangling_temp_files(project.path, min_age_seconds=0)
     if cleaned:
@@ -224,8 +332,18 @@ def cmd_fix(args: argparse.Namespace) -> int:
     return cmd_check(args)
 
 
-HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list, "status": cmd_status,
-            "check": cmd_check, "fix": cmd_fix}
+HANDLERS = {
+    "new": cmd_new,
+    "attach": cmd_attach,
+    "list": cmd_list,
+    "status": cmd_status,
+    "resume": cmd_resume,
+    "checkpoint": cmd_checkpoint,
+    "complete": cmd_complete,
+    "clean": cmd_clean,
+    "check": cmd_check,
+    "fix": cmd_fix,
+}
 
 
 def main(argv: Optional[List[str]] = None) -> int:
