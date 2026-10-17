@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `14`
 - **Total Classes**: `68`
-- **Total Functions / Methods**: `194`
-- **Total Source Lines**: `10612`
+- **Total Functions / Methods**: `197`
+- **Total Source Lines**: `10889`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `333` lines (`15465` bytes)
+**Size**: `363` lines (`16884` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -187,11 +187,14 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `84` lines (`4724` bytes)
+**Size**: `190` lines (`8760` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
+- `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for the GitHub description.*
+- `def get_project_repo_url(project_root, runner)` - *Return the URL of the project's 'origin' remote, or None if not configured.*
+- `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
 - `def publish_project(project_root, name, public, runner)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
 ---
@@ -409,7 +412,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4156` lines (`233145` bytes)
+**Size**: `4297` lines (`239508` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -732,6 +735,9 @@
   - Method `.test_fix_restores_memory_and_readme_and_removes_only_stale_buffers()`
   - Method `.test_project_ledger_commands_keep_the_impact_gate()`
   - Method `.test_workspace_is_explicit_never_the_working_directory()`
+  - Method `.test_new_with_publish_flag_calls_publish_project()`
+  - Method `.test_status_displays_repo_url()`
+  - Method `.test_check_triggers_auto_push_unless_opted_out()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`
@@ -784,6 +790,10 @@
   - Method `.test_existing_remote_is_pushed_never_recreated_or_forced()`
   - Method `.test_refusals_upload_nothing()`
   - Method `.test_uncommitted_work_is_named_in_the_report()`
+  - Method `.test_extract_readme_description_finds_first_paragraph_and_truncates()`
+  - Method `.test_get_project_repo_url()`
+  - Method `.test_publish_passes_extracted_description()`
+  - Method `.test_auto_push_project()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

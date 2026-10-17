@@ -22,7 +22,12 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.project_gates import failure_tail, resolve_gates, run_gates
-from scripts.project_publish import publish_project
+from scripts.project_publish import (
+    auto_push_project,
+    get_project_repo_url,
+    publish_project,
+)
+
 from scripts.project_registry import (
     Project,
     ProjectError,
@@ -85,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
     new = commands.add_parser("new", help="create projects/<name>/ as a new git repository")
     new.add_argument("name", help="folder name: lowercase letters, digits, '-' or '_'")
     new.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
+    new.add_argument("--publish", action="store_true", help="publish to GitHub immediately after creation")
+    new.add_argument("--public", action="store_true", help="make the GitHub repository public (default: private)")
 
     attach = commands.add_parser("attach", help="register an existing project folder")
     attach.add_argument("path", type=Path, help="the project's top folder")
@@ -112,10 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
     guideline.add_argument("rule", help="the rule, one line")
     guideline.add_argument("--source", required=True, help="where it comes from: user, ADR-NNN or a person")
 
-    project_command("check", "run every gate of a project (its Phase 4)")
+    check = project_command("check", "run every gate of a project (its Phase 4)")
+    check.add_argument("--no-push", action="store_true", help="skip pushing commits to remote origin after gates pass")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
     publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
+
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
     delegate.add_argument("role", help="a profile name in .opencode/agents/")
@@ -154,7 +163,15 @@ def cmd_new(args: argparse.Namespace) -> int:
     print(f"[OK] Created project '{args.name}' at {root}")
     if warning:
         print(f"[WARN] {warning}", file=sys.stderr)
-    print(f"     Next: describe what to build; work happens inside {root}.")
+    if getattr(args, "publish", False):
+        print(f"Publishing '{args.name}' to GitHub:")
+        code, report = publish_project(root, args.name, public=getattr(args, "public", False))
+        print(report, file=sys.stdout if code == 0 else sys.stderr)
+        if code != 0:
+            print(f"[WARN] Project created locally at {root}, but GitHub publication failed.", file=sys.stderr)
+            return code
+    else:
+        print(f"     Next: describe what to build; work happens inside {root}.")
     return 0
 
 
@@ -177,14 +194,18 @@ def cmd_list(args: argparse.Namespace) -> int:
         stacks = ",".join(s.name for s in project.stacks) or "no stack detected"
         test = project.test_command or "no test command"
         kind = "attached" if project.attached else "local"
-        print(f"{project.name}  [{stacks}]  test: {test}  ({kind}: {project.path})")
+        repo_url = get_project_repo_url(project.path)
+        repo_note = f"  repo: {repo_url}" if repo_url else ""
+        print(f"{project.name}  [{stacks}]  test: {test}  ({kind}: {project.path}){repo_note}")
     return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
     stacks = ",".join(s.name for s in project.stacks) or "none detected"
+    repo_url = get_project_repo_url(project.path)
     print(f"Project:   {project.name}  ({project.path})")
+    print(f"Repo:      {repo_url or f'none (local only; publish with python aikit.py publish {project.name})'}")
     print(f"Stacks:    {stacks}")
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
@@ -195,6 +216,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     gates = ", ".join(gate.name for gate in resolve_gates(project))
     print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
     return 0
+
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
@@ -266,7 +288,15 @@ def cmd_check(args: argparse.Namespace) -> int:
         print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not detected.",
               file=sys.stderr)
         return 1
+    if not getattr(args, "no_push", False):
+        push_code, push_report = auto_push_project(project.path, project.name)
+        if push_code == 0:
+            if push_report:
+                print(push_report)
+        else:
+            print(f"[WARN] {push_report}", file=sys.stderr)
     return 0
+
 
 
 def cmd_fix(args: argparse.Namespace) -> int:

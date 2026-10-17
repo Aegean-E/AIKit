@@ -1,33 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "project-publish",
+    "task_id": "project-github-publishing-lifecycle",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792252093.6403913,
-    "completed_at": 1792252093.7842338
+    "updated_at": 1792257407.660949,
+    "impact_assessment": {
+      "why": "Complete GitHub repository lifecycle for projects: publish at creation, repo details, and auto-push on check",
+      "benefits": "One-step project publishing, GitHub description sync, URL visibility in status/list, and auto-push after passed gates",
+      "risks": "contract: new flags on new and check, status/list output additions; dependency: optional gh preserved; concurrency: none; state: project memory intact",
+      "mitigation": "Injected runner in tests to guarantee unit tier <1s and zero spawns; non-destructive publication and push failure fallbacks"
+    },
+    "completed_at": 1792258064.5263
   },
   "checkpoints": [
-    {
-      "task_id": "project-guidelines",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-guidelines' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792250633.0686946,
-      "timestamp_str": "2026-10-17 18:23:53"
-    },
-    {
-      "task_id": "claude-subagents",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: roles exist only for OpenCode; Claude Code loads .claude/agents/*.md; claude CLI not installed here; permission deny Edit(path) covers Edit/Write/NotebookEdit",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792250739.2661347,
-      "timestamp_str": "2026-10-17 18:25:39"
-    },
     {
       "task_id": "claude-subagents",
       "phase": "in_progress",
@@ -227,6 +214,31 @@
       "status": "completed",
       "timestamp": 1792252093.7842355,
       "timestamp_str": "2026-10-17 18:48:13"
+    },
+    {
+      "task_id": "project-github-publishing-lifecycle",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] plan: README tree fix, project_publish helpers, aikit new --publish, auto-push in aikit check, tests & ADR-135",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792257407.660949,
+      "timestamp_str": "2026-10-17 20:16:47",
+      "impact_assessment": {
+        "why": "Complete GitHub repository lifecycle for projects: publish at creation, repo details, and auto-push on check",
+        "benefits": "One-step project publishing, GitHub description sync, URL visibility in status/list, and auto-push after passed gates",
+        "risks": "contract: new flags on new and check, status/list output additions; dependency: optional gh preserved; concurrency: none; state: project memory intact",
+        "mitigation": "Injected runner in tests to guarantee unit tier <1s and zero spawns; non-destructive publication and push failure fallbacks"
+      }
+    },
+    {
+      "task_id": "project-github-publishing-lifecycle",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-github-publishing-lifecycle' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792258064.5263011,
+      "timestamp_str": "2026-10-17 20:27:44"
     }
   ]
 }

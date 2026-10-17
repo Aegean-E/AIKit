@@ -114,7 +114,14 @@ from scripts.disruption_recovery import (
 )
 from scripts.aikit_cli import main as aikit_main
 from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
-from scripts.project_publish import publish_project
+from scripts.project_publish import (
+    auto_push_project,
+    extract_readme_description,
+    get_project_repo_url,
+    publish_project,
+)
+
+
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
@@ -3746,6 +3753,49 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertNotIn("ghost", out)
 
+    def test_new_with_publish_flag_calls_publish_project(self):
+        with mock.patch("scripts.aikit_cli.create_project", return_value=(self.kit / "projects" / "publishedapp", None)), \
+             mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "[OK] Published to GitHub")) as mock_pub:
+            code, out, _ = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest")
+            self.assertEqual(code, 0)
+            mock_pub.assert_called_once()
+            self.assertIn("Publishing 'publishedapp' to GitHub:", out)
+            self.assertIn("[OK] Published to GitHub", out)
+
+
+    def test_status_displays_repo_url(self):
+        folder = self.make_folder()
+        attach_project(folder, "repoapp", workspace=self.kit)
+        with mock.patch("scripts.aikit_cli.get_project_repo_url", return_value="https://github.com/org/repoapp"):
+            code, out, _ = self.run_cli("status", "repoapp")
+            self.assertEqual(code, 0)
+            self.assertIn("Repo:      https://github.com/org/repoapp", out)
+
+    def test_check_triggers_auto_push_unless_opted_out(self):
+        folder = self.make_folder()
+        attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
+        gate_res = mock.MagicMock()
+        gate_res.passed = True
+        gate_res.gate.name = "test"
+        gate_res.seconds = 0.1
+        gate_res.gate.source = "detected"
+        gate_res.gate.command = "dummy"
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[gate_res]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "[OK] Pushed 'pushapp' commits")) as mock_push:
+            # 1. Without --no-push -> auto-push is called
+            code, out, _ = self.run_cli("check", "pushapp")
+            self.assertEqual(code, 0)
+            mock_push.assert_called_once()
+            self.assertIn("[OK] Pushed 'pushapp' commits", out)
+
+            # 2. With --no-push -> auto-push is skipped
+            mock_push.reset_mock()
+            code, out, _ = self.run_cli("check", "pushapp", "--no-push")
+            self.assertEqual(code, 0)
+            mock_push.assert_not_called()
+
+
 
 class TestProjectGates(unittest.TestCase):
     """A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122)."""
@@ -4150,6 +4200,97 @@ class TestProjectPublish(unittest.TestCase):
         code, report = publish_project(Path("/p/app"), "app", runner=self.runner(status=(0, " M app.py")))
         self.assertEqual(code, 0)
         self.assertIn("uncommitted", report)
+
+    def test_extract_readme_description_finds_first_paragraph_and_truncates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Empty / missing
+            self.assertEqual(extract_readme_description(root), "")
+            # With description paragraph
+            (root / "README.md").write_text("# my-app\n\n> **A lightweight CLI app.**\n\n## Quick Start\n", encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "A lightweight CLI app.")
+            # Truncation over 200 chars
+            long_desc = "x" * 250
+            (root / "README.md").write_text(f"# my-app\n\n{long_desc}\n", encoding="utf-8")
+            extracted = extract_readme_description(root)
+            self.assertEqual(len(extracted), 200)
+            self.assertTrue(extracted.endswith("..."))
+
+    def test_get_project_repo_url(self):
+        root = Path("/p/app")
+        # No remote
+        self.assertIsNone(get_project_repo_url(root, runner=self.runner(**{"get-url": (1, "")})))
+        # Configured remote
+        url = get_project_repo_url(root, runner=self.runner(**{"get-url": (0, "https://github.com/me/app.git\n")}))
+        self.assertEqual(url, "https://github.com/me/app.git")
+
+    def test_publish_passes_extracted_description(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("# app\n\nA great tool.\n\n## Quick Ref\n", encoding="utf-8")
+            publish_project(root, "app", runner=self.runner())
+            create = self.made("create")[0]
+            self.assertIn("--description", create)
+            self.assertIn("A great tool.", create)
+
+    def test_auto_push_project(self):
+        root = Path("/p/app")
+        # 1. Local only (no remote) -> returncode 0, no push
+        code, msg = auto_push_project(root, "app", runner=self.runner(**{"get-url": (1, "")}))
+        self.assertEqual(code, 0)
+        self.assertEqual(self.made("push"), [])
+
+        # 2. Up to date -> returncode 0, no push
+        # 'get-url' succeeds, '@{u}' succeeds, 'log' returns empty
+        def up_to_date_runner(argv, cwd):
+            self.calls.append(argv)
+            if "get-url" in argv:
+                return 0, "https://github.com/me/app.git"
+            if "@{u}" in argv:
+                return 0, "origin/main"
+            if "@{u}..HEAD" in argv:
+                return 0, ""
+            return 0, ""
+        self.calls = []
+        code, msg = auto_push_project(root, "app", runner=up_to_date_runner)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.made("push"), [])
+
+        # 3. Ahead -> runs push
+        def ahead_runner(argv, cwd):
+            self.calls.append(argv)
+            if "get-url" in argv:
+                return 0, "https://github.com/me/app.git"
+            if "@{u}" in argv:
+                return 0, "origin/main"
+            if "@{u}..HEAD" in argv:
+                return 0, "abc1234 feat: new feature\n"
+            if "push" in argv:
+                return 0, "pushed successfully"
+            return 0, ""
+        self.calls = []
+        code, msg = auto_push_project(root, "app", runner=ahead_runner)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(self.made("push")), 1)
+        self.assertIn("Pushed 'app'", msg)
+
+        # 4. Push fails -> returns 1 with triad
+        def fail_runner(argv, cwd):
+            self.calls.append(argv)
+            if "get-url" in argv:
+                return 0, "https://github.com/me/app.git"
+            if "@{u}" in argv:
+                return 0, "origin/main"
+            if "@{u}..HEAD" in argv:
+                return 0, "abc1234 feat: new feature\n"
+            if "push" in argv:
+                return 1, "remote rejected"
+            return 0, ""
+        self.calls = []
+        code, msg = auto_push_project(root, "app", runner=fail_runner)
+        self.assertEqual(code, 1)
+        self.assertIn("Why:", msg)
+
 
 
 if __name__ == "__main__":

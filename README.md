@@ -2,7 +2,8 @@
 
 > **Plug-and-Play AI Assistant Governance, Architecture Principles & Disruption Recovery for Any Software Project.**
 
-This kit contains the complete, battle-tested AI governance system extracted from production development. It ensures that any AI coding assistant (Antigravity IDE, Cursor, Claude Code, GitHub Copilot, Gemini CLI, etc.) follows strict engineering principles, prevents progress loss from unexpected power cuts or crashes, maintains living documentation, and executes automated regression-shielded git workflows.
+This kit contains the AI governance system extracted from production development. It ensures that any AI coding assistant follows strict engineering principles, prevents progress loss from unexpected power cuts or crashes, maintains living documentation, and executes automated regression-shielded git workflows.
+
 
 ---
 
@@ -95,7 +96,9 @@ portable_agent_kit/
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
+│   ├── project_publish.py              <- Uploads a project to its own GitHub repository
 │   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
+
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
 │   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
@@ -145,7 +148,7 @@ A project's memory is its `.aikit/` folder (record, ledger, decisions, guideline
   Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (they are AIKit's own). Enforcement travels as the CLI gates in the command matrix above. Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
-If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules` or `.clinerules`, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites hand-authored files without a generated header (`[PROTECTED]`).
+If the target already has its own instruction files, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites hand-authored files without a generated header (`[PROTECTED]`).
 
 ### Step 3: Run Principle Synchronization
 Generate every Tier 1 file from `GUIDELINES.md`:
@@ -161,7 +164,8 @@ Run the knowledge base AST scanner to automatically index your project's classes
 ```bash
 python scripts/update_knowledge_base.py
 ```
-This generates `knowledge/codebase_map.md` with every exported class, method, argument, and docstring across your project!
+This generates `knowledge/codebase_map.md` with every exported class, method, argument, and docstring.
+
 
 ---
 
