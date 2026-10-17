@@ -4,30 +4,11 @@
     "task_id": "review-project-kit",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792242819.6308172
+    "status": "completed",
+    "updated_at": 1792242854.1570125,
+    "completed_at": 1792242854.2855372
   },
   "checkpoints": [
-    {
-      "task_id": "project-principles-cockpit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[2/5] project instruction targets and sync_principles --workspace complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792230430.8901324,
-      "timestamp_str": "2026-10-17 12:47:10"
-    },
-    {
-      "task_id": "project-principles-cockpit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[3/5] aikit cockpit lifecycle subcommands complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792230524.7509866,
-      "timestamp_str": "2026-10-17 12:48:44"
-    },
     {
       "task_id": "project-principles-cockpit",
       "phase": "in_progress",
@@ -227,6 +208,25 @@
       "status": "in_progress",
       "timestamp": 1792242819.6308172,
       "timestamp_str": "2026-10-17 16:13:39"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[2/2] committed in nexus-flow (15aa79a): README tree matches tracked files; aikit check nexus-flow passes",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792242854.1570125,
+      "timestamp_str": "2026-10-17 16:14:14"
+    },
+    {
+      "task_id": "review-project-kit",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-project-kit' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792242854.2855394,
+      "timestamp_str": "2026-10-17 16:14:14"
     }
   ]
 }
