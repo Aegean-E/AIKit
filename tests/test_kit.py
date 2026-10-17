@@ -1449,7 +1449,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 # R8 (ADR-121): software other than AIKit is built in a registered project.
                 "is built in a project registered with `python aikit.py`, never in AIKit's own tree",
                 "ledger commands take `--workspace <project path>`",
-                "`python scripts/check_secrets.py --workspace <project path>`",
+                # ADR-123: one command is the project's Phase 4; it includes the secret scan.
+                "its Phase 4 gate is `python aikit.py check <name>`",
+                "which runs the project's test command, the checks its own configuration declares and the secret scan",
                 "asks the user which project, or the name of a new one, before writing code",
                 "apply only to changes to AIKit itself",
             ],
@@ -1926,7 +1928,8 @@ class TestPrinciple003Unambiguity(unittest.TestCase):
         # ledger, and a failed audit scan reported "clean".
         import ast
         for script in sorted((ROOT_DIR / "scripts").glob("*.py")):
-            tree = ast.parse(script.read_text(encoding="utf-8"))
+            # The shared content-keyed cache: the knowledge-base tests parse these same files.
+            tree = parse_source(script.read_text(encoding="utf-8"), str(script))
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ExceptHandler) or node.type is None:
                     continue

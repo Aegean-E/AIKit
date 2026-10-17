@@ -4,40 +4,11 @@
     "task_id": "project-gates",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792227172.7836678
+    "status": "completed",
+    "updated_at": 1792227307.6627707,
+    "completed_at": 1792227307.816717
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/3]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224589.2214782,
-      "timestamp_str": "2026-10-17 11:09:49"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/3] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224680.7959092,
-      "timestamp_str": "2026-10-17 11:11:20"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/3]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224718.515363,
-      "timestamp_str": "2026-10-17 11:11:58"
-    },
     {
       "task_id": "review-fixes",
       "phase": "in_progress",
@@ -217,6 +188,35 @@
       "status": "in_progress",
       "timestamp": 1792227172.7836678,
       "timestamp_str": "2026-10-17 11:52:52"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]: R8 names aikit check as project Phase 4",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792227185.1153638,
+      "timestamp_str": "2026-10-17 11:53:05"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[2/2] committed: R8 names python aikit.py check <name> (ADR-123)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792227307.6627707,
+      "timestamp_str": "2026-10-17 11:55:07"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-gates' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792227307.8167183,
+      "timestamp_str": "2026-10-17 11:55:07"
     }
   ]
 }
