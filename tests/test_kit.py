@@ -1493,6 +1493,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "fails when a task ledger changed during the run",
                 "asks the user which project, or the name of a new one, before writing code",
                 "apply only to changes to AIKit itself",
+                # ADR-130: the project's own guidelines are read before code and recorded with `guideline`.
+                "Before writing code in a project, the agent reads its guidelines",
+                "records it with `python aikit.py guideline <name>",
             ],
             "gone": ["Third-party packages must be strictly optional", "sensible", "Systems should embed",
                      "banning hardcoded"],
@@ -1631,9 +1634,20 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "gone": ["`credentials*`", "`secrets*`", "cloud CLI config directories", "prefer read-only",
                      "narrowest scope"],
         },
+        "PRINCIPLE-001": {
+            "rules": 9,
+            # ADR-130: the project tier, below Tier 1B and every principle.
+            "present": ["*Project tier* is one project's own rules in its `.aikit/guidelines.md`",
+                        "never enter a Tier 1 file"],
+            "gone": [],
+            "skip_words": True,
+        },
         "PRINCIPLE-000": {
             "rules": 7,
-            "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires"],
+            "present": ["weakening a test (as PRINCIPLE-014 R2 defines it) without the user approval and ADR that rule requires",
+                        # ADR-130: a project's own rules rank below every principle.
+                        "A project guideline (PRINCIPLE-001 R4) ranks below every principle",
+                        "the principle applies and the agent tells the user"],
             "gone": ["skipping, deleting or loosening a test, threshold, allowlist entry or budget to make a check pass without an ADR"],
             # R7 lists the banned words themselves; TestPrinciple000Unambiguity checks the rest.
             "skip_words": True,

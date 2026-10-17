@@ -4,40 +4,11 @@
     "task_id": "project-guidelines",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792250475.2088988
+    "status": "completed",
+    "updated_at": 1792250632.937964,
+    "completed_at": 1792250633.0686924
   },
   "checkpoints": [
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[2/5] native skill & command parity: Claude Code skill (.claude/skills/) and OpenCode commands complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792231797.012643,
-      "timestamp_str": "2026-10-17 13:09:57"
-    },
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[3/5] safe subagent delegation: aikit delegate command with ledger & stdin guards complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792232073.8007066,
-      "timestamp_str": "2026-10-17 13:14:33"
-    },
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[4/5] living documentation: host_clients.md, data_models.md, and ADR-126 complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792232322.4060996,
-      "timestamp_str": "2026-10-17 13:18:42"
-    },
     {
       "task_id": "multi-agent-workspace-usage",
       "phase": "completed",
@@ -227,6 +198,35 @@
       "status": "in_progress",
       "timestamp": 1792250475.2088988,
       "timestamp_str": "2026-10-17 18:21:15"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/2]: P000 R6, P001 R4, P011 R8 text",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250485.6989894,
+      "timestamp_str": "2026-10-17 18:21:25"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[2/2] committed: P000 R6, P001 R4, P011 R8, P017 R6 (ADR-130)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250632.937964,
+      "timestamp_str": "2026-10-17 18:23:52"
+    },
+    {
+      "task_id": "project-guidelines",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-guidelines' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792250633.0686946,
+      "timestamp_str": "2026-10-17 18:23:53"
     }
   ]
 }
