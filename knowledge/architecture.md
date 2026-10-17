@@ -27,6 +27,7 @@ AIKit is the folder a person opens in an AI host; the software it builds lives i
 - **Isolation**: `projects/` is in `.gitignore`, in `IGNORE_DIRS` (codebase map, structure audits) and in `SWEEP_PRUNED_DIRS` (temp-file and quarantine sweeps), so no project file reaches AIKit's gates, map or ledger, and `--track` never sees one.
 - **Discovery**: a folder under `projects/` is a project when it holds `.aikit/project.json`; only folders elsewhere are listed in `projects/attached.json`. `attach` refuses a folder that contains or sits inside AIKit outside `projects/`.
 - **Detection**: `DETECTORS` maps marker files to a stack and its test command; a new stack is one row.
+- **Gates**: `project_gates.resolve_gates` orders a project's gates as test, extras from `EXTRA_GATES` (only what the project's own config declares: ruff/mypy tables, `lint`/`typecheck`/`build` package scripts, `go vet`), `project.json` `gates` overrides, then the secret scan. `run_shell` runs each through the platform shell under `supervised()` with stdin closed and `GATE_TIMEOUT_SECONDS`; every gate runs even after a failure (ADR-122).
 - **Memory**: `.aikit/` holds `project.json`, `decisions.md` and `task_ledger.json`. Every ledger command takes `--workspace <project>`, so checkpoints, `--resume`, `--audit` and `--track` read the project's ledger and run `git status` in the project's repository; the project ledger is bookkeeping (`BOOKKEEPING_PATHS`), so a checkpoint never changes the project's track. Project work runs the project's test command and `check_secrets.py --workspace <project>` as its Phase 4 gates; AIKit's other gates cover AIKit only (PRINCIPLE-011 R8, ADR-121). `new` commits the memory as the first commit, and warns instead of inventing an author when git has no identity (ADR-120).
 
 ## 🗂️ Single Source of Truth & Generated Tier 1 Files
@@ -75,6 +76,7 @@ References are counted broadly (`ast.Name` loads, attributes, `ImportFrom`), bec
 | help + startup budget | every CLI answers `--help` within `budget_ms` as a fresh process |
 | blast radius | `repo_fingerprint()` of tracked files is unchanged after the run |
 
+- **Concurrency**: tracks not in `TIMED_TRACKS` run concurrently, each in its own sandbox folder with its own log; the startup-budget track runs alone afterwards so parallel load cannot inflate its timings (ADR-122).
 - **Supervision**: `supervised()` kills the whole process tree (`taskkill /F /T` on Windows, `killpg(SIGKILL)` on POSIX).
 - **Sandbox**: `--workspace <dir>` keeps every ledger write inside the run's temporary directory; the only write outside it is the git-ignored `.agents/dogfood_last_run.log`.
 - **UTF-8 capture**: every spawn forces `encoding="utf-8"`; the locale codec silently dropped the CLIs' non-ASCII output.

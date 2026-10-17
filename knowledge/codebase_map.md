@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `11`
-- **Total Classes**: `55`
-- **Total Functions / Methods**: `147`
-- **Total Source Lines**: `8897`
+- **Total Python Modules**: `12`
+- **Total Classes**: `59`
+- **Total Functions / Methods**: `161`
+- **Total Source Lines**: `9227`
 
 ---
 
@@ -23,9 +23,9 @@
 ---
 
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
-> *`aikit` command line: create, attach, list and report on the projects AIKit builds (ADR-119, ADR-120).*
+> *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `132` lines (`5614` bytes)
+**Size**: `173` lines (`7586` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -37,7 +37,9 @@
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
 - `def cmd_list(args)`
+- `def present_project(name)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def cmd_status(args)`
+- `def cmd_check(args)`
 - `def main(argv)`
 
 ---
@@ -130,11 +132,11 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `467` lines (`20515` bytes)
+**Size**: `487` lines (`21780` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
-- `def supervised(argv, cwd)` - *RAII supervisor: guarantees recursive teardown even if the body raises.*
+- `def supervised(argv, cwd)` - *RAII supervisor: guarantees recursive teardown even if the body raises. `argv` is a list, or*
 - `def sandbox_jail()` - *Ephemeral workspace outside the repository and outside host user directories*
 - `def run_cli(script, args, cwd)` - *Invoke a CLI as a real binary with stdin closed (PRINCIPLE-015 Rule 3 EOF safety).*
 - `def repo_fingerprint()` - *Content fingerprint of the repository working tree, or None when git is unavailable.*
@@ -142,14 +144,37 @@
 - `def track_chaos_perturbation(jail, log)` - *Track 2 (PRINCIPLE-015 Rule 5): hostile perturbations. Each must fail cleanly with no*
 - `def track_readonly_gates(jail, log)` - *Track 3: the two freshness gates the delivery triad depends on must run read-only from an*
 - `def track_help_startup_budget(jail, log)` - *Track 4: every entrypoint must answer --help safely and inside the PRINCIPLE-010 R5*
+- `def _run_track(name, fn, jail)` - *Run one track with its own log; a crashing track is a failing track, never a crashing run.*
 - `def run_dogfood(verbose, keep_sandbox)` - *Execute every dogfood track and emit a terse dashboard (PRINCIPLE-015 Rule 7).*
+
+---
+
+### [`scripts/project_gates.py`](scripts/project_gates.py)
+> *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
+
+**Size**: `172` lines (`7054` bytes)
+
+**Classes:**
+- `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
+- `class GateResult` - *One gate's outcome; `returncode` is -1 when the gate could not start or timed out.*
+  - Method `.passed()`
+
+**Functions:**
+- `def _python_gates(root)`
+- `def _node_gates(root)`
+- `def _go_gates(root)`
+- `def secrets_gate(project_root)` - *The built-in secret scan of the project's repository.*
+- `def resolve_gates(project)` - *The project's gates in run order: test, detected extras, `gates` overrides, secret scan.*
+- `def run_shell(command, cwd, timeout)` - *Run `command` through the platform shell with stdin closed; on timeout the whole process*
+- `def run_gates(project_root, gates, runner, timeout)` - *Run every gate, even after a failure, so one report lists all of them.*
+- `def failure_tail(output, lines)` - *The last `lines` non-empty lines of a gate's output, where its error normally is.*
 
 ---
 
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `407` lines (`16981` bytes)
+**Size**: `426` lines (`17849` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -159,6 +184,8 @@
 
 **Functions:**
 - `def _python_test(root)`
+- `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
+- `def node_runner(root)` - *The package manager the project's lockfile names: pnpm, yarn, or npm by default.*
 - `def _node_test(root)`
 - `def _gradle_test(root)`
 - `def _fixed(command)`
@@ -171,13 +198,14 @@
 - `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json` and `.aikit/decisions.md` unless they exist.*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
-- `def _registered_names(workspace)`
+- `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
 - `def _run_git(project_root, *args)`
 - `def _git_start(project_root)` - *`git init`, then commit the project's `.aikit/` memory so a new project starts clean. Returns*
 - `def create_project(name, test_command, workspace, git_start)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
+- `def _build_project(name, path, attached)`
 - `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
-- `def find_project(name, workspace)` - *The registered project called `name`.*
+- `def find_project(name, workspace)` - *The registered project called `name`; only that project's folder is inspected.*
 - `def latest_decision(project_root)` - *The last `### ADR-NNN: ...` heading in the project's decision register, if any.*
 
 ---
@@ -250,7 +278,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `611` lines (`29484` bytes)
+**Size**: `624` lines (`30187` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -310,13 +338,15 @@
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
+- `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
+  - Method `.test_shell_keeps_quotes_and_reports_exit_codes()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3631` lines (`202745` bytes)
+**Size**: `3696` lines (`206404` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -633,6 +663,15 @@
   - Method `.test_cli_reports_triad_and_exit_codes()`
   - Method `.test_project_memory_holds_ledger_and_decisions()`
   - Method `.test_status_names_unknown_and_missing_projects()`
+- `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
+  - Method `.setUp()`
+  - Method `.project(files, gates)`
+  - Method `.names(project)`
+  - Method `.test_gates_come_only_from_the_projects_own_config()`
+  - Method `.test_secret_scan_is_always_last()`
+  - Method `.test_project_json_adds_replaces_and_disables_gates()`
+  - Method `.test_invalid_gate_config_is_refused()`
+  - Method `.test_every_gate_runs_after_a_failure()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`

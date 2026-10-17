@@ -1,59 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "workspace-projects",
+    "task_id": "project-gates",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792226711.4001856,
-    "completed_at": 1792226711.538493
+    "status": "in_progress",
+    "updated_at": 1792227172.7836678
   },
   "checkpoints": [
-    {
-      "task_id": "tier-budget-fix",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224152.9973464,
-      "timestamp_str": "2026-10-17 11:02:32"
-    },
-    {
-      "task_id": "tier-budget-fix",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'tier-budget-fix' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792224165.7444134,
-      "timestamp_str": "2026-10-17 11:02:45"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: other AI's work reviewed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224588.92515,
-      "timestamp_str": "2026-10-17 11:09:48"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] OpenCode permissions: order allow-before-deny, deny destructive git/rm, read-only reviewer/architect, test replaying last-match on every agent; [2/3] CORE_DOCS back to 7 (AIKit-only docs optional), fix host_clients.md false claims, SKILL Track B gates, audit ledger fabricated claims and errors, citation tests cover new docs; [3/3] test for phase-heading anchor fix; ADR-116..118",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224589.066366,
-      "timestamp_str": "2026-10-17 11:09:49",
-      "impact_assessment": {
-        "why": "review found permission rules that do not enforce their claims, fabricated evaluation results, false host claims, adopter-breaking CORE_DOCS",
-        "benefits": "documented boundaries actually hold; docs truthful; adopters unblocked",
-        "risks": "contract: OpenCode agent permissions tightened, update_knowledge_base requires 7 docs again; dependency: none; concurrency: none; state: none",
-        "mitigation": "verify with opencode debug agents; tests"
-      }
-    },
     {
       "task_id": "review-fixes",
       "phase": "in_progress",
@@ -217,6 +171,52 @@
       "status": "completed",
       "timestamp": 1792226711.5384943,
       "timestamp_str": "2026-10-17 11:45:11"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: projects have only a test command; R8 lists gates by hand",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792226772.366595,
+      "timestamp_str": "2026-10-17 11:46:12"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Gate DTO + per-stack gate detection (python ruff/mypy when configured, node package scripts lint/typecheck/build, go vet) + project.json gates override (null disables) + run_gates with injected runner + aikit check <name> (secret scan always last, terse failure tails, exit 1 on any failure or no test gate); unit + integration tests; [2/2] R8 names python aikit.py check <name> as the project Phase 4 gate; status prints it; README/knowledge/ADR",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792226772.511023,
+      "timestamp_str": "2026-10-17 11:46:12",
+      "impact_assessment": {
+        "why": "a project's Phase 4 is a hand-assembled list; lint, type and build checks a project configures are never run",
+        "benefits": "one command per project runs every check its own config declares, same for every host",
+        "risks": "contract: new check command and project.json gates key; dependency: none (runs the project's own tools); concurrency: gates run sequentially in the project dir; state: optional gates key, schema unchanged",
+        "mitigation": "detection only from config the project already has; override and disable via gates; runner injected for unit tests; timeouts and closed stdin on every gate"
+      }
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792226772.64283,
+      "timestamp_str": "2026-10-17 11:46:12"
+    },
+    {
+      "task_id": "project-gates",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed: project_gates.py, aikit check, concurrent dogfood tracks (ADR-122)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792227172.7836678,
+      "timestamp_str": "2026-10-17 11:52:52"
     }
   ]
 }

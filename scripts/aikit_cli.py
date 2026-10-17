@@ -1,5 +1,6 @@
 """
-`aikit` command line: create, attach, list and report on the projects AIKit builds (ADR-119, ADR-120).
+`aikit` command line: create, attach, list, report on and check the projects AIKit builds
+(ADR-119, ADR-120, ADR-122).
 
 Run through the root shim: `python aikit.py <command>`. Exit codes: 0 success, 1 the request
 could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
@@ -11,10 +12,12 @@ from pathlib import Path
 from typing import List, NoReturn, Optional
 
 from scripts.disruption_recovery import format_resume_report, run_disruption_audit
+from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
     attach_project,
     create_project,
+    Project,
     find_project,
     latest_decision,
     list_projects,
@@ -63,6 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status", help="a project's task, uncommitted work and next step")
     status.add_argument("name", help="project name, as `list` shows it")
+
+    check = commands.add_parser("check", help="run every gate of a project (its Phase 4)")
+    check.add_argument("name", help="project name, as `list` shows it")
     return parser
 
 
@@ -98,14 +104,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_status(args: argparse.Namespace) -> int:
-    project = find_project(args.name)
+def present_project(name: str) -> Project:
+    """The registered project `name`, refusing one whose folder or record is gone."""
+    project = find_project(name)
     if not project.present:
         raise ProjectError(
             f"Project '{project.name}' is missing at {project.path}.",
-            "its folder or .aikit/project.json is gone, so there is no memory to report.",
+            "its folder or .aikit/project.json is gone, so there is no memory to use.",
             "restore the folder, or attach its new location with `python aikit.py attach <path>`.",
         )
+    return project
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
     stacks = ",".join(s.name for s in project.stacks) or "none detected"
     print(f"Project:   {project.name}  ({project.path})")
     print(f"Stacks:    {stacks}")
@@ -115,13 +127,42 @@ def cmd_status(args: argparse.Namespace) -> int:
     # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
     print("Ledger commands for this project add the workspace flag, e.g.")
     print(f'  python scripts/disruption_recovery.py --workspace "{project.path}" --checkpoint <task> ...')
-    print("Phase 4 gates for this project:")
-    print(f"  {project.test_command or '<no test command: write tests, set test_command first>'}")
-    print(f'  python scripts/check_secrets.py --workspace "{project.path}"')
+    gates = ", ".join(gate.name for gate in resolve_gates(project))
+    print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
     return 0
 
 
-HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list, "status": cmd_status}
+def cmd_check(args: argparse.Namespace) -> int:
+    project = present_project(args.name)
+    results = run_gates(project.path, resolve_gates(project))
+    for result in results:
+        mark = "PASS" if result.passed else "FAIL"
+        print(f"[{mark}] {result.gate.name} ({result.seconds:.1f}s, {result.gate.source}): {result.gate.command}")
+        if not result.passed:
+            for line in failure_tail(result.output):
+                print(f"       {line}")
+    passed = sum(result.passed for result in results)
+    print(f"{passed}/{len(results)} gates passed for '{project.name}'")
+    failed = [result.gate.name for result in results if not result.passed]
+    sys.stdout.flush()  # the report above, then the triad, in that order when both are piped
+    if failed:
+        print(f"Error: gate(s) failed: {', '.join(failed)}", file=sys.stderr)
+        print("Why: a project commits only when every gate passes (PRINCIPLE-011 R8, PRINCIPLE-014 R1).",
+              file=sys.stderr)
+        print(f"Fix: fix the cause in the output above, then rerun `python aikit.py check {project.name}`.",
+              file=sys.stderr)
+        return 1
+    if not any(result.gate.name == "test" for result in results):
+        print("Error: the project has no test gate.", file=sys.stderr)
+        print("Why: without tests the gates prove nothing about behaviour (PRINCIPLE-014 R1).", file=sys.stderr)
+        print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not detected.",
+              file=sys.stderr)
+        return 1
+    return 0
+
+
+HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list, "status": cmd_status,
+            "check": cmd_check}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

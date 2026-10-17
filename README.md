@@ -28,7 +28,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
 | **Cross-Principle Check Set** | `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>` | Principles a rule change must be checked against (PRINCIPLE-000 R3) |
-| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map; exits 1 on a syntax error (Python 3.10 grammar), README drift, an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011) |
+| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map, then runs every audit of `--check` below; exits 1 on a syntax error (Python 3.10 grammar) or any audit failure |
 | **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011) |
 | **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
@@ -43,11 +43,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
 | **Sandbox the Ledger CLI** | `python scripts/disruption_recovery.py --workspace <dir> --audit` | Operates on `<dir>/.agents/`, never the repo ledger |
 
-**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every script in `scripts/` honours the same
-contract: `--help` / `-h` prints a usage block to stdout and exits `0` without touching the filesystem;
-an unrecognized flag is refused with the What → Why → Fix remediation triad on stderr and exit code `2`
-(never the default action); `0` = success, `1` = operational failure (printed as What → Why → Fix, never a traceback), `2` = CLI misuse. Read-only
-verification runs through `--check` on `sync_principles.py` and `update_knowledge_base.py`.
+**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help` / `-h` prints usage and exits `0`, writing nothing; exit `0` = success, `1` = operational failure, `2` = misuse (an unknown flag is refused, never run as the default action); every failure prints What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
 
 ---
 
@@ -56,7 +52,7 @@ verification runs through `--check` on `sync_principles.py` and `update_knowledg
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── aikit.py                            <- Project CLI: new, attach, list, status; git-ignored projects/
+├── aikit.py                            <- Project CLI: new, attach, list, status, check; projects/
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
@@ -88,6 +84,7 @@ portable_agent_kit/
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
+│   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
 ├── tests/
@@ -118,6 +115,7 @@ python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ m
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, open changes, last decision
+python aikit.py check my-app        # every gate its config declares + secret scan
 ```
 A project's memory is its `.aikit/` folder (record, ledger, decisions), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
 

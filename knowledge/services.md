@@ -10,8 +10,9 @@ AIKit's services are its six gate CLIs in `scripts/` plus the project CLI `aikit
 | `disruption_recovery.py` | Task ledger: checkpoints, resume, reset, track, commit-message validation; `--workspace <project>` uses that project's `.aikit/task_ledger.json` (ADR-120) | `--validate-commit`, `--track` (PRINCIPLE-002, -006) |
 | `check_reachability.py` | Finds production functions with no production caller and keys read but never written | exit 1 on either (PRINCIPLE-014 R7) |
 | `check_secrets.py` | Scans staged changes, tracked files and agent memory for credentials; `--workspace <dir>` scans that repository instead, e.g. a project (ADR-121) | exit 1 on a finding or an unscanned surface (PRINCIPLE-019) |
-| `aikit.py` (`aikit_cli.py`) | `new`, `attach`, `list`, `status`: the projects AIKit builds, each its own folder and git repository (ADR-119) | exit 2 on a bad name or path, 1 on a failed request, with Why/Fix |
+| `aikit.py` (`aikit_cli.py`) | `new`, `attach`, `list`, `status`, `check`: the projects AIKit builds, each its own folder and git repository (ADR-119) | exit 2 on a bad name or path, 1 on a failed request, with Why/Fix |
 | `project_registry.py` | Library behind `aikit.py`: finds projects, detects each one's stacks and test command (`DETECTORS`), writes `.aikit/project.json` and `.aikit/decisions.md` | none; reached through `aikit.py` |
+| `project_gates.py` | A project's gates: test command, extras detected from its config (`EXTRA_GATES`), `project.json` `gates` overrides, built-in secret scan; runs them in the project folder | `python aikit.py check <name>` exits 1 on any failed gate or no test gate (ADR-122) |
 | `dogfood.py` | Runs AIKit's CLIs as real processes in a sandbox: golden path, chaos, gates, `--help` budget | exit 1 on any failed track (PRINCIPLE-015) |
 
 ## 📋 Design Rules

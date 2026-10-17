@@ -22,6 +22,7 @@ Written once by `write_memory` in `scripts/project_registry.py` when a project i
 | `schema` | int | `1`; any other value is refused by `load_config`. |
 | `name` | string | The project name: 1-64 of `a-z 0-9 - _`, starting with a letter or digit. |
 | `test_command` | string or null | Overrides the detected test command; null means detect from the project's files on every call. |
+| `gates` | object | Gate name to shell command (adds or replaces a gate) or null (disables a detected one); `secrets` cannot be named. Absent in records written before ADR-122, read as empty. |
 | `created` | string | Creation date, `YYYY-MM-DD`. |
 
 The project's decision register is `<project>/.aikit/decisions.md`, created from `DECISIONS_TEMPLATE` with the same entry format as `knowledge/decisions.md`; `latest_decision` ignores the template's commented example.

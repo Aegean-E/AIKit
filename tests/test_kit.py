@@ -103,6 +103,7 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.aikit_cli import main as aikit_main
+from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
     Stack,
@@ -3607,6 +3608,70 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "svc", workspace=self.kit)
         shutil.rmtree(folder)
         self.assertFalse(find_project("svc", self.kit).present)
+
+class TestProjectGates(unittest.TestCase):
+    """A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122)."""
+
+    def setUp(self):
+        self.kit = Path(tempfile.mkdtemp(prefix="test_gates_kit_"))
+        self.addCleanup(shutil.rmtree, self.kit, ignore_errors=True)
+        self.created = []
+
+    def project(self, files, gates=None):
+        # A folder under projects/ with a project.json is a project (discovery, ADR-119); writing
+        # the record directly keeps the registry's locked writes out of these gate tests.
+        name = f"app{len(self.created)}"
+        self.created.append(name)
+        folder = self.kit / "projects" / name
+        (folder / ".aikit").mkdir(parents=True)
+        for file_name, text in files:
+            (folder / file_name).write_text(text, encoding="utf-8")
+        record = {"schema": 1, "name": name, "test_command": None, "gates": gates or {}}
+        (folder / ".aikit" / "project.json").write_text(json.dumps(record), encoding="utf-8")
+        return find_project(name, self.kit)
+
+    def names(self, project):
+        return [(gate.name, gate.command) for gate in resolve_gates(project)][:-1]
+
+    def test_gates_come_only_from_the_projects_own_config(self):
+        bare = self.project([("requirements.txt", "")])
+        self.assertEqual(self.names(bare), [("test", "python -m unittest discover")])
+        configured = self.project([("pyproject.toml", "[tool.ruff]\n[tool.mypy]\n[tool.pytest.ini_options]\n")])
+        self.assertEqual(self.names(configured), [("test", "python -m pytest"), ("lint", "python -m ruff check ."),
+                                                  ("typecheck", "python -m mypy .")])
+        node = self.project([("package.json", '{"scripts": {"test": "jest", "lint": "eslint .", "build": "tsc"}}'),
+                             ("yarn.lock", "")])
+        self.assertEqual(self.names(node), [("test", "yarn test"), ("lint", "yarn run lint"),
+                                            ("build", "yarn run build")])
+
+    def test_secret_scan_is_always_last(self):
+        gates = resolve_gates(self.project([("go.mod", "module x\n")]))
+        self.assertEqual([gate.name for gate in gates], ["test", "vet", "secrets"])
+        self.assertIn("check_secrets.py", gates[-1].command)
+        self.assertIn("--workspace", gates[-1].command)
+
+    def test_project_json_adds_replaces_and_disables_gates(self):
+        project = self.project([("go.mod", "module x\n")],
+                               gates={"vet": None, "test": "make test", "e2e": "make e2e"})
+        self.assertEqual(self.names(project), [("test", "make test"), ("e2e", "make e2e")])
+        self.assertEqual(resolve_gates(project)[1].source, "project.json")
+
+    def test_invalid_gate_config_is_refused(self):
+        for gates in ({"secrets": None}, {"lint": 3}, {"lint": " "}, ["lint"]):
+            with self.subTest(gates=gates), self.assertRaises(ProjectError):
+                resolve_gates(self.project([("go.mod", "")], gates=gates))
+
+    def test_every_gate_runs_after_a_failure(self):
+        gates = [Gate("a", "fail", "t"), Gate("b", "pass", "t")]
+        calls = []
+
+        def runner(command, cwd, timeout):
+            calls.append(command)
+            return (1, "x\n\nerror: broken\n") if command == "fail" else (0, "")
+        results = run_gates(Path("."), gates, runner=runner)
+        self.assertEqual(calls, ["fail", "pass"])
+        self.assertEqual([r.passed for r in results], [False, True])
+        self.assertEqual(failure_tail(results[0].output), ["x", "error: broken"])
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""

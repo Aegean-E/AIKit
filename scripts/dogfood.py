@@ -32,7 +32,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LEDGER_CLI = ROOT_DIR / "scripts" / "disruption_recovery.py"
@@ -83,8 +83,11 @@ def terminate_process_tree(proc: "subprocess.Popen") -> None:
 
 
 @contextmanager
-def supervised(argv: List[str], cwd: Path):
-    """RAII supervisor: guarantees recursive teardown even if the body raises."""
+def supervised(argv: Union[str, List[str]], cwd: Path):
+    """
+    RAII supervisor: guarantees recursive teardown even if the body raises. `argv` is a list, or
+    on Windows a command line string for commands whose quoting `list2cmdline` would mangle.
+    """
     kwargs: Dict[str, Any] = {}
     if sys.platform != "win32":
         kwargs["start_new_session"] = True  # own process group, so killpg reaches children
@@ -357,6 +360,19 @@ TRACKS = (
     ("read-only gates", track_readonly_gates),
     ("help + startup budget", track_help_startup_budget),
 )
+# Tracks whose verdict is a measured duration: they never share the machine with another track.
+TIMED_TRACKS = frozenset({"help + startup budget"})
+
+
+def _run_track(name: str, fn, jail: Path) -> Tuple[str, bool, str, List[str]]:
+    """Run one track with its own log; a crashing track is a failing track, never a crashing run."""
+    track_log: List[str] = []
+    try:
+        ok, detail = fn(jail, track_log)
+    except Exception as e:
+        ok, detail = False, f"track raised {type(e).__name__}: {e}"
+        track_log.append(f"[exception] {type(e).__name__}: {e}")
+    return name, ok, detail, track_log
 
 
 # --------------------------------------------------------------------------------------
@@ -374,13 +390,17 @@ def run_dogfood(verbose: bool = False, keep_sandbox: bool = False) -> int:
     jail = jail_cm.__enter__()
     try:
         log.append(f"sandbox: {jail}")
-        for name, fn in TRACKS:
-            log.append(f"--- track: {name} ---")
-            try:
-                ok, detail = fn(jail, log)
-            except Exception as e:  # a crashing track is a failing track, never a crashing run
-                ok, detail = False, f"track raised {type(e).__name__}: {e}"
-                log.append(f"[exception] {type(e).__name__}: {e}")
+        # Each track works in its own sandbox folder with its own log, so the untimed tracks run
+        # concurrently (~0.4s each, PRINCIPLE-010 R2); a track that times processes runs alone
+        # afterwards, so parallel load cannot inflate what it measures.
+        from concurrent.futures import ThreadPoolExecutor  # lazy: --help stays fast (PRINCIPLE-010)
+        untimed = [(name, fn) for name, fn in TRACKS if name not in TIMED_TRACKS]
+        timed = [(name, fn) for name, fn in TRACKS if name in TIMED_TRACKS]
+        with ThreadPoolExecutor(max_workers=max(1, min(len(untimed), os.cpu_count() or 1))) as pool:
+            outcomes = list(pool.map(lambda track: _run_track(*track, jail), untimed))
+        outcomes += [_run_track(name, fn, jail) for name, fn in timed]
+        for name, ok, detail, track_log in outcomes:
+            log += [f"--- track: {name} ---", *track_log]
             results.append((name, ok, detail))
 
         # PRINCIPLE-015 Rule 4: nothing may have escaped the jail.

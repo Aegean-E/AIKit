@@ -29,6 +29,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.check_secrets import run_scan  # noqa: E402
+from scripts.project_gates import Gate, run_gates  # noqa: E402
 from scripts.project_registry import create_project  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
@@ -605,6 +606,18 @@ class TestProjectSecretScan(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             self.assertEqual(run_scan(repo=repo), 1, "a project's ledger is agent memory too")
         self.assertIn("agent-memory:task_ledger.json", out.getvalue())
+
+
+class TestProjectGateShell(unittest.TestCase):
+    """Gates run through the platform shell in the project folder (ADR-122)."""
+
+    def test_shell_keeps_quotes_and_reports_exit_codes(self):
+        folder = Path(tempfile.mkdtemp(prefix="test_gate_shell_"))
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        quoted = f'"{sys.executable}" -c "import os, sys; print(os.getcwd()); sys.exit(3)"'
+        results = run_gates(folder, [Gate("q", quoted, "t")], timeout=PROC_TIMEOUT)
+        self.assertEqual(results[0].returncode, 3)
+        self.assertEqual(Path(results[0].output.strip()).resolve(), folder.resolve())
 
 
 if __name__ == "__main__":

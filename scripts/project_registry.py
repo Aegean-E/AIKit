@@ -97,19 +97,31 @@ def _python_test(root: Path) -> str:
     return "python -m pytest" if uses_pytest else "python -m unittest discover"
 
 
-def _node_test(root: Path) -> Optional[str]:
+def node_scripts(root: Path) -> Dict[str, str]:
+    """The `scripts` map of the project's `package.json`; empty when absent or unreadable."""
     try:
         manifest = json.loads((root / "package.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return None
+        return {}
     scripts = manifest.get("scripts") if isinstance(manifest, dict) else None
-    test = scripts.get("test") if isinstance(scripts, dict) else None
-    # `npm init` writes a placeholder test script that only fails; it is not a test command.
-    if not isinstance(test, str) or "no test specified" in test:
-        return None
+    if not isinstance(scripts, dict):
+        return {}
+    return {str(k): v for k, v in scripts.items() if isinstance(v, str)}
+
+
+def node_runner(root: Path) -> str:
+    """The package manager the project's lockfile names: pnpm, yarn, or npm by default."""
     if (root / "pnpm-lock.yaml").exists():
-        return "pnpm test"
-    return "yarn test" if (root / "yarn.lock").exists() else "npm test"
+        return "pnpm"
+    return "yarn" if (root / "yarn.lock").exists() else "npm"
+
+
+def _node_test(root: Path) -> Optional[str]:
+    test = node_scripts(root).get("test")
+    # `npm init` writes a placeholder test script that only fails; it is not a test command.
+    if test is None or "no test specified" in test:
+        return None
+    return f"{node_runner(root)} test"
 
 
 def _gradle_test(root: Path) -> str:
@@ -214,6 +226,8 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
         "schema": SCHEMA_VERSION,
         "name": name,
         "test_command": test_command,
+        # Gate name -> command, or null to disable a detected gate (project_gates, ADR-122).
+        "gates": {},
         "created": time.strftime("%Y-%m-%d"),
     })
     return True
@@ -246,8 +260,10 @@ def load_attached(workspace: Path = ROOT_DIR) -> Dict[str, str]:
     return {str(k): str(v) for k, v in projects.items()}
 
 
-def _registered_names(workspace: Path) -> Dict[str, Path]:
-    names = {name: Path(path) for name, path in load_attached(workspace).items()}
+def _registered_names(workspace: Path, attached: Optional[Dict[str, str]] = None) -> Dict[str, Path]:
+    """Name to folder for every project; `attached` spares a second read of `attached.json`."""
+    attached = load_attached(workspace) if attached is None else attached
+    names = {name: Path(path) for name, path in attached.items()}
     root = projects_dir(workspace)
     if root.is_dir():
         for child in sorted(root.iterdir()):
@@ -368,25 +384,28 @@ def attach_project(folder: Path, name: Optional[str] = None, test_command: Optio
     return name, folder, created
 
 
+def _build_project(name: str, path: Path, attached: bool) -> Project:
+    present = config_path(path).is_file()
+    override = load_config(path).get("test_command") if present else None
+    stacks = detect_stacks(path) if present else ()
+    detected = next((s.test_command for s in stacks if s.test_command), None)
+    return Project(name, path, attached, stacks,
+                   override if isinstance(override, str) else detected, present)
+
+
 def list_projects(workspace: Path = ROOT_DIR) -> List[Project]:
     """Every registered project, sorted by name; a vanished attached folder is reported, not dropped."""
-    attached = set(load_attached(workspace))
-    projects = []
-    for name, path in sorted(_registered_names(workspace).items()):
-        present = config_path(path).is_file()
-        override = load_config(path).get("test_command") if present else None
-        stacks = detect_stacks(path) if present else ()
-        detected = next((s.test_command for s in stacks if s.test_command), None)
-        projects.append(Project(name, path, name in attached, stacks,
-                                override if isinstance(override, str) else detected, present))
-    return projects
+    attached = load_attached(workspace)
+    return [_build_project(name, path, name in attached)
+            for name, path in sorted(_registered_names(workspace, attached).items())]
 
 
 def find_project(name: str, workspace: Path = ROOT_DIR) -> Project:
-    """The registered project called `name`."""
-    for project in list_projects(workspace):
-        if project.name == name:
-            return project
+    """The registered project called `name`; only that project's folder is inspected."""
+    attached = load_attached(workspace)
+    path = _registered_names(workspace, attached).get(name)
+    if path is not None:
+        return _build_project(name, path, name in attached)
     raise ProjectError(
         f"No project named '{name}'.",
         "commands act on a registered project only.",
