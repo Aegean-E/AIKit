@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `47`
 - **Total Functions / Methods**: `116`
-- **Total Source Lines**: `8054`
+- **Total Source Lines**: `8067`
 
 ---
 
@@ -119,7 +119,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `736` lines (`36229` bytes)
+**Size**: `738` lines (`36394` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -246,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3458` lines (`193652` bytes)
+**Size**: `3469` lines (`194507` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -272,6 +272,7 @@
   - Method `.test_aikit_readme_lists_every_principle_strictly()`
   - Method `.test_single_ssot_and_generated_agents_md()`
   - Method `.test_principle_schema_strictness()`
+  - Method `.test_only_level_two_headings_set_the_phase()`
   - Method `.test_last_principle_block_stops_at_next_section()`
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`

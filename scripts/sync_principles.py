@@ -126,7 +126,9 @@ def _parse_principles_uncached(content: str, strict: bool) -> List[Dict]:
     # this bound the last principle swallowed everything after it, so text in a trailing
     # checklist could be misread as part of PRINCIPLE-019.
     section_starts = [m.start() for m in re.finditer(r"^## ", content, re.M)]
-    phase_pattern = r"^##\s*([^\n]*Phase\s*(\d+)[:\s]*([^\n]*))"
+    # Exactly two hashes: `^##` alone also matched `###` sub-headings, so a "### ... Phase 5" note
+    # re-assigned the following principle's phase (ADR-118).
+    phase_pattern = r"^##(?!#)\s*([^\n]*Phase\s*(\d+)[:\s]*([^\n]*))"
     phase_matches = list(re.finditer(phase_pattern, content, re.M))
 
     pattern = r"### (PRINCIPLE-\d+):\s*([^\n]+)"

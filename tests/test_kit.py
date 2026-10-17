@@ -473,6 +473,17 @@ class TestPrincipleSync(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
+    def test_only_level_two_headings_set_the_phase(self):
+        # Red-green pin (ADR-118): the phase pattern also matched the `##` inside a `###` heading,
+        # so a sub-heading mentioning "Phase 5" silently re-assigned the next principle's phase.
+        doc = Path(tempfile.mkdtemp(prefix="test_phase_")) / "ssot.md"
+        self.addCleanup(shutil.rmtree, doc.parent, ignore_errors=True)
+        body = "- **Problem**: P\n- **Concept**: C\n- **Invariant**: I\n- **Rules**:\n  1. **R** *[Agent]*: r.\n\n"
+        doc.write_text("## Phase 1: Start\n### PRINCIPLE-001: A\n" + body
+                       + "### Notes on Phase 5 work\n\n### PRINCIPLE-002: B\n" + body, encoding="utf-8")
+        phases = {p["id"]: p["phase_num"] for p in parse_principles(doc, strict=False)}
+        self.assertEqual(phases, {"PRINCIPLE-001": 1, "PRINCIPLE-002": 1})
+
     def test_last_principle_block_stops_at_next_section(self):
         # Red-green pin: the final principle's block used to run to end-of-file, so a field in a
         # trailing appendix could satisfy that principle's schema. Here the last principle lacks an

@@ -1392,3 +1392,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `CORE_DOCS` returns to the seven documents of PRINCIPLE-016 R1, and a test asserts the two lists are equal. `host_clients.md` states what each host actually loads and lists every PRINCIPLE-018 R3 gate. The skill's Track B line and gate heading follow PRINCIPLE-002 R3 and PRINCIPLE-018 R3. The audit ledger keeps its content but opens with a banner (snapshot at ADR-107, not current, no model was run), labels all 20 cross-model lines and the final table as predictions, and fixes the two factual errors; INDEX and README describe it as a snapshot. The citation tests now cover the new documents, the skill and the agent files.
 - **Consequences**: Pinned by the CORE_DOCS parity test and the ledger-labelling test; both fail on the previous files.
 - Cross-principle check: PRINCIPLE-002 (R3 Track B gates; no conflict), PRINCIPLE-005 (R2 README tree text; no conflict), PRINCIPLE-016 (R1 seven documents; resolves the contradiction), PRINCIPLE-018 (R3 gate list; no conflict), PRINCIPLE-000 (R5: findings that were never measured are labelled; no conflict).
+
+### ADR-118: Phase Headings Matched as Exactly Two Hashes
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: The concurrent session changed the phase-heading pattern in `parse_principles` from `##\s*...` to `^##\s*...` with `re.M`, without a test. A fixture test written in this review showed the change did not fix the case it targets: a `###` line also starts with `##`, so a sub-heading such as `### Notes on Phase 5 work` still re-assigned the next principle to Phase 5, with both the old and the new pattern.
+- **Decision**: The pattern is `^##(?!#)\s*...`: a phase heading is exactly two hashes at the start of a line. `test_only_level_two_headings_set_the_phase` pins it; it fails on both earlier patterns. The 20 real principles keep their phases (P000-P004 in 1, P005-P008 in 2, P009-P012 in 3, P013-P015 in 4, P016-P019 in 5).
+- **Consequences**: Completes the review of the concurrent session's work (ADR-116, ADR-117, ADR-118).
+- Cross-principle check: PRINCIPLE-017 (R5 phase alignment now holds for sub-headings; no conflict), PRINCIPLE-014 (R6 red-green pin; no conflict).

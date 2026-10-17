@@ -3,47 +3,12 @@
   "active_task": {
     "task_id": "review-fixes",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792224855.8790495
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792224923.9047632,
+    "completed_at": 1792224937.1058736
   },
   "checkpoints": [
-    {
-      "task_id": "p007-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P007 pass 2: --checkpoint warns when a task reaches Phase 3+ with no impact assessment (Track C skipped its plan); R1, help and README say so; ADR-112",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223703.7038567,
-      "timestamp_str": "2026-10-17 10:55:03",
-      "impact_assessment": {
-        "why": "a Track C task that never records a plan bypasses the impact check entirely",
-        "benefits": "the skipped step is visible instead of silent",
-        "risks": "contract: --checkpoint may print a warning on stderr; dependency: none; concurrency: none; state: none",
-        "mitigation": "warning, not refusal, so Track B is unaffected; unit test"
-      }
-    },
-    {
-      "task_id": "p007-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223703.824317,
-      "timestamp_str": "2026-10-17 10:55:03"
-    },
-    {
-      "task_id": "p007-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223735.1758103,
-      "timestamp_str": "2026-10-17 10:55:35"
-    },
     {
       "task_id": "p007-pass2",
       "phase": "completed",
@@ -228,6 +193,35 @@
       "status": "in_progress",
       "timestamp": 1792224855.8790495,
       "timestamp_str": "2026-10-17 11:14:15"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [3/3]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224887.7389739,
+      "timestamp_str": "2026-10-17 11:14:47"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/3] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224923.9047632,
+      "timestamp_str": "2026-10-17 11:15:23"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-fixes' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792224937.1058753,
+      "timestamp_str": "2026-10-17 11:15:37"
     }
   ]
 }
