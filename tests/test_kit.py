@@ -806,6 +806,35 @@ class TestSecretBaselineAndRuleSchema(unittest.TestCase):
         self.assertIn("PRINCIPLE-001 rule(s) R2 name no audience", str(ctx.exception))
 
 
+class TestRuleNumberParity(unittest.TestCase):
+    """
+    Every number a rule states equals the constant the code enforces (ADR-113). The budget moved
+    from 1,500 to 1,600 in code while documents kept the old number; this fails on the next drift
+    in either direction.
+    """
+
+    def test_rule_numbers_match_code_constants(self):
+        import scripts.disruption_recovery as ledger
+        import scripts.sync_principles as sync
+        import scripts.update_knowledge_base as kb
+        dogfood_budget = int(re.search(r"budget_ms = (\d+)", (ROOT_DIR / "scripts" / "dogfood.py")
+                                       .read_text(encoding="utf-8")).group(1))
+        sections = principle_sections(SSOT_MD.read_text(encoding="utf-8"))
+        cases = [
+            ("PRINCIPLE-001", f"{sync.TARGET_TOKEN_BUDGET:,} estimated tokens"),
+            ("PRINCIPLE-001", f"{sync.MAX_DOMAIN_CHARS:,}-character"),
+            ("PRINCIPLE-017", f"at most {sync.MAX_DOMAIN_CHARS:,} characters"),
+            ("PRINCIPLE-004", f"at most {ledger.DEFAULT_MAX_CHECKPOINTS} checkpoints"),
+            ("PRINCIPLE-005", f"MUST NOT exceed {kb.README_MAX_CHARS:,} characters"),
+            ("PRINCIPLE-006", f"older than {ledger.TEMP_STALE_SECONDS} seconds"),
+            ("PRINCIPLE-009", f"1 to {kb.ROLE_METHOD_LIMIT} methods"),
+            ("PRINCIPLE-010", f"under {dogfood_budget}ms as a fresh process"),
+        ]
+        for pid, phrase in cases:
+            with self.subTest(pid=pid, phrase=phrase):
+                self.assertIn(phrase, sections[pid])
+
+
 class TestKnowledgeCitations(unittest.TestCase):
     """PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve."""
 

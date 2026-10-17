@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `44`
+- **Total Classes**: `45`
 - **Total Functions / Methods**: `116`
-- **Total Source Lines**: `7906`
+- **Total Source Lines**: `7935`
 
 ---
 
@@ -246,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3312` lines (`184805` bytes)
+**Size**: `3341` lines (`186357` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -307,6 +307,8 @@
 - `class TestSecretBaselineAndRuleSchema` - *PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092).*
   - Method `.test_gitignore_holds_every_baseline_pattern_the_rule_lists()`
   - Method `.test_a_rule_without_audience_is_rejected()`
+- `class TestRuleNumberParity` - *Every number a rule states equals the constant the code enforces (ADR-113). The budget moved*
+  - Method `.test_rule_numbers_match_code_constants()`
 - `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
   - Method `.test_every_rule_citation_names_an_existing_rule()`
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`

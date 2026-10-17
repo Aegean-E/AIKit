@@ -1,60 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "p007-pass2",
+    "task_id": "p000-005-pass3",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792223735.1758103,
-    "completed_at": 1792223750.2304993
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792223814.8117733
   },
   "checkpoints": [
-    {
-      "task_id": "p018-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: push scenarios",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223453.456459,
-      "timestamp_str": "2026-10-17 10:50:53"
-    },
-    {
-      "task_id": "p018-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P018 pass 2: a branch without upstream is pushed with -u to origin; several remotes and no upstream -> ask; ADR-109",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223453.5801744,
-      "timestamp_str": "2026-10-17 10:50:53",
-      "impact_assessment": {
-        "why": "R4 left the no-upstream case open",
-        "benefits": "one push behaviour",
-        "risks": "contract: rule text only; dependency: none; concurrency: none; state: none",
-        "mitigation": "pins; cross-principle line"
-      }
-    },
-    {
-      "task_id": "p018-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223453.7048414,
-      "timestamp_str": "2026-10-17 10:50:53"
-    },
-    {
-      "task_id": "p018-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223464.5109694,
-      "timestamp_str": "2026-10-17 10:51:04"
-    },
     {
       "task_id": "p018-pass2",
       "phase": "completed",
@@ -228,6 +181,52 @@
       "status": "completed",
       "timestamp": 1792223750.2305007,
       "timestamp_str": "2026-10-17 10:55:50"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "consistency pass: P000-P005 against the sweep's standards",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223791.1707149,
+      "timestamp_str": "2026-10-17 10:56:31"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] rule-number parity test (budget, Tier 1B, README size, ledger size, --clean age, role size, --help budget) for P000-P005 and later principles; [2/2] rewrite concurrent additions P008 R6, P009 R6/R7, P012 R8 to one reading; ADR-113/114",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223791.2979615,
+      "timestamp_str": "2026-10-17 10:56:31",
+      "impact_assessment": {
+        "why": "numbers in rules and constants in code drifted before (1,500 vs 1,600); new rules from a concurrent session were never reviewed",
+        "benefits": "a changed number fails until rule and code agree; every rule meets the standard",
+        "risks": "contract: tests only for [1/2]; rule text for [2/2]; dependency: none; concurrency: none; state: none",
+        "mitigation": "constants read from code, not copied"
+      }
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223791.4538543,
+      "timestamp_str": "2026-10-17 10:56:31"
+    },
+    {
+      "task_id": "p000-005-pass3",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792223814.8117733,
+      "timestamp_str": "2026-10-17 10:56:54"
     }
   ]
 }
