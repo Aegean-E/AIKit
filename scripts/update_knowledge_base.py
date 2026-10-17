@@ -37,6 +37,7 @@ IGNORE_DIRS = {
     ".git",
     ".github",
     ".agents",
+    ".aikit",
     "__pycache__",
     ".pytest_cache",
     "node_modules",
@@ -760,7 +761,7 @@ def report_readme(errors: List[str]) -> bool:
     return False
 
 
-KNOWN_FLAGS = {"--check", "--lenient", "--help", "-h"}
+KNOWN_FLAGS = {"--check", "--lenient", "--workspace", "--help", "-h"}
 
 HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
 
@@ -768,17 +769,18 @@ Usage:
   python scripts/update_knowledge_base.py [OPTIONS]
 
 Options:
-  --check     Verify, without writing, that codebase_map.md matches the AST and that README.md
-              passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
-              commands), that ADR IDs in knowledge/decisions.md are unique and
-              consecutive, and that no Python file holds a TODO/FIXME marker, a stub or
-              an unnamed suppression (PRINCIPLE-007 R3), and no module has a junk-drawer
-              name, a role of 0 or more than 5 methods, or an import cycle
-              (PRINCIPLE-009), and no subprocess call lacks timeout= and no open()
-              runs outside a with statement (PRINCIPLE-010), and no code reads os.environ[...] (PRINCIPLE-011 R3);
-              exits 1 on any of them
-  --lenient   Downgrade AST syntax and link integrity failures from errors to warnings
-  -h, --help  Show this help message and exit
+  --check            Verify, without writing, that codebase_map.md matches the AST and that README.md
+                     passes the PRINCIPLE-005 checks (size, labels, directory tree, documented
+                     commands), that ADR IDs in decisions.md are unique and
+                     consecutive, and that no Python file holds a TODO/FIXME marker, a stub or
+                     an unnamed suppression (PRINCIPLE-007 R3), and no module has a junk-drawer
+                     name, a role of 0 or more than 5 methods, or an import cycle
+                     (PRINCIPLE-009), and no subprocess call lacks timeout= and no open()
+                     runs outside a with statement (PRINCIPLE-010), and no code reads os.environ[...] (PRINCIPLE-011 R3);
+                     exits 1 on any of them
+  --workspace <dir>  Run checks against the project workspace at <dir> (e.g. projects/<name>)
+  --lenient          Downgrade AST syntax and link integrity failures from errors to warnings
+  -h, --help         Show this help message and exit
 
 Exit codes:
   0  success    1  stale map / validation failure    2  CLI argument misuse
@@ -790,7 +792,16 @@ def _validate_argv(argv: List[str], known: set, help_text: str) -> None:
     if "-h" in argv or "--help" in argv:
         print(help_text, end="")
         sys.exit(0)
-    unknown = [a for a in argv if a.startswith("-") and a not in known]
+    unknown: List[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a.startswith("-"):
+            if a not in known:
+                unknown.append(a)
+            elif a == "--workspace":
+                i += 1  # skip directory value
+        i += 1
     if unknown:
         print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(unknown)}", file=sys.stderr)
         print(f"Why: this tool accepts only {', '.join(sorted(known))}.", file=sys.stderr)
@@ -801,49 +812,94 @@ def _validate_argv(argv: List[str], known: set, help_text: str) -> None:
 if __name__ == "__main__":
     _validate_argv(sys.argv[1:], KNOWN_FLAGS, HELP_TEXT)
 
+    target_root = ROOT_DIR
+    if "--workspace" in sys.argv:
+        widx = sys.argv.index("--workspace")
+        if widx + 1 >= len(sys.argv) or sys.argv[widx + 1].startswith("-"):
+            print("[INVALID USAGE] --workspace requires a directory argument.", file=sys.stderr)
+            print("Why: the target workspace directory must be explicitly specified.", file=sys.stderr)
+            print("Fix: pass '--workspace <dir>'.", file=sys.stderr)
+            sys.exit(2)
+        target_root = Path(sys.argv[widx + 1]).resolve()
+        if not target_root.is_dir():
+            print(f"[INVALID USAGE] --workspace '{target_root}' does not exist or is not a directory.", file=sys.stderr)
+            sys.exit(2)
+
     if "--check" in sys.argv:
         try:
-            fresh = check_codebase_map_freshness(strict=False)
-            if fresh:
-                print("[OK] knowledge/codebase_map.md is fresh and synchronized with AST.")
-            else:
-                print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
-            readme_ok = report_readme(check_readme())
-            readme_ok = report_lazy_code(check_lazy_code()) and readme_ok  # report all, never short-circuit
-            readme_ok = report_architecture(check_architecture()) and readme_ok
-            adr_errors = audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")) \
-                if (KNOWLEDGE_DIR / "decisions.md").exists() else []
-            for adr_error in adr_errors:
-                print(f"[FAIL] knowledge/decisions.md: {adr_error} (PRINCIPLE-016 R3)")
-            if not adr_errors:
-                print("[OK] knowledge/decisions.md: ADR IDs are unique and consecutive.")
-            sys.exit(0 if fresh and readme_ok and not adr_errors else 1)
+            fresh = True
+            k_map = target_root / "knowledge" / "codebase_map.md"
+            if k_map.exists():
+                fresh = check_codebase_map_freshness(target_root / "knowledge", strict=False)
+                if fresh:
+                    print(f"[OK] {k_map.relative_to(target_root)} is fresh and synchronized with AST.")
+                else:
+                    print(f"[FAIL] {k_map.relative_to(target_root)} is stale. Run 'python scripts/update_knowledge_base.py' to update.")
+            elif target_root == ROOT_DIR:
+                fresh = check_codebase_map_freshness(strict=False)
+                if fresh:
+                    print("[OK] knowledge/codebase_map.md is fresh and synchronized with AST.")
+                else:
+                    print("[FAIL] knowledge/codebase_map.md is stale. Run 'python scripts/update_knowledge_base.py' to update.")
+
+            readme_ok = True
+            if (target_root / "README.md").is_file() or target_root == ROOT_DIR:
+                readme_ok = report_readme(check_readme(target_root))
+            lazy_ok = report_lazy_code(check_lazy_code(target_root))
+            arch_ok = report_architecture(check_architecture(target_root))
+
+            decisions_path = None
+            for cand in (target_root / ".aikit" / "decisions.md", target_root / "knowledge" / "decisions.md"):
+                if cand.is_file():
+                    decisions_path = cand
+                    break
+
+            adr_errors = []
+            if decisions_path:
+                adr_errors = audit_adr_register(decisions_path.read_text(encoding="utf-8"))
+                for adr_error in adr_errors:
+                    print(f"[FAIL] {decisions_path.relative_to(target_root)}: {adr_error} (PRINCIPLE-016 R3)")
+                if not adr_errors:
+                    print(f"[OK] {decisions_path.relative_to(target_root)}: ADR IDs are unique and consecutive.")
+
+            sys.exit(0 if fresh and readme_ok and lazy_ok and arch_ok and not adr_errors else 1)
         except Exception as e:
             print(f"[FAIL] Error checking codebase map freshness: {e}")
             sys.exit(1)
 
     is_lenient = "--lenient" in sys.argv
-    try:
-        update_and_validate(strict=not is_lenient)
-    except ValueError as gate_error:
-        # PRINCIPLE-003 R7 halts here; PRINCIPLE-011 R6 forbids doing it with a raw traceback.
-        # Each failure gets its own Why/Fix: an ADR-ID or link error used to be reported as a
-        # syntax error, sending the reader to a file that parses fine.
-        if "[PRINCIPLE-003" in str(gate_error):
-            print(f"[AST GATE FAILED] {gate_error}", file=sys.stderr)
-            print("Why: a file that does not parse cannot be catalogued or trusted (PRINCIPLE-003 R7).",
-                  file=sys.stderr)
-            print("Fix: correct the syntax error in the file named above, then re-run this script.",
-                  file=sys.stderr)
-        else:
-            print(f"[KNOWLEDGE GATE FAILED] {gate_error}", file=sys.stderr)
-            print("Why: the knowledge base is incomplete or out of order (PRINCIPLE-016).", file=sys.stderr)
-            print("Fix: add the missing document, repair the link or renumber the ADR named above, "
-                  "then re-run this script.", file=sys.stderr)
-        sys.exit(1)
-    readme_ok = report_readme(check_readme())
-    lazy_ok = report_lazy_code(check_lazy_code())
-    lazy_ok = report_architecture(check_architecture()) and lazy_ok
-    if not (readme_ok and lazy_ok) and not is_lenient:
+    k_dir = target_root / "knowledge"
+    if k_dir.is_dir() or target_root == ROOT_DIR:
+        try:
+            update_and_validate(k_dir, strict=not is_lenient)
+        except ValueError as gate_error:
+            # PRINCIPLE-003 R7 halts here; PRINCIPLE-011 R6 forbids doing it with a raw traceback.
+            # Each failure gets its own Why/Fix: an ADR-ID or link error used to be reported as a
+            # syntax error, sending the reader to a file that parses fine.
+            if "[PRINCIPLE-003" in str(gate_error):
+                print(f"[AST GATE FAILED] {gate_error}", file=sys.stderr)
+                print("Why: a file that does not parse cannot be catalogued or trusted (PRINCIPLE-003 R7).",
+                      file=sys.stderr)
+                print("Fix: correct the syntax error in the file named above, then re-run this script.",
+                      file=sys.stderr)
+            else:
+                print(f"[KNOWLEDGE GATE FAILED] {gate_error}", file=sys.stderr)
+                print("Why: the knowledge base is incomplete or out of order (PRINCIPLE-016).", file=sys.stderr)
+                print("Fix: add the missing document, repair the link or renumber the ADR named above, "
+                      "then re-run this script.", file=sys.stderr)
+            sys.exit(1)
+    elif (target_root / ".aikit").is_dir():
+        map_content = generate_codebase_map(root=target_root, strict=not is_lenient)
+        map_path = target_root / ".aikit" / "codebase_map.md"
+        with open(map_path, "w", encoding="utf-8") as f:
+            f.write(map_content)
+        print(f"[UPDATED] {map_path.relative_to(target_root)}")
+
+    readme_ok = True
+    if (target_root / "README.md").is_file() or target_root == ROOT_DIR:
+        readme_ok = report_readme(check_readme(target_root))
+    lazy_ok = report_lazy_code(check_lazy_code(target_root))
+    arch_ok = report_architecture(check_architecture(target_root))
+    if not (readme_ok and lazy_ok and arch_ok) and not is_lenient:
         sys.exit(1)
 

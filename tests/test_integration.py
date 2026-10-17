@@ -491,6 +491,35 @@ class TestAstGateCli(unittest.TestCase):
         self.assertIn("Fix:", res.stderr)
         self.assertNotIn("Traceback", res.stderr)
 
+    def test_workspace_cli_check_detects_violations_and_passes_when_clean(self):
+        sandbox = Path(tempfile.mkdtemp(prefix="kb_ws_cli_"))
+        self.addCleanup(shutil.rmtree, sandbox, ignore_errors=True)
+        # 1. Failing case: has stub
+        (sandbox / "app.py").write_text("def bad(): pass\n", encoding="utf-8")
+        res_fail = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py"),
+             "--workspace", str(sandbox), "--check"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(res_fail.returncode, 1)
+        self.assertIn("function 'bad' is a stub", res_fail.stdout)
+
+        # 2. Passing case: clean function and valid ADR in .aikit/decisions.md
+        (sandbox / "app.py").write_text("def ok() -> int:\n    return 42\n", encoding="utf-8")
+        (sandbox / ".aikit").mkdir(parents=True)
+        (sandbox / ".aikit" / "decisions.md").write_text(
+            "# Decisions\n\n### ADR-001: Init\n\n### ADR-002: Next\n", encoding="utf-8"
+        )
+        res_pass = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py"),
+             "--workspace", str(sandbox), "--check"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(res_pass.returncode, 0)
+        self.assertIn("ADR IDs are unique and consecutive", res_pass.stdout)
+
 
 class TestRepositorySecretHygiene(unittest.TestCase):
     """PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`."""
@@ -578,6 +607,8 @@ class TestProjectCreation(unittest.TestCase):
         status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True,
                                 text=True, timeout=PROC_TIMEOUT).stdout
         self.assertEqual(status, "", "a new project starts with its memory committed")
+        self.assertTrue((root / "AGENTS.md").is_file())
+        self.assertIn("Project Instructions (app)", (root / "AGENTS.md").read_text(encoding="utf-8"))
         # A real CLI process proves `--workspace` wiring; the track is then classified in-process.
         cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
         subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
@@ -586,6 +617,34 @@ class TestProjectCreation(unittest.TestCase):
         self.assertFalse((root / ".agents").exists())
         self.assertEqual(classify_track(collect_working_changes(root))[0], "A",
                          "the project's checkpoint is bookkeeping, not a change")
+
+
+class TestProjectFixCommand(unittest.TestCase):
+    """`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates."""
+
+    def test_fix_self_heals_missing_memory_and_cleans_buffers(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_fix_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        root, _ = create_project("app", test_command='python -c "exit(0)"', workspace=kit)
+        # Create a dangling buffer
+        (root / "state.json.tmp_dangling").write_text("junk", encoding="utf-8")
+        # Remove AGENTS.md
+        (root / "AGENTS.md").unlink()
+
+        res = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "aikit.py"), "fix", "app"],
+            cwd=str(kit), capture_output=True, text=True, timeout=PROC_TIMEOUT
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("seeded AGENTS.md guidelines", res.stdout)
+        self.assertIn("cleaned 1 dangling temporary buffer", res.stdout)
+        self.assertTrue((root / "AGENTS.md").is_file())
+        self.assertFalse((root / "state.json.tmp_dangling").exists())
 
 class TestProjectSecretScan(unittest.TestCase):
     """`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121)."""

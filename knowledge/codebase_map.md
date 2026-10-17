@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `12`
-- **Total Classes**: `59`
-- **Total Functions / Methods**: `161`
-- **Total Source Lines**: `9230`
+- **Total Classes**: `61`
+- **Total Functions / Methods**: `164`
+- **Total Source Lines**: `9474`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `173` lines (`7586` bytes)
+**Size**: `224` lines (`9496` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -34,12 +34,14 @@
 **Functions:**
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
+- `def _active_workspace()`
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
 - `def cmd_list(args)`
 - `def present_project(name)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def cmd_status(args)`
 - `def cmd_check(args)`
+- `def cmd_fix(args)` - *Self-heal project memory, clean dangling temporary buffers, and sync codebase map.*
 - `def main(argv)`
 
 ---
@@ -152,7 +154,7 @@
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
-**Size**: `172` lines (`7054` bytes)
+**Size**: `180` lines (`7467` bytes)
 
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
@@ -163,8 +165,9 @@
 - `def _python_gates(root)`
 - `def _node_gates(root)`
 - `def _go_gates(root)`
+- `def guidelines_gate(project_root)` - *The built-in guidelines and quality scan of the project's repository.*
 - `def secrets_gate(project_root)` - *The built-in secret scan of the project's repository.*
-- `def resolve_gates(project)` - *The project's gates in run order: test, detected extras, `gates` overrides, secret scan.*
+- `def resolve_gates(project)` - *The project's gates in run order: test, detected extras, `gates` overrides, guidelines, secret scan.*
 - `def run_shell(command, cwd, timeout)` - *Run `command` through the platform shell with stdin closed; on timeout the whole process*
 - `def run_gates(project_root, gates, runner, timeout)` - *Run every gate, even after a failure, so one report lists all of them.*
 - `def failure_tail(output, lines)` - *The last `lines` non-empty lines of a gate's output, where its error normally is.*
@@ -174,7 +177,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `426` lines (`17849` bytes)
+**Size**: `444` lines (`19674` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -195,7 +198,7 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json` and `.aikit/decisions.md` unless they exist.*
+- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md`, and `AGENTS.md` unless they exist.*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
@@ -244,7 +247,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `849` lines (`37898` bytes)
+**Size**: `905` lines (`40605` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -278,7 +281,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `624` lines (`30187` bytes)
+**Size**: `683` lines (`33352` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -326,6 +329,7 @@
   - Method `.test_command_finds_a_flag()`
 - `class TestAstGateCli` - *PRINCIPLE-003 R7: the gate halts with file and line, never a raw traceback.*
   - Method `.test_syntax_error_halts_cleanly()`
+  - Method `.test_workspace_cli_check_detects_violations_and_passes_when_clean()`
 - `class TestRepositorySecretHygiene` - *PRINCIPLE-019 live invariant. Integration tier: the scan shells out to `git ls-files`.*
   - Method `.test_this_repository_is_clean()`
 - `class TestReadmeDriftShield` - *PRINCIPLE-005 live invariant. Integration tier: completeness shells out to `git ls-files`.*
@@ -336,6 +340,8 @@
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
+- `class TestProjectFixCommand` - *`aikit fix <name>` self-heals project memory, cleans buffers, and verifies gates.*
+  - Method `.test_fix_self_heals_missing_memory_and_cleans_buffers()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
@@ -346,7 +352,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3699` lines (`206719` bytes)
+**Size**: `3751` lines (`209583` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -405,6 +411,11 @@
   - Method `.test_method_style_open_outside_with_fails_and_os_open_passes()`
   - Method `.test_raw_environ_reads_fail_and_writes_and_getenv_pass()`
   - Method `.test_focused_names_narrow_roles_and_one_way_imports_pass()`
+- `class TestKnowledgeBaseWorkspaceAudits` - *PRINCIPLE-016 and PRINCIPLE-011 R8: update_knowledge_base audits external project workspaces.*
+  - Method `.setUp()`
+  - Method `.test_workspace_audits_lazy_code_architecture_and_adr_register()`
+  - Method `.test_clean_workspace_passes_lazy_and_architecture()`
+  - Method `.test_aikit_dir_is_ignored_by_python_file_discovery()`
 - `class TestSecretBaselineAndRuleSchema` - *PRINCIPLE-019 R2 and PRINCIPLE-017 R1 (ADR-092).*
   - Method `.test_gitignore_holds_every_baseline_pattern_the_rule_lists()`
   - Method `.test_a_rule_without_audience_is_rejected()`
@@ -668,7 +679,7 @@
   - Method `.project(files, gates)`
   - Method `.names(project)`
   - Method `.test_gates_come_only_from_the_projects_own_config()`
-  - Method `.test_secret_scan_is_always_last()`
+  - Method `.test_guidelines_and_secret_scan_are_always_present_and_last()`
   - Method `.test_project_json_adds_replaces_and_disables_gates()`
   - Method `.test_invalid_gate_config_is_refused()`
   - Method `.test_every_gate_runs_after_a_failure()`

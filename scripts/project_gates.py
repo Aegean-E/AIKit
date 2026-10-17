@@ -28,6 +28,8 @@ from scripts.project_registry import (
 
 SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
 SECRETS_GATE = "secrets"
+UPDATE_KB_CLI = ROOT_DIR / "scripts" / "update_knowledge_base.py"
+GUIDELINES_GATE = "guidelines"
 # One gate may build and test a whole project; past this it is treated as hung.
 GATE_TIMEOUT_SECONDS = 1800
 # Lines of a failing gate's output shown (PRINCIPLE-012 R7: terse, the end holds the error).
@@ -87,6 +89,13 @@ EXTRA_GATES: Dict[str, Callable[[Path], List[Tuple[str, str]]]] = {
 }
 
 
+def guidelines_gate(project_root: Path) -> Gate:
+    """The built-in guidelines and quality scan of the project's repository."""
+    argv = [sys.executable, str(UPDATE_KB_CLI), "--workspace", str(project_root), "--check"]
+    command = subprocess.list2cmdline(argv) if sys.platform == "win32" else shlex.join(argv)
+    return Gate(GUIDELINES_GATE, command, "built-in")
+
+
 def secrets_gate(project_root: Path) -> Gate:
     """The built-in secret scan of the project's repository."""
     argv = [sys.executable, str(SECRETS_CLI), "--workspace", str(project_root)]
@@ -96,7 +105,7 @@ def secrets_gate(project_root: Path) -> Gate:
 
 def resolve_gates(project: Project) -> List[Gate]:
     """
-    The project's gates in run order: test, detected extras, `gates` overrides, secret scan.
+    The project's gates in run order: test, detected extras, `gates` overrides, guidelines, secret scan.
     Two stacks detecting the same gate name keep the first; an override names the gate it means.
     """
     gates: Dict[str, Gate] = {}
@@ -113,12 +122,11 @@ def resolve_gates(project: Project) -> List[Gate]:
             'write it as e.g. "gates": {"lint": "npm run lint", "build": null}.',
         )
     for name, command in overrides.items():
-        if name == SECRETS_GATE:
+        if name in (SECRETS_GATE, GUIDELINES_GATE):
             raise ProjectError(
-                f"project.json may not override the '{SECRETS_GATE}' gate.",
-                "the secret scan guards every commit and cannot be replaced (PRINCIPLE-019).",
-                f"remove '{SECRETS_GATE}' from `gates`; mark a false positive with an "
-                "'aikit:allow-secret' pragma instead.",
+                f"project.json may not override the '{name}' gate.",
+                f"the {name} gate guards every commit and cannot be replaced.",
+                f"remove '{name}' from `gates`.",
             )
         if command is None:
             gates.pop(name, None)
@@ -130,7 +138,7 @@ def resolve_gates(project: Project) -> List[Gate]:
                 "each gate is one shell command run in the project folder.",
                 f'set "{name}" to a command string, or to null to disable it.',
             )
-    return [*gates.values(), secrets_gate(project.path)]
+    return [*gates.values(), guidelines_gate(project.path), secrets_gate(project.path)]
 
 
 def run_shell(command: str, cwd: Path, timeout: float) -> Tuple[int, str]:

@@ -26,13 +26,14 @@ This operational runbook provides the unified command matrix for driving AIKit a
 The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
-python aikit.py new <name>           # projects/<name>/, its own git repository
+python aikit.py new <name>           # projects/<name>/, seeds AGENTS.md guidelines
 python aikit.py attach <path>        # an existing folder
 python aikit.py status <name>        # its task, changes, latest decision and its gates
-python aikit.py check <name>         # its Phase 4: every gate, secret scan last; exit 0 to commit
+python aikit.py check <name>         # its Phase 4: tests, stack gates, guidelines, secret scan; exit 0 to commit
+python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 ```
 - Request names no single project: ask which one, or the name of a new one, before writing code.
-- In the steps below, project work replaces the repository with the project: add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. AIKit's other gates are for changes to AIKit only.
+- In the steps below, project work replaces the repository with the project: add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.
 
 ---
 

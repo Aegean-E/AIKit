@@ -11,7 +11,12 @@ import sys
 from pathlib import Path
 from typing import List, NoReturn, Optional
 
-from scripts.disruption_recovery import format_resume_report, run_disruption_audit
+from scripts.disruption_recovery import (
+    ROOT_DIR,
+    clean_dangling_temp_files,
+    format_resume_report,
+    run_disruption_audit,
+)
 from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
@@ -21,7 +26,11 @@ from scripts.project_registry import (
     find_project,
     latest_decision,
     list_projects,
+    write_memory,
+    AGENTS_FILENAME,
+    AGENTS_TEMPLATE,
 )
+from scripts.update_knowledge_base import generate_codebase_map
 
 
 def report_error(error: ProjectError) -> int:
@@ -69,11 +78,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = commands.add_parser("check", help="run every gate of a project (its Phase 4)")
     check.add_argument("name", help="project name, as `list` shows it")
+
+    fix = commands.add_parser("fix", help="self-heal project memory, clean stale temporary buffers, and sync codebase map")
+    fix.add_argument("name", help="project name, as `list` shows it")
     return parser
 
 
+def _active_workspace() -> Path:
+    cwd = Path.cwd()
+    return cwd if (cwd / "projects").is_dir() else ROOT_DIR
+
+
 def cmd_new(args: argparse.Namespace) -> int:
-    root, warning = create_project(args.name, args.test)
+    root, warning = create_project(args.name, args.test, workspace=_active_workspace())
     print(f"[OK] Created project '{args.name}' at {root}")
     if warning:
         print(f"[WARN] {warning}", file=sys.stderr)
@@ -82,14 +99,13 @@ def cmd_new(args: argparse.Namespace) -> int:
 
 
 def cmd_attach(args: argparse.Namespace) -> int:
-    name, folder, created = attach_project(args.path, args.name, args.test)
-    state = "created .aikit/project.json" if created else "kept its existing .aikit/ memory"
+    name, folder, created = attach_project(args.path, args.name, args.test, workspace=_active_workspace())
     print(f"[OK] Attached '{name}' at {folder} ({state})")
     return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    projects = list_projects()
+    projects = list_projects(_active_workspace())
     if not projects:
         print("No projects yet. Create one with `python aikit.py new <name>`.")
         return 0
@@ -106,7 +122,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def present_project(name: str) -> Project:
     """The registered project `name`, refusing one whose folder or record is gone."""
-    project = find_project(name)
+    project = find_project(name, _active_workspace())
     if not project.present:
         raise ProjectError(
             f"Project '{project.name}' is missing at {project.path}.",
@@ -161,8 +177,43 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fix(args: argparse.Namespace) -> int:
+    """Self-heal project memory, clean dangling temporary buffers, and sync codebase map."""
+    project = present_project(args.name)
+    print(f"Self-checking & fixing project '{project.name}' ({project.path}):")
+    fixes: List[str] = []
+
+    agents_path = project.path / AGENTS_FILENAME
+    had_agents = agents_path.exists()
+    created = write_memory(project.path, project.name, project.test_command)
+    if created:
+        fixes.append("initialized missing .aikit/project.json")
+    if not had_agents and agents_path.exists():
+        fixes.append("seeded AGENTS.md guidelines")
+
+    cleaned = clean_dangling_temp_files(project.path, min_age_seconds=0)
+    if cleaned:
+        fixes.append(f"cleaned {len(cleaned)} dangling temporary buffer(s)")
+
+    if any(project.path.glob("**/*.py")):
+        map_content = generate_codebase_map(root=project.path, strict=False)
+        map_path = project.path / ".aikit" / "codebase_map.md"
+        with open(map_path, "w", encoding="utf-8") as f:
+            f.write(map_content)
+        fixes.append("synchronized .aikit/codebase_map.md")
+
+    if fixes:
+        for fix in fixes:
+            print(f"  [FIXED] {fix}")
+    else:
+        print("  [CLEAN] No memory or temporary buffer anomalies detected.")
+
+    print(f"Running Phase 4 verification for '{project.name}':")
+    return cmd_check(args)
+
+
 HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list, "status": cmd_status,
-            "check": cmd_check}
+            "check": cmd_check, "fix": cmd_fix}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

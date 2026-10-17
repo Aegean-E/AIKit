@@ -20,7 +20,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ### 🛠️ Core Operational Command Matrix
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
-| **Start a Project** | `python aikit.py new <name>` | Creates `projects/<name>/` as its own git repo |
+| **Manage Projects** | `python aikit.py <cmd>` | `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124) |
 | **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~5s) |
 | **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
 | **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
@@ -52,7 +52,7 @@ This kit contains the complete, battle-tested AI governance system extracted fro
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── aikit.py                            <- Project CLI: new, attach, list, status, check; projects/
+├── aikit.py                            <- Project CLI: new, attach, list, status, check, fix; projects/
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)

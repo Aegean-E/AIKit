@@ -1,79 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "project-gates",
+    "task_id": "project-guidelines-parity",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792227307.6627707,
-    "completed_at": 1792227307.816717
+    "updated_at": 1792228911.7167172,
+    "completed_at": 1792228955.0731497
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/3] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224855.8790495,
-      "timestamp_str": "2026-10-17 11:14:15"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [3/3]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224887.7389739,
-      "timestamp_str": "2026-10-17 11:14:47"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792224923.9047632,
-      "timestamp_str": "2026-10-17 11:15:23"
-    },
-    {
-      "task_id": "review-fixes",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-fixes' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792224937.1058753,
-      "timestamp_str": "2026-10-17 11:15:37"
-    },
-    {
-      "task_id": "workspace-projects",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: cockpit model, projects/<name> with .aikit memory",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792225216.9317513,
-      "timestamp_str": "2026-10-17 11:20:16"
-    },
-    {
-      "task_id": "workspace-projects",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] scripts/project_registry.py + root aikit.py CLI (new, attach, list): stack detection, project.json, git per project; projects/ ignored by AIKit git and gates; tests; [2/3] per-project memory .aikit/ (ledger, decisions), disruption_recovery --project, aikit status; docs; [3/3] Tier 1 header + P005 rule tell every host the workflow; ADRs",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792225217.0776048,
-      "timestamp_str": "2026-10-17 11:20:17",
-      "impact_assessment": {
-        "why": "AIKit has no target-project concept: a project under it pollutes AIKit's map, runs AIKit's tests, and shares AIKit's ledger",
-        "benefits": "open AIKit in any host, describe a project, work happens isolated in projects/<name> with its own memory",
-        "risks": "contract: new aikit.py CLI and --project flag; dependency: none (stdlib, git); concurrency: per-project ledgers reduce collisions; state: new per-project .aikit/ files (schema in data_models.md)",
-        "mitigation": "argparse with triad errors; pure functions unit-tested; integration test in a temp dir; AIKit gates ignore projects/"
-      }
-    },
     {
       "task_id": "workspace-projects",
       "phase": "in_progress",
@@ -217,6 +152,71 @@
       "status": "completed",
       "timestamp": 1792227307.8167183,
       "timestamp_str": "2026-10-17 11:55:07"
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] plan: apply guidelines, self-checking and self-fixing to built projects",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792227915.0813582,
+      "timestamp_str": "2026-10-17 12:05:15",
+      "impact_assessment": {
+        "why": "Ensure AIKit guidelines that keep its own code correct also apply to projects it builds (anti-lazy, architecture, ADR register, workspace hygiene), closing the provider delegation gap and making the kit capable, self-checking, and self-fixing.",
+        "benefits": "Projects built by AIKit are guarded by the exact same quality and architectural invariants as AIKit itself; built-in guidelines gate catches stubs, junk-drawers, and broken ADRs; aikit fix self-heals project scaffolding and cleans stale buffers; projects receive AGENTS.md guidelines automatically.",
+        "risks": "contract: resolve_gates adds guidelines gate before secrets; dependency: zero external dependencies, pure stdlib; concurrency: gate runs under supervised() with whole-tree timeout kill; state: write_memory never overwrites existing project memory or AGENTS.md",
+        "mitigation": "Existing tests updated to expect guidelines gate; resolve_gates handles polyglot and Python projects gracefully; all unit tests stay under 1s."
+      }
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] update_knowledge_base workspace support complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792228149.4609919,
+      "timestamp_str": "2026-10-17 12:09:09"
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[2/5] guidelines gate integrated into project_gates.py",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792228231.3448696,
+      "timestamp_str": "2026-10-17 12:10:31"
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[3/5] project guidelines seeding and aikit fix complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792228648.4939659,
+      "timestamp_str": "2026-10-17 12:17:28"
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[4/5] documentation, principles, and ADR-124 updated",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792228911.7167172,
+      "timestamp_str": "2026-10-17 12:21:51"
+    },
+    {
+      "task_id": "project-guidelines-parity",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-guidelines-parity' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792228955.0731514,
+      "timestamp_str": "2026-10-17 12:22:35"
     }
   ]
 }

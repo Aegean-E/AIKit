@@ -146,6 +146,8 @@ from scripts.update_knowledge_base import (
     audit_adr_register,
     audit_lazy_code,
     audit_architecture,
+    check_lazy_code,
+    check_architecture,
     parse_source,
     find_python_files,
     parse_readme_tree,
@@ -809,6 +811,51 @@ class TestArchitectureGate(unittest.TestCase):
         modules = {"app.date_parsing": "", "app.service": "import app.domain",
                    "app.domain": "from typing import Protocol\nclass Store(Protocol):\n    def get(self) -> str: ...\n"}
         self.assertEqual(audit_architecture(modules), [])
+
+
+class TestKnowledgeBaseWorkspaceAudits(unittest.TestCase):
+    """PRINCIPLE-016 and PRINCIPLE-011 R8: update_knowledge_base audits external project workspaces."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="test_kb_ws_"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def test_workspace_audits_lazy_code_architecture_and_adr_register(self):
+        # A project with a stub, a junk-drawer module and broken ADRs
+        (self.tmp / "app.py").write_text("def todo(): pass\n", encoding="utf-8")
+        (self.tmp / "utils.py").write_text("x = 1\n", encoding="utf-8")
+        (self.tmp / ".aikit").mkdir(parents=True)
+        (self.tmp / ".aikit" / "decisions.md").write_text(
+            "# Decisions\n\n### ADR-001: First\n\n### ADR-003: Third (skips 2)\n", encoding="utf-8"
+        )
+        lazy = check_lazy_code(self.tmp)
+        self.assertEqual(len(lazy), 1)
+        self.assertIn("function 'todo' is a stub", lazy[0])
+
+        arch = check_architecture(self.tmp)
+        self.assertEqual(len(arch), 1)
+        self.assertIn("'utils' is a junk-drawer module name", arch[0])
+
+        adr_errors = audit_adr_register((self.tmp / ".aikit" / "decisions.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(adr_errors), 1)
+        self.assertIn("ADR-003 skips after ADR-001", adr_errors[0])
+
+    def test_clean_workspace_passes_lazy_and_architecture(self):
+        (self.tmp / "domain.py").write_text("def solve() -> int:\n    return 42\n", encoding="utf-8")
+        (self.tmp / ".aikit").mkdir(parents=True)
+        (self.tmp / ".aikit" / "decisions.md").write_text(
+            "# Decisions\n\n### ADR-001: First\n\n### ADR-002: Second\n", encoding="utf-8"
+        )
+        self.assertEqual(check_lazy_code(self.tmp), [])
+        self.assertEqual(check_architecture(self.tmp), [])
+        self.assertEqual(audit_adr_register((self.tmp / ".aikit" / "decisions.md").read_text(encoding="utf-8")), [])
+
+    def test_aikit_dir_is_ignored_by_python_file_discovery(self):
+        (self.tmp / ".aikit").mkdir(parents=True)
+        (self.tmp / ".aikit" / "helper.py").write_text("def stub(): pass\n", encoding="utf-8")
+        (self.tmp / "main.py").write_text("def ok() -> None:\n    return None\n", encoding="utf-8")
+        py_files = find_python_files(self.tmp)
+        self.assertEqual([p.name for p in py_files], ["main.py"])
 
 
 class TestSecretBaselineAndRuleSchema(unittest.TestCase):
@@ -3597,6 +3644,8 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "svc", workspace=self.kit)
         self.assertEqual(workspace_ledger_path(folder), folder / ".aikit" / "task_ledger.json")
         self.assertEqual(workspace_ledger_path(self.kit), self.kit / ".agents" / "task_ledger.json")
+        self.assertTrue((folder / "AGENTS.md").is_file())
+        self.assertIn("Project Instructions (svc)", (folder / "AGENTS.md").read_text(encoding="utf-8"))
         # The template's commented example is not a decision; real entries are, newest last.
         self.assertIsNone(latest_decision(folder))
         with open(folder / ".aikit" / "decisions.md", "a", encoding="utf-8") as handle:
@@ -3634,7 +3683,7 @@ class TestProjectGates(unittest.TestCase):
         return find_project(name, self.kit)
 
     def names(self, project):
-        return [(gate.name, gate.command) for gate in resolve_gates(project)][:-1]
+        return [(gate.name, gate.command) for gate in resolve_gates(project) if gate.source != "built-in"]
 
     def test_gates_come_only_from_the_projects_own_config(self):
         bare = self.project([("requirements.txt", "")])
@@ -3647,9 +3696,12 @@ class TestProjectGates(unittest.TestCase):
         self.assertEqual(self.names(node), [("test", "yarn test"), ("lint", "yarn run lint"),
                                             ("build", "yarn run build")])
 
-    def test_secret_scan_is_always_last(self):
+    def test_guidelines_and_secret_scan_are_always_present_and_last(self):
         gates = resolve_gates(self.project([("go.mod", "module x\n")]))
-        self.assertEqual([gate.name for gate in gates], ["test", "vet", "secrets"])
+        self.assertEqual([gate.name for gate in gates], ["test", "vet", "guidelines", "secrets"])
+        self.assertIn("update_knowledge_base.py", gates[-2].command)
+        self.assertIn("--workspace", gates[-2].command)
+        self.assertIn("--check", gates[-2].command)
         self.assertIn("check_secrets.py", gates[-1].command)
         self.assertIn("--workspace", gates[-1].command)
 
@@ -3660,7 +3712,7 @@ class TestProjectGates(unittest.TestCase):
         self.assertEqual(resolve_gates(project)[1].source, "project.json")
 
     def test_invalid_gate_config_is_refused(self):
-        for gates in ({"secrets": None}, {"lint": 3}, {"lint": " "}, ["lint"]):
+        for gates in ({"secrets": None}, {"guidelines": None}, {"lint": 3}, {"lint": " "}, ["lint"]):
             with self.subTest(gates=gates), self.assertRaises(ProjectError):
                 resolve_gates(self.project([("go.mod", "")], gates=gates))
 

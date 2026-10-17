@@ -32,6 +32,7 @@ PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
 DECISIONS_FILENAME = "decisions.md"
+AGENTS_FILENAME = "AGENTS.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
 DECISIONS_TEMPLATE = (
     "# Decisions\n\n"
@@ -45,6 +46,20 @@ DECISIONS_TEMPLATE = (
     "- **Decision**: <what was decided>\n"
     "- **Consequences**: <what follows, including what it costs>\n"
     "-->\n"
+)
+# Tier 1 project guidelines seeded for AI host agents (Claude, Gemini, Antigravity, Cursor, Copilot).
+AGENTS_TEMPLATE = (
+    "# Project Instructions ({name})\n\n"
+    "> Governed by AIKit architecture, quality principles, and disruption recovery.\n\n"
+    "## Core Operational Invariants\n"
+    "- **Phase 4 Quality Gate**: Every commit must pass all Phase 4 gates: `python aikit.py check {name}`. Zero uncommitted defects.\n"
+    "- **Architectural Decisions (ADR)**: Architectural changes and design decisions are recorded as monotonic, sequential ADRs in `.aikit/decisions.md` (PRINCIPLE-016 R3).\n"
+    "- **Task Ledger & Disruption Recovery**: Long-running tasks and milestones are checkpointed in `.aikit/task_ledger.json` with `python scripts/disruption_recovery.py --workspace . --checkpoint <task> ...` (PRINCIPLE-006).\n"
+    "- **Code Quality Primacy**: No unfinished code markers (TODO/FIXME/XXX/HACK), no stub implementations (`pass`, `...`, `NotImplementedError` outside interfaces), and no unnamed suppressions (PRINCIPLE-007 R3).\n"
+    "- **Modularity & Clean Architecture**: No junk-drawer modules (`utils`, `helpers`), role interfaces bounded to 1-5 methods, no circular imports (PRINCIPLE-009).\n"
+    "- **Resource Optimization**: Explicit `timeout=` on every subprocess call; `open()` only in `with` statements (PRINCIPLE-010).\n"
+    "- **Zero-Friction Reliability**: No bare `os.environ[...]` reads without safe defaults (PRINCIPLE-011).\n"
+    "- **Secret & Sensitive Data Hygiene**: Zero credentials committed to git or logs; scanned on every check (PRINCIPLE-019).\n"
 )
 SCHEMA_VERSION = 1
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -211,7 +226,7 @@ def _ensure_gitignore(project_root: Path) -> None:
 
 def write_memory(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
     """
-    Create the project's `.aikit/project.json` and `.aikit/decisions.md` unless they exist.
+    Create the project's `.aikit/project.json`, `.aikit/decisions.md`, and `AGENTS.md` unless they exist.
     Returns whether `project.json` was created: existing memory is never overwritten.
     """
     path = config_path(project_root)
@@ -220,6 +235,9 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     if not decisions.exists():
         decisions.parent.mkdir(parents=True, exist_ok=True)
         decisions.write_text(DECISIONS_TEMPLATE, encoding="utf-8")
+    agents_path = project_root / AGENTS_FILENAME
+    if not agents_path.exists():
+        agents_path.write_text(AGENTS_TEMPLATE.format(name=name), encoding="utf-8")
     if path.exists():
         return False
     atomic_write_json(path, {
@@ -297,7 +315,7 @@ def _git_start(project_root: Path) -> Optional[str]:
             "every project is its own git repository, separate from AIKit's.",
             "fix the git error above, then run the command again.",
         )
-    _run_git(project_root, "add", "--", ".gitignore", PROJECT_MEMORY_DIRNAME)
+    _run_git(project_root, "add", "--", ".gitignore", AGENTS_FILENAME, PROJECT_MEMORY_DIRNAME)
     result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
     if result.returncode != 0:
         # git's last stderr line is the cause; the lines before it are generic advice.
