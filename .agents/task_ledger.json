@@ -5,28 +5,9 @@
     "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792224680.7959092
+    "updated_at": 1792224855.8790495
   },
   "checkpoints": [
-    {
-      "task_id": "p006-pass2",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'p006-pass2' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792223665.4410367,
-      "timestamp_str": "2026-10-17 10:54:25"
-    },
-    {
-      "task_id": "p007-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: Track C task with no plan checkpoint",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223692.1704156,
-      "timestamp_str": "2026-10-17 10:54:52"
-    },
     {
       "task_id": "p007-pass2",
       "phase": "in_progress",
@@ -227,6 +208,26 @@
       "status": "in_progress",
       "timestamp": 1792224680.7959092,
       "timestamp_str": "2026-10-17 11:11:20"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/3]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224718.515363,
+      "timestamp_str": "2026-10-17 11:11:58"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/3] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224855.8790495,
+      "timestamp_str": "2026-10-17 11:14:15"
     }
   ]
 }

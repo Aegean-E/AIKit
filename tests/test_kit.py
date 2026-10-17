@@ -914,19 +914,41 @@ class TestKnowledgeCitations(unittest.TestCase):
     """PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve."""
 
     LIVING = ["GUIDELINES.md", "README.md"] + [f"knowledge/{n}" for n in
-              ("INDEX.md", "architecture.md", "services.md", "data_models.md", "state_and_ui.md")]
+              ("INDEX.md", "architecture.md", "services.md", "data_models.md", "state_and_ui.md",
+               "host_clients.md", "model_benchmarks.md")]
+    # Rule citations only: these also name environment variables and abbreviations (ADR-117).
+    CITATIONS_ONLY = [".agents/skills/aikit/SKILL.md", ".agents/agents/opencode_worker.md",
+                      "knowledge/principles_audit_ledger.md"]
 
     def test_every_rule_citation_names_an_existing_rule(self):
         sections = principle_sections(SSOT_MD.read_text(encoding="utf-8"))
         counts = {pid: len(re.findall(r"^  \d+\. \*\*", s[s.index("- **Rules**:"):], re.M)) for pid, s in sections.items()}
         stale = []
-        for rel in self.LIVING + [f"scripts/{p.name}" for p in (ROOT_DIR / "scripts").glob("*.py")]:
+        agents = [f".opencode/agents/{p.name}" for p in (ROOT_DIR / ".opencode" / "agents").glob("*.md")]
+        for rel in (self.LIVING + self.CITATIONS_ONLY + agents
+                    + [f"scripts/{p.name}" for p in (ROOT_DIR / "scripts").glob("*.py")]):
             text = (ROOT_DIR / rel).read_text(encoding="utf-8")
             for m in re.finditer(r"PRINCIPLE-(\d{3})(?:\*\*)?\s+(?:Rule\s+|R)(\d+)", text):
                 pid, number = f"PRINCIPLE-{m.group(1)}", int(m.group(2))
                 if number > counts.get(pid, 0):
                     stale.append(f"{rel}: {pid} R{number}")
         self.assertEqual(stale, [])
+
+    def test_required_documents_equal_the_ones_principle_016_names(self):
+        # Red-green pin (ADR-117): three AIKit-only documents were added to CORE_DOCS, failing every
+        # adopter who replaced knowledge/ and contradicting PRINCIPLE-016 R1's list of seven.
+        section = principle_sections(SSOT_MD.read_text(encoding="utf-8"))["PRINCIPLE-016"]
+        rule = next(line for line in section.splitlines() if "**Canonical Structure" in line)
+        listed = set(re.findall(r"`([A-Za-z_]+\.md)`", rule.split("python scripts/")[0]))
+        self.assertEqual(listed, set(CORE_DOCS))
+
+    def test_audit_ledger_labels_predictions_as_predictions(self):
+        # Red-green pin (ADR-117): the ledger reported cross-model results no evaluation produced.
+        text = (ROOT_DIR / "knowledge" / "principles_audit_ledger.md").read_text(encoding="utf-8")
+        self.assertIn("**Status: snapshot, not an evaluation (ADR-117).**", text)
+        self.assertNotIn("- **Cross-LLM Behavior**:", text)
+        self.assertNotIn("### Cross-Model Interpretability Matrix", text)
+        self.assertNotIn('hasattr(os, "O_DIRECTORY")', text)
 
     def test_every_benchmark_row_names_its_source_or_says_unverified(self):
         # PRINCIPLE-009 R6 (ADR-114): scores were presented as verified with no per-row source.

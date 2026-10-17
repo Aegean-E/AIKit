@@ -9,7 +9,7 @@
 - **Total Python Modules**: `8`
 - **Total Classes**: `47`
 - **Total Functions / Methods**: `116`
-- **Total Source Lines**: `8032`
+- **Total Source Lines**: `8054`
 
 ---
 
@@ -150,7 +150,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `847` lines (`37580` bytes)
+**Size**: `847` lines (`37792` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -246,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3436` lines (`192051` bytes)
+**Size**: `3458` lines (`193652` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -318,6 +318,8 @@
   - Method `.test_each_subagent_edits_only_its_own_area()`
 - `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
   - Method `.test_every_rule_citation_names_an_existing_rule()`
+  - Method `.test_required_documents_equal_the_ones_principle_016_names()`
+  - Method `.test_audit_ledger_labels_predictions_as_predictions()`
   - Method `.test_every_benchmark_row_names_its_source_or_says_unverified()`
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
 - `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099).*

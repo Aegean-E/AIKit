@@ -28,10 +28,10 @@ CORE_DOCS = [
     "state_and_ui.md",
     "decisions.md",
     "codebase_map.md",
-    "model_benchmarks.md",
-    "host_clients.md",
-    "principles_audit_ledger.md",
 ]
+# The seven documents PRINCIPLE-016 R1 requires of every project. AIKit's own extra documents
+# (model_benchmarks.md, host_clients.md, principles_audit_ledger.md) are optional: requiring them
+# failed every adopter who replaced knowledge/ with their own documents, as README instructs (ADR-117).
 
 IGNORE_DIRS = {
     ".git",

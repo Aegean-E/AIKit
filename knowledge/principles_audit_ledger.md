@@ -1,5 +1,7 @@
 # AIKit Principles Comprehensive 7-Pass Audit Ledger 📑
 
+> **Status: snapshot, not an evaluation (ADR-117).** This ledger was written at ADR-107 and is not kept current; `GUIDELINES.md` is the only source of the rules, several of which changed afterwards (ADR-108 to ADR-117). No model was run against the principles: every "Predicted cross-LLM behavior" line and the interpretability table at the end are the author's predictions, not measurements. Absolute claims such as "completely", "guarantees" or "airtight" are the author's wording, not verified properties.
+
 > **Goal Authority**: Comprehensive 7-pass deep-dive analytical evaluation across all 20 principles (**PRINCIPLE-000** to **PRINCIPLE-019**).
 > **Evaluation Dimensions**:
 > 1. **Pass 1: Semantic Clarity & Cross-LLM Interpretability** (Do different models like Claude, GPT-4o, Gemini, DeepSeek, Qwen interpret it identically?)
@@ -20,7 +22,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. The principle establishes an unambiguous definition of conflict ("at the same step, obeying one requires an action the other forbids, or forbids an action the other requires") and strict RFC 2119 keyword interpretations.
-- **Cross-LLM Behavior**: Frontier models (Claude 3.7 Sonnet, GPT-4o, Gemini 2.0) parse the 4-tier resolution hierarchy in R6 deterministically. Local and smaller open weights (Qwen2.5-Coder-7B) correctly follow the explicit rule citation precedence.
+- **Predicted cross-LLM behavior (not measured)**: Frontier models (Claude 3.7 Sonnet, GPT-4o, Gemini 2.0) parse the 4-tier resolution hierarchy in R6 deterministically. Local and smaller open weights (Qwen2.5-Coder-7B) correctly follow the explicit rule citation precedence.
 - **Semantic Risks**: Rule R4 references "When the agent judges that obeying a rule literally would make the code or its tests worse...". The term "worse" invites model-specific subjective aesthetic judgments unless explicitly anchored to measurable code quality metrics.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -53,7 +55,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: High precision. The Two-Tier architecture is cleanly partitioned: Tier 1 (always injected, strict $\le$ 1,600 estimated tokens) vs. Tier 2 (on-demand deep rationale in `GUIDELINES.md` and `knowledge/`).
-- **Cross-LLM Behavior**: The three retrieval triggers in R3 (Contract-Change, Failure, Ambiguity) are universally recognizable by all modern LLMs. Models reliably recognize when a public function signature, CLI flag, or schema field changes.
+- **Predicted cross-LLM behavior (not measured)**: The three retrieval triggers in R3 (Contract-Change, Failure, Ambiguity) are universally recognizable by all modern LLMs. Models reliably recognize when a public function signature, CLI flag, or schema field changes.
 - **Semantic Risks**: In R3, "reading every principle section one after another counts as loading it in full". Models with massive context windows (1M+ tokens) naturally tend to read large swaths of files; this restriction must remain explicitly stated to prevent prompt pollution.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -86,7 +88,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Crystal clear. Decomposes tasks into 5 lock-step phases: Grounding $\rightarrow$ Planning $\rightarrow$ Implementation $\rightarrow$ Verification $\rightarrow$ Delivery.
-- **Cross-LLM Behavior**: Models adhere strictly to the sequence when prompted with phase names. The 3-track definition in R3 (Track A: query, Track B: docs, Track C: code/config/schemas) eliminates guessing.
+- **Predicted cross-LLM behavior (not measured)**: Models adhere strictly to the sequence when prompted with phase names. The 3-track definition in R3 (Track A: query, Track B: docs, Track C: code/config/schemas) eliminates guessing.
 - **Semantic Risks**: In R1, the distinction between "phase entered" and "phase finished" is subtle: a recorded checkpoint denotes entering a phase, meaning an interrupted agent resumes *inside* that phase.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -119,7 +121,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. Mandates "Read-Before-Write" slice freshness, manifest-backed dependency reality, and bi-directional contract parity.
-- **Cross-LLM Behavior**: The distinction in R6 between *Runtime Ambiguity* (handled by running code with defaults/errors) and *Intent Ambiguity* (handled by the agent asking the user) is one of the most effective guardrails across all LLM architectures.
+- **Predicted cross-LLM behavior (not measured)**: The distinction in R6 between *Runtime Ambiguity* (handled by running code with defaults/errors) and *Intent Ambiguity* (handled by the agent asking the user) is one of the most effective guardrails across all LLM architectures.
 - **Semantic Risks**: R4 requires using the launcher and shell reported by the active environment. On Windows environments with multiple Python installations (`py` vs `python`), models can occasionally trigger process execution errors if they copy Linux `python3` invocations.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -152,7 +154,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: High. Establishes that chat is transient progress and disk files are persistent state ("Chat holds progress, not state").
-- **Cross-LLM Behavior**: Models reliably identify the active living plan by searching for the latest `--phase-num 2` checkpoint starting with `[1/`.
+- **Predicted cross-LLM behavior (not measured)**: Models reliably identify the active living plan by searching for the latest `--phase-num 2` checkpoint starting with `[1/`.
 - **Semantic Risks**: The rule that intermediate messages must be $\le 15$ lines can cause models to artificially truncate necessary diagnostic logs or error traces unless clarified.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -189,7 +191,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional clarity. The SSOT triad cleanly separates duties: `README.md` for human users, `GUIDELINES.md` for AI agent instructions, and `knowledge/` for deep architectural logic and schemas.
-- **Cross-LLM Behavior**: Modern frontier LLMs (Claude 3.7 Sonnet, GPT-4o, Gemini 2.0) easily interpret the mandatory sections (`Cold-Start Quick Reference`, `What's Inside`, `Canonical Regression Shield Gate`). Smaller models correctly parse the strict 20,000 character limit.
+- **Predicted cross-LLM behavior (not measured)**: Modern frontier LLMs (Claude 3.7 Sonnet, GPT-4o, Gemini 2.0) easily interpret the mandatory sections (`Cold-Start Quick Reference`, `What's Inside`, `Canonical Regression Shield Gate`). Smaller models correctly parse the strict 20,000 character limit.
 - **Semantic Risks**: Rule R2 lists triggers that force a README update. While specific, an LLM might question whether adding an internal private helper function to an existing script counts as changing "what a command documented in README checks, writes or prints". The principle clarifies this covers user-observable output, but explicitly defining "user-observable" prevents edge-case churn.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -222,7 +224,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: High precision. The principle eliminates ambiguity around when to commit by binding conventional micro-commits directly to plan milestone completions.
-- **Cross-LLM Behavior**: All evaluated models (Claude, GPT, Gemini, DeepSeek, Qwen) understand the micro-commit format: `type(scope): [milestone N/M] <description>`.
+- **Predicted cross-LLM behavior (not measured)**: All evaluated models (Claude, GPT, Gemini, DeepSeek, Qwen) understand the micro-commit format: `type(scope): [milestone N/M] <description>`.
 - **Semantic Risks**: Rule R1 states "MUST NOT start milestone N+1 while milestone N is finished but uncommitted". LLMs executing parallel tool calls or generating multi-file changes might unintentionally edit files slated for milestone N+1 before committing milestone N unless explicitly gated by their internal execution loop.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -255,7 +257,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Crystal clear. Establishes a mandatory 4-dimension blast-radius taxonomy: `contract:`, `dependency:`, `concurrency:`, and `state:`.
-- **Cross-LLM Behavior**: Models reliably output the structured format required by `--risks "contract: ...; dependency: ...; concurrency: ...; state: ..."`.
+- **Predicted cross-LLM behavior (not measured)**: Models reliably output the structured format required by `--risks "contract: ...; dependency: ...; concurrency: ...; state: ..."`.
 - **Semantic Risks**: The prohibition against speculative over-engineering (Scope Ceiling in R4) can be interpreted with varying degrees of strictness by different models. Grounding scope strictly to the recorded plan milestones eliminates subjectivity.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -288,7 +290,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. Mandates Top-Down Decomposition, Bottom-Up Execution, bounded milestone horizons (1 <= M <= 6), and single-domain leaf atomicity.
-- **Cross-LLM Behavior**: The rule that "no milestone may use a class, function, flag or file that a later milestone creates" is universally understood by LLMs, guiding foundation-first dependency ordering.
+- **Predicted cross-LLM behavior (not measured)**: The rule that "no milestone may use a class, function, flag or file that a later milestone creates" is universally understood by LLMs, guiding foundation-first dependency ordering.
 - **Semantic Risks**: Rule R4 requires that a milestone change one architectural layer (from PRINCIPLE-009). If an AI does not inspect PRINCIPLE-009's 4 layers (Interface, Logic, Port, Adapter), it may decompose by arbitrary file groupings instead of architectural boundaries.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -325,7 +327,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. Provides an unambiguous definition of a pluggable boundary ("a role with two or more production implementations in the repository or in the recorded plan"). It establishes the canonical 4-layer taxonomy: Presentation, Service, Domain, Adapter.
-- **Cross-LLM Behavior**: Frontier models (Claude, GPT-4o, Gemini) strictly respect the prohibited junk-drawer names (`utils`, `util`, `helpers`, `helper`, `common`, `misc`) and the 1-to-5 method role protocol invariant. Smaller models correctly follow constructor injection with default fallbacks (`self._adapter = adapter or DefaultAdapter()`).
+- **Predicted cross-LLM behavior (not measured)**: Frontier models (Claude, GPT-4o, Gemini) strictly respect the prohibited junk-drawer names (`utils`, `util`, `helpers`, `helper`, `common`, `misc`) and the 1-to-5 method role protocol invariant. Smaller models correctly follow constructor injection with default fallbacks (`self._adapter = adapter or DefaultAdapter()`).
 - **Semantic Risks**: Rule R1 allows the four layers to share one module if under 300 lines. Some models might prematurely split a simple 150-line utility into 4 separate files, introducing unnecessary boilerplate unless guided by the 300-line threshold.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -358,7 +360,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Outstanding mathematical precision. Replaces vague directives like "make it fast" with explicit, falsifiable numeric ceilings: loop lookup in $O(1)$ set/dict, threads only for operations taking >= 200ms, subprocess calls gated by timeouts, `--help` in < 200ms, unit test suite < 1s, integration suite < 5s.
-- **Cross-LLM Behavior**: All evaluated LLMs parse the explicit millisecond and second thresholds accurately. Models consistently add `timeout=` to subprocess invocations when instructed by this principle.
+- **Predicted cross-LLM behavior (not measured)**: All evaluated LLMs parse the explicit millisecond and second thresholds accurately. Models consistently add `timeout=` to subprocess invocations when instructed by this principle.
 - **Semantic Risks**: Rule R1 distinguishes between "uncontrolled input" (must be streamed or read incrementally) and "bounded files" (rule files, ledger) that may be read whole. An LLM might occasionally over-engineer streaming readers for small, bounded config files.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -391,7 +393,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. The invariant establishes a pure-standard-library clone-and-run baseline, automatic directory provisioning (`mkdir(parents=True, exist_ok=True)`), safe environment reads (`os.getenv()` with default), deterministic exit codes (0/1/2), and the Actionable Remediation Triad.
-- **Cross-LLM Behavior**: Models reliably implement the Actionable Remediation Triad:
+- **Predicted cross-LLM behavior (not measured)**: Models reliably implement the Actionable Remediation Triad:
   1. What failed
   2. `Why:` <root cause>
   3. `Fix:` <exact resolving command>
@@ -427,7 +429,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: High precision. Distinguishes cleanly between rules binding code that calls LLM APIs (R1, R2, R4, R6) and rules binding the agent's own behavior and code generation (R3, R5, R7, R8).
-- **Cross-LLM Behavior**: Models understand the static prefix vs variable tail prompt caching split (R2) and apply repository-relative paths (`scripts/disruption_recovery.py`) rather than verbose absolute paths.
+- **Predicted cross-LLM behavior (not measured)**: Models understand the static prefix vs variable tail prompt caching split (R2) and apply repository-relative paths (`scripts/disruption_recovery.py`) rather than verbose absolute paths.
 - **Semantic Risks**: Rule R7 forbids "a function whose body only calls another function with the same arguments". Some models might interpret standard design pattern delegations (e.g. wrapper facades) as premature abstraction unless the rule's specific boundaries are kept clear.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -465,7 +467,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. The principle establishes a crisp, formal distinction between *state files* (files the program writes and reads back that cannot be rebuilt from tracked sources) and *generated files* (files rebuilt deterministically by running a generator command).
-- **Cross-LLM Behavior**: All evaluated models (Claude, GPT, Gemini, DeepSeek, Qwen) accurately implement the 5-step atomic write sequence: write to temp file in same directory $\rightarrow$ flush and `os.fsync` $\rightarrow$ atomic rename with `os.replace` retried up to 5 times on `PermissionError` $\rightarrow$ fsync parent directory.
+- **Predicted cross-LLM behavior (not measured)**: All evaluated models (Claude, GPT, Gemini, DeepSeek, Qwen) accurately implement the 5-step atomic write sequence: write to temp file in same directory $\rightarrow$ flush and `os.fsync` $\rightarrow$ atomic rename with `os.replace` retried up to 5 times on `PermissionError` $\rightarrow$ fsync parent directory.
 - **Semantic Risks**: Rule R1 specifies a 5-try retry loop with exponential backoff on `PermissionError` specifically to mitigate Windows file lock contention (`WinError 32`). A model running exclusively in Linux container environments might treat this retry loop as superfluous unless reminded of cross-platform parity.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -475,7 +477,7 @@
 - **Continuous Chaos & Fault-Injection Tests (R7)**: Mechanically verified in `tests/test_kit.py` and `tests/test_integration.py` through dedicated fault-injection tests (0-byte file, malformed JSON, disk exhaustion, concurrent writers).
 
 #### Pass 3: Weaknesses, Loopholes & Edge Cases
-- **Directory Fsync on Windows**: In Python on Windows, calling `os.fsync` on an open directory handle raises `OSError` (`[Errno 22] Invalid argument`). The kit wraps directory syncing in platform guards (`if hasattr(os, "O_DIRECTORY")`), but a naive AI implementing P013 outside the kit could hit Windows handle errors.
+- **Directory Fsync on Windows**: In Python on Windows, calling `os.fsync` on an open directory handle raises `OSError` (`[Errno 22] Invalid argument`). The kit skips directory syncing on Windows (`if sys.platform == "win32"` in `fsync_dir`), but a naive AI implementing P013 outside the kit could hit Windows handle errors.
 - **Stale Lock Inode Recycling**: In fast multi-process loops, breaking a 30-second stale lock via atomic rename could theoretically race if clock skew exists across container mounts.
 
 #### Pass 4: Cross-Principle Alignment & Redundancies
@@ -499,7 +501,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Outstanding clarity. Enforces the golden invariant: 100% test pass gate, behavior changes require a failing-first test, and weakening a test is strictly defined and forbidden without user approval and a recorded ADR.
-- **Cross-LLM Behavior**: The definition of test weakening ("any change after which it accepts a behavior it rejected before") is universally understood by all models, effectively closing the loophole where models delete assertions to make a failing suite pass.
+- **Predicted cross-LLM behavior (not measured)**: The definition of test weakening ("any change after which it accepts a behavior it rejected before") is universally understood by all models, effectively closing the loophole where models delete assertions to make a failing suite pass.
 - **Semantic Risks**: Rule R1 distinguishes between a "behavior change" (requires a new test) and a "refactor" (existing tests pass unchanged). An agent could misclassify an internal contract shift as a refactor unless verified by reachability and interface checks.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -533,7 +535,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: High precision. The principle mandates that the AI agent must run what it builds the way a user would: in a real sandbox, on the golden path, and under hostile chaos perturbation.
-- **Cross-LLM Behavior**: Models grasp the domain-specific nature of the runner: CLI commands run as real processes with closed stdin, web apps check root containers and console errors, APIs verify HTTP schemas and 500ms latency, GUIs test offscreen window lifecycle.
+- **Predicted cross-LLM behavior (not measured)**: Models grasp the domain-specific nature of the runner: CLI commands run as real processes with closed stdin, web apps check root containers and console errors, APIs verify HTTP schemas and 500ms latency, GUIs test offscreen window lifecycle.
 - **Semantic Risks**: Rule R5 specifies that "running `--help` alone is not a dogfood run". Models might assume that invoking `--audit` satisfies the requirement without executing the interactive golden path and chaos perturbation tracks.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -562,11 +564,15 @@
 
 ---
 
+## 🚀 Phase 5: Living Synchronization & Delivery
+
+---
+
 ### 🔍 PRINCIPLE-016: AI Knowledge Base & Continuous Synchronization
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. Mandates the canonical structure of `knowledge/`: `INDEX.md`, `architecture.md`, `services.md`, `data_models.md`, `state_and_ui.md`, `decisions.md`, and `codebase_map.md`.
-- **Cross-LLM Behavior**: Models reliably identify where specific changes belong: schemas in `data_models.md`, architectural decisions in `decisions.md`, service gates in `services.md`.
+- **Predicted cross-LLM behavior (not measured)**: Models reliably identify where specific changes belong: schemas in `data_models.md`, architectural decisions in `decisions.md`, service gates in `services.md`.
 - **Semantic Risks**: Rule R2 prohibits restating rule text from `GUIDELINES.md` inside `knowledge/` documents. Some models tend to summarize rule text when citing principles; this restriction must be strictly maintained to prevent divergence.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -595,15 +601,11 @@
 
 ---
 
-## 🚀 Phase 5: Living Synchronization & Delivery
-
----
-
 ### 🔍 PRINCIPLE-017: Living Principles System & Automated Synchronization (Auto-Sync Governance)
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. The principle cements `GUIDELINES.md` as the single hand-edited source of truth and enforces that all Tier 1 prompt targets across all host IDEs are generated deterministically.
-- **Cross-LLM Behavior**: Frontier models (Claude, GPT-4o, Gemini) and local models (Qwen, DeepSeek) interpret the 5-section schema (`Title`, `Problem`, `Concept`, `Invariant`, `Rules`) identically. Models correctly recognize that editing derived files (such as `AGENTS.md` or `CLAUDE.md`) directly is forbidden.
+- **Predicted cross-LLM behavior (not measured)**: Frontier models (Claude, GPT-4o, Gemini) and local models (Qwen, DeepSeek) interpret the 5-section schema (`Title`, `Problem`, `Concept`, `Invariant`, `Rules`) identically. Models correctly recognize that editing derived files (such as `AGENTS.md` or `CLAUDE.md`) directly is forbidden.
 - **Semantic Risks**: Rule R5 specifies that principles belong to the nearest `## ... Phase N:` heading above them and must appear in non-decreasing phase order. An agent inserting a new principle must place it in the correct phase section to prevent generator exit code 1.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -636,7 +638,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Outstanding clarity. Strictly defines conventional commit formatting, explicit named staging, the pre-commit delivery triad, adaptive pushing without force, and non-destructive soft recoil.
-- **Cross-LLM Behavior**: All evaluated models strictly respect the prohibition against blind staging (`git add .`, `git add -A`, `git add -u`). Models consistently format commits according to the conventional spec: `type(scope): [milestone N/M] description`.
+- **Predicted cross-LLM behavior (not measured)**: All evaluated models strictly respect the prohibition against blind staging (`git add .`, `git add -A`, `git add -u`). Models consistently format commits according to the conventional spec: `type(scope): [milestone N/M] description`.
 - **Semantic Risks**: Rule R4 mandates running `git pull --rebase` if a push is rejected. If an LLM encounters a complex rebase conflict, it must execute `git rebase --abort` and ask the user rather than attempting heuristic conflict resolution that could corrupt history.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -673,7 +675,7 @@
 
 #### Pass 1: Semantic Clarity & Cross-LLM Interpretability
 - **Clarity Assessment**: Exceptional. Establishes the foundational truth that secret exposure is the only defect class with no clean rollback: once a secret is committed or pushed, it must be rotated immediately; `git reset` or deleting the file cannot cure the disclosure.
-- **Cross-LLM Behavior**: All models parse the requirement to read secrets exclusively from environment variables via `os.getenv`. Redaction formats (`first 4 characters + ***`) are applied consistently across models.
+- **Predicted cross-LLM behavior (not measured)**: All models parse the requirement to read secrets exclusively from environment variables via `os.getenv`. Redaction formats (`first 4 characters + ***`) are applied consistently across models.
 - **Semantic Risks**: Rule R7 forbids "inventing, guessing or filling in a credential value to make a flow proceed". When testing API integrations, models sometimes fabricate dummy API keys (such as `sk-12345...`) that can trip entropy scanners unless properly mocked.
 
 #### Pass 2: Strengths & Mechanical Invariants
@@ -715,7 +717,7 @@
 1. **Governance Ceremony**: Strict adherence to the 5-phase lifecycle, impact assessments, and milestone micro-commits requires disciplined agent execution. While this prevents high-cost bugs, it introduces deliberate pacing on Track C changes.
 2. **Context Budget Boundaries**: The 20,000 character limit on `README.md` and 1,600 token ceiling on Tier 1 instruction files force relentless prose compression, necessitating continuous use of the living knowledge base in `knowledge/`.
 
-### Cross-Model Interpretability Matrix
+### Predicted Cross-Model Interpretability (not measured)
 
 | Principle Group | Frontier Models (Claude, GPT-4o, Gemini) | Local / Open Weights (DeepSeek, Qwen) | Key Deterministic Anchor |
 | :--- | :--- | :--- | :--- |

@@ -99,7 +99,7 @@ portable_agent_kit/
     ├── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
     ├── model_benchmarks.md             <- Subagent model benchmark database & selection tree
     ├── host_clients.md                 <- Host client portability & cross-environment parity
-    └── principles_audit_ledger.md      <- 7-pass comprehensive audit across all 20 principles
+    └── principles_audit_ledger.md      <- Snapshot audit at ADR-107 (not kept current)
 ```
 
 

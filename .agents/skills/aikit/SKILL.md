@@ -48,7 +48,7 @@ Determine required gates before editing:
 python scripts/disruption_recovery.py --track
 ```
 - **Track A** (none): No gates required.
-- **Track B** (docs/comments): Post-flight checklist and secret scan.
+- **Track B** (docs/comments): Phases 1, 3, 4 and 5; Phase 4 is the same full gate set as Track C (PRINCIPLE-002 R3).
 - **Track C** (code/tests/contracts): Full pre-flight impact checklist, test gates, and pre-commit delivery triad.
 
 ### 2. Record Task Plan & Milestone Checkpoints
@@ -95,7 +95,7 @@ opencode run --standalone --format json --agent worker --file <path> "<prompt>"
 
 
 ### 3. Subagent Boundaries & Safety
-- **Ledger Invariant (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`. Mechanically denied by `opencode.jsonc` and `.opencode/agents/worker.md`.
+- **Ledger Invariant (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`. Denied to every OpenCode sub-agent by `.opencode/agents/*.md`, together with `GUIDELINES.md`, the generated Tier 1 files and destructive git commands; `TestOpenCodePermissionBoundaries` replays OpenCode's last-match evaluation over them (ADR-116).
 - **Regression Shield Gate (PRINCIPLE-014)**: All code proposed by subagents must pass unit tests and read-only gates before staging.
 
 
@@ -103,7 +103,7 @@ opencode run --standalone --format json --agent worker --file <path> "<prompt>"
 
 ## 🛡️ Phase 4: Operational Verification & Regression Shields
 
-Execute these verification gates before staging or committing any Track C changes:
+Execute every gate below before every commit, Track B or Track C (PRINCIPLE-018 R3):
 
 ### 1. Unit & Integration Test Suites
 ```bash
