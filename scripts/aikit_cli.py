@@ -7,9 +7,13 @@ could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
 """
 
 import argparse
+import json
+import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import List, NoReturn, Optional
+from typing import Callable, Dict, List, NoReturn, Optional, Tuple
 
 from scripts.disruption_recovery import (
     ROOT_DIR,
@@ -65,6 +69,9 @@ class TriadArgumentParser(argparse.ArgumentParser):
         )))
 
 
+VALID_SUBAGENT_ROLES: Tuple[str, ...] = ("worker", "architect", "coder", "tester", "reviewer", "explorer")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = TriadArgumentParser(
         prog="python aikit.py",
@@ -113,6 +120,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     fix = commands.add_parser("fix", help="self-heal project memory, clean stale temporary buffers, and sync codebase map")
     fix.add_argument("name", help="project name, as `list` shows it")
+
+    delegate = commands.add_parser("delegate",
+                                   help="safely delegate a background task to a subagent",
+                                   description="safely delegate a background task to a subagent")
+    delegate.add_argument("role", help=f"subagent role: {', '.join(VALID_SUBAGENT_ROLES)}")
+    delegate.add_argument("prompt", help="task prompt or instruction for the subagent")
+    delegate.add_argument("--file", "-f", dest="file", default=None,
+                          help="target file to attach or inspect")
+    delegate.add_argument("--project", "-p", dest="project", default=None,
+                          help="target registered project name")
+    delegate.add_argument("--model", "-m", dest="model", default=None,
+                          help="model identifier (e.g. ollama/qwen2.5-coder:latest)")
+    delegate.add_argument("--timeout", type=int, default=120,
+                          help="execution timeout in seconds (default: 120)")
+    delegate.add_argument("--format", dest="format", choices=["text", "json"], default="text",
+                          help="output format (default: text)")
     return parser
 
 
@@ -295,6 +318,7 @@ def cmd_fix(args: argparse.Namespace) -> int:
     had_decisions = (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists()
     had_ledger = (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists()
     had_readme = (project.path / "README.md").exists()
+    had_claude = (project.path / ".claude" / "skills" / "aikit" / "SKILL.md").exists()
     missing_targets = [rel for rel in PROJECT_INSTRUCTION_TARGETS if not (project.path / rel).exists()]
 
     created = write_memory(project.path, project.name, project.test_command)
@@ -311,6 +335,8 @@ def cmd_fix(args: argparse.Namespace) -> int:
             fixes.append(f"seeded {rel} guidelines")
     if not had_readme and (project.path / "README.md").exists():
         fixes.append("seeded README.md quick-reference")
+    if not had_claude and (project.path / ".claude" / "skills" / "aikit" / "SKILL.md").exists():
+        fixes.append("seeded .claude/skills/aikit/SKILL.md")
 
     cleaned = clean_dangling_temp_files(project.path, min_age_seconds=0)
     if cleaned:
@@ -332,6 +358,158 @@ def cmd_fix(args: argparse.Namespace) -> int:
     return cmd_check(args)
 
 
+def delegate_subagent(
+    role: str,
+    prompt: str,
+    file: Optional[str] = None,
+    project_name: Optional[str] = None,
+    model: Optional[str] = None,
+    timeout: int = 120,
+    output_format: str = "text",
+    runner: Optional[Callable[..., subprocess.CompletedProcess]] = None,
+    workspace: Path = ROOT_DIR,
+) -> Tuple[int, str]:
+    """
+    Safely delegate a background task to a subagent under PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5,
+    and PRINCIPLE-012 R8. Enforces closed stdin, timeout, and verifies task ledgers are unmutated.
+    """
+    if role not in VALID_SUBAGENT_ROLES:
+        err = (
+            f"Error: unknown subagent role '{role}'.\n"
+            f"Why: role must be one of: {', '.join(VALID_SUBAGENT_ROLES)}.\n"
+            f"Fix: specify a valid role (e.g. `python aikit.py delegate worker \"...\"`)."
+        )
+        return 2, err
+
+    if not prompt or not prompt.strip():
+        err = (
+            "Error: empty prompt provided.\n"
+            "Why: subagent delegation requires a clear task description (PRINCIPLE-008 R6).\n"
+            "Fix: supply non-empty prompt text in quotes."
+        )
+        return 2, err
+
+    target_cwd = workspace
+    if project_name:
+        project = find_project(project_name, workspace=workspace)
+        target_cwd = project.path
+
+    ledgers = [
+        workspace / ".agents" / "task_ledger.json",
+        target_cwd / ".aikit" / "task_ledger.json",
+    ]
+    snapshots = {lp: lp.read_bytes() for lp in ledgers if lp.is_file()}
+
+    if runner is None:
+        runner_bin = shutil.which("opencode") or shutil.which("opencode.cmd") or shutil.which("opencode.ps1")
+        if not runner_bin:
+            err = (
+                "Error: OpenCode subagent runner not found.\n"
+                "Why: the `opencode` CLI is required for native subagent process execution (PRINCIPLE-009 R6).\n"
+                "Fix: install OpenCode via npm (`npm install -g opencode`) or configure an alternative runner."
+            )
+            return 1, err
+
+    cmd = [
+        "opencode", "run", "--standalone",
+        "--format", "json",
+        "--agent", role,
+    ]
+    if file:
+        cmd.extend(["--file", str(file)])
+    if model:
+        cmd.extend(["--model", str(model)])
+    cmd.append(prompt)
+
+    t0 = time.time()
+    try:
+        if runner is not None:
+            proc = runner(cmd, cwd=str(target_cwd), timeout=timeout)
+        else:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(target_cwd),
+                stdin=subprocess.DEVNULL,
+                timeout=timeout,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                shell=(sys.platform == "win32"),
+            )
+    except subprocess.TimeoutExpired:
+        err = (
+            f"Error: subagent execution timed out after {timeout} seconds.\n"
+            "Why: long-running tasks without bounds exhaust process resources (PRINCIPLE-010 R3).\n"
+            "Fix: bound the brief scope (<=50 files, PRINCIPLE-008 R1) or increase --timeout."
+        )
+        return 1, err
+    except OSError as exc:
+        err = (
+            f"Error: failed to execute subagent process: {exc}\n"
+            "Why: system error while spawning process.\n"
+            "Fix: check runner permissions and environment."
+        )
+        return 1, err
+    duration = time.time() - t0
+
+    # Invariant: sub-agents NEVER write the ledger (PRINCIPLE-008 R6)
+    for lp, original_data in snapshots.items():
+        if lp.is_file() and lp.read_bytes() != original_data:
+            lp.write_bytes(original_data)
+            err = (
+                f"Error: subagent attempted to mutate protected ledger at {lp}!\n"
+                "Why: subagents are strictly forbidden from writing to task ledgers (PRINCIPLE-008 R6).\n"
+                "Fix: the ledger was automatically restored; review the subagent brief and permissions."
+            )
+            return 1, err
+
+    for lp in ledgers:
+        if lp not in snapshots and lp.is_file():
+            lp.unlink(missing_ok=True)
+            err = (
+                f"Error: subagent attempted to create protected ledger at {lp}!\n"
+                "Why: subagents are strictly forbidden from writing to task ledgers (PRINCIPLE-008 R6).\n"
+                "Fix: the newly created ledger was purged; review subagent permissions."
+            )
+            return 1, err
+
+    if output_format == "json":
+        payload = {
+            "status": "success" if proc.returncode == 0 else "error",
+            "agent": role,
+            "exit_code": proc.returncode,
+            "duration_seconds": round(duration, 3),
+            "output": proc.stdout.strip(),
+            "ledger_shield": "unmutated",
+        }
+        return proc.returncode, json.dumps(payload, indent=2)
+    else:
+        out = proc.stdout.strip()
+        if proc.returncode != 0:
+            err_msg = proc.stderr.strip() or out or f"Subagent exited with code {proc.returncode}"
+            return proc.returncode, f"[SUBAGENT ERROR ({role}, {duration:.1f}s)]\n{err_msg}"
+        return 0, f"[SUBAGENT OK ({role}, {duration:.1f}s)]\n{out}"
+
+
+def cmd_delegate(args: argparse.Namespace) -> int:
+    exit_code, output = delegate_subagent(
+        role=args.role,
+        prompt=args.prompt,
+        file=args.file,
+        project_name=args.project,
+        model=args.model,
+        timeout=args.timeout,
+        output_format=args.format,
+        workspace=_active_workspace(),
+    )
+    if exit_code == 0:
+        print(output)
+    else:
+        print(output, file=sys.stderr)
+    return exit_code
+
+
 HANDLERS = {
     "new": cmd_new,
     "attach": cmd_attach,
@@ -343,6 +521,7 @@ HANDLERS = {
     "clean": cmd_clean,
     "check": cmd_check,
     "fix": cmd_fix,
+    "delegate": cmd_delegate,
 }
 
 

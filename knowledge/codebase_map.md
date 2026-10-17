@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `12`
-- **Total Classes**: `62`
-- **Total Functions / Methods**: `173`
-- **Total Source Lines**: `10039`
+- **Total Classes**: `64`
+- **Total Functions / Methods**: `175`
+- **Total Source Lines**: `10343`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `354` lines (`15486` bytes)
+**Size**: `533` lines (`22754` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -46,6 +46,8 @@
 - `def cmd_clean(args)`
 - `def cmd_check(args)`
 - `def cmd_fix(args)` - *Self-heal project memory, clean dangling temporary buffers, and sync codebase map.*
+- `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Safely delegate a background task to a subagent under PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5,*
+- `def cmd_delegate(args)`
 - `def main(argv)`
 
 ---
@@ -181,7 +183,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `507` lines (`22337` bytes)
+**Size**: `515` lines (`22819` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -222,7 +224,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `879` lines (`43099` bytes)
+**Size**: `883` lines (`43299` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -290,7 +292,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `757` lines (`37198` bytes)
+**Size**: `779` lines (`38455` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -358,13 +360,15 @@
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
   - Method `.test_shell_keeps_quotes_and_reports_exit_codes()`
+- `class TestSubagentDelegateCli` - *`aikit delegate` CLI handles help and invalid args across real subprocess calls.*
+  - Method `.test_delegate_cli_help_and_usage_error()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3880` lines (`216217` bytes)
+**Size**: `3971` lines (`219901` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -704,6 +708,13 @@
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`
+- `class TestSubagentDelegation` - *PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5, PRINCIPLE-012 R8: safe subagent delegation.*
+  - Method `.setUp()`
+  - Method `.test_invalid_role_refused_with_triad()`
+  - Method `.test_empty_prompt_refused_with_triad()`
+  - Method `.test_successful_delegation_with_mock_runner()`
+  - Method `.test_json_format_output()`
+  - Method `.test_subagent_ledger_mutation_is_reverted_and_flagged()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

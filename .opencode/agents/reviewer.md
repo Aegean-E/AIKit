@@ -35,6 +35,12 @@ permissions:
     resource: ".github/copilot-instructions.md"
     effect: deny
   - action: edit
+    resource: ".windsurfrules"
+    effect: deny
+  - action: edit
+    resource: ".clinerules"
+    effect: deny
+  - action: edit
     resource: "opencode.jsonc"
     effect: deny
   - action: edit

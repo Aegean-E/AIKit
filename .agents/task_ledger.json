@@ -1,79 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "project-principles-cockpit",
+    "task_id": "multi-agent-workspace-usage",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792230949.6953015,
-    "completed_at": 1792231025.8594422
+    "updated_at": 1792232322.4060996,
+    "completed_at": 1792232365.139947
   },
   "checkpoints": [
-    {
-      "task_id": "workspace-projects",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[3/3] committed: PRINCIPLE-011 R8, check_secrets --workspace, status gates, runbook (ADR-121)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792226711.4001856,
-      "timestamp_str": "2026-10-17 11:45:11"
-    },
-    {
-      "task_id": "workspace-projects",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'workspace-projects' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792226711.5384943,
-      "timestamp_str": "2026-10-17 11:45:11"
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: projects have only a test command; R8 lists gates by hand",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792226772.366595,
-      "timestamp_str": "2026-10-17 11:46:12"
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Gate DTO + per-stack gate detection (python ruff/mypy when configured, node package scripts lint/typecheck/build, go vet) + project.json gates override (null disables) + run_gates with injected runner + aikit check <name> (secret scan always last, terse failure tails, exit 1 on any failure or no test gate); unit + integration tests; [2/2] R8 names python aikit.py check <name> as the project Phase 4 gate; status prints it; README/knowledge/ADR",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792226772.511023,
-      "timestamp_str": "2026-10-17 11:46:12",
-      "impact_assessment": {
-        "why": "a project's Phase 4 is a hand-assembled list; lint, type and build checks a project configures are never run",
-        "benefits": "one command per project runs every check its own config declares, same for every host",
-        "risks": "contract: new check command and project.json gates key; dependency: none (runs the project's own tools); concurrency: gates run sequentially in the project dir; state: optional gates key, schema unchanged",
-        "mitigation": "detection only from config the project already has; override and disable via gates; runner injected for unit tests; timeouts and closed stdin on every gate"
-      }
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792226772.64283,
-      "timestamp_str": "2026-10-17 11:46:12"
-    },
-    {
-      "task_id": "project-gates",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2] committed: project_gates.py, aikit check, concurrent dogfood tracks (ADR-122)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792227172.7836678,
-      "timestamp_str": "2026-10-17 11:52:52"
-    },
     {
       "task_id": "project-gates",
       "phase": "in_progress",
@@ -222,6 +157,71 @@
       "status": "completed",
       "timestamp": 1792231025.8594437,
       "timestamp_str": "2026-10-17 12:57:05"
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] host client parity: Windsurf (.windsurfrules) and Cline (.clinerules) targets",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792231400.6353786,
+      "timestamp_str": "2026-10-17 13:03:20",
+      "impact_assessment": {
+        "why": "Enable all AI agents to use the workspace with native instruction and skill parity, and provide safe subagent delegation",
+        "benefits": "Zero-friction multi-agent portability across 7 IDEs, native Claude skill discovery, OpenCode commands, and safe subagent delegation",
+        "risks": "contract: none, additive CLI commands and target files; dependency: none, pure standard library; concurrency: subagent process races prevented by advisory locking and ledger guards; state: subagent ledger mutation prevented by read-only enforcement",
+        "mitigation": "Budget checks enforce <1600 tokens per target, closed stdin and timeouts on spawns, pre/post ledger mutation checks"
+      }
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] host client parity: Windsurf (.windsurfrules) and Cline (.clinerules) targets complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792231669.3848233,
+      "timestamp_str": "2026-10-17 13:07:49"
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[2/5] native skill & command parity: Claude Code skill (.claude/skills/) and OpenCode commands complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792231797.012643,
+      "timestamp_str": "2026-10-17 13:09:57"
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[3/5] safe subagent delegation: aikit delegate command with ledger & stdin guards complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792232073.8007066,
+      "timestamp_str": "2026-10-17 13:14:33"
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[4/5] living documentation: host_clients.md, data_models.md, and ADR-126 complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792232322.4060996,
+      "timestamp_str": "2026-10-17 13:18:42"
+    },
+    {
+      "task_id": "multi-agent-workspace-usage",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'multi-agent-workspace-usage' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792232365.1399484,
+      "timestamp_str": "2026-10-17 13:19:25"
     }
   ]
 }

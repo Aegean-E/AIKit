@@ -29,6 +29,8 @@ except ImportError:
         "CLAUDE.md": "# Claude Instructions ({name})",
         ".cursorrules": "# Cursor Rules ({name})",
         ".github/copilot-instructions.md": "# Copilot Instructions ({name})",
+        ".windsurfrules": "# Windsurf Rules ({name})",
+        ".clinerules": "# Cline Rules ({name})",
         ".agents/rules/principles.md": "# Workspace Agent Rules ({name})",
     }
 
@@ -314,6 +316,8 @@ TIER1_TARGETS: Dict[str, str] = {
     "CLAUDE.md": "# Claude Instructions (Tier 1)",
     ".cursorrules": "# Cursor Rules (Tier 1)",
     ".github/copilot-instructions.md": "# Copilot Instructions (Tier 1)",
+    ".windsurfrules": "# Windsurf Rules (Tier 1)",
+    ".clinerules": "# Cline Rules (Tier 1)",
 }
 
 

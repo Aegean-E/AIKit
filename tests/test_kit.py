@@ -105,7 +105,11 @@ from scripts.disruption_recovery import (
     sweep_files,
     workspace_ledger_path,
 )
-from scripts.aikit_cli import main as aikit_main
+from scripts.aikit_cli import (
+    VALID_SUBAGENT_ROLES,
+    delegate_subagent,
+    main as aikit_main,
+)
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     ProjectError,
@@ -955,7 +959,7 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
     """
 
     PROTECTED = ["GUIDELINES.md", ".agents/task_ledger.json", ".agents/rules/domain.md", "CLAUDE.md",
-                 "AGENTS.md", "opencode.jsonc", "knowledge/decisions.md"]
+                 "AGENTS.md", "opencode.jsonc", "knowledge/decisions.md", ".windsurfrules", ".clinerules"]
     FORBIDDEN_SHELL = ["git add .", "git add -A", "git commit -m x", "git push", "git reset --hard",
                        "git clean -fdx", "git checkout -- x.py", "git stash drop", "rm -rf knowledge"]
     EDITS = {"architect": [], "explorer": [], "reviewer": ["knowledge/architecture.md", "README.md"],
@@ -3874,6 +3878,93 @@ class TestProjectsStayOutOfKitState(unittest.TestCase):
     def test_git_ignores_projects(self):
         lines = (ROOT_DIR / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn("projects/", lines)
+
+
+class TestSubagentDelegation(unittest.TestCase):
+    """PRINCIPLE-008 R1/R6, PRINCIPLE-011 R5, PRINCIPLE-012 R8: safe subagent delegation."""
+
+    def setUp(self):
+        self.kit = Path(tempfile.mkdtemp(prefix="test_delegate_kit_"))
+        self.addCleanup(shutil.rmtree, self.kit, ignore_errors=True)
+        (self.kit / ".agents").mkdir(parents=True)
+        (self.kit / ".agents" / "task_ledger.json").write_text(
+            json.dumps({"version": 1, "active_task": None, "checkpoints": []}), encoding="utf-8"
+        )
+
+    def test_invalid_role_refused_with_triad(self):
+        exit_code, output = delegate_subagent(
+            role="hacker",
+            prompt="do something",
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Error: unknown subagent role 'hacker'", output)
+        self.assertIn("Why: role must be one of", output)
+        self.assertIn("Fix:", output)
+
+    def test_empty_prompt_refused_with_triad(self):
+        exit_code, output = delegate_subagent(
+            role="worker",
+            prompt="   ",
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Error: empty prompt provided", output)
+        self.assertIn("Why:", output)
+        self.assertIn("Fix:", output)
+
+    def test_successful_delegation_with_mock_runner(self):
+        def mock_runner(cmd, cwd, timeout):
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout='{"result": "ok"}', stderr="")
+
+        exit_code, output = delegate_subagent(
+            role="worker",
+            prompt="summarize docs",
+            runner=mock_runner,
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("[SUBAGENT OK (worker", output)
+        self.assertIn('{"result": "ok"}', output)
+
+    def test_json_format_output(self):
+        def mock_runner(cmd, cwd, timeout):
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="findings here", stderr="")
+
+        exit_code, output = delegate_subagent(
+            role="explorer",
+            prompt="search symbols",
+            output_format="json",
+            runner=mock_runner,
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 0)
+        data = json.loads(output)
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["agent"], "explorer")
+        self.assertEqual(data["ledger_shield"], "unmutated")
+        self.assertEqual(data["output"], "findings here")
+
+    def test_subagent_ledger_mutation_is_reverted_and_flagged(self):
+        ledger = self.kit / ".agents" / "task_ledger.json"
+        original_ledger_content = ledger.read_text(encoding="utf-8")
+
+        def corrupting_runner(cmd, cwd, timeout):
+            # Subagent illicitly mutates task_ledger.json
+            ledger.write_text('{"corrupted": true}', encoding="utf-8")
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="done", stderr="")
+
+        exit_code, output = delegate_subagent(
+            role="coder",
+            prompt="fix bug",
+            runner=corrupting_runner,
+            workspace=self.kit,
+        )
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Error: subagent attempted to mutate protected ledger", output)
+        self.assertIn("Why: subagents are strictly forbidden from writing to task ledgers", output)
+        # Check that the ledger was automatically restored to pristine state!
+        self.assertEqual(ledger.read_text(encoding="utf-8"), original_ledger_content)
 
 
 if __name__ == "__main__":

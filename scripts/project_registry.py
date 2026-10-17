@@ -54,6 +54,8 @@ PROJECT_INSTRUCTION_TARGETS: Dict[str, str] = {
     "CLAUDE.md": "# Claude Instructions ({name})",
     ".cursorrules": "# Cursor Rules ({name})",
     ".github/copilot-instructions.md": "# Copilot Instructions ({name})",
+    ".windsurfrules": "# Windsurf Rules ({name})",
+    ".clinerules": "# Cline Rules ({name})",
     ".agents/rules/principles.md": "# Workspace Agent Rules ({name})",
 }
 
@@ -297,6 +299,12 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     readme_path = project_root / "README.md"
     if not readme_path.exists():
         readme_path.write_text(render_project_readme(name, test_command), encoding="utf-8")
+    claude_skill = project_root / ".claude" / "skills" / "aikit" / "SKILL.md"
+    if not claude_skill.exists():
+        claude_skill.parent.mkdir(parents=True, exist_ok=True)
+        src_skill = ROOT_DIR / ".claude" / "skills" / "aikit" / "SKILL.md"
+        if src_skill.is_file():
+            claude_skill.write_text(src_skill.read_text(encoding="utf-8"), encoding="utf-8")
     if path.exists():
         return False
     atomic_write_json(path, {
@@ -374,7 +382,7 @@ def _git_start(project_root: Path) -> Optional[str]:
             "every project is its own git repository, separate from AIKit's.",
             "fix the git error above, then run the command again.",
         )
-    stage_items = [".gitignore", "README.md", PROJECT_MEMORY_DIRNAME]
+    stage_items = [".gitignore", "README.md", PROJECT_MEMORY_DIRNAME, ".claude"]
     for rel_path in PROJECT_INSTRUCTION_TARGETS:
         stage_items.append(rel_path.split("/")[0])
     stage_items = sorted(list(dict.fromkeys(stage_items)))

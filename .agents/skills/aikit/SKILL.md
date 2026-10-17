@@ -9,15 +9,16 @@ description: >-
 
 # AIKit Operational Runbook (Universal Host Integration)
 
-This operational runbook provides the unified command matrix for driving AIKit across all supported agent host clients (Antigravity, Claude, OpenCode, Cursor, Copilot) under **PRINCIPLE-009 R7** (Pluggable Host Architecture) and **PRINCIPLE-017 R2** (Cross-IDE Synchronization).
+This operational runbook provides the unified command matrix for driving AIKit across all supported agent host clients (Antigravity, Claude, OpenCode, Cursor, Copilot, Windsurf, Cline) under **PRINCIPLE-009 R7** (Pluggable Host Architecture) and **PRINCIPLE-017 R2** (Cross-IDE Synchronization).
 
 ---
 
 ## 🌐 Host Client Operation Matrix
 
 - **Antigravity**: Native chat harness. Discovers this skill via `.agents/skills/aikit/SKILL.md` and rule files in `.agents/rules/`.
-- **Claude (Code CLI / Desktop)**: Reads `CLAUDE.md` automatically on startup. Executes kit commands directly via terminal tool calls.
-- **OpenCode**: Runs headless subagent profiles (`architect`, `coder`, `tester`, etc.) via `opencode run --standalone`.
+- **Claude (Code CLI / Desktop)**: Reads `CLAUDE.md` automatically on startup. Discovers this skill natively via `.claude/skills/aikit/SKILL.md`. Executes kit commands directly via terminal tool calls.
+- **OpenCode**: Runs headless subagent profiles (`architect`, `coder`, `tester`, etc.) via `opencode run --standalone` and slash commands via `opencode.jsonc`.
+- **Cursor / VS Code / Windsurf / Cline**: Loads `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules`, `.clinerules`. Runs terminal commands.
 - **State SSOT**: All clients interact with workspace state strictly through `python scripts/disruption_recovery.py` and `.agents/task_ledger.json` (a project's: `.aikit/task_ledger.json`).
 
 ---
@@ -26,14 +27,18 @@ This operational runbook provides the unified command matrix for driving AIKit a
 The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
-python aikit.py new <name>           # projects/<name>/, seeds AGENTS.md guidelines
+python aikit.py new <name>           # projects/<name>/, seeds multi-IDE instruction guidelines
 python aikit.py attach <path>        # an existing folder
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, guidelines, secret scan; exit 0 to commit
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
+python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger
+python aikit.py resume <name>        # disruption resume on the project
+python aikit.py complete <name>      # mark project task complete
+python aikit.py clean <name>         # clean dangling project buffers
 ```
 - Request names no single project: ask which one, or the name of a new one, before writing code.
-- In the steps below, project work replaces the repository with the project: add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.
+- In the steps below, project work replaces the repository with the project: use the cockpit subcommands above, or add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.
 
 ---
 
@@ -48,137 +53,142 @@ python scripts/disruption_recovery.py --resume
 - If uncommitted files or orphaned buffers exist, inspect them before proceeding.
 
 ### 2. Disruption Recovery Audit
-Check ledger state without altering it:
+Inspect the entire repository status, active task, and dangling temporary files:
 ```bash
 python scripts/disruption_recovery.py --audit
 ```
 
----
-
-## 📋 Phase 2: Classification, Planning & Checkpointing
-
-### 1. Classify Lifecycle Track
-Determine required gates before editing:
+### 3. Change Track Classification
+Determine whether proposed edits require formal checklists:
 ```bash
 python scripts/disruption_recovery.py --track
 ```
-- **Track A** (none): No gates required.
-- **Track B** (docs/comments): Phases 1, 3, 4 and 5; Phase 4 is the same full gate set as Track C (PRINCIPLE-002 R3).
-- **Track C** (code/tests/contracts): Full pre-flight impact checklist, test gates, and pre-commit delivery triad.
-
-### 2. Record Task Plan & Milestone Checkpoints
-Record atomic milestones in `.agents/task_ledger.json`:
-```bash
-python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num 2 --desc "[1/M] <plan_desc>" --why "<rationale>" --benefits "<benefits>" --risks "contract: none dependency: none concurrency: none state: none" --mitigation "none"
-```
-*(Subagents MUST NOT write to the ledger; only the root orchestrator records checkpoints).*
+- **Track A**: Zero edits / read-only investigation.
+- **Track B**: Documentation, comments, and non-rule markdown. Requires Post-Flight checklist and secret scan.
+- **Track C**: Code, rules, workflows, or schemas. Full lifecycle verification required.
 
 ---
 
-## 🤖 Token-Frugal Subagent Offloading (OpenCode v2 Integration)
+## 📋 Phase 2: Checkpointing & Planning (Track C Gate)
 
-To prevent context exhaustion and preserve primary model quota (**PRINCIPLE-012 R8**), delegate token-heavy exploratory and repetitive tasks to worker subagents running free or local models:
+### 1. Pre-Flight Checklist
+Review before making any code modifications on Track C tasks:
+- Freshness: Read target files in slices before writing (PRINCIPLE-003 R1).
+- Call Sites: Grep all symbol references across the repository before refactoring (PRINCIPLE-003 R2).
+- Zero Undeclared Deps: Only use standard-library modules or explicitly declared dependencies (PRINCIPLE-003 R3).
+- Platform Parity: Use `pathlib.Path` and avoid shell-specific builtins (PRINCIPLE-003 R4).
 
-### 1. Headless Multi-Subagent Invocations (OpenCode v2)
-Invoke specialized subagents in non-interactive headless mode with `--standalone` (PRINCIPLE-011 R5, PRINCIPLE-015):
+### 2. Record Micro-Milestones
+Checkpoint plan with explicit impact assessment (`--why`, `--benefits`, `--risks`, `--mitigation`):
 ```bash
-# Deep reasoning on system design & ADRs (architect):
-opencode run --standalone --format json --agent architect "<prompt>"
-
-# High-fidelity code generation & refactoring (coder):
-opencode run --standalone --format json --agent coder --file <path> "<prompt>"
-
-# Test engineering & regression suite generation (tester):
-opencode run --standalone --format json --agent tester --file <test_file> "<prompt>"
-
-# Documentation, link integrity & secret review (reviewer):
-opencode run --standalone --format json --agent reviewer "<prompt>"
-
-# High-speed symbol lookup & file tree mapping (explorer):
-opencode run --standalone --format json --agent explorer "<search_query>"
-
-# General background worker (worker):
-opencode run --standalone --format json --agent worker --file <path> "<prompt>"
+python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num 2 --desc "[1/M] Planning and architectural design" --why "<motivation>" --benefits "<gains>" --risks "contract: ...; dependency: ...; concurrency: ...; state: ..." --mitigation "<strategy>"
 ```
-
-### 2. Model & Provider Options (opencode.jsonc)
-- **OpenCode Free Tier**: `opencode/deepseek-v4.1-flash-free` (default), `opencode/glm-5.3-flash-free`, `opencode/mimo-v2.6-flash-free`, `opencode/beam-free` (built-in zero-cost coding models).
-- **OpenRouter Free Tier**: `openrouter/qwen/qwen-2.5-coder-32b-instruct:free`, `openrouter/meta-llama/llama-3.3-70b-instruct:free`, etc. (requires free `OPENROUTER_API_KEY`).
-- **Local Offline (Zero Network)**:
-  - **Ollama**: `ollama/qwen2.5-coder:latest`, `ollama/deepseek-r1:latest`.
-  - **LM Studio**: `lmstudio/<model_name>` at `http://127.0.0.1:1234/v1`.
-
-
-### 3. Subagent Boundaries & Safety
-- **Ledger Invariant (PRINCIPLE-008 R6)**: Subagents MUST NOT write to `.agents/task_ledger.json`. Denied to every OpenCode sub-agent by `.opencode/agents/*.md`, together with `GUIDELINES.md`, the generated Tier 1 files and destructive git commands; `TestOpenCodePermissionBoundaries` replays OpenCode's last-match evaluation over them (ADR-116).
-- **Regression Shield Gate (PRINCIPLE-014)**: All code proposed by subagents must pass unit tests and read-only gates before staging.
-
+- Bound milestone count to $M \le 6$ (PRINCIPLE-008 R3).
 
 ---
 
-## 🛡️ Phase 4: Operational Verification & Regression Shields
+## 🛠️ Phase 3: Implementation & Synchronization
 
-Execute every gate below before every commit, Track B or Track C (PRINCIPLE-018 R3):
-
-### 1. Unit & Integration Test Suites
+### 1. Synchronize Principles & IDE Instructions
+After modifying `GUIDELINES.md` or `.agents/rules/domain.md`, update all 8 host client instruction files and README:
 ```bash
-# Fast unit tier (<1s gate):
-python -m unittest tests.test_kit
-
-# Full regression shield (100% pass required):
-python -m unittest discover tests
+python scripts/sync_principles.py
 ```
-
-### 2. Living Rules & Knowledge Freshness Gates
+- Verify zero budget violations (<1,600 tokens per target):
 ```bash
-# Check rule parity and context budget (<1,600 tokens):
 python scripts/sync_principles.py --check
+```
 
-# Check AST codebase map, README parity, and architecture gates:
+### 2. Synchronize AST Codebase Map & Knowledge Base
+After creating or refactoring symbols:
+```bash
+python scripts/update_knowledge_base.py
+```
+- Verify link integrity and codebase map freshness:
+```bash
 python scripts/update_knowledge_base.py --check
 ```
 
-### 3. Safety, Reachability & Chaos Gates
+### 3. Subagent Delegation via OpenCode (PRINCIPLE-012 R8)
+Delegate bulk token-heavy work to free or local subagents using headless non-interactive mode:
 ```bash
-# Scan staged changes and agent memory for credentials:
-python scripts/check_secrets.py --staged
+# High-speed grep and symbol exploration
+opencode run --standalone --format json --agent explorer "<query>"
 
-# Verify no orphaned capability or phantom state keys:
+# Architecture & deep reasoning (SWE-bench 49.2%)
+opencode run --standalone --format json --agent architect "<prompt>"
+
+# High-fidelity code refactoring (SWE-bench 39.8%)
+opencode run --standalone --format json --agent coder --file <target> "<prompt>"
+
+# Automated test creation and regression verification
+opencode run --standalone --format json --agent tester --file <test_file> "<prompt>"
+
+# Bulk documentation & link audit
+opencode run --standalone --format json --agent reviewer "<audit_prompt>"
+
+# Offline / Air-gapped code generation via local Ollama
+opencode run --standalone --format json --agent coder --model ollama/qwen2.5-coder:latest --auto "<prompt>"
+```
+*(Subagents MUST NOT write to the ledger; only the root orchestrator writes checkpoints).*
+
+---
+
+## 🔒 Phase 4: Verification Gate Shield (Pre-Commit Delivery Triad)
+
+Before committing any Track B or Track C changes, ALL gates must pass:
+
+### 1. Test Suite Verification (100% Pass Required)
+```bash
+# Sub-second unit test suite (<1s budget)
+python -m unittest tests.test_kit
+
+# Integration test suite (<5s budget)
+python -m unittest tests.test_integration
+```
+
+### 2. Read-Only Quality Gates
+```bash
+# Rule and budget freshness check
+python scripts/sync_principles.py --check
+
+# AST and knowledge base check
+python scripts/update_knowledge_base.py --check
+
+# Secret and credential scan
+python scripts/check_secrets.py --all
+
+# Invariant reachability shield
 python scripts/check_reachability.py
 
-# Universal operational dogfood gate (golden path + chaos perturbation):
+# Universal operational dogfooding runner
 python scripts/dogfood.py
 ```
 
 ---
 
-## 🚀 Phase 5: Living Synchronization & Delivery
+## 🚀 Phase 5: Delivery & Git Operations
 
-### 1. Synchronize Generated Targets
-When `GUIDELINES.md` or `.agents/rules/domain.md` is updated:
-```bash
-python scripts/sync_principles.py
-```
-
-When code structure, exported functions, or classes change:
-```bash
-python scripts/update_knowledge_base.py
-```
-
-### 2. Mark Task Completed
+### 1. Mark Task Completed
 ```bash
 python scripts/disruption_recovery.py --complete <task_id>
 ```
 
-### 3. Commit with Conventional Format
-Validate message syntax prior to committing:
-```bash
-python scripts/disruption_recovery.py --validate-commit "feat(scope): [milestone N/M] description"
-```
-Stage files explicitly by name (`git add <file>`), never blind (`git add .`).
-
-### 4. Cleanup Stale Buffers
-Purge temporary write buffers older than 60s:
+### 2. Purge Dangling Temp Files
 ```bash
 python scripts/disruption_recovery.py --clean
+```
+
+### 3. Conventional Commit Validation
+```bash
+python scripts/disruption_recovery.py --validate-commit "<type>(<scope>): <subject>"
+```
+
+### 4. Explicit Staging & Non-Destructive Recoil
+```bash
+# Stage modified files explicitly by name (NEVER git add .)
+git add <file1> <file2> ...
+
+# Commit
+git commit -m "<type>(<scope>): <subject>"
 ```

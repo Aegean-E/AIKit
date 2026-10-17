@@ -37,6 +37,18 @@ Local to one AIKit checkout (git-ignored). Lists only folders outside `projects/
 | `schema` | int | `1`. |
 | `projects` | object | Project name to absolute folder path. |
 
+### Subagent Result Payload
+Returned by `delegate_subagent` in `scripts/aikit_cli.py` (`python aikit.py delegate <role> "<task>" --format json`) when executing background tasks delegated to subagents (**PRINCIPLE-008 R1/R6**, **PRINCIPLE-012 R8**).
+
+| Key | Type | Meaning |
+|---|---|---|
+| `status` | string | `"success"` if process returncode is 0, else `"error"`. |
+| `agent` | string | Subagent role invoked (`worker`, `architect`, `coder`, `tester`, `reviewer`, `explorer`). |
+| `exit_code` | int | Process exit code (`0` success, `1` operational failure, `2` usage error). |
+| `duration_seconds` | float | Execution duration in seconds measured with monotonic clock. |
+| `output` | string | Subagent execution findings, suggested diffs, or structured JSON. |
+| `ledger_shield` | string | `"unmutated"` confirming task ledgers were shielded against unauthorized modification. |
+
 ## 🛡️ Model Invariants
 1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
 2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).

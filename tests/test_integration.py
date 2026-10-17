@@ -609,9 +609,11 @@ class TestProjectCreation(unittest.TestCase):
         self.assertEqual(status, "", "a new project starts with its memory committed")
         self.assertTrue((root / "AGENTS.md").is_file())
         self.assertIn("Project Instructions (app)", (root / "AGENTS.md").read_text(encoding="utf-8"))
-        for target in ("GEMINI.md", "CLAUDE.md", ".cursorrules", ".github/copilot-instructions.md", ".agents/rules/principles.md"):
-            self.assertTrue((root / target).is_file())
+        for target in ("GEMINI.md", "CLAUDE.md", ".cursorrules", ".github/copilot-instructions.md",
+                       ".windsurfrules", ".clinerules", ".agents/rules/principles.md"):
+            self.assertTrue((root / target).is_file(), f"missing seeded target: {target}")
         self.assertTrue((root / "README.md").is_file())
+        self.assertTrue((root / ".claude" / "skills" / "aikit" / "SKILL.md").is_file())
         # A real CLI process proves `--workspace` wiring; the track is then classified in-process.
         cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
         subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
@@ -751,6 +753,26 @@ class TestProjectGateShell(unittest.TestCase):
         results = run_gates(folder, [Gate("q", quoted, "t")], timeout=PROC_TIMEOUT)
         self.assertEqual(results[0].returncode, 3)
         self.assertEqual(Path(results[0].output.strip()).resolve(), folder.resolve())
+
+
+class TestSubagentDelegateCli(unittest.TestCase):
+    """`aikit delegate` CLI handles help and invalid args across real subprocess calls."""
+
+    def test_delegate_cli_help_and_usage_error(self):
+        cli = [sys.executable, str(ROOT_DIR / "aikit.py"), "delegate", "--help"]
+        res = subprocess.run(cli, capture_output=True, text=True, timeout=PROC_TIMEOUT,
+                             encoding="utf-8", errors="replace")
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("safely delegate a background task to a subagent", res.stdout)
+
+        # Invalid role
+        bad_cli = [sys.executable, str(ROOT_DIR / "aikit.py"), "delegate", "invalid_role", "do task"]
+        bad_res = subprocess.run(bad_cli, capture_output=True, text=True, timeout=PROC_TIMEOUT,
+                                 encoding="utf-8", errors="replace")
+        self.assertEqual(bad_res.returncode, 2)
+        self.assertIn("Error: unknown subagent role 'invalid_role'", bad_res.stderr)
+        self.assertIn("Why:", bad_res.stderr)
+        self.assertIn("Fix:", bad_res.stderr)
 
 
 if __name__ == "__main__":
