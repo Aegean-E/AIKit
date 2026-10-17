@@ -20,35 +20,7 @@ GUIDELINES_MD = ROOT_DIR / "GUIDELINES.md"
 README_MD = ROOT_DIR / "README.md"
 DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 
-try:
-    from scripts.project_registry import PROJECT_INSTRUCTION_TARGETS, render_project_instructions
-except ImportError:
-    PROJECT_INSTRUCTION_TARGETS = {
-        "AGENTS.md": "# Project Instructions ({name})",
-        "GEMINI.md": "# Gemini Instructions ({name})",
-        "CLAUDE.md": "# Claude Instructions ({name})",
-        ".cursorrules": "# Cursor Rules ({name})",
-        ".github/copilot-instructions.md": "# Copilot Instructions ({name})",
-        ".windsurfrules": "# Windsurf Rules ({name})",
-        ".clinerules": "# Cline Rules ({name})",
-        ".agents/rules/principles.md": "# Workspace Agent Rules ({name})",
-    }
-
-    def render_project_instructions(name: str, heading_template: str) -> str:
-        heading = heading_template.format(name=name)
-        return (
-            f"{heading}\n\n"
-            "> Governed by AIKit architecture, quality principles, and disruption recovery.\n\n"
-            "## Core Operational Invariants\n"
-            f"- **Phase 4 Quality Gate**: Every commit must pass all Phase 4 gates: `python aikit.py check {name}`. Zero uncommitted defects.\n"
-            "- **Architectural Decisions (ADR)**: Architectural changes and design decisions are recorded as monotonic, sequential ADRs in `.aikit/decisions.md` (PRINCIPLE-016 R3).\n"
-            f"- **Task Ledger & Disruption Recovery**: Long-running tasks and milestones are checkpointed in `.aikit/task_ledger.json` with `python aikit.py checkpoint {name} ...` (PRINCIPLE-006).\n"
-            "- **Code Quality Primacy**: No unfinished code markers (TODO/FIXME/XXX/HACK), no stub implementations (`pass`, `...`, `NotImplementedError` outside interfaces), and no unnamed suppressions (PRINCIPLE-007 R3).\n"
-            "- **Modularity & Clean Architecture**: No junk-drawer modules (`utils`, `helpers`), role interfaces bounded to 1-5 methods, no circular imports (PRINCIPLE-009).\n"
-            "- **Resource Optimization**: Explicit `timeout=` on every subprocess call; `open()` only in `with` statements (PRINCIPLE-010).\n"
-            "- **Zero-Friction Reliability**: No bare `os.environ[...]` reads without safe defaults (PRINCIPLE-011).\n"
-            "- **Secret & Sensitive Data Hygiene**: Zero credentials committed to git or logs; scanned on every check (PRINCIPLE-019).\n"
-        )
+# Projects inherit universal principles directly from the AIKit workspace root (PRINCIPLE-011 R8).
 
 # Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
 # thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
@@ -586,71 +558,7 @@ def sync_project(
     check_only: bool = False,
     exit_on_mismatch: bool = True,
 ) -> int:
-    """Synchronize or verify multi-IDE instruction files for an AIKit-managed project workspace."""
-    workspace = workspace.resolve()
-    name = workspace.name
-    cfg_path = workspace / ".aikit" / "project.json"
-    if cfg_path.is_file():
-        try:
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-            if isinstance(cfg, dict) and isinstance(cfg.get("name"), str):
-                name = cfg["name"]
-        except (OSError, ValueError):
-            pass
-
-    targets = {
-        workspace / rel: render_project_instructions(name, heading_tmpl)
-        for rel, heading_tmpl in PROJECT_INSTRUCTION_TARGETS.items()
-    }
-
-    foreign = []
-    for target_path, expected_content in targets.items():
-        if target_path.exists():
-            current = target_path.read_text(encoding="utf-8")
-            if current.strip() != expected_content.strip() and not is_generated_target(current):
-                foreign.append(str(target_path.relative_to(workspace)))
-    if foreign:
-        sys.stderr.write(
-            f"\n[PROTECTED] Refusing to overwrite hand-authored file(s): {', '.join(foreign)}\n"
-            f"Why: sync only overwrites files it generated, so your own instructions are never lost.\n"
-            f"Fix: delete or rename the file(s) above, or add a generated header, then re-run.\n"
-        )
-        if exit_on_mismatch:
-            sys.exit(1)
-        return len(foreign)
-
-    mismatches = 0
-    for target_path, expected_content in targets.items():
-        rel = target_path.relative_to(workspace)
-        if not check_only:
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-        if target_path.exists():
-            current_content = target_path.read_text(encoding="utf-8")
-            if current_content.strip() == expected_content.strip():
-                print(f"[OK] Synced: {rel}")
-                continue
-
-        mismatches += 1
-        if check_only:
-            print(f"[OUT OF SYNC]: {rel}")
-        else:
-            tmp_target = target_path.with_suffix(target_path.suffix + f".tmp_{os.getpid()}")
-            with open(tmp_target, "w", encoding="utf-8") as f:
-                f.write(expected_content)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_target, target_path)
-            fsync_dir(target_path.parent)
-            print(f"[UPDATED]: {rel}")
-
-    if check_only and mismatches > 0:
-        print(f"\n{mismatches} file(s) out of sync with AIKit project principles.")
-        if exit_on_mismatch:
-            sys.exit(1)
-        return mismatches
-
-    print(f"\nAll {len(targets)} project AI guideline targets are synchronized successfully "
-          f"({mismatches} file(s) updated).")
+    """No-op: projects inherit principles directly from the AIKit workspace root."""
     return 0
 
 

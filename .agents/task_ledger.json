@@ -1,40 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-fixes-and-hardening",
+    "task_id": "lean-project-principles-inheritance",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792232814.9841745,
-    "completed_at": 1792232959.3408818
+    "updated_at": 1792240821.0631065,
+    "impact_assessment": {
+      "why": "AIKit workspace already hosts all 8 Tier 1 principles and governs project building directly; copying duplicate instruction files into project repos creates unnecessary clutter",
+      "benefits": "Clean project repositories containing only source code, tests, and .aikit/ memory; principles applied directly from workspace cockpit via aikit check",
+      "risks": "contract: project creation no longer generates instruction markdown files; .aikit/ memory and CLI contracts preserved. dependency: none; stdlib only. concurrency: none. state: project memory intact",
+      "mitigation": "Comprehensive unit and integration test coverage verifying project isolation and Phase 4 gate verification"
+    },
+    "completed_at": 1792241370.4034111
   },
   "checkpoints": [
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] plan: apply guidelines, self-checking and self-fixing to built projects",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792227915.0813582,
-      "timestamp_str": "2026-10-17 12:05:15",
-      "impact_assessment": {
-        "why": "Ensure AIKit guidelines that keep its own code correct also apply to projects it builds (anti-lazy, architecture, ADR register, workspace hygiene), closing the provider delegation gap and making the kit capable, self-checking, and self-fixing.",
-        "benefits": "Projects built by AIKit are guarded by the exact same quality and architectural invariants as AIKit itself; built-in guidelines gate catches stubs, junk-drawers, and broken ADRs; aikit fix self-heals project scaffolding and cleans stale buffers; projects receive AGENTS.md guidelines automatically.",
-        "risks": "contract: resolve_gates adds guidelines gate before secrets; dependency: zero external dependencies, pure stdlib; concurrency: gate runs under supervised() with whole-tree timeout kill; state: write_memory never overwrites existing project memory or AGENTS.md",
-        "mitigation": "Existing tests updated to expect guidelines gate; resolve_gates handles polyglot and Python projects gracefully; all unit tests stay under 1s."
-      }
-    },
-    {
-      "task_id": "project-guidelines-parity",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] update_knowledge_base workspace support complete",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792228149.4609919,
-      "timestamp_str": "2026-10-17 12:09:09"
-    },
     {
       "task_id": "project-guidelines-parity",
       "phase": "in_progress",
@@ -228,6 +208,31 @@
       "status": "completed",
       "timestamp": 1792232959.340884,
       "timestamp_str": "2026-10-17 13:29:19"
+    },
+    {
+      "task_id": "lean-project-principles-inheritance",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] plan: remove redundant instruction seeding in projects; apply main principles directly from AIKit workspace",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792240821.0631065,
+      "timestamp_str": "2026-10-17 15:40:21",
+      "impact_assessment": {
+        "why": "AIKit workspace already hosts all 8 Tier 1 principles and governs project building directly; copying duplicate instruction files into project repos creates unnecessary clutter",
+        "benefits": "Clean project repositories containing only source code, tests, and .aikit/ memory; principles applied directly from workspace cockpit via aikit check",
+        "risks": "contract: project creation no longer generates instruction markdown files; .aikit/ memory and CLI contracts preserved. dependency: none; stdlib only. concurrency: none. state: project memory intact",
+        "mitigation": "Comprehensive unit and integration test coverage verifying project isolation and Phase 4 gate verification"
+      }
+    },
+    {
+      "task_id": "lean-project-principles-inheritance",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'lean-project-principles-inheritance' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792241370.4034128,
+      "timestamp_str": "2026-10-17 15:49:30"
     }
   ]
 }

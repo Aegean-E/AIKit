@@ -35,10 +35,7 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     write_memory,
-    AGENTS_FILENAME,
-    AGENTS_TEMPLATE,
     DECISIONS_FILENAME,
-    PROJECT_INSTRUCTION_TARGETS,
     PROJECT_MEMORY_DIRNAME,
 )
 from scripts.update_knowledge_base import (
@@ -318,8 +315,6 @@ def cmd_fix(args: argparse.Namespace) -> int:
     had_decisions = (project.path / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME).exists()
     had_ledger = (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists()
     had_readme = (project.path / "README.md").exists()
-    had_claude = (project.path / ".claude" / "skills" / "aikit" / "SKILL.md").exists()
-    missing_targets = [rel for rel in PROJECT_INSTRUCTION_TARGETS if not (project.path / rel).exists()]
 
     created = write_memory(project.path, project.name, project.test_command)
     if created or (not had_config and config_path(project.path).exists()):
@@ -330,13 +325,8 @@ def cmd_fix(args: argparse.Namespace) -> int:
         fixes.append("seeded .aikit/decisions.md register")
     if not had_ledger and (project.path / PROJECT_MEMORY_DIRNAME / "task_ledger.json").exists():
         fixes.append("seeded .aikit/task_ledger.json")
-    for rel in missing_targets:
-        if (project.path / rel).exists():
-            fixes.append(f"seeded {rel} guidelines")
     if not had_readme and (project.path / "README.md").exists():
         fixes.append("seeded README.md quick-reference")
-    if not had_claude and (project.path / ".claude" / "skills" / "aikit" / "SKILL.md").exists():
-        fixes.append("seeded .claude/skills/aikit/SKILL.md")
 
     cleaned = clean_dangling_temp_files(project.path, min_age_seconds=0)
     if cleaned:
@@ -347,9 +337,6 @@ def cmd_fix(args: argparse.Namespace) -> int:
         map_path = project.path / ".aikit" / "codebase_map.md"
         write_generated_file(map_path, map_content)
         fixes.append("synchronized .aikit/codebase_map.md")
-
-    from scripts.sync_principles import sync_project
-    sync_project(project.path, check_only=False, exit_on_mismatch=False)
 
     if fixes:
         for fix in fixes:

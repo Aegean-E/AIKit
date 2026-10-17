@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `12`
 - **Total Classes**: `64`
-- **Total Functions / Methods**: `175`
-- **Total Source Lines**: `10428`
+- **Total Functions / Methods**: `174`
+- **Total Source Lines**: `10275`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on and check the projects AIKit builds*
 
-**Size**: `554` lines (`23759` bytes)
+**Size**: `541` lines (`23081` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -183,7 +183,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `518` lines (`22921` bytes)
+**Size**: `468` lines (`19672` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -192,7 +192,6 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_instructions(name, heading_template)`
 - `def render_project_readme(name, test_command)`
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
@@ -224,7 +223,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `883` lines (`43299` bytes)
+**Size**: `791` lines (`38457` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -241,7 +240,7 @@
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
 - `def sync_all(check_only, exit_on_mismatch, domain_path, readme_file, workspace)` - *Generate every always-injected Tier 1 target from the principle SSOT.*
-- `def sync_project(workspace, check_only, exit_on_mismatch)` - *Synchronize or verify multi-IDE instruction files for an AIKit-managed project workspace.*
+- `def sync_project(workspace, check_only, exit_on_mismatch)` - *No-op: projects inherit principles directly from the AIKit workspace root.*
 - `def sync_workspace(workspace, check_only, exit_on_mismatch, domain_path)` - *Synchronize or verify instruction targets for any workspace or project folder.*
 - `def involved_principles(principles, text)` - *Compute which principles a situation involves (PRINCIPLE-001 R3), identically for every agent.*
 - `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
@@ -292,7 +291,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `779` lines (`38455` bytes)
+**Size**: `782` lines (`38606` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -368,7 +367,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4032` lines (`222157` bytes)
+**Size**: `4031` lines (`222156` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

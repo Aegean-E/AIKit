@@ -607,13 +607,14 @@ class TestProjectCreation(unittest.TestCase):
         status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True,
                                 text=True, timeout=PROC_TIMEOUT).stdout
         self.assertEqual(status, "", "a new project starts with its memory committed")
-        self.assertTrue((root / "AGENTS.md").is_file())
-        self.assertIn("Project Instructions (app)", (root / "AGENTS.md").read_text(encoding="utf-8"))
-        for target in ("GEMINI.md", "CLAUDE.md", ".cursorrules", ".github/copilot-instructions.md",
-                       ".windsurfrules", ".clinerules", ".agents/rules/principles.md"):
-            self.assertTrue((root / target).is_file(), f"missing seeded target: {target}")
         self.assertTrue((root / "README.md").is_file())
-        self.assertTrue((root / ".claude" / "skills" / "aikit" / "SKILL.md").is_file())
+        self.assertTrue((root / ".aikit" / "project.json").is_file())
+        self.assertTrue((root / ".aikit" / "task_ledger.json").is_file())
+        self.assertTrue((root / ".aikit" / "decisions.md").is_file())
+        # Clean isolation: no duplicated instruction targets in project repository
+        for clutter in ("AGENTS.md", "GEMINI.md", "CLAUDE.md", ".cursorrules", ".github",
+                        ".windsurfrules", ".clinerules", ".agents", ".claude"):
+            self.assertFalse((root / clutter).exists(), f"redundant clutter found in project: {clutter}")
         # A real CLI process proves `--workspace` wiring; the track is then classified in-process.
         cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
         subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
@@ -688,18 +689,20 @@ class TestProjectFixCommand(unittest.TestCase):
         root, _ = create_project("app", test_command='python -c "exit(0)"', workspace=kit)
         # Create a dangling buffer
         (root / "state.json.tmp_dangling").write_text("junk", encoding="utf-8")
-        # Remove AGENTS.md
-        (root / "AGENTS.md").unlink()
+        # Remove .aikit/decisions.md
+        (root / ".aikit" / "decisions.md").unlink()
 
         res = subprocess.run(
             [sys.executable, str(ROOT_DIR / "aikit.py"), "fix", "app"],
             cwd=str(kit), capture_output=True, text=True, timeout=PROC_TIMEOUT
         )
         self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("seeded AGENTS.md guidelines", res.stdout)
+        self.assertIn("seeded .aikit/decisions.md register", res.stdout)
         self.assertIn("cleaned 1 dangling temporary buffer", res.stdout)
-        self.assertTrue((root / "AGENTS.md").is_file())
+        self.assertTrue((root / ".aikit" / "decisions.md").is_file())
+        self.assertFalse((root / "AGENTS.md").exists())
         self.assertFalse((root / "state.json.tmp_dangling").exists())
+
 
     def test_project_with_custom_readme_passes_aikit_check(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_custom_readme_"))

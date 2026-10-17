@@ -122,7 +122,6 @@ from scripts.project_registry import (
     list_projects,
     load_config,
     validate_name,
-    PROJECT_INSTRUCTION_TARGETS,
 )
 from scripts.check_secrets import (
     scan_text,
@@ -3669,12 +3668,12 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "svc", workspace=self.kit)
         self.assertEqual(workspace_ledger_path(folder), folder / ".aikit" / "task_ledger.json")
         self.assertEqual(workspace_ledger_path(self.kit), self.kit / ".agents" / "task_ledger.json")
-        self.assertTrue((folder / "AGENTS.md").is_file())
-        self.assertIn("Project Instructions (svc)", (folder / "AGENTS.md").read_text(encoding="utf-8"))
-        for rel in PROJECT_INSTRUCTION_TARGETS:
-            self.assertTrue((folder / rel).is_file(), f"Target {rel} not seeded")
         self.assertTrue((folder / "README.md").is_file())
         self.assertTrue((folder / ".aikit" / "task_ledger.json").is_file())
+        self.assertTrue((folder / ".aikit" / "project.json").is_file())
+        self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
+        self.assertFalse((folder / "AGENTS.md").exists())
+        self.assertFalse((folder / "CLAUDE.md").exists())
         # The template's commented example is not a decision; real entries are, newest last.
         self.assertIsNone(latest_decision(folder))
         with open(folder / ".aikit" / "decisions.md", "a", encoding="utf-8") as handle:
@@ -3702,8 +3701,7 @@ class TestProjectRegistry(unittest.TestCase):
         attach_project(folder, "myapp", workspace=self.kit)
         # Create a dangling buffer
         (folder / "state.json.tmp_dangling").write_text("buffer", encoding="utf-8")
-        # Remove AGENTS.md and .aikit/decisions.md
-        (folder / "AGENTS.md").unlink()
+        # Remove .aikit/decisions.md
         (folder / ".aikit" / "decisions.md").unlink()
         # Add a python source file
         (folder / "core.py").write_text("def work(): return 1\n", encoding="utf-8")
@@ -3715,11 +3713,9 @@ class TestProjectRegistry(unittest.TestCase):
             exit_code = aikit_main(["fix", "myapp"])
         self.assertEqual(exit_code, 0)
         out = stdout.getvalue()
-        self.assertIn("seeded AGENTS.md guidelines", out)
         self.assertIn("seeded .aikit/decisions.md register", out)
         self.assertIn("cleaned 1 dangling temporary buffer", out)
         self.assertIn("synchronized .aikit/codebase_map.md", out)
-        self.assertTrue((folder / "AGENTS.md").is_file())
         self.assertTrue((folder / ".aikit" / "decisions.md").is_file())
         self.assertTrue((folder / ".aikit" / "codebase_map.md").is_file())
         self.assertFalse((folder / "state.json.tmp_dangling").exists())
@@ -3781,18 +3777,21 @@ class TestProjectRegistry(unittest.TestCase):
         folder = self.make_folder()
         attach_project(folder, "proj", workspace=self.kit)
 
-        # Initially all 6 instruction files are in sync
+        # Projects inherit principles directly from AIKit workspace root; no instruction files exist or sync
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 0)
-
-            # Mutate one generated instruction target
-            claude_path = folder / "CLAUDE.md"
-            claude_path.write_text("# Claude Instructions (proj)\n\n> Governed by AIKit\n\nout of sync", encoding="utf-8")
-            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 1)
-
-            # Re-sync
             self.assertEqual(sync_workspace(folder, check_only=False, exit_on_mismatch=False), 0)
-            self.assertEqual(sync_workspace(folder, check_only=True, exit_on_mismatch=False), 0)
+            self.assertEqual(sync_project(folder, check_only=True, exit_on_mismatch=False), 0)
+
+        # AIKit workspace with GUIDELINES.md triggers sync_all
+        aikit_dir = self.make_folder()
+        (aikit_dir / "GUIDELINES.md").write_text("# Universal AI Development Guidelines\n\n```yaml\nid: PRINCIPLE-000\n```\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            # Without valid principles/targets, sync_all checks and returns non-zero error/mismatch
+            res = sync_workspace(aikit_dir, check_only=True, exit_on_mismatch=False)
+            self.assertEqual(res, 1)
+
+
 
 class TestProjectGates(unittest.TestCase):
     """A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122)."""
