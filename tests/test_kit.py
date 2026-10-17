@@ -851,6 +851,65 @@ class TestPythonFileDiscovery(unittest.TestCase):
         self.assertEqual([p.relative_to(root).as_posix() for p in find_python_files(root)], ["pkg/mod.py"])
 
 
+class TestOpenCodePermissionBoundaries(unittest.TestCase):
+    """
+    PRINCIPLE-008 R6 / PRINCIPLE-009 R6 (ADR-116): replay OpenCode v2's documented evaluation
+    (global rules, then agent rules; the last matching rule wins; `*` crosses `/`) over the shipped
+    config. A later `edit *.md allow` had silently re-opened GUIDELINES.md to the worker, and no
+    sub-agent was denied `git reset --hard`, `rm -rf` or `git add .`.
+    """
+
+    PROTECTED = ["GUIDELINES.md", ".agents/task_ledger.json", ".agents/rules/domain.md", "CLAUDE.md",
+                 "AGENTS.md", "opencode.jsonc", "knowledge/decisions.md"]
+    FORBIDDEN_SHELL = ["git add .", "git add -A", "git commit -m x", "git push", "git reset --hard",
+                       "git clean -fdx", "git checkout -- x.py", "git stash drop", "rm -rf knowledge"]
+    EDITS = {"architect": [], "explorer": [], "reviewer": ["knowledge/architecture.md", "README.md"],
+             "coder": ["scripts/sync_principles.py", "tests/test_kit.py"], "tester": ["tests/test_kit.py"],
+             "worker": ["knowledge/architecture.md", "README.md"]}
+
+    @staticmethod
+    def decide(rules, action, resource):
+        def match(pattern, value):
+            return re.fullmatch(re.escape(pattern).replace(r"\*", ".*").replace(r"\?", "."), value) is not None
+        effect = "ask"
+        for rule in rules:
+            if match(rule["action"], action) and match(rule["resource"], resource):
+                effect = rule["effect"]
+        return effect
+
+    @classmethod
+    def setUpClass(cls):
+        config = json.loads((ROOT_DIR / "opencode.jsonc").read_text(encoding="utf-8"))
+        cls.global_rules = [{"action": "*", "resource": "*", "effect": "allow"}] + config["permissions"]
+        cls.agents = {}
+        for name in cls.EDITS:
+            text = (ROOT_DIR / ".opencode" / "agents" / f"{name}.md").read_text(encoding="utf-8")
+            front = text.split("---")[1]
+            cls.agents[name] = [{"action": a, "resource": r, "effect": e} for a, r, e in re.findall(
+                r'- action: (\S+)\s+resource: "([^"]+)"\s+effect: (\S+)', front)]
+
+    def test_protected_files_and_destructive_commands_are_denied_to_every_subagent(self):
+        for name, rules in self.agents.items():
+            chain = self.global_rules + rules
+            for path in self.PROTECTED:
+                with self.subTest(agent=name, edit=path):
+                    self.assertEqual(self.decide(chain, "edit", path), "deny")
+            for command in self.FORBIDDEN_SHELL:
+                with self.subTest(agent=name, shell=command):
+                    self.assertEqual(self.decide(chain, "shell", command), "deny")
+
+    def test_each_subagent_edits_only_its_own_area(self):
+        probes = ["scripts/sync_principles.py", "tests/test_kit.py", "knowledge/architecture.md", "README.md"]
+        for name, rules in self.agents.items():
+            chain = self.global_rules + rules
+            for path in probes:
+                expected = "allow" if path in self.EDITS[name] else "deny"
+                with self.subTest(agent=name, edit=path):
+                    self.assertEqual(self.decide(chain, "edit", path), expected)
+            with self.subTest(agent=name, shell="tests"):
+                self.assertEqual(self.decide(chain, "shell", "python -m unittest discover tests"), "allow")
+
+
 class TestKnowledgeCitations(unittest.TestCase):
     """PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve."""
 

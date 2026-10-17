@@ -5,10 +5,7 @@ model: openrouter/meta-llama/llama-3.3-70b-instruct:free
 steps: 8
 permissions:
   - action: edit
-    resource: ".agents/**"
-    effect: deny
-  - action: edit
-    resource: "GUIDELINES.md"
+    resource: "*"
     effect: deny
   - action: edit
     resource: "knowledge/**"
@@ -16,11 +13,71 @@ permissions:
   - action: edit
     resource: "README.md"
     effect: allow
+  - action: edit
+    resource: ".agents/**"
+    effect: deny
+  - action: edit
+    resource: "GUIDELINES.md"
+    effect: deny
+  - action: edit
+    resource: "AGENTS.md"
+    effect: deny
+  - action: edit
+    resource: "CLAUDE.md"
+    effect: deny
+  - action: edit
+    resource: "GEMINI.md"
+    effect: deny
+  - action: edit
+    resource: ".cursorrules"
+    effect: deny
+  - action: edit
+    resource: ".github/copilot-instructions.md"
+    effect: deny
+  - action: edit
+    resource: "opencode.jsonc"
+    effect: deny
+  - action: edit
+    resource: ".opencode/**"
+    effect: deny
+  - action: edit
+    resource: "knowledge/decisions.md"
+    effect: deny
+  - action: shell
+    resource: "git add*"
+    effect: deny
   - action: shell
     resource: "git commit*"
     effect: deny
   - action: shell
     resource: "git push*"
+    effect: deny
+  - action: shell
+    resource: "git reset*"
+    effect: deny
+  - action: shell
+    resource: "git clean*"
+    effect: deny
+  - action: shell
+    resource: "git checkout*"
+    effect: deny
+  - action: shell
+    resource: "git restore*"
+    effect: deny
+  - action: shell
+    resource: "git rebase*"
+    effect: deny
+  - action: shell
+    resource: "git stash*"
+    effect: deny
+  - action: shell
+    resource: "rm *"
+    effect: deny
+  - action: shell
+    resource: "del *"
+    effect: deny
+  - action: shell
+    resource: "Remove-Item*"
     effect: deny
 ---
 

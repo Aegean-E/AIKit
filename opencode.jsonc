@@ -57,6 +57,36 @@
       "action": "shell",
       "resource": "git push*",
       "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git reset --hard*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git clean*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git add .",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git add -A*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git add --all*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "rm -rf *",
+      "effect": "deny"
     }
   ]
 }

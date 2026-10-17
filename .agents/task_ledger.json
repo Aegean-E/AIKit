@@ -1,60 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "tier-budget-fix",
+    "task_id": "review-fixes",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792224152.9973464,
-    "completed_at": 1792224165.7444117
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792224680.7959092
   },
   "checkpoints": [
-    {
-      "task_id": "p006-pass2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "pass 2: concurrent sessions on one tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223603.3766913,
-      "timestamp_str": "2026-10-17 10:53:23"
-    },
-    {
-      "task_id": "p006-pass2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] P006 pass 2: at every commit, changes the task did not make (another session, the user) stay unstaged and are named in the final message; ADR number read from the register at commit time; ADR-111",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223603.5116851,
-      "timestamp_str": "2026-10-17 10:53:23",
-      "impact_assessment": {
-        "why": "a concurrent session committed this session's uncommitted work as its own; no rule covered foreign changes after the first edit",
-        "benefits": "one rule for shared trees at commit time",
-        "risks": "contract: rule text only; dependency: none; concurrency: defines behaviour with concurrent sessions; state: none",
-        "mitigation": "pins; cross-principle line"
-      }
-    },
-    {
-      "task_id": "p006-pass2",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223603.6657965,
-      "timestamp_str": "2026-10-17 10:53:23"
-    },
-    {
-      "task_id": "p006-pass2",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223624.7316535,
-      "timestamp_str": "2026-10-17 10:53:44"
-    },
     {
       "task_id": "p006-pass2",
       "phase": "completed",
@@ -228,6 +181,52 @@
       "status": "completed",
       "timestamp": 1792224165.7444134,
       "timestamp_str": "2026-10-17 11:02:45"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: other AI's work reviewed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224588.92515,
+      "timestamp_str": "2026-10-17 11:09:48"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] OpenCode permissions: order allow-before-deny, deny destructive git/rm, read-only reviewer/architect, test replaying last-match on every agent; [2/3] CORE_DOCS back to 7 (AIKit-only docs optional), fix host_clients.md false claims, SKILL Track B gates, audit ledger fabricated claims and errors, citation tests cover new docs; [3/3] test for phase-heading anchor fix; ADR-116..118",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224589.066366,
+      "timestamp_str": "2026-10-17 11:09:49",
+      "impact_assessment": {
+        "why": "review found permission rules that do not enforce their claims, fabricated evaluation results, false host claims, adopter-breaking CORE_DOCS",
+        "benefits": "documented boundaries actually hold; docs truthful; adopters unblocked",
+        "risks": "contract: OpenCode agent permissions tightened, update_knowledge_base requires 7 docs again; dependency: none; concurrency: none; state: none",
+        "mitigation": "verify with opencode debug agents; tests"
+      }
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/3]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224589.2214782,
+      "timestamp_str": "2026-10-17 11:09:49"
+    },
+    {
+      "task_id": "review-fixes",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/3] gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792224680.7959092,
+      "timestamp_str": "2026-10-17 11:11:20"
     }
   ]
 }

@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `8`
-- **Total Classes**: `46`
+- **Total Classes**: `47`
 - **Total Functions / Methods**: `116`
-- **Total Source Lines**: `7973`
+- **Total Source Lines**: `8032`
 
 ---
 
@@ -246,7 +246,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3377` lines (`188708` bytes)
+**Size**: `3436` lines (`192051` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -311,6 +311,11 @@
   - Method `.test_rule_numbers_match_code_constants()`
 - `class TestPythonFileDiscovery` - *`find_python_files` prunes ignored directories relative to the root (ADR-115).*
   - Method `.test_a_repository_under_an_ignored_name_is_still_scanned()`
+- `class TestOpenCodePermissionBoundaries` - *PRINCIPLE-008 R6 / PRINCIPLE-009 R6 (ADR-116): replay OpenCode v2's documented evaluation*
+  - Method `.decide(rules, action, resource)`
+  - Method `.setUpClass()`
+  - Method `.test_protected_files_and_destructive_commands_are_denied_to_every_subagent()`
+  - Method `.test_each_subagent_edits_only_its_own_area()`
 - `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
   - Method `.test_every_rule_citation_names_an_existing_rule()`
   - Method `.test_every_benchmark_row_names_its_source_or_says_unverified()`
