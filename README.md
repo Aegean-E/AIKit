@@ -53,6 +53,7 @@ This kit contains the AI governance system extracted from production development
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
+├── LICENSE                             <- MIT Open Source License
 ├── aikit.py                            <- Project CLI: new, attach, list, status, check, fix, delegate
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
