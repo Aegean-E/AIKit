@@ -1336,3 +1336,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `redact` cuts the matched span (a pattern hit, or the assigned value for the entropy detector) to its first 4 characters plus `***` before the excerpt is stored. R4 states that the scanner is bound by the same redaction.
 - **Consequences**: A unit test with two pragma-allowlisted fixture credentials asserts neither appears in its finding and the 4-character prefix does; it fails on the previous scanner. The repository scan stays clean.
 - Cross-principle check: PRINCIPLE-000 (no conflict), PRINCIPLE-009 (provider credentials stay in the environment; no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-018 (R3 gate output; no conflict).
+
+### ADR-111: PRINCIPLE-006 Second Pass - Shared Working Trees at Commit Time
+- **Date**: 2026-10-17
+- **Status**: Accepted
+- **Context**: During this sweep a second session working in the same repository committed this session's uncommitted PRINCIPLE-016 work as part of its own commits (ADR-101 in its wording), then continued with ADR-102 to ADR-107; this session's next ADR then collided with the register. PRINCIPLE-007 R5 covers foreign changes only before a task's first edit, and PRINCIPLE-018 R2 only says to stage by name; nothing said what to do with changes another session or the user makes mid-task.
+- **Decision**: R6: before every commit the agent compares `git status --short` with the files it changed in this task; a change it did not make stays unstaged and is named in its final message; when `HEAD` moved since the task began, the agent re-reads every file it will commit and the ADR register before committing (the register gate of ADR-069 catches a collision, this rule prevents it).
+- **Consequences**: Pinned in `TestPrinciple006Unambiguity`; the pins fail on the previous text.
+- Cross-principle check: PRINCIPLE-002 (no conflict), PRINCIPLE-004 (no conflict), PRINCIPLE-008 (sub-agents never write the ledger; no conflict), PRINCIPLE-012 (R6 checkpoint on a tripped cap; no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-018 (R2 staging by name, R3 item 3; no conflict).

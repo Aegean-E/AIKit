@@ -1119,6 +1119,9 @@ class TestPrinciple006Unambiguity(unittest.TestCase):
             "A task is *abandoned* when the user cancels it",
             "that warning means this rule was skipped",
             "Staging follows PRINCIPLE-018 R2",
+            # Second pass (ADR-111): a concurrent session committed another's uncommitted work.
+            "a change it did not make (another session, the user) MUST stay unstaged",
+            "when `HEAD` moved since the task began, the agent re-reads every file it will commit and the ADR register",
             "`--clean` deletes only buffers older than 60 seconds",
             "MUST write it as PRINCIPLE-013 R1 specifies",
         ):
