@@ -1,83 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "project-guidelines",
+    "task_id": "claude-subagents",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792250632.937964,
-    "completed_at": 1792250633.0686924
+    "updated_at": 1792251104.5324914,
+    "completed_at": 1792251104.6892183
   },
   "checkpoints": [
-    {
-      "task_id": "multi-agent-workspace-usage",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'multi-agent-workspace-usage' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792232365.1399484,
-      "timestamp_str": "2026-10-17 13:19:25"
-    },
-    {
-      "task_id": "review-fixes-and-hardening",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] plan: review implementations, fix README drift, harden subagent supervision and self-healing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792232721.5929594,
-      "timestamp_str": "2026-10-17 13:25:21",
-      "impact_assessment": {
-        "why": "Ensure newly introduced multi-agent delegation, instruction targets, and project tools are robust, leak-free, and pass all living documentation and process gates",
-        "benefits": "Eliminate README tree drift, prevent zombie subagent processes on timeout, provide graceful project resolution in delegation, and enhance project self-healing",
-        "risks": "contract: none; CLI and schemas preserved. dependency: none; stdlib only. concurrency: safe process tree termination prevents leaked orphan workers. state: atomic write patterns preserved across project memory",
-        "mitigation": "Thorough unit testing with doubles, RAII process supervision, and full gate validation"
-      }
-    },
-    {
-      "task_id": "review-fixes-and-hardening",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] README drift eliminated and What's Inside tree synchronized across all 8 host clients",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792232814.9841745,
-      "timestamp_str": "2026-10-17 13:26:54"
-    },
-    {
-      "task_id": "review-fixes-and-hardening",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-fixes-and-hardening' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792232959.340884,
-      "timestamp_str": "2026-10-17 13:29:19"
-    },
-    {
-      "task_id": "lean-project-principles-inheritance",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] plan: remove redundant instruction seeding in projects; apply main principles directly from AIKit workspace",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792240821.0631065,
-      "timestamp_str": "2026-10-17 15:40:21",
-      "impact_assessment": {
-        "why": "AIKit workspace already hosts all 8 Tier 1 principles and governs project building directly; copying duplicate instruction files into project repos creates unnecessary clutter",
-        "benefits": "Clean project repositories containing only source code, tests, and .aikit/ memory; principles applied directly from workspace cockpit via aikit check",
-        "risks": "contract: project creation no longer generates instruction markdown files; .aikit/ memory and CLI contracts preserved. dependency: none; stdlib only. concurrency: none. state: project memory intact",
-        "mitigation": "Comprehensive unit and integration test coverage verifying project isolation and Phase 4 gate verification"
-      }
-    },
-    {
-      "task_id": "lean-project-principles-inheritance",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'lean-project-principles-inheritance' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792241370.4034128,
-      "timestamp_str": "2026-10-17 15:49:30"
-    },
     {
       "task_id": "review-project-kit",
       "phase": "in_progress",
@@ -227,6 +158,71 @@
       "status": "completed",
       "timestamp": 1792250633.0686946,
       "timestamp_str": "2026-10-17 18:23:53"
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: roles exist only for OpenCode; Claude Code loads .claude/agents/*.md; claude CLI not installed here; permission deny Edit(path) covers Edit/Write/NotebookEdit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250739.2661347,
+      "timestamp_str": "2026-10-17 18:25:39"
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] host-neutral role bodies in .opencode/agents; sync generates .claude/agents/<role>.md from them plus CLAUDE_AGENT_ROLES (tools, model), --check reports drift; .claude/settings.json denies Edit(**/task_ledger.json); tests; [2/2] P008 R6 both ledgers, P012 R8 Claude delegation path; runbook, docs, ADR-131",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250739.402553,
+      "timestamp_str": "2026-10-17 18:25:39",
+      "impact_assessment": {
+        "why": "Claude Code hosts cannot offload work to cheaper models or bounded roles; AIKit's roles exist only for OpenCode",
+        "benefits": "the lead Claude session delegates exploration, drafting, tests and reviews to tool-restricted sub-agents on cheaper models, with one role source for both hosts",
+        "risks": "contract: generated .claude/agents files and a project .claude/settings.json; dependency: none; concurrency: none; state: no data format change",
+        "mitigation": "generated and drift-checked by sync; read-only roles get no write tools; ledger deny rule covers sub-agents; failing-first tests"
+      }
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/2]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792250739.5234358,
+      "timestamp_str": "2026-10-17 18:25:39"
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] re-plan: mechanism and rule text in one commit (they share tests and the ADR); [2/2] none remaining",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251038.725158,
+      "timestamp_str": "2026-10-17 18:30:38"
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[1/2] committed: .claude/agents generated, ledger deny rule, P008 R6, P012 R8 (ADR-131)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792251104.5324914,
+      "timestamp_str": "2026-10-17 18:31:44"
+    },
+    {
+      "task_id": "claude-subagents",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'claude-subagents' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792251104.6892202,
+      "timestamp_str": "2026-10-17 18:31:44"
     }
   ]
 }

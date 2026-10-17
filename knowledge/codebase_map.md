@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `13`
-- **Total Classes**: `65`
-- **Total Functions / Methods**: `185`
-- **Total Source Lines**: `10201`
+- **Total Classes**: `66`
+- **Total Functions / Methods**: `186`
+- **Total Source Lines**: `10299`
 
 ---
 
@@ -242,7 +242,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `761` lines (`37508` bytes)
+**Size**: `799` lines (`39739` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -255,6 +255,7 @@
 - `def render_readme_table(principles)` - *One table per lifecycle phase: ID, title and capsule, exactly as `GUIDELINES.md` states them.*
 - `def sync_readme_table(readme_text, principles)` - *`readme_text` with its generated table refreshed, or None when it has no markers.*
 - `def validate_triad_consistency(principles, readme_file)` - *Verify the documentation triad's public leg: README.md lists every principle (PRINCIPLE-017).*
+- `def render_claude_agent(role, profile)` - *The Claude Code profile for `role`: the role's own description and instructions, unchanged,*
 - `def tier1_title(title)` - *Drop a trailing parenthetical subtitle in Tier 1; the full title stays in Tier 2.*
 - `def render_tier1_target(heading, principles, domain_rules)` - *Render one always-injected Tier 1 target (PRINCIPLE-001 R1/R3, PRINCIPLE-017 R2).*
 - `def audit_tier1_budget(principles, domain_rules)` - *Enforce the Tier 1 context budget on every target (PRINCIPLE-001 R4/R6/R9).*
@@ -391,7 +392,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3949` lines (`221486` bytes)
+**Size**: `4009` lines (`224990` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -743,6 +744,13 @@
   - Method `.test_audit_names_each_broken_rule()`
   - Method `.test_add_numbers_rules_and_refuses_an_override()`
   - Method `.test_cold_start_commands_print_the_rules_and_their_rank()`
+- `class TestClaudeSubagents` - *Claude Code sub-agents generated from AIKit's role profiles (PRINCIPLE-012 R8, ADR-131).*
+  - Method `.tools(role)`
+  - Method `.test_every_role_exists_for_both_hosts()`
+  - Method `.test_profile_is_generated_from_the_one_role_text()`
+  - Method `.test_read_only_roles_cannot_write()`
+  - Method `.test_role_text_is_host_neutral_and_names_both_ledgers()`
+  - Method `.test_no_agent_may_edit_a_task_ledger()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

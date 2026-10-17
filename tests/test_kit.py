@@ -31,12 +31,19 @@ def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs):
     )
 
 
+_REAL_FSYNC = os.fsync
+
+
 def setUpModule():
     subprocess.Popen.__init__ = _refuse_spawn
+    # A unit test cannot observe durability (only a power cut could), and a real fsync costs ~4ms
+    # on Windows; the atomic-write tests check temp file, replace and .bak, which stay real.
+    os.fsync = lambda fd: None
 
 
 def tearDownModule():
     subprocess.Popen.__init__ = _REAL_POPEN_INIT
+    os.fsync = _REAL_FSYNC
 
 # Add project root to path
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -63,6 +70,8 @@ from scripts.sync_principles import (
     README_MD,
     TARGET_TOKEN_BUDGET,
     TIER1_TARGETS,
+    CLAUDE_AGENT_ROLES,
+    render_claude_agent,
     SSOT_MD,
     audit_tier1_budget,
     estimate_tokens,
@@ -1421,7 +1430,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "When the decomposition yields more than 6, the agent MUST split the work into separate tasks",
                 "A milestone changes one PRINCIPLE-009 layer together with its tests and documentation",
                 "MUST record the revised plan as a new `[1/M']` Phase 2 checkpoint",
-                "It MUST NOT write `.agents/task_ledger.json`",
+                # ADR-131: both ledgers, and the Claude Code deny rule that enforces it.
+                "It MUST NOT write a task ledger (`.agents/task_ledger.json`, or a project's `.aikit/task_ledger.json`",
+                "`.claude/settings.json` denies that edit to every agent",
                 "sub-agents never write the ledger",
                 "A sub-agent process MUST run non-interactively with closed stdin",
             ],
@@ -1504,6 +1515,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "rules": 8,
             "present": [
                 "Rules R1, R2, R4, R6 bind code that calls an LLM API; R3, R5, R7 and R8 bind the agent",
+                # ADR-131: the Claude Code delegation path.
+                "In Claude Code the sub-agents are the generated `.claude/agents/<role>.md` profiles",
+                "elsewhere `python aikit.py delegate <role>` runs the role through OpenCode",
                 "at or below 16,000 characters",
                 "the variable tail of one request (R2)",
                 "These limits apply together with PRINCIPLE-004 R5's 100 lines per command",
@@ -3943,6 +3957,52 @@ class TestProjectGuidelines(unittest.TestCase):
         text = out.getvalue()
         self.assertEqual(text.count("G-001"), 3, text)
         self.assertIn("rank below AIKit's principles", text)
+
+class TestClaudeSubagents(unittest.TestCase):
+    """Claude Code sub-agents generated from AIKit's role profiles (PRINCIPLE-012 R8, ADR-131)."""
+
+    OPENCODE = ROOT_DIR / ".opencode" / "agents"
+    CLAUDE = ROOT_DIR / ".claude" / "agents"
+    WRITE_TOOLS = {"Edit", "Write", "NotebookEdit", "Bash"}
+
+    def tools(self, role):
+        return {t.strip() for t in CLAUDE_AGENT_ROLES[role][0].split(",")}
+
+    def test_every_role_exists_for_both_hosts(self):
+        self.assertEqual(set(CLAUDE_AGENT_ROLES), {p.stem for p in self.OPENCODE.glob("*.md")})
+        self.assertEqual({p.stem for p in self.CLAUDE.glob("*.md")}, set(CLAUDE_AGENT_ROLES))
+
+    def test_profile_is_generated_from_the_one_role_text(self):
+        source = "---\ndescription: Finds things\nmode: subagent\n---\n\nYou are AIKit's explorer.\n"
+        rendered = render_claude_agent("explorer", source)
+        self.assertTrue(rendered.startswith("---\nname: explorer\ndescription: Finds things\n"))
+        self.assertIn(f"tools: {CLAUDE_AGENT_ROLES['explorer'][0]}\n", rendered)
+        self.assertIn(f"model: {CLAUDE_AGENT_ROLES['explorer'][1]}\n", rendered)
+        self.assertTrue(rendered.rstrip().endswith("You are AIKit's explorer."))
+        with self.assertRaises(ValueError):  # ': ' in an unquoted YAML value stops the host loading it
+            render_claude_agent("explorer", source.replace("Finds things", "Search: finds things"))
+        for role in CLAUDE_AGENT_ROLES:
+            with self.subTest(role=role):
+                expected = render_claude_agent(role, (self.OPENCODE / f"{role}.md").read_text(encoding="utf-8"))
+                self.assertEqual((self.CLAUDE / f"{role}.md").read_text(encoding="utf-8").replace("\r\n", "\n"),
+                                 expected, "run `python scripts/sync_principles.py`")
+
+    def test_read_only_roles_cannot_write(self):
+        for role in ("explorer", "architect"):
+            with self.subTest(role=role):
+                self.assertFalse(self.tools(role) & self.WRITE_TOOLS)
+        self.assertNotIn("Bash", self.tools("worker"), "the docs worker runs no commands")
+
+    def test_role_text_is_host_neutral_and_names_both_ledgers(self):
+        for path in self.OPENCODE.glob("*.md"):
+            with self.subTest(role=path.stem):
+                body = path.read_text(encoding="utf-8").split("---", 2)[2]
+                self.assertNotIn("OpenCode", body)
+                self.assertIn(".aikit/task_ledger.json", body)
+
+    def test_no_agent_may_edit_a_task_ledger(self):
+        settings = json.loads((ROOT_DIR / ".claude" / "settings.json").read_text(encoding="utf-8"))
+        self.assertIn("Edit(**/task_ledger.json)", settings["permissions"]["deny"])
 
 
 if __name__ == "__main__":

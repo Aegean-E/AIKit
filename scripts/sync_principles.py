@@ -282,6 +282,39 @@ RUNBOOK_MIRRORS: Dict[str, str] = {
     ".claude/skills/aikit/SKILL.md": ".agents/skills/aikit/SKILL.md",
 }
 
+# Claude Code sub-agents, generated from AIKit's role profiles in `.opencode/agents/` so one role
+# text serves both hosts (ADR-131). Per role: the tools Claude Code lets it call, and its model;
+# read-only roles get no tool that writes, and the cheapest model takes searching and drafting.
+OPENCODE_AGENTS_DIR = ".opencode/agents"
+CLAUDE_AGENTS_DIR = ".claude/agents"
+CLAUDE_AGENT_ROLES: Dict[str, Tuple[str, str]] = {
+    "explorer": ("Read, Grep, Glob", "haiku"),
+    "architect": ("Read, Grep, Glob", "inherit"),
+    "reviewer": ("Read, Grep, Glob, Bash", "sonnet"),
+    "worker": ("Read, Grep, Glob, Edit, Write", "haiku"),
+    "tester": ("Read, Grep, Glob, Edit, Write, Bash", "sonnet"),
+    "coder": ("Read, Grep, Glob, Edit, Write, Bash", "sonnet"),
+}
+
+
+def render_claude_agent(role: str, profile: str) -> str:
+    """The Claude Code profile for `role`: the role's own description and instructions, unchanged,
+    under Claude Code frontmatter holding the tools and model from `CLAUDE_AGENT_ROLES`."""
+    match = re.match(r"^---\n(.*?)\n---\n(.*)$", profile.replace("\r\n", "\n"), re.S)
+    if not match:
+        raise ValueError(f"{role}: the role profile has no '---' frontmatter block")
+    description = re.search(r"^description:\s*(.+)$", match.group(1), re.M)
+    if not description:
+        raise ValueError(f"{role}: the role profile has no 'description:' line")
+    if re.search(r":\s|\s#", description.group(1)):
+        # Unquoted YAML: ': ' starts a mapping and ' #' a comment, so the host would not load it.
+        raise ValueError(f"{role}: the description holds ': ' or ' #', which breaks its YAML frontmatter")
+    tools, model = CLAUDE_AGENT_ROLES[role]
+    return (f"---\nname: {role}\ndescription: {description.group(1).strip()}\ntools: {tools}\n"
+            f"model: {model}\n---\n<!-- Generated from {OPENCODE_AGENTS_DIR}/{role}.md by "
+            f"scripts/sync_principles.py; do not edit. -->\n\n{match.group(2).strip()}\n")
+
+
 TIER1_TARGETS: Dict[str, str] = {
     # Auto-loaded by tools following the AGENTS.md convention (e.g. OpenAI Codex, GitHub Copilot's
     # coding agent), so it must be a budgeted Tier 1 file, never the full specification.
@@ -521,6 +554,11 @@ def sync_all(
     for mirror, source in RUNBOOK_MIRRORS.items():
         if (root / source).is_file():
             written[root / mirror] = (root / source).read_text(encoding="utf-8")
+    for role in CLAUDE_AGENT_ROLES:
+        profile = root / OPENCODE_AGENTS_DIR / f"{role}.md"
+        if profile.is_file():
+            written[root / CLAUDE_AGENTS_DIR / f"{role}.md"] = render_claude_agent(
+                role, profile.read_text(encoding="utf-8"))
 
     mismatches = 0
     for target_path, expected_content in written.items():

@@ -66,6 +66,8 @@ portable_agent_kit/
 │   └── workflows/
 │       └── ci.yml                      <- Continuous verification gate (both tiers + freshness)
 ├── .claude/
+│   ├── agents/                         <- Claude sub-agents (generated)
+│   ├── settings.json                   <- no agent may edit a task ledger
 │   └── skills/
 │       └── aikit/
 │           └── SKILL.md                <- Claude Code operational runbook (native skill)
@@ -139,7 +141,7 @@ A project's memory is its `.aikit/` folder (record, ledger, decisions, guideline
   cp -r GUIDELINES.md scripts knowledge /path/to/target/
   cp -r .agents/rules .agents/skills /path/to/target/.agents/
   ```
-  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (they test and record AIKit itself). Enforcement travels via CLI gates (`sync_principles.py --check`, `update_knowledge_base.py --check`, `check_reachability.py`, `check_secrets.py --all`, `dogfood.py`). Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
+  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (they are AIKit's own). Enforcement travels as the CLI gates in the command matrix above. Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
 If the target already has its own `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules` or `.clinerules`, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites hand-authored files without a generated header (`[PROTECTED]`).
@@ -218,7 +220,7 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```
    It prints every `--audit` finding, then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
 2. **Everything else** (`--audit`, `--checkpoint`, `--complete`, `--reset`, `--clean`) is in the command matrix above; a task's first plan checkpoint must carry `--why --benefits --risks --mitigation`.
-3. **Atomic File Safety**: All writes use `os.fsync` and temporary staging, guaranteeing that sudden power-downs never leave 0-byte truncated source files. Corrupted JSON files from sudden shutdowns are automatically isolated to `*.corrupt_*` and self-healed.
+3. **Atomic File Safety**: state files are written to a temp file, fsynced and renamed (PRINCIPLE-013); a corrupt ledger is moved to `*.corrupt_*` and restored from its `.bak`.
 
 ---
 
