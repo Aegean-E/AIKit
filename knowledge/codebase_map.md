@@ -8,8 +8,8 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `11`
 - **Total Classes**: `54`
-- **Total Functions / Methods**: `142`
-- **Total Source Lines**: `8696`
+- **Total Functions / Methods**: `147`
+- **Total Source Lines**: `8850`
 
 ---
 
@@ -23,9 +23,9 @@
 ---
 
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
-> *`aikit` command line: create, attach and list the projects AIKit builds (ADR-119).*
+> *`aikit` command line: create, attach, list and report on the projects AIKit builds (ADR-119, ADR-120).*
 
-**Size**: `101` lines (`3835` bytes)
+**Size**: `128` lines (`5294` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -37,6 +37,7 @@
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
 - `def cmd_list(args)`
+- `def cmd_status(args)`
 - `def main(argv)`
 
 ---
@@ -82,9 +83,10 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1341` lines (`59700` bytes)
+**Size**: `1357` lines (`60370` bytes)
 
 **Functions:**
+- `def workspace_ledger_path(workspace)` - *The ledger of `workspace`: `<workspace>/.aikit/task_ledger.json` for a project AIKit builds,*
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
 - `def file_lock(lock_path, timeout_seconds, poll_interval)` - *Cross-platform cooperative advisory lock (PRINCIPLE-013).*
 - `def locked_ledger(ledger_file, timeout_seconds, poll_interval)` - *Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).*
@@ -147,7 +149,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `341` lines (`13910` bytes)
+**Size**: `407` lines (`16981` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -166,14 +168,17 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json` unless it exists. Returns whether it was created:*
+- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json` and `.aikit/decisions.md` unless they exist.*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace)`
-- `def _git_init(project_root)`
-- `def create_project(name, test_command, workspace, git_init)` - *Create `projects/<name>/` as a new git repository holding the project's `.aikit/` memory.*
+- `def _run_git(project_root, *args)`
+- `def _git_start(project_root)` - *`git init`, then commit the project's `.aikit/` memory so a new project starts clean. Returns*
+- `def create_project(name, test_command, workspace, git_start)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
 - `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
+- `def find_project(name, workspace)` - *The registered project called `name`.*
+- `def latest_decision(project_root)` - *The last `### ADR-NNN: ...` heading in the project's decision register, if any.*
 
 ---
 
@@ -245,7 +250,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `572` lines (`26867` bytes)
+**Size**: `595` lines (`28458` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -303,13 +308,14 @@
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_repository()`
+  - Method `.test_project_ledger_is_the_projects_own_and_starts_clean()`
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `3603` lines (`201012` bytes)
+**Size**: `3625` lines (`202240` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -624,6 +630,8 @@
   - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
   - Method `.test_failed_git_init_leaves_no_half_made_project()`
   - Method `.test_cli_reports_triad_and_exit_codes()`
+  - Method `.test_project_memory_holds_ledger_and_decisions()`
+  - Method `.test_status_names_unknown_and_missing_projects()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`

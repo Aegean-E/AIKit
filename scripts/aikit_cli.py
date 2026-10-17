@@ -1,5 +1,5 @@
 """
-`aikit` command line: create, attach and list the projects AIKit builds (ADR-119).
+`aikit` command line: create, attach, list and report on the projects AIKit builds (ADR-119, ADR-120).
 
 Run through the root shim: `python aikit.py <command>`. Exit codes: 0 success, 1 the request
 could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
@@ -10,10 +10,13 @@ import sys
 from pathlib import Path
 from typing import List, NoReturn, Optional
 
+from scripts.disruption_recovery import format_resume_report, run_disruption_audit
 from scripts.project_registry import (
     ProjectError,
     attach_project,
     create_project,
+    find_project,
+    latest_decision,
     list_projects,
 )
 
@@ -57,12 +60,17 @@ def build_parser() -> argparse.ArgumentParser:
     attach.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
 
     commands.add_parser("list", help="show every project, its stacks and test command")
+
+    status = commands.add_parser("status", help="a project's task, uncommitted work and next step")
+    status.add_argument("name", help="project name, as `list` shows it")
     return parser
 
 
 def cmd_new(args: argparse.Namespace) -> int:
-    root = create_project(args.name, args.test)
+    root, warning = create_project(args.name, args.test)
     print(f"[OK] Created project '{args.name}' at {root}")
+    if warning:
+        print(f"[WARN] {warning}", file=sys.stderr)
     print(f"     Next: describe what to build; work happens inside {root}.")
     return 0
 
@@ -90,7 +98,26 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list}
+def cmd_status(args: argparse.Namespace) -> int:
+    project = find_project(args.name)
+    if not project.present:
+        raise ProjectError(
+            f"Project '{project.name}' is missing at {project.path}.",
+            "its folder or .aikit/project.json is gone, so there is no memory to report.",
+            "restore the folder, or attach its new location with `python aikit.py attach <path>`.",
+        )
+    stacks = ",".join(s.name for s in project.stacks) or "none detected"
+    print(f"Project:   {project.name}  ({project.path})")
+    print(f"Stacks:    {stacks}")
+    print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
+    print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
+    print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
+    print("Ledger commands for this project add the workspace flag, e.g.")
+    print(f'  python scripts/disruption_recovery.py --workspace "{project.path}" --checkpoint <task> ...')
+    return 0
+
+
+HANDLERS = {"new": cmd_new, "attach": cmd_attach, "list": cmd_list, "status": cmd_status}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

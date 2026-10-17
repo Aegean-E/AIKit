@@ -5,29 +5,9 @@
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "in_progress",
-    "updated_at": 1792225877.4120653
+    "updated_at": 1792226193.3365626
   },
   "checkpoints": [
-    {
-      "task_id": "p000-005-pass3",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/2] gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223814.8117733,
-      "timestamp_str": "2026-10-17 10:56:54"
-    },
-    {
-      "task_id": "p000-005-pass3",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792223836.579605,
-      "timestamp_str": "2026-10-17 10:57:16"
-    },
     {
       "task_id": "p000-005-pass3",
       "phase": "in_progress",
@@ -222,6 +202,26 @@
       "status": "in_progress",
       "timestamp": 1792225877.4120653,
       "timestamp_str": "2026-10-17 11:31:17"
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [2/3]: project ledger via --workspace, decisions.md, aikit status",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792225959.5601847,
+      "timestamp_str": "2026-10-17 11:32:39"
+    },
+    {
+      "task_id": "workspace-projects",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[2/3] committed: project ledger via --workspace, decisions.md, aikit status (ADR-120)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792226193.3365626,
+      "timestamp_str": "2026-10-17 11:36:33"
     }
   ]
 }

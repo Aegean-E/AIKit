@@ -3,8 +3,8 @@
 ## 📦 Data Structures
 The single home of every schema in this repository (**PRINCIPLE-016** R5).
 
-### Task Ledger (`.agents/task_ledger.json`)
-Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013).
+### Task Ledger (`.agents/task_ledger.json`, and `<project>/.aikit/task_ledger.json` per project)
+Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013). `workspace_ledger_path` picks the project's file when the workspace has an `.aikit/` folder (ADR-120); the schema is the same.
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -23,6 +23,8 @@ Written once by `write_memory` in `scripts/project_registry.py` when a project i
 | `name` | string | The project name: 1-64 of `a-z 0-9 - _`, starting with a letter or digit. |
 | `test_command` | string or null | Overrides the detected test command; null means detect from the project's files on every call. |
 | `created` | string | Creation date, `YYYY-MM-DD`. |
+
+The project's decision register is `<project>/.aikit/decisions.md`, created from `DECISIONS_TEMPLATE` with the same entry format as `knowledge/decisions.md`; `latest_decision` ignores the template's commented example.
 
 Stacks and test commands are never stored: `detect_stacks` reads the marker files each time, so they cannot go stale.
 

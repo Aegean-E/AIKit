@@ -56,7 +56,7 @@ verification runs through `--check` on `sync_principles.py` and `update_knowledg
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── aikit.py                            <- Project CLI: new, attach, list; creates git-ignored projects/
+├── aikit.py                            <- Project CLI: new, attach, list, status; git-ignored projects/
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
@@ -116,9 +116,10 @@ Open this folder in any AI host and describe what to build. Each project gets it
 ```bash
 python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ memory
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
-python aikit.py list                # every project, its detected stack and test command
+python aikit.py list                # every project, its stack and test command
+python aikit.py status my-app       # its task, open changes, last decision
 ```
-A project's memory is its `.aikit/` folder, committed in the project's repository. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
+A project's memory is its `.aikit/` folder (record, ledger, decisions), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 

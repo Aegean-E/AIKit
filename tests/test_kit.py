@@ -100,6 +100,7 @@ from scripts.disruption_recovery import (
     report_operational_error,
     RISK_DIMENSIONS,
     sweep_files,
+    workspace_ledger_path,
 )
 from scripts.aikit_cli import main as aikit_main
 from scripts.project_registry import (
@@ -108,6 +109,8 @@ from scripts.project_registry import (
     attach_project,
     create_project,
     detect_stacks,
+    find_project,
+    latest_decision,
     list_projects,
     load_config,
     validate_name,
@@ -3565,7 +3568,7 @@ class TestProjectRegistry(unittest.TestCase):
         def refuse(project_root):
             raise ProjectError("git missing", "why", "fix")
         with self.assertRaises(ProjectError):
-            create_project("app", workspace=self.kit, git_init=refuse)
+            create_project("app", workspace=self.kit, git_start=refuse)
         self.assertFalse((self.kit / "projects" / "app").exists())
 
     def test_cli_reports_triad_and_exit_codes(self):
@@ -3579,6 +3582,25 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(aikit_main(["new", "Bad Name"]), 2)
         self.assertIn("Fix:", stderr.getvalue())
 
+    def test_project_memory_holds_ledger_and_decisions(self):
+        folder = self.make_folder()
+        attach_project(folder, "svc", workspace=self.kit)
+        self.assertEqual(workspace_ledger_path(folder), folder / ".aikit" / "task_ledger.json")
+        self.assertEqual(workspace_ledger_path(self.kit), self.kit / ".agents" / "task_ledger.json")
+        # The template's commented example is not a decision; real entries are, newest last.
+        self.assertIsNone(latest_decision(folder))
+        with open(folder / ".aikit" / "decisions.md", "a", encoding="utf-8") as handle:
+            handle.write("\n### ADR-001: Use SQLite\n\n### ADR-002: Expose a REST API\n")
+        self.assertEqual(latest_decision(folder), "ADR-002: Expose a REST API")
+
+    def test_status_names_unknown_and_missing_projects(self):
+        with self.assertRaises(ProjectError) as caught:
+            find_project("nope", self.kit)
+        self.assertEqual(caught.exception.exit_code, 2)
+        folder = self.make_folder()
+        attach_project(folder, "svc", workspace=self.kit)
+        shutil.rmtree(folder)
+        self.assertFalse(find_project("svc", self.kit).present)
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""

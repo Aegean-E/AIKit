@@ -27,6 +27,7 @@ AIKit is the folder a person opens in an AI host; the software it builds lives i
 - **Isolation**: `projects/` is in `.gitignore`, in `IGNORE_DIRS` (codebase map, structure audits) and in `SWEEP_PRUNED_DIRS` (temp-file and quarantine sweeps), so no project file reaches AIKit's gates, map or ledger, and `--track` never sees one.
 - **Discovery**: a folder under `projects/` is a project when it holds `.aikit/project.json`; only folders elsewhere are listed in `projects/attached.json`. `attach` refuses a folder that contains or sits inside AIKit outside `projects/`.
 - **Detection**: `DETECTORS` maps marker files to a stack and its test command; a new stack is one row.
+- **Memory**: `.aikit/` holds `project.json`, `decisions.md` and `task_ledger.json`. Every ledger command takes `--workspace <project>`, so checkpoints, `--resume`, `--audit` and `--track` read the project's ledger and run `git status` in the project's repository; the project ledger is bookkeeping (`BOOKKEEPING_PATHS`), so a checkpoint never changes the project's track. `new` commits the memory as the first commit, and warns instead of inventing an author when git has no identity (ADR-120).
 
 ## 🗂️ Single Source of Truth & Generated Tier 1 Files
 The rules live in exactly one hand-edited file. See [ADR-048](decisions.md).

@@ -21,12 +21,31 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-from scripts.disruption_recovery import ROOT_DIR, atomic_write_json, file_lock
+from scripts.disruption_recovery import (
+    PROJECT_MEMORY_DIRNAME,
+    ROOT_DIR,
+    atomic_write_json,
+    file_lock,
+)
 
 PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
-MEMORY_DIRNAME = ".aikit"
 CONFIG_FILENAME = "project.json"
+DECISIONS_FILENAME = "decisions.md"
+# The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
+DECISIONS_TEMPLATE = (
+    "# Decisions\n\n"
+    "Why this project is built the way it is, oldest first. One entry per decision that changes a\n"
+    "contract, a dependency, a data format or the architecture; IDs are consecutive and never reused.\n\n"
+    "<!-- Entry format:\n"
+    "### ADR-001: <decision in one line>\n"
+    "- **Date**: YYYY-MM-DD\n"
+    "- **Status**: Accepted\n"
+    "- **Context**: <what forced the decision>\n"
+    "- **Decision**: <what was decided>\n"
+    "- **Consequences**: <what follows, including what it costs>\n"
+    "-->\n"
+)
 SCHEMA_VERSION = 1
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 GIT_TIMEOUT_SECONDS = 30
@@ -141,7 +160,7 @@ def projects_dir(workspace: Path = ROOT_DIR) -> Path:
 
 
 def config_path(project_root: Path) -> Path:
-    return project_root / MEMORY_DIRNAME / CONFIG_FILENAME
+    return project_root / PROJECT_MEMORY_DIRNAME / CONFIG_FILENAME
 
 
 def load_config(project_root: Path) -> Dict[str, object]:
@@ -180,11 +199,15 @@ def _ensure_gitignore(project_root: Path) -> None:
 
 def write_memory(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
     """
-    Create the project's `.aikit/project.json` unless it exists. Returns whether it was created:
-    an existing record is the project's memory and is never overwritten.
+    Create the project's `.aikit/project.json` and `.aikit/decisions.md` unless they exist.
+    Returns whether `project.json` was created: existing memory is never overwritten.
     """
     path = config_path(project_root)
     _ensure_gitignore(project_root)
+    decisions = project_root / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME
+    if not decisions.exists():
+        decisions.parent.mkdir(parents=True, exist_ok=True)
+        decisions.write_text(DECISIONS_TEMPLATE, encoding="utf-8")
     if path.exists():
         return False
     atomic_write_json(path, {
@@ -233,31 +256,50 @@ def _registered_names(workspace: Path) -> Dict[str, Path]:
     return names
 
 
-def _git_init(project_root: Path) -> None:
+def _run_git(project_root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
     try:
-        result = subprocess.run(["git", "init", "--quiet"], cwd=project_root, capture_output=True,
-                                text=True, timeout=GIT_TIMEOUT_SECONDS)
+        return subprocess.run(["git", *args], cwd=project_root, capture_output=True, text=True,
+                              timeout=GIT_TIMEOUT_SECONDS)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ProjectError(
-            f"`git init` failed in {project_root}: {exc}",
+            f"`git {args[0]}` failed in {project_root}: {exc}",
             "every project is its own git repository, separate from AIKit's.",
             "install git and put it on PATH, then run the command again.",
         ) from exc
+
+
+def _git_start(project_root: Path) -> Optional[str]:
+    """
+    `git init`, then commit the project's `.aikit/` memory so a new project starts clean. Returns
+    a warning when the commit could not be made (typically no git identity): the project is
+    still usable, and AIKit never invents an author.
+    """
+    result = _run_git(project_root, "init", "--quiet")
     if result.returncode != 0:
         raise ProjectError(
             f"`git init` failed in {project_root}: {result.stderr.strip()}",
             "every project is its own git repository, separate from AIKit's.",
             "fix the git error above, then run the command again.",
         )
+    _run_git(project_root, "add", "--", ".gitignore", PROJECT_MEMORY_DIRNAME)
+    result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
+    if result.returncode != 0:
+        # git's last stderr line is the cause; the lines before it are generic advice.
+        cause = (result.stderr.strip().splitlines() or ["git commit failed"])[-1]
+        return (f"initial commit not made ({cause}); "
+                "set `git config user.name` and `user.email`, then commit `.aikit/` and `.gitignore`.")
+    return None
 
 
 def create_project(name: str, test_command: Optional[str] = None, workspace: Path = ROOT_DIR,
-                   git_init: Optional[Callable[[Path], None]] = None) -> Path:
+                   git_start: Optional[Callable[[Path], Optional[str]]] = None
+                   ) -> Tuple[Path, Optional[str]]:
     """
-    Create `projects/<name>/` as a new git repository holding the project's `.aikit/` memory.
-    `git_init` defaults to running `git init` (PRINCIPLE-009 R4: a test injects a double).
+    Create `projects/<name>/` as a new git repository whose first commit holds the project's
+    `.aikit/` memory; returns the folder and a warning, if any. `git_start` defaults to the real
+    git calls (PRINCIPLE-009 R4: a test injects a double).
     """
-    git_init = git_init or _git_init
+    git_start = git_start or _git_start
     validate_name(name)
     if name in _registered_names(workspace):
         raise ProjectError(
@@ -274,13 +316,13 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
         )
     project_root.mkdir(parents=True)
     try:
-        git_init(project_root)
         write_memory(project_root, name, test_command)
+        warning = git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.
         shutil.rmtree(project_root, ignore_errors=True)
         raise
-    return project_root
+    return project_root, warning
 
 
 def attach_project(folder: Path, name: Optional[str] = None, test_command: Optional[str] = None,
@@ -339,3 +381,27 @@ def list_projects(workspace: Path = ROOT_DIR) -> List[Project]:
                                 override if isinstance(override, str) else detected, present))
     return projects
 
+
+def find_project(name: str, workspace: Path = ROOT_DIR) -> Project:
+    """The registered project called `name`."""
+    for project in list_projects(workspace):
+        if project.name == name:
+            return project
+    raise ProjectError(
+        f"No project named '{name}'.",
+        "commands act on a registered project only.",
+        "run `python aikit.py list` to see the names, or `python aikit.py new <name>`.",
+        exit_code=2,
+    )
+
+
+
+def latest_decision(project_root: Path) -> Optional[str]:
+    """The last `### ADR-NNN: ...` heading in the project's decision register, if any."""
+    path = project_root / PROJECT_MEMORY_DIRNAME / DECISIONS_FILENAME
+    if not path.is_file():
+        return None
+    # The template's entry-format example sits in an HTML comment; it is not a decision.
+    text = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
+    headings = re.findall(r"^### (ADR-\d+: .+)$", text, flags=re.M)
+    return headings[-1] if headings else None

@@ -32,6 +32,21 @@ AGENTS_DIR = ROOT_DIR / ".agents"
 LEDGER_PATH = AGENTS_DIR / "task_ledger.json"
 
 
+# A project AIKit builds keeps its memory, ledger included, in this folder (ADR-119, ADR-120).
+PROJECT_MEMORY_DIRNAME = ".aikit"
+
+
+def workspace_ledger_path(workspace: Path) -> Path:
+    """
+    The ledger of `workspace`: `<workspace>/.aikit/task_ledger.json` for a project AIKit builds,
+    otherwise `<workspace>/.agents/task_ledger.json` (AIKit itself and sandboxed dogfood runs).
+    """
+    memory = workspace / PROJECT_MEMORY_DIRNAME
+    if memory.is_dir():
+        return memory / "task_ledger.json"
+    return workspace / ".agents" / "task_ledger.json"
+
+
 def get_ledger_path(custom_dir: Optional[Path] = None) -> Path:
     """Return path to task ledger, creating parent directories if needed."""
     target_dir = custom_dir or AGENTS_DIR
@@ -703,11 +718,11 @@ def run_disruption_audit(
         audit["git_error"] = str(e)
 
     # 2. Check Task Ledger for Interrupted Tasks
-    ledger_path = ws / ".agents" / "task_ledger.json"
+    ledger_path = workspace_ledger_path(ws)
     if not ledger_path.exists() and (ws / "task_ledger.json").exists():
         ledger_path = ws / "task_ledger.json"
     elif not ledger_path.exists():
-        ledger_path = get_ledger_path(ws / ".agents")
+        ledger_path = get_ledger_path(ledger_path.parent)
     ledger = load_ledger(ledger_path)
     active = ledger.get("active_task")
     if active and active.get("status") == "in_progress":
@@ -943,7 +958,7 @@ TRACK_C_DOC_NAMES = frozenset({
 # Bookkeeping written by AIKit's own lifecycle commands. PRINCIPLE-002 R4 requires these writes,
 # so they must not move the track: before this, recording the mandated checkpoint alone turned a
 # documentation-only task into Track C.
-BOOKKEEPING_PATHS = frozenset({".agents/task_ledger.json"})
+BOOKKEEPING_PATHS = frozenset({".agents/task_ledger.json", ".aikit/task_ledger.json"})
 
 
 def _ast_without_docstrings(source: str) -> str:
@@ -1058,9 +1073,10 @@ Actions (default: --audit):
   --track                    Print the lifecycle track (A/B/C) of the current changes (PRINCIPLE-002 R3)
 
 Workspace:
-  --workspace <dir>          Operate on <dir>/.agents/task_ledger.json instead of this
-                             repository's ledger. Required for sandboxed dogfooding, which
-                             must never mutate the host repo (PRINCIPLE-015 R4).
+  --workspace <dir>          Operate on <dir>'s ledger instead of this repository's:
+                             <dir>/.aikit/task_ledger.json for a project (ADR-120), else
+                             <dir>/.agents/task_ledger.json. Required for sandboxed
+                             dogfooding, which must never mutate the host repo (PRINCIPLE-015 R4).
 
 Checkpoint options:
   --phase <name>             Lifecycle phase label (e.g. planning, implementation)
@@ -1194,7 +1210,7 @@ if __name__ == "__main__":
             print("Why: the ledger location cannot be inferred without it.", file=sys.stderr)
             print("Fix: pass '--workspace <dir>', e.g. --workspace ./sandbox", file=sys.stderr)
             sys.exit(2)
-    _ledger = (_ws_dir / ".agents" / "task_ledger.json") if _ws_dir else None
+    _ledger = workspace_ledger_path(_ws_dir) if _ws_dir else None
     _audit_root = _ws_dir if _ws_dir else None
 
     if "--validate-commit" in sys.argv:

@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -560,12 +561,34 @@ class TestProjectCreation(unittest.TestCase):
     def test_new_project_is_its_own_repository(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_new_"))
         self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
-        root = create_project("app", workspace=kit)
+        root, _warning = create_project("app", workspace=kit)
         self.assertTrue((root / ".git").is_dir())
         self.assertTrue((root / ".aikit" / "project.json").is_file())
         top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=root, capture_output=True,
                              text=True, timeout=PROC_TIMEOUT).stdout.strip()
         self.assertEqual(Path(top).resolve(), root.resolve())
+
+    def test_project_ledger_is_the_projects_own_and_starts_clean(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_ledger_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+        # Commit identity for this test only; git reads it from the environment.
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        root, warning = create_project("app", workspace=kit)
+        self.assertIsNone(warning)
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True,
+                                text=True, timeout=PROC_TIMEOUT).stdout
+        self.assertEqual(status, "", "a new project starts with its memory committed")
+        cli = [sys.executable, str(ROOT_DIR / "scripts" / "disruption_recovery.py"), "--workspace", str(root)]
+        subprocess.run(cli + ["--checkpoint", "t", "--phase-num", "1", "--desc", "grounding"],
+                       capture_output=True, text=True, timeout=PROC_TIMEOUT, check=True)
+        self.assertTrue((root / ".aikit" / "task_ledger.json").is_file())
+        self.assertFalse((root / ".agents").exists())
+        track = subprocess.run(cli + ["--track"], capture_output=True, text=True, timeout=PROC_TIMEOUT)
+        self.assertIn("Track A", track.stdout, "the project's checkpoint is bookkeeping, not a change")
 
 
 if __name__ == "__main__":
