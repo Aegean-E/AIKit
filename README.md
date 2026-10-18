@@ -2,7 +2,7 @@
 
 > **AI governance, architecture principles & disruption recovery for any software project.**
 
-The AI governance system extracted from production development: engineering principles, power-cut recovery, living documentation and regression-shielded git workflows for any AI coding assistant.
+The AI governance system extracted from production development: engineering principles, power-cut recovery, living documentation and regression-shielded git workflows.
 
 
 ---
@@ -77,6 +77,7 @@ portable_agent_kit/
 │   ├── rules/
 │   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
 │   │   ├── domain.md.template          <- Template for project domain rules (Tier 1B)
+│   │   ├── persistence.md.template     <- Versioned state contract
 │   │   └── readme_quickref.md.template <- Adopter README Quick Reference & tree (PRINCIPLE-005 R6)
 │   ├── skills/
 │   │   └── aikit/
@@ -88,7 +89,7 @@ portable_agent_kit/
 │   └── agents/                         <- Native OpenCode specialized subagent profiles (architect, coder, etc.)
 ├── opencode.jsonc                      <- OpenCode v2 provider, model and permissions configuration
 ├── scripts/
-│   ├── sync_principles.py              <- Generates all 8 Tier 1 files from GUIDELINES.md, budget-gated
+│   ├── sync_principles.py              <- Generates 8 Tier 1 files from GUIDELINES.md
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)

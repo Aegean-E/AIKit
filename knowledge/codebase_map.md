@@ -7,9 +7,9 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `15`
-- **Total Classes**: `72`
-- **Total Functions / Methods**: `222`
-- **Total Source Lines**: `11619`
+- **Total Classes**: `73`
+- **Total Functions / Methods**: `227`
+- **Total Source Lines**: `11894`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `365` lines (`17073` bytes)
+**Size**: `373` lines (`17357` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -131,20 +131,29 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1360` lines (`60833` bytes)
+**Size**: `1488` lines (`66139` bytes)
+
+**Classes:**
+- `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
+  - Method `.__init__(path, found, supported)`
 
 **Functions:**
+- `def empty_ledger()` - *A fresh in-memory ledger; load_ledger() never creates the file for this.*
 - `def workspace_ledger_path(workspace)` - *The ledger of `workspace`: `<workspace>/.aikit/task_ledger.json` for a project AIKit builds,*
 - `def get_ledger_path(custom_dir)` - *Return path to task ledger, creating parent directories if needed.*
 - `def file_lock(lock_path, timeout_seconds, poll_interval)` - *Cross-platform cooperative advisory lock (PRINCIPLE-013).*
 - `def locked_ledger(ledger_file, timeout_seconds, poll_interval)` - *Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).*
 - `def fsync_dir(dir_path)` - *Flush a directory entry so a completed `os.replace` survives power loss (PRINCIPLE-013 R1).*
 - `def check_disk_headroom(target_dir, min_mb)` - *Check whether sufficient disk headroom exists before writing (PRINCIPLE-013).*
+- `def validate_ledger_version(data, path)` - *Refuse a ledger whose declared schema this build does not read (PRINCIPLE-013 R4).*
+- `def _read_ledger_file(path)` - *Parse one ledger file, validate its version, then normalize it in memory.*
+- `def _quarantine_ledger(path)` - *Move a corrupt ledger aside without overwriting an earlier quarantine in the same second.*
 - `def migrate_ledger_schema(data)` - *Ensure recovered or loaded ledger conforms to current schema specification (PRINCIPLE-013).*
 - `def atomic_write_json(file_path, data, max_retries, min_headroom_mb)` - *Atomically write JSON data using fsync, shadow backup, and temporary replacement (PRINCIPLE-013).*
 - `def load_ledger(ledger_file)` - *Safely load the task ledger with startup self-healing (PRINCIPLE-013).*
 - `def prune_checkpoints(checkpoints, active_task_id, max_history)` - *Prune checkpoints to maintain a bounded rolling memory window (PRINCIPLE-004).*
 - `def task_plan_checkpoint(task_checkpoints)` - *The task's plan (PRINCIPLE-004 R1): its latest Phase 2 checkpoint whose description starts*
+- `def _refuse_newer_ledger_on_disk(path)` - *Re-check both slots under the lock before replacing either (PRINCIPLE-013 R3).*
 - `def save_ledger(ledger, ledger_file, max_history, _locked)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
@@ -239,7 +248,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `533` lines (`23197` bytes)
+**Size**: `537` lines (`23485` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -369,7 +378,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `894` lines (`45442` bytes)
+**Size**: `917` lines (`46663` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -396,6 +405,7 @@
   - Method `.test_workspace_flag_redirects_the_ledger()`
   - Method `.test_workspace_without_value_is_refused()`
   - Method `.test_audit_and_resume_honour_the_workspace()`
+  - Method `.test_resume_and_checkpoint_refuse_a_newer_ledger()`
 - `class TestDogfoodRunner` - *The operational dogfood runner is itself a shipped surface (PRINCIPLE-015), so it carries*
   - Method `.setUpClass()`
   - Method `.test_dogfood_run_passes_every_track()`
@@ -456,7 +466,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4448` lines (`247998` bytes)
+**Size**: `4560` lines (`254201` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -712,6 +722,16 @@
   - Method `.test_disk_headroom_check()`
   - Method `.test_schema_migration_backward_compatibility()`
   - Method `.test_zero_byte_power_loss_truncation_quarantine()`
+  - Method `.test_newer_ledger_is_refused_without_mutation()`
+  - Method `.test_newer_backup_is_not_used_when_primary_is_missing()`
+  - Method `.test_legacy_ledger_is_migrated_in_memory_only()`
+  - Method `.test_invalid_ledger_versions_are_refused()`
+  - Method `.test_resume_report_blocks_a_newer_ledger()`
+  - Method `.test_save_refuses_a_newer_ledger_on_disk()`
+  - Method `.test_save_refuses_a_newer_backup()`
+  - Method `.test_save_does_not_write_after_lock_timeout()`
+  - Method `.test_noop_completion_does_not_rewrite_the_ledger()`
+  - Method `.test_failed_replace_keeps_the_old_ledger_and_removes_temp()`
   - Method `.test_record_checkpoint_and_complete()`
   - Method `.test_dangling_temp_file_detection()`
   - Method `.test_format_resume_report()`

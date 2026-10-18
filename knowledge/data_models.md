@@ -8,7 +8,7 @@ Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013)
 
 | Key | Type | Meaning |
 |---|---|---|
-| `version` | int | Schema version, `1`; `migrate_ledger_schema` fills missing keys. |
+| `version` | int | Schema version, `1`; `migrate_ledger_schema` fills missing keys. A newer version is refused in place; a missing version is treated as legacy `1` in memory only. |
 | `active_task` | object or null | `task_id`, `last_phase` (label), `active_phase` (1-5), `status`, `updated_at` (epoch s), optional `impact_assessment` {`why`, `benefits`, `risks`, `mitigation`}. |
 | `checkpoints` | list | At most 20 entries (the active task's plan checkpoint is always kept). Each: `task_id`, `phase`, `phase_num` (1-5), `description`, `files_affected`, `status`, `timestamp`, `timestamp_str`, optional `impact_assessment`. |
 
@@ -55,4 +55,4 @@ Returned by `delegate_subagent` in `scripts/aikit_cli.py` (`python aikit.py dele
 ## 🛡️ Model Invariants
 1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
 2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).
-3. A persisted model carries a version key (`version` in the ledger) and a migration function that fills missing keys (**PRINCIPLE-013** R4).
+3. A persisted model carries a version key (`version` in the ledger) and a migration function that fills missing keys (**PRINCIPLE-013** R4). A reader refuses an unsupported newer version without modifying or quarantining the file; a missing version is accepted only through a documented legacy migration.

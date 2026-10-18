@@ -80,6 +80,8 @@ from scripts.sync_principles import (
     involved_principles,
 )
 from scripts.disruption_recovery import (
+    LEDGER_SCHEMA_VERSION,
+    UnsupportedLedgerVersion,
     load_ledger,
     save_ledger,
     atomic_write_json,
@@ -1621,7 +1623,8 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "A unit test fails when a `PRINCIPLE-NNN RN` citation names a rule that does not exist",
                 "An ADR MAY be edited until the commit that adds it; after that its text is fixed",
                 "The one exception is a heading ID that `python scripts/update_knowledge_base.py` reports as duplicate or skipped",
-                "A persisted schema has a version key (`version` in the ledger)",
+                "A persisted schema has a version key",
+                "A reader refuses a version it does not support without modifying, quarantining or overwriting the file",
                 "read in slices (PRINCIPLE-004 R3)",
             ],
             "gone": ["high-density", "instant cold-start", "`schema_version`", "`view_file`", "strictly prohibited"],
@@ -2982,6 +2985,115 @@ class TestDisruptionRecovery(unittest.TestCase):
         # 0-byte corrupted file should be quarantined
         corrupt_files = list(self.test_dir.glob("task_ledger.json.corrupt_*"))
         self.assertTrue(len(corrupt_files) >= 1)
+
+    def test_newer_ledger_is_refused_without_mutation(self):
+        payload = {"version": 2, "active_task": {"task_id": "future"}, "checkpoints": []}
+        self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+        before = self.ledger_file.read_bytes()
+        with self.assertRaises(UnsupportedLedgerVersion):
+            load_ledger(self.ledger_file)
+        self.assertEqual(self.ledger_file.read_bytes(), before)
+        self.assertEqual(list(self.test_dir.glob("*.corrupt_*")), [])
+        self.assertEqual(list(self.test_dir.glob("*.tmp_*")), [])
+        self.assertEqual(list(self.test_dir.glob("*.lock")), [])
+
+    def test_newer_backup_is_not_used_when_primary_is_missing(self):
+        backup = self.ledger_file.with_suffix(self.ledger_file.suffix + ".bak")
+        backup.write_text(json.dumps({"version": 2, "active_task": {"task_id": "future"}}),
+                          encoding="utf-8")
+        before = backup.read_bytes()
+        with self.assertRaises(UnsupportedLedgerVersion):
+            load_ledger(self.ledger_file)
+        self.assertEqual(backup.read_bytes(), before)
+        self.assertFalse(self.ledger_file.exists())
+
+    def test_legacy_ledger_is_migrated_in_memory_only(self):
+        self.ledger_file.write_text(
+            json.dumps({"active_task": {"task_id": "legacy"}, "checkpoints": []}),
+            encoding="utf-8",
+        )
+        before = self.ledger_file.read_bytes()
+        loaded = load_ledger(self.ledger_file)
+        self.assertEqual(loaded["version"], LEDGER_SCHEMA_VERSION)
+        self.assertEqual(loaded["active_task"]["task_id"], "legacy")
+        self.assertEqual(self.ledger_file.read_bytes(), before)
+
+    def test_invalid_ledger_versions_are_refused(self):
+        for version in (True, "2", 2.0, 0, -1):
+            with self.subTest(version=version):
+                payload = {"version": version, "active_task": None, "checkpoints": []}
+                self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+                before = self.ledger_file.read_bytes()
+                with self.assertRaises(UnsupportedLedgerVersion):
+                    load_ledger(self.ledger_file)
+                self.assertEqual(self.ledger_file.read_bytes(), before)
+
+    def test_resume_report_blocks_a_newer_ledger(self):
+        workspace = self.test_dir / "workspace"
+        (workspace / ".agents").mkdir(parents=True)
+        (workspace / ".agents" / "task_ledger.json").write_text(
+            json.dumps({"version": 2, "active_task": {"task_id": "future"}}),
+            encoding="utf-8",
+        )
+        audit = run_disruption_audit(workspace_dir=workspace, git_status=not_a_git_repo)
+        self.assertIsNotNone(audit["ledger_error"])
+        report = format_resume_report(audit)
+        self.assertIn("BLOCKED", report)
+        self.assertIn("schema version 2", report)
+        self.assertNotIn("Ready for a new task", report)
+
+    def test_save_refuses_a_newer_ledger_on_disk(self):
+        payload = {"version": 2, "active_task": {"task_id": "future"}, "checkpoints": []}
+        self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+        before = self.ledger_file.read_bytes()
+        with self.assertRaises(UnsupportedLedgerVersion):
+            save_ledger({"version": 1, "active_task": None, "checkpoints": []},
+                        ledger_file=self.ledger_file)
+        self.assertEqual(self.ledger_file.read_bytes(), before)
+
+    def test_save_refuses_a_newer_backup(self):
+        atomic_write_json(self.ledger_file,
+                          {"version": 1, "active_task": {"task_id": "old"}, "checkpoints": []})
+        backup = self.ledger_file.with_suffix(self.ledger_file.suffix + ".bak")
+        backup.write_text(json.dumps({"version": 2, "active_task": {"task_id": "future"},
+                                      "checkpoints": []}), encoding="utf-8")
+        before_primary = self.ledger_file.read_bytes()
+        before_backup = backup.read_bytes()
+        with self.assertRaises(UnsupportedLedgerVersion):
+            save_ledger({"version": 1, "active_task": {"task_id": "new"}, "checkpoints": []},
+                        ledger_file=self.ledger_file)
+        self.assertEqual(self.ledger_file.read_bytes(), before_primary)
+        self.assertEqual(backup.read_bytes(), before_backup)
+
+    def test_save_does_not_write_after_lock_timeout(self):
+        with mock.patch("scripts.disruption_recovery.file_lock",
+                        return_value=contextlib.nullcontext(False)):
+            with self.assertRaises(TimeoutError):
+                save_ledger({"version": 1, "active_task": None, "checkpoints": []},
+                            ledger_file=self.ledger_file)
+        self.assertFalse(self.ledger_file.exists())
+
+    def test_noop_completion_does_not_rewrite_the_ledger(self):
+        atomic_write_json(self.ledger_file,
+                          {"version": 1, "active_task": {"task_id": "active",
+                                                         "status": "in_progress"},
+                           "checkpoints": []})
+        with mock.patch("scripts.disruption_recovery.atomic_write_json") as write:
+            self.assertFalse(mark_task_completed("other", ledger_file=self.ledger_file))
+        write.assert_not_called()
+
+    def test_failed_replace_keeps_the_old_ledger_and_removes_temp(self):
+        old = {"version": 1, "active_task": {"task_id": "old"}, "checkpoints": []}
+        atomic_write_json(self.ledger_file, old)
+        before = self.ledger_file.read_bytes()
+        with mock.patch("scripts.disruption_recovery.os.replace",
+                        side_effect=PermissionError(13, "busy")):
+            with self.assertRaises(OSError):
+                atomic_write_json(self.ledger_file,
+                                  {"version": 1, "active_task": {"task_id": "new"},
+                                   "checkpoints": []}, max_retries=1)
+        self.assertEqual(self.ledger_file.read_bytes(), before)
+        self.assertEqual(list(self.test_dir.glob("*.tmp_*")), [])
 
     def test_record_checkpoint_and_complete(self):
         record_checkpoint(

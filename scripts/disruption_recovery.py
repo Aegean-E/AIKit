@@ -13,6 +13,7 @@ import time
 import fnmatch
 import shutil
 import contextlib
+import copy
 import subprocess
 from pathlib import Path
 from typing import Callable, Dict, Any, Optional, List, Tuple
@@ -30,6 +31,34 @@ if sys.platform == "win32":
 ROOT_DIR = Path(__file__).resolve().parent.parent
 AGENTS_DIR = ROOT_DIR / ".agents"
 LEDGER_PATH = AGENTS_DIR / "task_ledger.json"
+LEDGER_SCHEMA_VERSION = 1
+
+
+class UnsupportedLedgerVersion(Exception):
+    """
+    A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).
+
+    Deliberately neither OSError nor ValueError: load_ledger() treats those as corruption and
+    would quarantine or replace the file. A newer format is valid data, so it is refused in place.
+    """
+
+    def __init__(self, path: Path, found: Any, supported: int) -> None:
+        self.path = Path(path)
+        self.found = found
+        self.supported = supported
+        self.why = ("the ledger was written by a different AIKit whose format this build does not "
+                    "understand; reading or rewriting it could lose task history")
+        self.fix = ("open it with the AIKit version that wrote it, or restore a ledger written in "
+                    "schema version " + str(supported) + "; the file was not modified")
+        super().__init__(
+            f"{self.path} declares ledger schema version {found!r}; this AIKit reads version {supported}\n"
+            f"Why: {self.why}\nFix: {self.fix}"
+        )
+
+
+def empty_ledger() -> Dict[str, Any]:
+    """A fresh in-memory ledger; load_ledger() never creates the file for this."""
+    return {"version": LEDGER_SCHEMA_VERSION, "active_task": None, "checkpoints": []}
 
 
 # A project AIKit builds keeps its memory, ledger included, in this folder (ADR-119, ADR-120).
@@ -141,8 +170,10 @@ def locked_ledger(
                 f"Fix: retry shortly, or remove a stale '{path.name}.lock' if no process is active."
             )
         ledger = load_ledger(path)
+        before = copy.deepcopy(ledger)
         yield ledger
-        save_ledger(ledger, path, _locked=True)
+        if ledger != before:
+            save_ledger(ledger, path, _locked=True)
 
 
 def fsync_dir(dir_path: Path) -> bool:
@@ -192,17 +223,48 @@ def check_disk_headroom(target_dir: Path, min_mb: float = 10.0) -> bool:
         return True
 
 
+def validate_ledger_version(data: Any, path: Path) -> None:
+    """Refuse a ledger whose declared schema this build does not read (PRINCIPLE-013 R4)."""
+    if not isinstance(data, dict) or "version" not in data:
+        return
+    version = data.get("version")
+    if type(version) is not int or version != LEDGER_SCHEMA_VERSION:
+        raise UnsupportedLedgerVersion(path, version, LEDGER_SCHEMA_VERSION)
+
+
+def _read_ledger_file(path: Path) -> Dict[str, Any]:
+    """Parse one ledger file, validate its version, then normalize it in memory."""
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError("ledger root is not a JSON object")
+    validate_ledger_version(data, path)
+    return migrate_ledger_schema(data)
+
+
+def _quarantine_ledger(path: Path) -> Path:
+    """Move a corrupt ledger aside without overwriting an earlier quarantine in the same second."""
+    stamp = int(time.time())
+    wreck = path.parent / f"{path.name}.corrupt_{stamp}"
+    index = 1
+    while wreck.exists():
+        wreck = path.parent / f"{path.name}.corrupt_{stamp}-{index}"
+        index += 1
+    os.replace(path, wreck)
+    return wreck
+
+
 def migrate_ledger_schema(data: Any) -> Dict[str, Any]:
     """
     Ensure recovered or loaded ledger conforms to current schema specification (PRINCIPLE-013).
     Performs forward-compatible, idempotent schema upgrades.
     """
     if not isinstance(data, dict):
-        return {"version": 1, "active_task": None, "checkpoints": []}
+        return empty_ledger()
 
     # Ensure mandatory fields
     if "version" not in data:
-        data["version"] = 1
+        data["version"] = LEDGER_SCHEMA_VERSION
     if "active_task" not in data:
         data["active_task"] = None
     if "checkpoints" not in data or not isinstance(data["checkpoints"], list):
@@ -266,40 +328,48 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_head
 def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
     """
     Safely load the task ledger with startup self-healing (PRINCIPLE-013).
-    Quarantines corrupted files from power outages, restores from shadow backup, and migrates schema.
+
+    A newer schema is refused in place: it is valid data, not corruption, so it is neither
+    quarantined nor replaced by an older backup. A missing version is a legacy ledger and is
+    normalized in memory only; read-only callers never write it back.
     """
     path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
+    bak_path = path.with_suffix(path.suffix + ".bak")
     if not path.exists():
-        return {"version": 1, "active_task": None, "checkpoints": []}
+        if bak_path.exists():
+            try:
+                return _read_ledger_file(bak_path)
+            except UnsupportedLedgerVersion:
+                raise
+            except (OSError, ValueError):
+                pass
+        return empty_ledger()
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return migrate_ledger_schema(data)
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
-        # Quarantine corrupted artifact
-        corrupt_name = f"{path.name}.corrupt_{int(time.time())}"
-        corrupt_path = path.parent / corrupt_name
+        return _read_ledger_file(path)
+    except UnsupportedLedgerVersion:
+        raise
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError) as e:
         try:
-            os.replace(path, corrupt_path)
-            sys.stderr.write(f"[WARN] Corrupted task ledger quarantined to {corrupt_name}: {e}\n")
+            wreck = _quarantine_ledger(path)
+            sys.stderr.write(f"[WARN] Corrupted task ledger quarantined to {wreck.name}: {e}\n")
         except OSError as move_error:
             sys.stderr.write(f"[WARN] Corrupted task ledger {path.name} could not be quarantined "
                              f"({move_error}); it will be read again on the next load.\n")
 
         # Attempt recovery from shadow backup (.bak) before falling back to empty state
-        bak_path = path.with_suffix(path.suffix + ".bak")
         if bak_path.exists():
             try:
-                with open(bak_path, "r", encoding="utf-8") as f_bak:
-                    recovered = json.load(f_bak)
-                    sys.stderr.write(f"[INFO] Recovered task ledger from shadow backup {bak_path.name}\n")
-                    return migrate_ledger_schema(recovered)
+                recovered = _read_ledger_file(bak_path)
+                sys.stderr.write(f"[INFO] Recovered task ledger from shadow backup {bak_path.name}\n")
+                return recovered
+            except UnsupportedLedgerVersion:
+                raise
             except (OSError, ValueError) as e:
                 sys.stderr.write(f"[WARN] Shadow backup {bak_path.name} is unreadable ({e}); "
                                  f"starting an empty ledger. Task history was not recovered.\n")
 
-        return {"version": 1, "active_task": None, "checkpoints": []}
+        return empty_ledger()
 
 
 DEFAULT_MAX_CHECKPOINTS = 20
@@ -347,6 +417,19 @@ def task_plan_checkpoint(task_checkpoints: List[Dict[str, Any]]) -> Optional[Dic
     return None
 
 
+def _refuse_newer_ledger_on_disk(path: Path) -> None:
+    """Re-check both slots under the lock before replacing either (PRINCIPLE-013 R3)."""
+    for candidate in (path, path.with_suffix(path.suffix + ".bak")):
+        if not candidate.exists():
+            continue
+        try:
+            with open(candidate, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            continue
+        validate_ledger_version(data, candidate)
+
+
 def save_ledger(
     ledger: Dict[str, Any],
     ledger_file: Optional[Path] = None,
@@ -357,23 +440,33 @@ def save_ledger(
     Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).
 
     Acquires the advisory lock unless the caller already holds it (`_locked=True`, set by
-    `locked_ledger`), since the lock is not reentrant.
+    `locked_ledger`), since the lock is not reentrant. Contention is an error: writing without
+    the lock could overwrite a newer ledger written by another process (PRINCIPLE-013 R3).
     """
     path = Path(ledger_file) if ledger_file is not None else LEDGER_PATH
+    version = ledger.get("version")
+    if version is None:
+        ledger["version"] = LEDGER_SCHEMA_VERSION
+    elif type(version) is not int or version != LEDGER_SCHEMA_VERSION:
+        raise UnsupportedLedgerVersion(path, version, LEDGER_SCHEMA_VERSION)
     active_id = ledger.get("active_task", {}).get("task_id") if ledger.get("active_task") else None
     if "checkpoints" in ledger:
         ledger["checkpoints"] = prune_checkpoints(
             ledger["checkpoints"], active_task_id=active_id, max_history=max_history
         )
     if _locked:
+        _refuse_newer_ledger_on_disk(path)
         atomic_write_json(path, ledger)
         return
     with file_lock(path, timeout_seconds=LOCK_TIMEOUT_SECONDS) as acquired:
         if not acquired:
-            sys.stderr.write(
-                f"[WARN] Writing {path.name} without the advisory lock after "
-                f"{LOCK_TIMEOUT_SECONDS}s of contention (PRINCIPLE-013 Rule 3).\n"
+            raise TimeoutError(
+                f"[PRINCIPLE-013 LOCK CONTENTION] Could not acquire advisory lock on "
+                f"{path.name} within {LOCK_TIMEOUT_SECONDS}s. "
+                f"Why: another agent or process is mid-write on the ledger. "
+                f"Fix: retry shortly, or remove a stale '{path.name}.lock' if no process is active."
             )
+        _refuse_newer_ledger_on_disk(path)
         atomic_write_json(path, ledger)
 
 
@@ -695,6 +788,7 @@ def run_disruption_audit(
         "quarantined_files": [],
         "dangling_temp_files": [],
         "scan_errors": [],
+        "ledger_error": None,
     }
 
     # 1. Check Git Status
@@ -723,19 +817,30 @@ def run_disruption_audit(
         ledger_path = ws / "task_ledger.json"
     elif not ledger_path.exists():
         ledger_path = get_ledger_path(ledger_path.parent)
-    ledger = load_ledger(ledger_path)
-    active = ledger.get("active_task")
-    if active and active.get("status") == "in_progress":
-        audit["interrupted_task"] = active
+    try:
+        ledger = load_ledger(ledger_path)
+    except UnsupportedLedgerVersion as error:
+        audit["ledger_error"] = {
+            "found": error.found,
+            "supported": error.supported,
+            "why": error.why,
+            "fix": error.fix,
+        }
         audit["clean_shutdown"] = False
-
-    checkpoints = ledger.get("checkpoints", [])
-    if checkpoints:
-        audit["last_checkpoint"] = checkpoints[-1]
+        ledger = None
+    if ledger is not None:
+        active = ledger.get("active_task")
         if active and active.get("status") == "in_progress":
-            plan = task_plan_checkpoint([c for c in checkpoints if c.get("task_id") == active.get("task_id")])
-            if plan:
-                audit["plan"] = plan.get("description")
+            audit["interrupted_task"] = active
+            audit["clean_shutdown"] = False
+
+        checkpoints = ledger.get("checkpoints", [])
+        if checkpoints:
+            audit["last_checkpoint"] = checkpoints[-1]
+            if active and active.get("status") == "in_progress":
+                plan = task_plan_checkpoint([c for c in checkpoints if c.get("task_id") == active.get("task_id")])
+                if plan:
+                    audit["plan"] = plan.get("description")
 
     # 3. Check for Quarantined Corrupted Artifacts (.corrupt_ files)
     try:
@@ -773,6 +878,8 @@ def audit_body_lines(audit: Dict[str, Any]) -> List[str]:
 
     if audit.get("has_conflicts"):
         lines.append("🔴 Status: UNRESOLVED MERGE CONFLICTS - resolve before any edit or commit!")
+    elif audit.get("ledger_error"):
+        lines.append("🔴 Status: LEDGER FORMAT UNSUPPORTED - the file was not modified; resume is blocked.")
     elif audit.get("scan_errors"):
         lines.append("🟡 Status: Audit incomplete - some scans failed, so 'clean' cannot be claimed.")
     elif audit.get("clean_shutdown") and not audit.get("has_uncommitted_changes") and not audit.get("dangling_temp_files") and not audit.get("git_missing"):
@@ -783,6 +890,13 @@ def audit_body_lines(audit: Dict[str, Any]) -> List[str]:
     if audit.get("conflicted_files"):
         append_file_list(lines, "⛔ Conflicted Files - interrupted merge/rebase", audit["conflicted_files"])
         lines.append("   Fix: resolve, then 'git add <file>' — or abort via 'git merge --abort' / 'git rebase --abort'")
+
+    ledger_error = audit.get("ledger_error")
+    if ledger_error:
+        lines.append(f"🔴 Ledger: schema version {ledger_error['found']!r} is not supported; "
+                     f"this AIKit reads version {ledger_error['supported']}.")
+        lines.append(f"   Why: {ledger_error['why']}")
+        lines.append(f"   Fix: {ledger_error['fix']}")
 
     for err in audit.get("scan_errors", []):
         lines.append(f"⚠️  Scan failed: {err}")
@@ -848,6 +962,11 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     lines += audit_body_lines(audit)
     if audit.get("conflicted_files"):
         lines.append("⛔ BLOCKED: resolve the conflicts above before any other action.")
+
+    if audit.get("ledger_error"):
+        lines.append("⛔ BLOCKED: this ledger cannot be read by this AIKit; no task state was changed.")
+        lines.append("============================================================")
+        return "\n".join(lines)
 
     interrupted = audit.get("interrupted_task")
     if not interrupted:
@@ -1101,6 +1220,9 @@ def report_operational_error(exc_type, exc, tb) -> None:
     uncaught exception does. It used to print a raw traceback. Other exceptions are bugs and keep
     Python's traceback.
     """
+    if issubclass(exc_type, UnsupportedLedgerVersion):
+        print(f"[LEDGER VERSION REFUSED] {exc}", file=sys.stderr)
+        return
     if not issubclass(exc_type, (OSError, TimeoutError)):
         sys.__excepthook__(exc_type, exc, tb)
         return
@@ -1340,6 +1462,8 @@ if __name__ == "__main__":
     elif "--resume" in sys.argv:
         report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_resume_report(report))
+        if report.get("ledger_error"):
+            sys.exit(1)
     elif "--track" in sys.argv:
         try:
             _track, _reasons = classify_track(collect_working_changes(_audit_root or ROOT_DIR))
@@ -1354,7 +1478,11 @@ if __name__ == "__main__":
     elif "--audit" in sys.argv:
         report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_audit_report(report))
+        if report.get("ledger_error"):
+            sys.exit(1)
     else:
         report = run_disruption_audit(workspace_dir=_audit_root)
         print(format_audit_report(report))
+        if report.get("ledger_error"):
+            sys.exit(1)
 

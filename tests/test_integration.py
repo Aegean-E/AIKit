@@ -331,6 +331,29 @@ class TestWorkspaceIsolation(unittest.TestCase):
         self.assertIn("scoped", res.stdout)
         self.assertIn("Phase 4", res.stdout, "resume lost the phase recorded in the sandbox")
 
+    def test_resume_and_checkpoint_refuse_a_newer_ledger(self):
+        ledger = self.jail / ".agents" / "task_ledger.json"
+        ledger.parent.mkdir(parents=True)
+        ledger.write_text(json.dumps({"version": 2, "active_task": {"task_id": "future"},
+                                      "checkpoints": []}), encoding="utf-8")
+        before = ledger.read_bytes()
+
+        resume = self._ledger_cli("--workspace", str(self.jail), "--resume")
+        self.assertEqual(resume.returncode, 1)
+        self.assertIn("BLOCKED", resume.stdout)
+        self.assertIn("schema version 2", resume.stdout)
+        self.assertNotIn("Traceback", resume.stderr)
+        self.assertEqual(ledger.read_bytes(), before)
+
+        checkpoint = self._ledger_cli("--workspace", str(self.jail),
+                                      "--checkpoint", "blocked", "--phase-num", "1",
+                                      "--desc", "must not write")
+        self.assertEqual(checkpoint.returncode, 1)
+        self.assertIn("VERSION REFUSED", checkpoint.stderr)
+        self.assertNotIn("Traceback", checkpoint.stderr)
+        self.assertEqual(ledger.read_bytes(), before)
+        self.assertEqual(list(ledger.parent.glob("*.corrupt_*")), [])
+
 
 class TestDogfoodRunner(unittest.TestCase):
     """

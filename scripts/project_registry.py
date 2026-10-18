@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 from scripts.disruption_recovery import (
+    LEDGER_SCHEMA_VERSION,
     PROJECT_MEMORY_DIRNAME,
     ROOT_DIR,
     atomic_write_json,
@@ -42,6 +43,8 @@ GUIDELINES_TEMPLATE = (
     "rank below them: a guideline never overrides a principle (PRINCIPLE-000 R6, PRINCIPLE-001 R4).\n"
     "Add one with `python aikit.py guideline <name> \"<rule>\" --source <user|ADR-NNN|person>`, or by\n"
     "hand as one line below in the form `- **G-NNN** (source): rule`; IDs are never reused.\n\n"
+    "Persisted state carries a format version. A loader refuses a version it does not support,\n"
+    "without modifying or quarantining that file; older versions migrate when a migration exists.\n\n"
     "## Rules\n"
 )
 DECISIONS_TEMPLATE = (
@@ -283,7 +286,8 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
     ledger_path = project_root / PROJECT_MEMORY_DIRNAME / "task_ledger.json"
     if not ledger_path.exists():
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(ledger_path, {"version": 1, "active_task": None, "checkpoints": []})
+        atomic_write_json(ledger_path, {"version": LEDGER_SCHEMA_VERSION, "active_task": None,
+                                        "checkpoints": []})
     if path.exists():
         return False
     atomic_write_json(path, {

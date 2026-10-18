@@ -14,6 +14,7 @@ from typing import List, NoReturn, Optional
 from scripts.disruption_recovery import (
     ROOT_DIR,
     TEMP_STALE_SECONDS,
+    UnsupportedLedgerVersion,
     checkpoint_command,
     clean_dangling_temp_files,
     format_resume_report,
@@ -210,7 +211,10 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
     print_guidelines(project)
-    print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
+    audit = run_disruption_audit(workspace_dir=project.path)
+    print(format_resume_report(audit))
+    if audit.get("ledger_error"):
+        return 1
     # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
     print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
     gates = ", ".join(gate.name for gate in resolve_gates(project))
@@ -222,8 +226,9 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_resume(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
     print_guidelines(project)
-    print(format_resume_report(run_disruption_audit(workspace_dir=project.path)))
-    return 0
+    audit = run_disruption_audit(workspace_dir=project.path)
+    print(format_resume_report(audit))
+    return 1 if audit.get("ledger_error") else 0
 
 
 def cmd_guideline(args: argparse.Namespace) -> int:
@@ -363,3 +368,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return HANDLERS[args.command](args)
     except ProjectError as error:
         return report_error(error)
+    except UnsupportedLedgerVersion as error:
+        print(f"[LEDGER VERSION REFUSED] {error}", file=sys.stderr)
+        return 1

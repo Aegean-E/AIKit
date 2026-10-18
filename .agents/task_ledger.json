@@ -1,44 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "project-enforcement-wave-1",
-    "last_phase": "in_progress",
+    "task_id": "ledger-version-contract",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792352991.654264,
-    "completed_at": 1792353000.9480112
+    "updated_at": 1792366038.0028322,
+    "completed_at": 1792366072.380304
   },
   "checkpoints": [
-    {
-      "task_id": "free-providers",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251465.097455,
-      "timestamp_str": "2026-10-17 18:37:45"
-    },
-    {
-      "task_id": "free-providers",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [2/2]: P012 R8 text, model table, docs",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251570.6073751,
-      "timestamp_str": "2026-10-17 18:39:30"
-    },
-    {
-      "task_id": "free-providers",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[2/2] committed: gemini provider, free roles, is_free_model, AQ. detector, P012 R8 (ADR-132)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251692.7205641,
-      "timestamp_str": "2026-10-17 18:41:32"
-    },
     {
       "task_id": "free-providers",
       "phase": "completed",
@@ -238,6 +208,41 @@
       "status": "completed",
       "timestamp": 1792353000.948013,
       "timestamp_str": "2026-10-18 22:50:00"
+    },
+    {
+      "task_id": "ledger-version-contract",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/6] version gate + pure load; [2/6] write-path hardening; [3/6] resume/audit refusal reporting; [4/6] red-green tests; [5/6] rule/template/docs; [6/6] Phase 4 gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792364509.9271483,
+      "timestamp_str": "2026-10-19 02:01:49",
+      "impact_assessment": {
+        "why": "the ledger accepts a newer schema silently, may overwrite it, and the CLI cannot report the refusal safely",
+        "benefits": "newer ledgers are refused without modification, older/missing ledgers still resume, and concurrent writes cannot downgrade the file",
+        "risks": "contract: ledger load/save error behavior changes; dependency: none; concurrency: lock-contention path stops writing unprotected; state: ledger schema stays version 1 with in-memory legacy migration",
+        "mitigation": "red-green tests for newer, legacy, backup, failed replace, no-op save and resume; keep version 1; no project edits; run full Phase 4"
+      }
+    },
+    {
+      "task_id": "ledger-version-contract",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/6]-[6/6] delivered: pure version gate, newer/legacy/backup handling, lock-safe save, blocked resume/audit reporting, red-green tests, policy/template/docs, Phase 4 gates green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792366038.0028322,
+      "timestamp_str": "2026-10-19 02:27:18"
+    },
+    {
+      "task_id": "ledger-version-contract",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ledger-version-contract' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792366072.3803058,
+      "timestamp_str": "2026-10-19 02:27:52"
     }
   ]
 }

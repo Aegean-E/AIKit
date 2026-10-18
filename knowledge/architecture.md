@@ -101,6 +101,7 @@ The unit tier is fast by construction: `TestTierBudgetDiscipline` fails on a spa
 - **Lock behaviour**: acquisition times out with a `TimeoutError` carrying the triad; a lock older than 30s is broken by an atomic rename; Windows `PermissionError` during a concurrent delete is retried as contention (ADR-077).
 - **Durability**: `atomic_write_json()` checks headroom, rotates `.bak`, writes a temp file, fsyncs, retries `os.replace` and fsyncs the directory (`fsync_dir`, a no-op on win32).
 - **Recovery**: `load_ledger()` quarantines a corrupt file, falls back to `.bak` and migrates the schema, warning at each failed step; the CLI turns an `OSError` or `TimeoutError` into the triad and exit 1 (`report_operational_error`, ADR-098).
+- **Version refusal**: `load_ledger()` validates before normalizing. A newer schema raises `UnsupportedLedgerVersion`; the file is left byte-identical, `--resume`/`--audit` report `BLOCKED` and exit 1, and a missing version is treated as legacy `1` in memory only. The adopter recipe is `.agents/rules/persistence.md.template`.
 - **Resumption**: `resolve_active_phase()` reads the `active_phase` writers produce; `task_plan_checkpoint()` returns the latest `[1/` Phase 2 checkpoint (PRINCIPLE-004 R1).
 
 ## 🔀 Git Status Classification
