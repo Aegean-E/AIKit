@@ -1,0 +1,424 @@
+#!/usr/bin/env python3
+"""
+Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).
+
+A project's gates decide tests, README structure and secrets. This scan decides the mechanical
+clauses no gate could see before it existed: a subprocess that parses through the platform shell,
+Python started without `sys.executable`, arguments passed as one string, a call that can hang
+without `timeout=`, a hard-indexed `os.environ[...]`, a text-mode `open()` without `encoding=`,
+a broad `except` whose whole body is `pass`, a machine-specific absolute path, a third-party URL
+in a static asset (ADR-137).
+
+Every rule is decidable from the AST or from one line of regex, so a clean run is evidence rather
+than opinion, and every finding names the line to change. A deliberate exception is documented on
+the finding's own line as `hygiene: allow <reason>`.
+
+Exit codes:
+  0 clean    1 findings    2 CLI argument misuse
+"""
+
+import ast
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Iterable, List, Optional, Sequence, Set, Tuple
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+# Directories whose contents answer to a tool, not to this repository (PRINCIPLE-003 R2).
+SKIP_DIRS = frozenset({".git", ".aikit", "__pycache__", ".venv", "venv", "env", "node_modules",
+                       "dist", "build", ".mypy_cache", ".ruff_cache", ".pytest_cache"})
+
+PY_SUFFIX = ".py"
+ASSET_SUFFIXES = frozenset({".html", ".css", ".js"})
+
+ALLOW_MARKER = re.compile(r"hygiene:\s*allow\s+\S{3,}")
+SUBPROCESS_FUNCS = frozenset({"run", "call", "check_call", "check_output", "Popen"})
+BARE_PYTHONS = frozenset({"python", "python.exe", "python3", "python3.exe", "python2",
+                          "python2.exe", "py", "py.exe"})
+EXTERNAL_URL = re.compile(r"https?://[^\s\"'<>)]+")
+URL_HOST = re.compile(r"https?://([^/:\s\"'<>)]+)")
+# Hosts whose URLs are not third-party dependencies: a loopback address, an SVG XML namespace.
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "www.w3.org"})
+ABSOLUTE_PATH = re.compile(r"^(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+\\|/(?:Users|home|etc|var|opt|usr)/)")
+# Calls whose arguments reach the real filesystem: an absolute literal anywhere else is displayed
+# content, not a machine path (a game's simulated `/etc/hosts` is not a hardcoded host path).
+PATH_CALLS = frozenset({"open", "Path", "read_text", "write_text", "read_bytes", "write_bytes",
+                        "exists", "isfile", "isdir", "mkdir", "makedirs", "iterdir", "glob",
+                        "rglob", "unlink", "join", "listdir", "walk", "normpath", "abspath",
+                        "expanduser"})
+
+
+@dataclass(frozen=True)
+class Finding:
+    """One violation, addressed to the line a developer must change."""
+
+    path: str
+    line: int
+    rule: str
+    message: str
+
+    def render(self) -> str:
+        """The one-line report form: `path:line [rule] message`."""
+        return f"   - {self.path}:{self.line} [{self.rule}] {self.message}"
+
+
+def _keyword(call: ast.Call, name: str) -> Optional[ast.expr]:
+    """The value of `call`'s keyword `name`, or None when the call omits it."""
+    for keyword in call.keywords:
+        if keyword.arg == name:
+            return keyword.value
+    return None
+
+
+def _true_literal(node: Optional[ast.expr]) -> bool:
+    """Whether the expression is the literal `True` (a name called `True` cannot exist)."""
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _subprocess_aliases(tree: ast.Module) -> Set[str]:
+    """Names `subprocess` members were imported under, so `from subprocess import run` is seen."""
+    aliases: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+            aliases.update(alias.asname or alias.name for alias in node.names)
+    return aliases
+
+
+def _subprocess_call(node: ast.AST, aliases: Set[str]) -> Optional[ast.Call]:
+    """The node as a `subprocess` call (module-qualified or imported by name), else None."""
+    if not isinstance(node, ast.Call):
+        return None
+    func = node.func
+    if isinstance(func, ast.Attribute) and func.attr in SUBPROCESS_FUNCS:
+        if isinstance(func.value, ast.Name) and func.value.id == "subprocess":
+            return node
+        return None
+    if isinstance(func, ast.Name) and func.id in aliases:
+        return node
+    return None
+
+
+def check_banned_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-003 R4 and PRINCIPLE-010: calls that lose quoting or execute data as code."""
+    aliases = _subprocess_aliases(tree)
+    for node in ast.walk(tree):
+        call = _subprocess_call(node, aliases)
+        if call is not None and _true_literal(_keyword(call, "shell")):
+            yield Finding(rel, call.lineno, "shell-true",
+                          "a shell command line parses through the platform shell (PRINCIPLE-003 R4)")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                and node.func.attr == "system" and isinstance(node.func.value, ast.Name) \
+                and node.func.value.id == "os":
+            yield Finding(rel, node.lineno, "os-system",
+                          "os.system breaks on spaced paths (PRINCIPLE-003 R4)")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                and node.func.id in ("eval", "exec"):
+            yield Finding(rel, node.lineno, "eval-exec",
+                          f"{node.func.id}() executes data as code (PRINCIPLE-010)")
+
+
+def check_subprocess_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-003 R4 and PRINCIPLE-010: portable, bounded, list-passed subprocess calls."""
+    aliases = _subprocess_aliases(tree)
+    for node in ast.walk(tree):
+        call = _subprocess_call(node, aliases)
+        if call is None:
+            continue
+        if call.args and isinstance(call.args[0], ast.Constant) \
+                and isinstance(call.args[0].value, str):
+            yield Finding(rel, call.lineno, "subprocess-argv",
+                          "arguments must be a list, not a string (PRINCIPLE-003 R4)")
+        first = call.args[0] if call.args else None
+        if isinstance(first, (ast.List, ast.Tuple)) and first.elts:
+            head = first.elts[0]
+            if isinstance(head, ast.Constant) and isinstance(head.value, str) \
+                    and head.value.lower() in BARE_PYTHONS:
+                yield Finding(rel, call.lineno, "sys-executable",
+                              "start Python with sys.executable, not a bare name (PRINCIPLE-003 R4)")
+        if _keyword(call, "timeout") is None:
+            yield Finding(rel, call.lineno, "subprocess-timeout",
+                          "subprocess call without timeout= can hang a gate (PRINCIPLE-010)")
+
+
+def check_environ_index(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-011 R3: a hard-indexed environment variable crashes where it is unset."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Subscript):
+            continue
+        value = node.value
+        if isinstance(value, ast.Attribute) and value.attr == "environ" \
+                and isinstance(value.value, ast.Name) and value.value.id == "os":
+            yield Finding(rel, node.lineno, "environ-index",
+                          "os.environ[...] raises KeyError when unset; use os.getenv "
+                          "with a default (PRINCIPLE-011 R3)")
+
+
+def _open_mode(call: ast.Call) -> Optional[str]:
+    """The literal mode of an open() call, or None when binary-ness is not decidable."""
+    mode = _keyword(call, "mode")
+    if mode is None and len(call.args) >= 2:
+        mode = call.args[1]
+    if mode is None:
+        return "r"
+    if isinstance(mode, ast.Constant) and isinstance(mode.value, str):
+        return mode.value
+    return None
+
+
+def _is_open_call(node: ast.AST) -> bool:
+    """Whether the node is a builtin `open(...)` or an object's `.open(...)` method call."""
+    if not isinstance(node, ast.Call):
+        return False
+    func = node.func
+    if isinstance(func, ast.Name) and func.id == "open":
+        return True
+    return isinstance(func, ast.Attribute) and func.attr == "open"
+
+
+def check_open_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-003 R4 and PRINCIPLE-010: text mode needs an explicit encoding and a with block."""
+    held = {id(item.context_expr) for node in ast.walk(tree) if isinstance(node, ast.With)
+            for item in node.items}
+    for node in ast.walk(tree):
+        if not _is_open_call(node):
+            continue
+        if _keyword(node, "encoding") is None:
+            mode = _open_mode(node)
+            if mode is not None and "b" not in mode:
+                yield Finding(rel, node.lineno, "open-encoding",
+                              "text-mode open() without encoding= reads the locale's "
+                              "encoding (PRINCIPLE-003 R4)")
+        if id(node) not in held:
+            yield Finding(rel, node.lineno, "open-context",
+                          "open() outside a with block can leak the handle (PRINCIPLE-010)")
+
+
+def check_silent_except(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-000 R5: a broad handler whose whole body is pass hides the error."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ExceptHandler):
+            continue
+        broad = node.type is None or (isinstance(node.type, ast.Name)
+                                      and node.type.id in ("Exception", "BaseException"))
+        if broad and len(node.body) == 1 and isinstance(node.body[0], ast.Pass):
+            yield Finding(rel, node.lineno, "silent-except",
+                          "a broad except with only pass swallows every error (PRINCIPLE-000 R5)")
+
+
+def _docstring_ids(tree: ast.Module) -> Set[int]:
+    """Ids of docstring constants: prose may name any path without baking it into behaviour."""
+    found: Set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                                 ast.ClassDef)):
+            continue
+        body = node.body
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
+                and isinstance(body[0].value.value, str):
+            found.add(id(body[0].value))
+    return found
+
+
+def _call_head(node: ast.Call) -> str:
+    """The called function's final name: `Path` for Path(...), `join` for os.path.join(...)."""
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return ""
+
+
+def _direct_arguments(call: ast.Call) -> List[ast.expr]:
+    """Positional and keyword argument expressions of a call."""
+    return [*call.args, *(keyword.value for keyword in call.keywords)]
+
+
+def check_absolute_paths(rel: str, tree: ast.Module) -> Iterable[Finding]:
+    """PRINCIPLE-003 R4: a machine-specific path reaching file access breaks every other machine."""
+    docstrings = _docstring_ids(tree)
+    candidates: Set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and _call_head(node) in PATH_CALLS:
+            for argument in _direct_arguments(node):
+                if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                    candidates.add(id(argument))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            continue
+        if id(node) in candidates and id(node) not in docstrings and ABSOLUTE_PATH.match(node.value):
+            yield Finding(rel, node.lineno, "absolute-path",
+                          f"absolute path '{node.value[:48]}' is machine-specific (PRINCIPLE-003 R4)")
+
+
+def check_asset_source(rel: str, source: str) -> List[Finding]:
+    """PRINCIPLE-003 R3: a static asset that loads from a third party is a hidden dependency."""
+    findings: List[Finding] = []
+    lines = source.splitlines()
+    for number, line in enumerate(lines, start=1):
+        if _marked(lines, number):
+            continue
+        for match in EXTERNAL_URL.finditer(line):
+            host = URL_HOST.match(match.group(0))
+            if host and host.group(1).lower() in LOCAL_HOSTS:
+                continue
+            findings.append(Finding(rel, number, "external-url",
+                                    f"'{match.group(0)[:52]}' loads from a third party "
+                                    "(PRINCIPLE-003 R3)"))
+    return findings
+
+
+def _marked(lines: Sequence[str], line: int) -> bool:
+    """Whether the finding's own line carries a deliberated `hygiene: allow <reason>` marker."""
+    return 1 <= line <= len(lines) and bool(ALLOW_MARKER.search(lines[line - 1]))
+
+
+PYTHON_CHECKS: Tuple[Callable[[str, ast.Module], Iterable[Finding]], ...] = (
+    check_banned_calls,
+    check_subprocess_calls,
+    check_environ_index,
+    check_open_calls,
+    check_silent_except,
+    check_absolute_paths,
+)
+
+
+def check_python_source(rel: str, source: str) -> List[Finding]:
+    """Every Python finding in one source text; findings on `hygiene: allow` lines are dropped."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as error:
+        return [Finding(rel, error.lineno or 1, "unparseable",
+                        "a syntax error blocks the hygiene scan of this file")]
+    lines = source.splitlines()
+    raw: List[Finding] = []
+    for check in PYTHON_CHECKS:
+        raw.extend(check(rel, tree))
+    return [finding for finding in raw if not _marked(lines, finding.line)]
+
+
+def _read_source(rel: str, path: Path) -> Tuple[Optional[str], List[Finding]]:
+    """The file's UTF-8 text, or the finding that replaces it (PRINCIPLE-000 R5: no silent skip)."""
+    try:
+        return path.read_text(encoding="utf-8-sig"), []
+    except (OSError, UnicodeDecodeError):
+        return None, [Finding(rel, 1, "unreadable",
+                              "the file could not be read as UTF-8 text; its hygiene is unproven")]
+
+
+def scan_tree(root: Path) -> List[Finding]:
+    """
+    Every hygiene finding under `root` in stable order. Generated and vendored directories are
+    skipped whole; each surviving file is read once, as UTF-8.
+    """
+    findings: List[Finding] = []
+    for path in sorted(root.rglob("*")):
+        parts = path.relative_to(root).parts
+        if not path.is_file() or any(part in SKIP_DIRS for part in parts[:-1]):
+            continue
+        rel = path.relative_to(root).as_posix()
+        if path.suffix == PY_SUFFIX or path.suffix in ASSET_SUFFIXES:
+            source, gaps = _read_source(rel, path)
+            findings.extend(gaps)
+            if source is None:
+                continue
+            if path.suffix == PY_SUFFIX:
+                findings.extend(check_python_source(rel, source))
+            else:
+                findings.extend(check_asset_source(rel, source))
+    return sorted(findings, key=lambda finding: (finding.path, finding.line, finding.rule))
+
+
+REPORT_LIMIT = 20
+
+
+def run_scan(root: Path) -> int:
+    """Scan `root` and print the report; the process exit code (PRINCIPLE-012 R4: terse)."""
+    if not root.is_dir():
+        print(f"[INVALID USAGE] Not a directory: {root}", file=sys.stderr)
+        print("Why: the hygiene scan walks a project workspace.", file=sys.stderr)
+        print("Fix: pass --workspace <dir> pointing at the project root.", file=sys.stderr)
+        return 2
+    findings = scan_tree(root)
+    print("=" * 58)
+    print("PROJECT HYGIENE SCAN (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011)")
+    print("=" * 58)
+    print(f"Scope: {root.resolve()}")
+    if not findings:
+        print("[OK] No hygiene findings.")
+        print("=" * 58)
+        return 0
+    print(f"[FAIL] {len(findings)} hygiene finding(s):")
+    for finding in findings[:REPORT_LIMIT]:
+        print(finding.render())
+    if len(findings) > REPORT_LIMIT:
+        print(f"   ... and {len(findings) - REPORT_LIMIT} more")
+    print("   Why: each finding breaks portability, resource discipline or offline integrity")
+    print("     on a machine other than the author's (PRINCIPLE-003 R4, PRINCIPLE-010).")
+    print("   Fix: change the line, or document a deliberate exception with")
+    print("     `hygiene: allow <reason>` on the finding's own line.")
+    print("=" * 58)
+    return 1
+
+
+KNOWN_FLAGS = {"--workspace", "--help", "-h"}
+
+HELP_TEXT = """AIKit Project Hygiene Scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3)
+
+Usage:
+  python scripts/check_project_hygiene.py --workspace <project-dir>
+
+Rules (Python):
+  shell-true          a shell command line parses through the platform shell
+  os-system           os.system breaks on spaced paths
+  eval-exec           eval() and exec() execute data as code
+  subprocess-argv     subprocess arguments must be a list, not a string
+  subprocess-timeout  subprocess call without timeout= can hang a gate
+  sys-executable      start Python with sys.executable, not a bare interpreter name
+  environ-index       os.environ[...] raises KeyError when the variable is unset
+  open-encoding       text-mode open() without encoding= reads the locale's encoding
+  open-context        open() outside a with block can leak the handle
+  silent-except       a broad except whose whole body is pass hides the error
+  absolute-path       a machine-specific path literal reaching file access
+  unparseable         a syntax error blocks the scan of the file
+
+Rules (static assets .html, .css, .js):
+  external-url        the asset loads code, fonts or data from a third party
+
+Exceptions:
+  Mark a deliberate line with `hygiene: allow <reason>`; the reason is part of the record.
+
+Exit codes:
+  0 clean, 1 findings, 2 argument misuse.
+"""
+
+
+def main(argv: Sequence[str]) -> int:
+    """Parse `--workspace` and run; argument misuse returns 2 with the Why/Fix triad."""
+    if any(token in ("--help", "-h") for token in argv):
+        print(HELP_TEXT)
+        return 0
+    unknown = [token for token in argv if token.startswith("-") and token not in KNOWN_FLAGS]
+    if unknown:
+        print(f"[INVALID USAGE] Unrecognized option(s): {', '.join(unknown)}", file=sys.stderr)
+        print(f"Why: this scan accepts only {', '.join(sorted(KNOWN_FLAGS))}.", file=sys.stderr)
+        print("Fix: run 'python scripts/check_project_hygiene.py --help' for valid options.",
+              file=sys.stderr)
+        return 2
+    root = ROOT_DIR
+    if "--workspace" in argv:
+        index = argv.index("--workspace")
+        if index + 1 >= len(argv) or argv[index + 1].startswith("-"):
+            print("[INVALID USAGE] --workspace requires a directory.", file=sys.stderr)
+            print("Why: the workspace to scan cannot be inferred from a missing value.",
+                  file=sys.stderr)
+            print("Fix: pass '--workspace <dir>'.", file=sys.stderr)
+            return 2
+        root = Path(argv[index + 1])
+    return run_scan(root)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

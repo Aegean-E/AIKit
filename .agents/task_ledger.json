@@ -1,75 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "harden-and-verify-project-publish",
+    "task_id": "project-enforcement-wave-1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792258423.3139858,
-    "impact_assessment": {
-      "why": "harden project publish lifecycle edge cases: empty repo push, upstream tracking initialization, badge/html pollution in readme description, and duplicate config options",
-      "benefits": "bulletproof publishing, zero unnecessary network pushes via upstream tracking, pristine GitHub repository descriptions, robust git config parsing, and end-to-end integration coverage",
-      "risks": "contract: none; dependency: none; concurrency: independent project directories; state: zero uncommitted state leaks",
-      "mitigation": "verify unit tests under strict _refuse_spawn, run integration tests under real subprocess execution, and pass all Phase 4 verification gates"
-    },
-    "completed_at": 1792258756.534741
+    "updated_at": 1792352991.654264,
+    "completed_at": 1792353000.9480112
   },
   "checkpoints": [
-    {
-      "task_id": "claude-subagents",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] re-plan: mechanism and rule text in one commit (they share tests and the ADR); [2/2] none remaining",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251038.725158,
-      "timestamp_str": "2026-10-17 18:30:38"
-    },
-    {
-      "task_id": "claude-subagents",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2] committed: .claude/agents generated, ledger deny rule, P008 R6, P012 R8 (ADR-131)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251104.5324914,
-      "timestamp_str": "2026-10-17 18:31:44"
-    },
-    {
-      "task_id": "claude-subagents",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'claude-subagents' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792251104.6892202,
-      "timestamp_str": "2026-10-17 18:31:44"
-    },
-    {
-      "task_id": "free-providers",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: Gemini key works (3.8-flash, 3.5-flash-lite free; pro 429); OpenAI-compatible endpoint verified; OpenCode runs gemini/* and opencode/*-free; 4 roles pointed at OpenRouter without a key; scanner misses bare AQ. keys",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251464.8089185,
-      "timestamp_str": "2026-10-17 18:37:44"
-    },
-    {
-      "task_id": "free-providers",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] gemini provider in opencode.jsonc (env GEMINI_API_KEY), role models on verified free models, is_free_model policy enforced by aikit delegate, AQ. key detector; tests; [2/2] P012 R8 states the free-only refusal; model_benchmarks Gemini rows from models.list; docs; ADR-132",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251464.9566112,
-      "timestamp_str": "2026-10-17 18:37:44",
-      "impact_assessment": {
-        "why": "the user wants Gemini and OpenCode free models for delegation, and only free ones",
-        "benefits": "sub-agents run on verified free models; a paid model is refused before any call; a leaked Gemini key is caught",
-        "risks": "contract: delegate refuses non-free --model; dependency: Gemini API and OpenCode Zen availability; concurrency: none; state: opencode.jsonc provider entry, no key stored in the repo",
-        "mitigation": "key only in the environment; models verified by live calls today; policy unit-tested; scanner pattern tested"
-      }
-    },
     {
       "task_id": "free-providers",
       "phase": "in_progress",
@@ -238,6 +177,67 @@
       "status": "completed",
       "timestamp": 1792258756.534742,
       "timestamp_str": "2026-10-17 20:39:16"
+    },
+    {
+      "task_id": "project-enforcement-wave-1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/6] seed README FILL prerequisites + audit message + tests; [2/6] scripts/check_project_hygiene.py (AST checks, hygiene allow marker) + unit tests; [3/6] register hygiene gate in project_gates.py + refusals + check reminder + tests; [4/6] reviewer claim-fidelity duty + skill runbook + sync; [5/6] P011 R8 checklist-trace rule + ADRs + cross-principle check + sync; [6/6] knowledge map, README/docs, full Phase 4, commit/push",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792350604.086386,
+      "timestamp_str": "2026-10-18 22:10:04",
+      "impact_assessment": {
+        "why": "the project audit found gates enforce process and structure but not the conduct-only clauses, and the README seed passes its own gate while incomplete",
+        "benefits": "mechanical coverage for shell/system/exec, subprocess portability, environ indexing, open encoding, silent broad excepts, absolute paths and external asset URLs; seeds force filled prerequisites; checklist results and claim reviews become recorded artifacts",
+        "risks": "contract: the new gate changes aikit check output and can fail existing projects; the P011 text change needs sync and a cross-principle ADR; dependency: none (stdlib only); concurrency: none (read-only scan); state: knowledge/decisions.md and the codebase map must be regenerated",
+        "mitigation": "inline hygiene allow reason markers or project fixes; failing-first tests; run sync_principles, update_knowledge_base and the full Phase 4 battery before commit; ADRs written before commit"
+      }
+    },
+    {
+      "task_id": "project-enforcement-wave-1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/6]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792350699.187465,
+      "timestamp_str": "2026-10-18 22:11:39"
+    },
+    {
+      "task_id": "project-enforcement-wave-1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/6] seed README FILL prerequisites + audit message + tests; [2/6] check_project_hygiene.py + unit tests; [3/6] hygiene gate wiring + check reminder + tests; [4/6] reviewer claim-fidelity duty + skill runbook + sync; [5/6] P011 R8 checklist-trace rule + ADRs + cross-principle check + sync; [6/6] knowledge map, README/docs, remove the two root launchers per user direction, full Phase 4, commit/push",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792352231.2702796,
+      "timestamp_str": "2026-10-18 22:37:11",
+      "impact_assessment": {
+        "why": "re-plan: the user directed removal of the two project-specific launchers from the kit root; they are unstaged scope, so milestone 6 records them explicitly",
+        "benefits": "the kit repo stops carrying project-specific files and its own README-tree gate turns green again",
+        "risks": "contract: none (files are duplicates of the project own launchers); dependency: none; concurrency: none; state: the deletion stages with the task commit to keep the gate triad green",
+        "mitigation": "the project keeps its own play.bat; the deletion lands in the same commit as the wave so no red-gate commit exists"
+      }
+    },
+    {
+      "task_id": "project-enforcement-wave-1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/6]-[6/6] delivered in one commit: seed <FILL:> gate, hygiene scan, hygiene gate + reminder, reviewer claim fidelity, P011 R8 checklist trace + ADRs, README/knowledge regen, launcher removal; full Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792352991.654264,
+      "timestamp_str": "2026-10-18 22:49:51"
+    },
+    {
+      "task_id": "project-enforcement-wave-1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-enforcement-wave-1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792353000.948013,
+      "timestamp_str": "2026-10-18 22:50:00"
     }
   ]
 }

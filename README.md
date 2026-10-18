@@ -1,22 +1,22 @@
 # 🤖 Universal AI Principles & Agent Operating System (Portable Kit)
 
-> **Plug-and-Play AI Assistant Governance, Architecture Principles & Disruption Recovery for Any Software Project.**
+> **AI governance, architecture principles & disruption recovery for any software project.**
 
-This kit contains the AI governance system extracted from production development. It ensures that any AI coding assistant follows strict engineering principles, prevents progress loss from unexpected power cuts or crashes, maintains living documentation, and executes automated regression-shielded git workflows.
+The AI governance system extracted from production development: engineering principles, power-cut recovery, living documentation and regression-shielded git workflows for any AI coding assistant.
 
 
 ---
 
 ## ⚡ 30-Second Cold-Start Quick Reference
 
-> **Orientation Contract for AI Agents & Developers**: Orient yourself in seconds with the verified commands and prerequisites below.
+> **Orientation Contract**: verified commands and prerequisites below.
 
 - **Runtime Prerequisites**: Python 3.10+ (Standard Library only — zero external pip dependencies) and `git`.
 - **Canonical Regression Shield Gate**:
   ```bash
   python -m unittest discover tests
   ```
-  *(100% test pass required before staging or committing changes).*
+  *(100% test pass required before staging or committing).*
 
 ### 🛠️ Core Operational Command Matrix
 | Operational Role | Canonical Command | Verification Gate |
@@ -44,7 +44,7 @@ This kit contains the AI governance system extracted from production development
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
 | **Sandbox the Ledger CLI** | `python scripts/disruption_recovery.py --workspace <dir> --audit` | Operates on `<dir>/.agents/`, never the repo ledger |
 
-**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help` / `-h` prints usage and exits `0`, writing nothing; exit `0` = success, `1` = operational failure, `2` = misuse (an unknown flag is refused, never run as the default action); every failure prints What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
+**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help`/`-h` prints usage, writes nothing, exits `0`; exit `0` = success, `1` = operational failure, `2` = misuse (an unknown flag is refused, never run as the default action); failures print What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
 
 ---
 
@@ -95,6 +95,7 @@ portable_agent_kit/
 │   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
+│   ├── check_project_hygiene.py        <- Project source & asset hygiene scan (built-in gate)
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py              <- Uploads a project to its own GitHub repository
@@ -128,28 +129,28 @@ python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ m
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, open changes, last decision
-python aikit.py check my-app        # its tests and configured checks, AIKit's guidelines, secret scan
+python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, ranked below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files on every call (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, ranked below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. `check` reminds you to record `checklists: passed` or the failed IDs in the task's latest checkpoint before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8); a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
 ### Step 1: Copy Governance Assets
 
-- Copy only the source of truth and tooling; the Tier 1 files are generated in Step 3, never copied:
+- Copy the source of truth and tooling; Tier 1 files are generated in Step 3, never copied:
   ```bash
   cd portable_agent_kit
   mkdir -p /path/to/target/.agents
   cp -r GUIDELINES.md scripts knowledge /path/to/target/
   cp -r .agents/rules .agents/skills /path/to/target/.agents/
   ```
-  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (they are AIKit's own). Enforcement travels as the CLI gates in the command matrix above. Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
+  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (AIKit's own). The CLI gates in the matrix above carry enforcement. Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
-If the target already has its own instruction files, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects that block into every generated file. It never overwrites hand-authored files without a generated header (`[PROTECTED]`).
+If the target already has instruction files, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects the block into every generated file and never overwrites hand-authored files without a generated header (`[PROTECTED]`).
 
 ### Step 3: Run Principle Synchronization
 Generate every Tier 1 file from `GUIDELINES.md`:

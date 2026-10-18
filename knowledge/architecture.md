@@ -3,7 +3,7 @@
 This document describes how AIKit is built. The rules it follows live only in `GUIDELINES.md`; this file names the principle a mechanism serves and never restates its rules (PRINCIPLE-001 R7). Numbers below cite the code constant that holds them, so the value has one home.
 
 ## 🏛️ Components & Data Flow
-AIKit is six standard-library CLIs in `scripts/` plus the files they read and write. No CLI imports another (PRINCIPLE-009 R5); `services.md` lists each one's responsibility and gate.
+AIKit is seven standard-library CLIs in `scripts/` plus the files they read and write. No CLI imports another (PRINCIPLE-009 R5); `services.md` lists each one's responsibility and gate.
 
 ```text
 GUIDELINES.md ──sync_principles.py──▶ AGENTS.md, CLAUDE.md, GEMINI.md, .cursorrules,
@@ -29,7 +29,7 @@ AIKit is the folder a person opens in an AI host; the software it builds lives i
 - **Project guidelines**: `.aikit/guidelines.md` holds the project's own rules (PRINCIPLE-001 R4 project tier). They cannot enter Tier 1, which every project shares, so `aikit status` and `aikit resume`, the project cold start, print them with their rank; `guideline_errors` keeps them well-formed and unable to override a principle (ADR-129).
 - **Self-check**: the built-in `guidelines` gate runs `update_knowledge_base.py --workspace <project> --check`, whose `check_workspace` is the same code path as AIKit's own `--check`: map freshness (once `fix` wrote a map), the full PRINCIPLE-005 README audit, unfinished code, code structure and the ADR register (ADR-124, ADR-128).
 - **Detection**: `DETECTORS` maps marker files to a stack and its test command; a new stack is one row.
-- **Gates**: `project_gates.resolve_gates` orders a project's gates as test, extras from `EXTRA_GATES` (only what the project's own config declares: ruff/mypy tables, `lint`/`typecheck`/`build` package scripts, `go vet`), `project.json` `gates` overrides, then the secret scan. `run_shell` runs each through the platform shell under `supervised()` with stdin closed and `GATE_TIMEOUT_SECONDS`; every gate runs even after a failure (ADR-122).
+- **Gates**: `project_gates.resolve_gates` orders a project's gates as test, extras from `EXTRA_GATES` (only what the project's own config declares: ruff/mypy tables, `lint`/`typecheck`/`build` package scripts, `go vet`), `project.json` `gates` overrides, then the built-in hygiene scan, the guidelines check and the secret scan (ADR-137). `run_shell` runs each through the platform shell under `supervised()` with stdin closed and `GATE_TIMEOUT_SECONDS`; every gate runs even after a failure (ADR-122).
 - **Memory**: `.aikit/` holds `project.json`, `decisions.md` and `task_ledger.json`. Every ledger command takes `--workspace <project>`, so checkpoints, `--resume`, `--audit` and `--track` read the project's ledger and run `git status` in the project's repository; the project ledger is bookkeeping (`BOOKKEEPING_PATHS`), so a checkpoint never changes the project's track. Project work runs `python aikit.py check <name>` as its Phase 4 (ADR-123); AIKit's other gates cover AIKit only (PRINCIPLE-011 R8, ADR-121). `new` commits the memory as the first commit, and warns instead of inventing an author when git has no identity (ADR-120).
 
 ## 🤝 Sub-Agent Roles Across Hosts

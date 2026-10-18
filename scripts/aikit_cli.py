@@ -273,6 +273,8 @@ def cmd_check(args: argparse.Namespace) -> int:
                 print(f"       {line}")
     passed = sum(result.passed for result in results)
     print(f"{passed}/{len(results)} gates passed for '{project.name}'")
+    print("Manual: record 'checklists: passed' or the failed or skipped item IDs in the task's"
+          " latest checkpoint before the next commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8).")
     failed = [result.gate.name for result in results if not result.passed]
     sys.stdout.flush()  # the report above, then the triad, in that order when both are piped
     if failed:

@@ -6,10 +6,10 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `14`
-- **Total Classes**: `69`
-- **Total Functions / Methods**: `198`
-- **Total Source Lines**: `11040`
+- **Total Python Modules**: `15`
+- **Total Classes**: `72`
+- **Total Functions / Methods**: `222`
+- **Total Source Lines**: `11619`
 
 ---
 
@@ -25,7 +25,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `363` lines (`16884` bytes)
+**Size**: `365` lines (`17073` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -50,6 +50,41 @@
 - `def cmd_publish(args)`
 - `def cmd_delegate(args)`
 - `def main(argv)`
+
+---
+
+### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
+> *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
+
+**Size**: `424` lines (`19143` bytes)
+
+**Classes:**
+- `class Finding` - *One violation, addressed to the line a developer must change.*
+  - Method `.render()` - *The one-line report form: `path:line [rule] message`.*
+
+**Functions:**
+- `def _keyword(call, name)` - *The value of `call`'s keyword `name`, or None when the call omits it.*
+- `def _true_literal(node)` - *Whether the expression is the literal `True` (a name called `True` cannot exist).*
+- `def _subprocess_aliases(tree)` - *Names `subprocess` members were imported under, so `from subprocess import run` is seen.*
+- `def _subprocess_call(node, aliases)` - *The node as a `subprocess` call (module-qualified or imported by name), else None.*
+- `def check_banned_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: calls that lose quoting or execute data as code.*
+- `def check_subprocess_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: portable, bounded, list-passed subprocess calls.*
+- `def check_environ_index(rel, tree)` - *PRINCIPLE-011 R3: a hard-indexed environment variable crashes where it is unset.*
+- `def _open_mode(call)` - *The literal mode of an open() call, or None when binary-ness is not decidable.*
+- `def _is_open_call(node)` - *Whether the node is a builtin `open(...)` or an object's `.open(...)` method call.*
+- `def check_open_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: text mode needs an explicit encoding and a with block.*
+- `def check_silent_except(rel, tree)` - *PRINCIPLE-000 R5: a broad handler whose whole body is pass hides the error.*
+- `def _docstring_ids(tree)` - *Ids of docstring constants: prose may name any path without baking it into behaviour.*
+- `def _call_head(node)` - *The called function's final name: `Path` for Path(...), `join` for os.path.join(...).*
+- `def _direct_arguments(call)` - *Positional and keyword argument expressions of a call.*
+- `def check_absolute_paths(rel, tree)` - *PRINCIPLE-003 R4: a machine-specific path reaching file access breaks every other machine.*
+- `def check_asset_source(rel, source)` - *PRINCIPLE-003 R3: a static asset that loads from a third party is a hidden dependency.*
+- `def _marked(lines, line)` - *Whether the finding's own line carries a deliberated `hygiene: allow <reason>` marker.*
+- `def check_python_source(rel, source)` - *Every Python finding in one source text; findings on `hygiene: allow` lines are dropped.*
+- `def _read_source(rel, path)` - *The file's UTF-8 text, or the finding that replaces it (PRINCIPLE-000 R5: no silent skip).*
+- `def scan_tree(root)` - *Every hygiene finding under `root` in stable order. Generated and vendored directories are*
+- `def run_scan(root)` - *Scan `root` and print the report; the process exit code (PRINCIPLE-012 R4: terse).*
+- `def main(argv)` - *Parse `--workspace` and run; argument misuse returns 2 with the Why/Fix triad.*
 
 ---
 
@@ -164,7 +199,7 @@
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
-**Size**: `180` lines (`7467` bytes)
+**Size**: `192` lines (`8038` bytes)
 
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
@@ -176,8 +211,9 @@
 - `def _node_gates(root)`
 - `def _go_gates(root)`
 - `def guidelines_gate(project_root)` - *The built-in guidelines and quality scan of the project's repository.*
+- `def hygiene_gate(project_root)` - *The built-in hygiene scan of the project's source and static assets (ADR-137).*
 - `def secrets_gate(project_root)` - *The built-in secret scan of the project's repository.*
-- `def resolve_gates(project)` - *The project's gates in run order: test, detected extras, `gates` overrides, guidelines, secret scan.*
+- `def resolve_gates(project)` - *The project's gates in run order: test, detected extras, `gates` overrides, hygiene,*
 - `def run_shell(command, cwd, timeout)` - *Run `command` through the platform shell with stdin closed; on timeout the whole process*
 - `def run_gates(project_root, gates, runner, timeout)` - *Run every gate, even after a failure, so one report lists all of them.*
 - `def failure_tail(output, lines)` - *The last `lines` non-empty lines of a gate's output, where its error normally is.*
@@ -203,7 +239,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `532` lines (`23141` bytes)
+**Size**: `533` lines (`23197` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -212,7 +248,7 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command)` - *A README that passes PRINCIPLE-005's audit as created: Quick Reference with a versioned*
+- `def render_project_readme(name, test_command)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def seed_readme(project_root, name, test_command)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
@@ -295,7 +331,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `975` lines (`44349` bytes)
+**Size**: `975` lines (`44370` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -333,7 +369,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `836` lines (`42272` bytes)
+**Size**: `894` lines (`45442` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -403,6 +439,8 @@
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
 - `class TestProjectSelfCheck` - *`aikit fix` repairs what it can, `aikit check` applies AIKit's guidelines (ADR-124, ADR-128).*
   - Method `.test_fix_then_check_and_the_guidelines_gate_reads_the_readme()`
+- `class TestProjectHygieneGate` - *The hygiene gate runs inside `aikit check` and fails the project on real findings (ADR-137).*
+  - Method `.test_check_passes_clean_and_fails_on_a_third_party_asset()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
@@ -410,12 +448,15 @@
 - `class TestProjectPublishLifecycle` - *Publishing visibility and check --no-push with real processes and git checkouts (ADR-134, ADR-135).*
   - Method `.test_project_status_list_repo_and_check_no_push()`
 
+**Functions:**
+- `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
+
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4366` lines (`242869` bytes)
+**Size**: `4448` lines (`247998` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -746,10 +787,19 @@
   - Method `.project(files, gates)`
   - Method `.names(project)`
   - Method `.test_gates_come_only_from_the_projects_own_config()`
-  - Method `.test_guidelines_and_secret_scan_are_always_present_and_last()`
+  - Method `.test_built_in_scans_are_always_present_and_last()`
   - Method `.test_project_json_adds_replaces_and_disables_gates()`
   - Method `.test_invalid_gate_config_is_refused()`
   - Method `.test_every_gate_runs_after_a_failure()`
+- `class TestProjectHygieneScan` - *The hygiene scan decides from the AST and from lines what the project gates could not (ADR-137).*
+  - Method `.rules(source)`
+  - Method `.test_subprocess_rules_are_decidable()`
+  - Method `.test_only_imported_subprocess_names_count()`
+  - Method `.test_startup_and_file_rules()`
+  - Method `.test_absolute_paths_only_when_they_reach_file_access()`
+  - Method `.test_inline_allow_marker_needs_a_reason()`
+  - Method `.test_asset_urls_skip_loopback_namespaces_and_marked_lines()`
+  - Method `.test_scan_tree_skips_vendored_dirs_and_reports_unreadable_files()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`

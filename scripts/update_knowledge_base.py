@@ -702,8 +702,8 @@ def audit_readme(
         errors.append(f"README.md has {len(readme):,} chars; the limit is {README_MAX_CHARS:,} (R1)")
     errors += quick_reference_errors(readme)
     if README_PLACEHOLDER in readme:
-        errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder from "
-                      f"{README_TEMPLATE} (R1)")
+        errors.append(f"README.md still holds an unfilled '{README_PLACEHOLDER}' placeholder (R1); "
+                      "only the project's own facts can replace it")
 
     tree = parse_readme_tree(readme)
     if not tree:

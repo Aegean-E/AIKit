@@ -145,6 +145,11 @@ from scripts.check_secrets import (
     STRONG_ALLOWLIST,
     WEAK_ALLOWLIST,
 )
+from scripts.check_project_hygiene import (
+    check_asset_source,
+    check_python_source,
+    scan_tree,
+)
 from scripts.check_reachability import (
     find_unreachable,
     find_phantom_keys,
@@ -692,8 +697,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
             return audit_readme(readme, tracked, on_disk.__contains__, script_source)
 
         unfilled = audit(template)
-        self.assertIn(f"README.md still holds an unfilled '<FILL:' placeholder from {README_TEMPLATE} (R1)",
-                      unfilled)
+        self.assertIn("README.md still holds an unfilled '<FILL:' placeholder (R1); "
+                      "only the project's own facts can replace it", unfilled)
         filled = re.sub(r"<FILL: every runtime[^>]*>", "Python 3.11+ and `git`", template)
         filled = re.sub(r"<FILL: the one command[^>]*>", "python -m unittest discover tests", filled)
         filled = filled.replace("<FILL: repository name>/", "app/")
@@ -1267,9 +1272,10 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
                 "## Checklist\n- PRINCIPLE-001 PRINCIPLE-002 PRINCIPLE-003\n")
         self.assertEqual(citing_principles(text, "PRINCIPLE-001"), ["PRINCIPLE-002", "PRINCIPLE-003"])
         self.assertEqual(citing_principles(text, "PRINCIPLE-002"), ["PRINCIPLE-001"])  # checklist ignored
+        # ADR-137: P011 R8 cites PRINCIPLE-000 R5 (the silent-`except` clause the scan enforces).
         self.assertEqual(citing_principles(self.text, "PRINCIPLE-000"),
                          ["PRINCIPLE-001", "PRINCIPLE-002", "PRINCIPLE-003", "PRINCIPLE-004", "PRINCIPLE-007", "PRINCIPLE-009",
-                          "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-017",
+                          "PRINCIPLE-011", "PRINCIPLE-012", "PRINCIPLE-013", "PRINCIPLE-014", "PRINCIPLE-016", "PRINCIPLE-017",
                           "PRINCIPLE-019"])
 
     def test_r3_completeness_is_decided_by_the_gate(self):
@@ -1512,6 +1518,10 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "fails when a task ledger changed during the run",
                 "asks the user which project, or the name of a new one, before writing code",
                 "apply only to changes to AIKit itself",
+                # ADR-137: every project check also scans source and asset hygiene.
+                "a built-in hygiene scan of the project's source and static assets",
+                # ADR-139: the checklist outcome is recorded with the task before the commit.
+                "`checklists: passed` or the failed or skipped item IDs, in the task's latest checkpoint description",
                 # ADR-130: the project's own guidelines are read before code and recorded with `guideline`.
                 "Before writing code in a project, the agent reads its guidelines",
                 "records it with `python aikit.py guideline <name>",
@@ -3711,10 +3721,16 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertIn(fixed, out)
         self.assertFalse(stale.exists())
         self.assertTrue(fresh.exists(), "a young buffer may be another agent's write in flight")
-        # The seeded README passes PRINCIPLE-005's audit as written (pure form: no git spawn here).
+        # The seed fails PRINCIPLE-005's audit on its unfilled marker, and passes once the
+        # prerequisite line states the project's facts (pure form: no git spawn here).
         readme = (folder / "README.md").read_text(encoding="utf-8")
         tracked = [".gitignore", "README.md", ".aikit/project.json", ".aikit/decisions.md"]
-        self.assertEqual(audit_readme(readme, tracked, lambda rel: (folder / rel).exists(), lambda rel: None), [])
+
+        def audit(text):
+            return audit_readme(text, tracked, lambda rel: (folder / rel).exists(), lambda rel: None)
+
+        self.assertIn("unfilled '<FILL:' placeholder", "".join(audit(readme)))
+        self.assertEqual(audit(re.sub(r"<FILL:[^>]*>", "Python 3.10+ and git", readme)), [])
 
     def test_project_ledger_commands_keep_the_impact_gate(self):
         folder = self.make_folder()
@@ -3832,9 +3848,12 @@ class TestProjectGates(unittest.TestCase):
         self.assertEqual(self.names(node), [("test", "yarn test"), ("lint", "yarn run lint"),
                                             ("build", "yarn run build")])
 
-    def test_guidelines_and_secret_scan_are_always_present_and_last(self):
+    def test_built_in_scans_are_always_present_and_last(self):
         gates = resolve_gates(self.project([("go.mod", "module x\n")]))
-        self.assertEqual([gate.name for gate in gates], ["test", "vet", "guidelines", "secrets"])
+        self.assertEqual([gate.name for gate in gates],
+                         ["test", "vet", "hygiene", "guidelines", "secrets"])
+        self.assertIn("check_project_hygiene.py", gates[-3].command)
+        self.assertIn("--workspace", gates[-3].command)
         self.assertIn("update_knowledge_base.py", gates[-2].command)
         self.assertIn("--workspace", gates[-2].command)
         self.assertIn("--check", gates[-2].command)
@@ -3848,7 +3867,8 @@ class TestProjectGates(unittest.TestCase):
         self.assertEqual(resolve_gates(project)[1].source, "project.json")
 
     def test_invalid_gate_config_is_refused(self):
-        for gates in ({"secrets": None}, {"guidelines": None}, {"lint": 3}, {"lint": " "}, ["lint"]):
+        for gates in ({"secrets": None}, {"guidelines": None}, {"hygiene": None}, {"lint": 3},
+                      {"lint": " "}, ["lint"]):
             with self.subTest(gates=gates), self.assertRaises(ProjectError):
                 resolve_gates(self.project([("go.mod", "")], gates=gates))
 
@@ -3863,6 +3883,68 @@ class TestProjectGates(unittest.TestCase):
         self.assertEqual(calls, ["fail", "pass"])
         self.assertEqual([r.passed for r in results], [False, True])
         self.assertEqual(failure_tail(results[0].output), ["x", "error: broken"])
+
+class TestProjectHygieneScan(unittest.TestCase):
+    """The hygiene scan decides from the AST and from lines what the project gates could not (ADR-137)."""
+
+    def rules(self, source):
+        return {finding.rule for finding in check_python_source("app.py", source)}
+
+    def test_subprocess_rules_are_decidable(self):
+        self.assertEqual(self.rules("import subprocess\nsubprocess.run('x', shell=True, timeout=1)\n"),
+                         {"shell-true", "subprocess-argv"})
+        self.assertEqual(self.rules("import subprocess\nsubprocess.run(['python', 'x.py'], timeout=1)\n"),
+                         {"sys-executable"})
+        self.assertEqual(self.rules("import subprocess, sys\nsubprocess.run([sys.executable, 'x.py'])\n"),
+                         {"subprocess-timeout"})
+        self.assertEqual(self.rules("import os\nos.system('x')\n"), {"os-system"})
+        self.assertEqual(self.rules("eval('1')\n"), {"eval-exec"})
+
+    def test_only_imported_subprocess_names_count(self):
+        self.assertEqual(self.rules("from subprocess import run\nrun('x', timeout=1)\n"),
+                         {"subprocess-argv"})
+        self.assertEqual(self.rules("def run(cmd):\n    return cmd\nrun('x')\n"), set())
+
+    def test_startup_and_file_rules(self):
+        self.assertEqual(self.rules("import os\nos.environ['HOME']\n"), {"environ-index"})
+        self.assertEqual(self.rules("open('x')\n"), {"open-encoding", "open-context"})
+        self.assertEqual(self.rules("with open('x', 'rb') as handle:\n    handle.read()\n"), set())
+        self.assertEqual(self.rules("try:\n    pass\nexcept Exception:\n    pass\n"),
+                         {"silent-except"})
+        self.assertEqual(self.rules("try:\n    pass\nexcept OSError:\n    pass\n"), set())
+
+    def test_absolute_paths_only_when_they_reach_file_access(self):
+        self.assertEqual(self.rules('with open("C:/Users/me/x.txt", encoding="utf-8") as f:\n    f.read()\n'),
+                         {"absolute-path"})
+        self.assertEqual(self.rules('VirtualFile(path="/etc/hosts", size_kb=1)\n'), set())
+        self.assertEqual(self.rules('"""Docs may name C:/Users/me."""\n'), set())
+
+    def test_inline_allow_marker_needs_a_reason(self):
+        self.assertEqual(self.rules("import os\nos.system('x')  # hygiene: allow bootstrapper\n"), set())
+        self.assertEqual(self.rules("import os\nos.system('x')  # hygiene: allow x\n"), {"os-system"})
+
+    def test_asset_urls_skip_loopback_namespaces_and_marked_lines(self):
+        local = '<script src="http://localhost:8000/app.js"></script>\n'
+        namespace = '<svg xmlns="http://www.w3.org/2000/svg"></svg>\n'
+        marked = '<link href="https://fonts.example/x.css"> <!-- hygiene: allow fonts until vendored -->\n'
+        remote = '<link href="https://fonts.example/x.css">\n'
+        self.assertEqual({f.rule for f in check_asset_source("ui/index.html", local)}, set())
+        self.assertEqual({f.rule for f in check_asset_source("ui/index.html", namespace)}, set())
+        self.assertEqual({f.rule for f in check_asset_source("ui/index.html", marked)}, set())
+        self.assertEqual({f.rule for f in check_asset_source("ui/index.html", remote)}, {"external-url"})
+
+    def test_scan_tree_skips_vendored_dirs_and_reports_unreadable_files(self):
+        root = Path(tempfile.mkdtemp(prefix="test_hygiene_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "app.py").write_text("import os\nos.system('x')\n", encoding="utf-8")
+        (root / "bin.py").write_bytes(b"\xff\xfe\x00def x(): pass\n")
+        (root / "broken.py").write_text("def broken(:\n", encoding="utf-8")
+        (root / "node_modules").mkdir()
+        (root / "node_modules" / "vendored.js").write_text(
+            "fetch('https://cdn.example/x.js')\n", encoding="utf-8")
+        self.assertEqual([(finding.path, finding.rule) for finding in scan_tree(root)],
+                         [("app.py", "os-system"), ("bin.py", "unreadable"),
+                          ("broken.py", "unparseable")])
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""

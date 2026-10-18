@@ -60,14 +60,15 @@ DECISIONS_TEMPLATE = (
 
 def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
     """
-    A README that passes PRINCIPLE-005's audit as created: Quick Reference with a versioned
-    prerequisite and a fenced test command, and a tree of every tracked top-level entry. `.aikit/`
-    is listed without children, so a new memory file never makes the tree incomplete.
+    A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
+    gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
+    every tracked top-level entry; `.aikit/` is listed without children, so a new memory file never
+    makes the tree incomplete.
     """
     return (
         f"# {name}\n\n"
         "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
-        "- **Runtime Prerequisites**: git and Python 3.10+ (AIKit's gates); add this project's own.\n"
+        "- **Runtime Prerequisites**: <FILL: each runtime this project needs and its minimum version>\n"
         "- **Canonical Regression Shield Gate**:\n"
         "  ```bash\n"
         f"  {test_command or f'python aikit.py check {name}'}\n"

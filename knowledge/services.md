@@ -1,7 +1,7 @@
 # Core Services & API Abstractions
 
 ## 🛠️ Service Registry
-AIKit's services are its six gate CLIs in `scripts/` plus the project CLI `aikit.py`. The six gate CLIs import nothing from each other; `aikit_cli.py` imports `project_registry.py`, which imports only `atomic_write_json` and `file_lock` from `disruption_recovery.py`, one direction with no cycle (PRINCIPLE-009 R5). The command table in `README.md` lists their flags and exit codes, and `codebase_map.md` lists their functions.
+AIKit's services are its seven gate CLIs in `scripts/` plus the project CLI `aikit.py`. The seven gate CLIs import nothing from each other; `aikit_cli.py` imports `project_registry.py`, which imports only `atomic_write_json` and `file_lock` from `disruption_recovery.py`, one direction with no cycle (PRINCIPLE-009 R5). The command table in `README.md` lists their flags and exit codes, and `codebase_map.md` lists their functions.
 
 | Service | Responsibility | Gate it provides |
 |---|---|---|
@@ -12,7 +12,8 @@ AIKit's services are its six gate CLIs in `scripts/` plus the project CLI `aikit
 | `check_secrets.py` | Scans staged changes, tracked files and agent memory for credentials; `--workspace <dir>` scans that repository instead, e.g. a project (ADR-121) | exit 1 on a finding or an unscanned surface (PRINCIPLE-019) |
 | `aikit.py` (`aikit_cli.py`) | `new`, `attach`, `list`, `status`, `resume`, `checkpoint`, `complete`, `clean`, `guideline`, `check`, `fix`, `publish`, `delegate`: the projects AIKit builds, each its own folder and git repository (ADR-119) | exit 2 on a bad name or path, 1 on a failed request, with Why/Fix |
 | `project_registry.py` | Library behind `aikit.py`: finds projects, detects each one's stacks and test command (`DETECTORS`), writes `.aikit/project.json` and `.aikit/decisions.md` | none; reached through `aikit.py` |
-| `project_gates.py` | A project's gates: test command, extras detected from its config (`EXTRA_GATES`), `project.json` `gates` overrides, built-in secret scan; runs them in the project folder | `python aikit.py check <name>` exits 1 on any failed gate or no test gate (ADR-122) |
+| `project_gates.py` | A project's gates: test command, extras detected from its config (`EXTRA_GATES`), `project.json` `gates` overrides, built-in hygiene scan, guidelines check and secret scan; runs them in the project folder | `python aikit.py check <name>` exits 1 on any failed gate or no test gate (ADR-122) |
+| `check_project_hygiene.py` | Scans a project's Python source and static assets: shell/system/exec, non-portable subprocess, unencoded `open()`, silent broad `except`, absolute paths, third-party asset URLs | exit 1 on a finding; built into `aikit check` (ADR-137) |
 | `project_publish.py` | Uploads a project's commits to its own GitHub repository: `gh repo create --private --source --remote origin --push`, or a plain push to an existing `origin`; refuses with no commit, a failed secret scan of every tracked file, or `gh` not logged in | `aikit publish` exits 1 on a refusal (ADR-134) |
 | `subagent_delegate.py` | Runs one OpenCode sub-agent (roles = `.opencode/agents/*.md`) supervised, stdin closed, with a timeout; reports a ledger changed during the run | `aikit delegate` exits 1 on timeout or a changed ledger (ADR-128) |
 | `dogfood.py` | Runs AIKit's CLIs as real processes in a sandbox: golden path, chaos, gates, `--help` budget | exit 1 on any failed track (PRINCIPLE-015) |

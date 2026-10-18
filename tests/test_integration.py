@@ -56,6 +56,13 @@ from scripts.disruption_recovery import (  # noqa: E402
 PROC_TIMEOUT = 10
 
 
+def complete_readme(project_root: Path) -> None:
+    """Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138)."""
+    path = project_root / "README.md"
+    path.write_text(re.sub(r"<FILL:[^>]*>", "Python 3.10+ and git", path.read_text(encoding="utf-8")),
+                    encoding="utf-8")
+
+
 class TestParallelAgentSafety(unittest.TestCase):
     """
     Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).
@@ -515,10 +522,12 @@ class TestAstGateCli(unittest.TestCase):
         self.assertIn("function 'bad' is a stub", res_fail.stdout)
         self.assertIn("README.md does not exist", res_fail.stdout, "projects get PRINCIPLE-005 too (ADR-128)")
 
-        # 2. Passing case: clean function, the template README, and valid ADRs in .aikit/decisions.md
+        # 2. Passing case: clean function, a completed README, and valid ADRs in .aikit/decisions.md
         (sandbox / "app.py").write_text("def ok() -> int:\n    return 42\n", encoding="utf-8")
         (sandbox / ".gitignore").write_text(".aikit/*.lock\n", encoding="utf-8")
-        (sandbox / "README.md").write_text(render_project_readme("ws"), encoding="utf-8")
+        seed = render_project_readme("ws")
+        (sandbox / "README.md").write_text(re.sub(r"<FILL:[^>]*>", "Python 3.10+ and git", seed),
+                                           encoding="utf-8")
         (sandbox / ".aikit").mkdir(parents=True)
         (sandbox / ".aikit" / "decisions.md").write_text(
             "# Decisions\n\n### ADR-001: Init\n\n### ADR-002: Next\n", encoding="utf-8"
@@ -531,6 +540,18 @@ class TestAstGateCli(unittest.TestCase):
         )
         self.assertEqual(res_pass.returncode, 0)
         self.assertIn("ADR IDs are unique and consecutive", res_pass.stdout)
+
+        # 3. The unfilled seed keeps the gate red: its `<FILL:` prerequisite is a fact only the
+        #    project can state (PRINCIPLE-005 R1, ADR-138).
+        (sandbox / "README.md").write_text(seed, encoding="utf-8")
+        res_seed = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py"),
+             "--workspace", str(sandbox), "--check"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(res_seed.returncode, 1)
+        self.assertIn("unfilled '<FILL:' placeholder", res_seed.stdout)
 
 
 class TestRepositoryCodebaseMap(unittest.TestCase):
@@ -725,6 +746,7 @@ class TestProjectSelfCheck(unittest.TestCase):
         self.addCleanup(patcher.stop)
         root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
         (root / ".aikit" / "decisions.md").unlink()
+        complete_readme(root)
 
         # The real entry point, as a host runs it: memory restored, then every gate passes.
         res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "fix", "app"],
@@ -748,6 +770,41 @@ class TestProjectSelfCheck(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             self.assertFalse(check_workspace(root))
         self.assertIn("overrides a principle", out.getvalue())
+
+
+class TestProjectHygieneGate(unittest.TestCase):
+    """The hygiene gate runs inside `aikit check` and fails the project on real findings (ADR-137)."""
+
+    def test_check_passes_clean_and_fails_on_a_third_party_asset(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_project_hygiene_"))
+        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+        patcher = mock.patch.dict(os.environ, identity)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
+        complete_readme(root)
+
+        clean = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
+                                "check", "app", "--no-push"],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=PROC_TIMEOUT)
+        self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
+        self.assertIn("[PASS] hygiene", clean.stdout)
+        self.assertIn("checklists: passed", clean.stdout)
+
+        (root / "ui").mkdir()
+        (root / "ui" / "index.html").write_text('<link href="https://fonts.example/x.css">\n',
+                                                encoding="utf-8")
+        dirty = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
+                                "check", "app", "--no-push"],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=PROC_TIMEOUT)
+        self.assertEqual(dirty.returncode, 1)
+        self.assertIn("[FAIL] hygiene", dirty.stdout)
+        self.assertIn("ui/index.html:1 [external-url]", dirty.stdout)
+        self.assertIn("hygiene", dirty.stderr)
 
 
 class TestProjectSecretScan(unittest.TestCase):
@@ -796,6 +853,7 @@ class TestProjectPublishLifecycle(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
         root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
+        complete_readme(root)
 
         # 1. Status initially shows local only (no remote)
         res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "status", "app"],

@@ -5,7 +5,8 @@ A gate is a named shell command run in the project folder. The test gate comes f
 detection or `test_command`; further gates are detected only from configuration the project
 already has (a `[tool.ruff]` table, a `lint` script, a Go module), never guessed. The project's
 `.aikit/project.json` may add or replace a gate in its `gates` map, or disable a detected one
-with `null`. The secret scan always runs last and cannot be replaced (PRINCIPLE-019).
+with `null`. The hygiene scan, the guidelines check and the secret scan are built in, run on every check, and
+cannot be replaced (ADR-137).
 """
 
 import shlex
@@ -28,6 +29,8 @@ from scripts.project_registry import (
 
 SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
 SECRETS_GATE = "secrets"
+HYGIENE_CLI = ROOT_DIR / "scripts" / "check_project_hygiene.py"
+HYGIENE_GATE = "hygiene"
 UPDATE_KB_CLI = ROOT_DIR / "scripts" / "update_knowledge_base.py"
 GUIDELINES_GATE = "guidelines"
 # One gate may build and test a whole project; past this it is treated as hung.
@@ -96,6 +99,13 @@ def guidelines_gate(project_root: Path) -> Gate:
     return Gate(GUIDELINES_GATE, command, "built-in")
 
 
+def hygiene_gate(project_root: Path) -> Gate:
+    """The built-in hygiene scan of the project's source and static assets (ADR-137)."""
+    argv = [sys.executable, str(HYGIENE_CLI), "--workspace", str(project_root)]
+    command = subprocess.list2cmdline(argv) if sys.platform == "win32" else shlex.join(argv)
+    return Gate(HYGIENE_GATE, command, "built-in")
+
+
 def secrets_gate(project_root: Path) -> Gate:
     """The built-in secret scan of the project's repository."""
     argv = [sys.executable, str(SECRETS_CLI), "--workspace", str(project_root)]
@@ -105,7 +115,8 @@ def secrets_gate(project_root: Path) -> Gate:
 
 def resolve_gates(project: Project) -> List[Gate]:
     """
-    The project's gates in run order: test, detected extras, `gates` overrides, guidelines, secret scan.
+    The project's gates in run order: test, detected extras, `gates` overrides, hygiene,
+    guidelines, secret scan.
     Two stacks detecting the same gate name keep the first; an override names the gate it means.
     """
     gates: Dict[str, Gate] = {}
@@ -122,7 +133,7 @@ def resolve_gates(project: Project) -> List[Gate]:
             'write it as e.g. "gates": {"lint": "npm run lint", "build": null}.',
         )
     for name, command in overrides.items():
-        if name in (SECRETS_GATE, GUIDELINES_GATE):
+        if name in (SECRETS_GATE, GUIDELINES_GATE, HYGIENE_GATE):
             raise ProjectError(
                 f"project.json may not override the '{name}' gate.",
                 f"the {name} gate guards every commit and cannot be replaced.",
@@ -138,7 +149,8 @@ def resolve_gates(project: Project) -> List[Gate]:
                 "each gate is one shell command run in the project folder.",
                 f'set "{name}" to a command string, or to null to disable it.',
             )
-    return [*gates.values(), guidelines_gate(project.path), secrets_gate(project.path)]
+    return [*gates.values(), hygiene_gate(project.path), guidelines_gate(project.path),
+            secrets_gate(project.path)]
 
 
 def run_shell(command: str, cwd: Path, timeout: float) -> Tuple[int, str]:
