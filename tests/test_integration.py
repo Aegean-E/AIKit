@@ -4,7 +4,7 @@ Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).
 This module holds the tests that must spawn real processes: multi-process concurrency
 reproductions, real-binary CLI contracts, and real `git` output grounding. They cannot be
 sub-millisecond by nature, so they are budgeted separately from the unit tier in
-`test_kit.py`, which carries the strict <1s gate.
+`test_kit.py`, which carries the <=8ms per-test budget.
 
 Both tiers run under the single canonical command (`python -m unittest discover tests`);
 nothing here is hidden or opt-in. Every spawned process is bounded by an explicit timeout
@@ -677,7 +677,7 @@ class TestTierBudgetDiscipline(unittest.TestCase):
     A wall-clock assertion on a 1s budget would itself be flaky on a loaded machine, and flaky
     tests are blocking defects under PRINCIPLE-014 R3. The budget is therefore enforced
     structurally: the unit tier may not spawn processes or sleep on the wall clock, which is
-    what makes it sub-second by construction. This tier, in turn, must bound every spawn.
+    what keeps it fast by construction. This tier, in turn, must bound every spawn.
     """
 
     UNIT_MODULE = ROOT_DIR / "tests" / "test_kit.py"
@@ -694,7 +694,7 @@ class TestTierBudgetDiscipline(unittest.TestCase):
         offenders = [name for name, pat in forbidden.items() if re.search(pat, source)]
         self.assertEqual(
             offenders, [],
-            f"{self.UNIT_MODULE.name} is the sub-second unit tier but references {offenders}; "
+            f"{self.UNIT_MODULE.name} is the spawn-free unit tier but references {offenders}; "
             f"move process-spawning or sleeping tests into tests/test_integration.py",
         )
 

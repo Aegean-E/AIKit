@@ -53,8 +53,12 @@ jobs:
           python -c "import sys; print(sys.version)"
           echo "stdlib-only baseline - no install step required"
 
-      # PRINCIPLE-014: unit tier carries the strict sub-second gate.
-      - name: Unit tier (strict <1s gate)
+      # PRINCIPLE-010 R6: both tiers plus the per-test budget each one carries.
+      - name: Test tier budget gate
+        run: python scripts/check_test_budgets.py --verbose
+
+      # PRINCIPLE-014: the unit tier on its own, verbose, so a failure names itself.
+      - name: Unit tier
         run: python -m unittest tests.test_kit -v
 
       # PRINCIPLE-015: integration tier - concurrency races, real-binary CLI contracts, dogfooding.

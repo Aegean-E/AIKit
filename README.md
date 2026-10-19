@@ -22,9 +22,8 @@ The AI governance system extracted from production development: principles, powe
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
 | **Manage Projects** | `python aikit.py <cmd>` | `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124) |
-| **Run Regression Suite** | `python -m unittest discover tests` | 100% tests pass (both tiers, ~5s) |
-| **Run Unit Tier Only** | `python -m unittest tests.test_kit` | 100% pass, strict <1s gate |
-| **Run Integration Tier Only** | `python -m unittest tests.test_integration` | 100% pass, <5s, bounded spawns |
+| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=8ms unit, <=200ms integration |
+| **Run One Tier** | `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration` | Isolates a failing tier |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
 | **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
@@ -44,7 +43,7 @@ The AI governance system extracted from production development: principles, powe
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
 | **Sandbox the Ledger CLI** | `python scripts/disruption_recovery.py --workspace <dir> --audit` | Operates on `<dir>/.agents/`, never the repo ledger |
 
-**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help`/`-h` prints usage, writes nothing, exits `0`; exit `0` = success, `1` = operational failure, `2` = misuse (an unknown flag is refused, never run as the default action); failures print What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
+**Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help`/`-h` prints usage, writes nothing, exits `0`; exit `0` success, `1` operational failure, `2` misuse (an unknown flag is refused, never the default); failures print What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
 
 ---
 
@@ -83,17 +82,18 @@ portable_agent_kit/
 │   │   └── aikit/
 │   │       └── SKILL.md                <- Antigravity operational runbook & command matrix
 │   ├── agents/
-│   │   └── opencode_worker.md          <- OpenCode subagent spec for free model delegation
+│   │   └── opencode_worker.md          <- OpenCode subagent spec for free models
 │   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
 ├── .opencode/
-│   └── agents/                         <- Native OpenCode specialized subagent profiles (architect, coder, etc.)
-├── opencode.jsonc                      <- OpenCode v2 provider, model and permissions configuration
+│   └── agents/                         <- OpenCode subagent profiles (architect, coder, ...)
+├── opencode.jsonc                      <- OpenCode provider, model & permission config
 ├── scripts/
 │   ├── sync_principles.py              <- Generates 8 Tier 1 files from GUIDELINES.md
 │   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
-│   ├── update_knowledge_base.py        <- Automatic codebase AST symbol extractor & validator
+│   ├── update_knowledge_base.py        <- Codebase AST symbol extractor & validator
 │   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
+│   ├── check_test_budgets.py           <- Test tier budget gate (per-test ceilings)
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── check_project_hygiene.py        <- Project source & asset hygiene scan (built-in gate)
@@ -103,7 +103,7 @@ portable_agent_kit/
 │   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
 
 ├── tests/
-│   ├── test_kit.py                     <- Unit tier: in-process regression shield (strict <1s gate)
+│   ├── test_kit.py                     <- Unit tier: in-process regression shield (<=8ms per test)
 │   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
 └── knowledge/
     ├── INDEX.md                        <- Knowledge base table of contents & architecture map
@@ -136,7 +136,7 @@ python aikit.py fix my-app          # restore memory/README, refresh map, then c
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, ranked below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. The stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. `check` reminds you to record `checklists: passed` or the failed IDs in the task's latest checkpoint before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8); a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8); a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
@@ -149,7 +149,7 @@ A project's memory is its `.aikit/` folder (record, ledger, decisions, guideline
   cp -r GUIDELINES.md scripts knowledge /path/to/target/
   cp -r .agents/rules .agents/skills /path/to/target/.agents/
   ```
-  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (AIKit's own). The CLI gates in the matrix above carry enforcement. Replace copied `knowledge/` documents with your project's. Copy `.agents/rules/readme_quickref.md.template` into your `README.md` and replace `<FILL` placeholders.
+  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (AIKit's own); the CLI gates above carry enforcement. Replace copied `knowledge/` documents with your project's, and copy `.agents/rules/readme_quickref.md.template` into your `README.md`, replacing `<FILL` placeholders.
 
 ### Step 2: Move Your Own Agent Instructions into Tier 1B
 If the target already has instruction files, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects the block into every generated file and never overwrites hand-authored files without a generated header (`[PROTECTED]`).
@@ -199,7 +199,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <1s, integ <5s. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=8ms, integ <=200ms/test. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
@@ -207,7 +207,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | State files: >=10MB free, temp + fsync + os.replace (5 tries) + dir fsync, .bak, advisory locking 3s/30s stale, corrupt -> quarantine/.bak/migrate. Generated: temp + fsync + replace. |
-| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <1s, no spawns/sleeps; integration <5s; tempdir + addCleanup; reachability shield (`scripts/check_reachability.py`). |
+| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=8ms/test, no spawns/sleeps; integ <=200ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery

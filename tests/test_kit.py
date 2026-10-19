@@ -153,6 +153,12 @@ from scripts.check_project_hygiene import (
     check_python_source,
     scan_tree,
 )
+from scripts.check_test_budgets import (
+    TIER_BUDGETS_MS,
+    budget_errors,
+    parse_tier_output,
+    run_check as run_budget_check,
+)
 from scripts.check_reachability import (
     find_unreachable,
     find_phantom_keys,
@@ -312,8 +318,9 @@ class TestPrincipleSync(unittest.TestCase):
         # Mechanisms, not labels (ADR-087; the label pins were replaced under PRINCIPLE-014 R2's
         # exception: the user approved rewriting the principle text, and ADR-087 names this test).
         for mechanism in ("100% test pass gate", "behaviour change = failing-first test",
-                          "weakening a test needs user approval + adr naming it", "unit <1s, no spawns/sleeps",
-                          "integration <5s", "tempdir + addcleanup", "reachability shield"):
+                          "weakening a test needs user approval + adr naming it",
+                          "unit <=8ms/test, no spawns/sleeps", "integ <=200ms/test",
+                          "tempdir + addcleanup", "scripts/check_reachability.py"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p14["invariant"].lower())
 
@@ -2587,7 +2594,7 @@ class TestTier1ContextBudget(unittest.TestCase):
     def test_capsules_retain_their_mechanisms_after_condensation(self):
         # PRINCIPLE-001 R2: compression targets narrative, never hard mechanical constraints.
         content = (ROOT_DIR / ".agents" / "rules" / "principles.md").read_text(encoding="utf-8")
-        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<1s",
+        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<=8ms",
                           "scripts/sync_principles.py", "task_ledger.json",
                           "advisory locking", "exit"):
             with self.subTest(mechanism=mechanism):
@@ -2948,7 +2955,7 @@ class TestDisruptionRecovery(unittest.TestCase):
             self.assertTrue(acquired1)
             # Nested attempt on same file must fail acquisition within its bounded timeout.
             # The timeout is kept short deliberately: the contract under test is refusal, and a
-            # longer wall-clock wait only inflates the sub-second suite gate (PRINCIPLE-014 R3).
+            # longer wall-clock wait only inflates the unit tier's per-test budget (PRINCIPLE-014 R3).
             with file_lock(test_file, timeout_seconds=0.005, poll_interval=0.001) as acquired2:
                 self.assertFalse(acquired2)
         # Once released, lock should be immediately re-acquirable
@@ -4631,6 +4638,64 @@ class TestProjectPublish(unittest.TestCase):
         self.assertIn("Why:", msg)
 
 
+
+class TestTestTierBudgetGate(unittest.TestCase):
+    """PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed."""
+
+    UNIT = "tests.test_kit"
+    INTEG = "tests.test_integration"
+
+    def fake_runner(self, table):
+        # This tier may not start a process (PRINCIPLE-014 R3), so the tier runner is injected
+        # exactly as auto_push_project's git runner is (PRINCIPLE-009 R4).
+        def runner(module, timeout):
+            return table[module]
+        return runner
+
+    def ok(self, tests, seconds):
+        return 0, f"...\nRan {tests} tests in {seconds}s\n\nOK\n"
+
+    def gate(self, table):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = run_budget_check(runner=self.fake_runner(table))
+        return code, buf.getvalue()
+
+    def test_parse_reads_the_count_and_duration_unittest_prints(self):
+        self.assertEqual(parse_tier_output("...\nRan 317 tests in 1.139s\n\nOK\n"), (317, 1.139))
+        self.assertIsNone(parse_tier_output("ImportError: cannot import name x"))
+
+    def test_a_tier_over_its_per_test_average_fails_and_names_the_tier(self):
+        # Red-green pin: the unit tier ran 1.21-1.45s against a <1s absolute budget for months
+        # because no gate measured either tier.
+        code, out = self.gate({self.UNIT: self.ok(100, 9.0), self.INTEG: self.ok(45, 1.0)})
+        self.assertEqual(code, 1)
+        self.assertIn(self.UNIT, out)
+        self.assertIn("90.00ms", out)
+
+    def test_both_tiers_inside_budget_pass_and_report_the_average(self):
+        code, out = self.gate({self.UNIT: self.ok(317, 1.139), self.INTEG: self.ok(45, 7.631)})
+        self.assertEqual(code, 0, out)
+        self.assertIn("3.59ms", out)
+        self.assertIn("169.58ms", out)
+
+    def test_a_failing_tier_fails_the_gate_whatever_its_speed(self):
+        red = (1, "Ran 10 tests in 0.010s\n\nFAILED (failures=1)\n")
+        code, out = self.gate({self.UNIT: red, self.INTEG: self.ok(45, 1.0)})
+        self.assertEqual(code, 1)
+        self.assertIn("failed", out.lower())
+
+    def test_unparseable_tier_output_fails_instead_of_reporting_zero(self):
+        code, _ = self.gate({self.UNIT: (0, "collection exploded"), self.INTEG: self.ok(45, 1.0)})
+        self.assertEqual(code, 1)
+
+    def test_every_test_module_in_the_repository_has_a_budget(self):
+        # A new tier must not escape the gate by simply existing.
+        modules = {f"tests.{path.stem}" for path in (ROOT_DIR / "tests").glob("test_*.py")}
+        self.assertEqual(set(TIER_BUDGETS_MS), modules)
+
+    def test_budget_errors_is_silent_when_every_tier_fits(self):
+        self.assertEqual(budget_errors([]), [])
 
 if __name__ == "__main__":
     unittest.main()

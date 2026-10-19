@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `15`
-- **Total Classes**: `73`
-- **Total Top-Level Functions**: `228`
-- **Total Class Methods**: `419`
-- **Total Source Lines**: `12015`
+- **Total Python Modules**: `16`
+- **Total Classes**: `75`
+- **Total Top-Level Functions**: `233`
+- **Total Class Methods**: `432`
+- **Total Source Lines**: `12265`
 
 ---
 
@@ -127,6 +127,26 @@
 - `def scan_all(gaps, repo)`
 - `def scan_agent_memory(gaps, repo)` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
 - `def run_scan(mode, target, verbose, repo)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
+
+---
+
+### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
+> *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
+
+**Size**: `185` lines (`7102` bytes)
+
+**Classes:**
+- `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
+  - Property `.per_test_ms`
+  - Property `.budget_ms`
+  - Property `.inside_budget`
+
+**Functions:**
+- `def parse_tier_output(output)` - *The count and duration unittest prints, or None when it never got that far.*
+- `def default_runner(module, timeout)` - *Run one tier the way the runbook documents it, so the gate measures the real command.*
+- `def run_tier(module, runner)` - *Measure one tier, or None when its output carried no summary to measure.*
+- `def budget_errors(results)` - *One line per tier that is over its ceiling; empty when every tier fits.*
+- `def run_check(runner, verbose)`
 
 ---
 
@@ -468,7 +488,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4636` lines (`258207` bytes)
+**Size**: `4701` lines (`261076` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -874,6 +894,17 @@
   - Method `.test_get_project_repo_url()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`
+- `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*
+  - Method `.fake_runner(table)`
+  - Method `.ok(tests, seconds)`
+  - Method `.gate(table)`
+  - Method `.test_parse_reads_the_count_and_duration_unittest_prints()`
+  - Method `.test_a_tier_over_its_per_test_average_fails_and_names_the_tier()`
+  - Method `.test_both_tiers_inside_budget_pass_and_report_the_average()`
+  - Method `.test_a_failing_tier_fails_the_gate_whatever_its_speed()`
+  - Method `.test_unparseable_tier_output_fails_instead_of_reporting_zero()`
+  - Method `.test_every_test_module_in_the_repository_has_a_budget()`
+  - Method `.test_budget_errors_is_silent_when_every_tier_fits()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`
