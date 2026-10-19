@@ -4,29 +4,11 @@
     "task_id": "review-fixes-2",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792424487.5453858
+    "status": "completed",
+    "updated_at": 1792424522.3466194,
+    "completed_at": 1792424522.5316014
   },
   "checkpoints": [
-    {
-      "task_id": "project-baseline-gates",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/4]-[4/4] strict delivery gate, dirty-tree push guard, map baseline, project README canonical gate fix, tests/docs/ADR; 361 tests and dogfood green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792369453.7043014,
-      "timestamp_str": "2026-10-19 03:24:13"
-    },
-    {
-      "task_id": "project-baseline-gates",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-baseline-gates' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792369457.2015052,
-      "timestamp_str": "2026-10-19 03:24:17"
-    },
     {
       "task_id": "guideline-script-alignment",
       "phase": "planning",
@@ -232,6 +214,25 @@
       "status": "in_progress",
       "timestamp": 1792424487.5453858,
       "timestamp_str": "2026-10-19 18:41:27"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[milestone 5/5] tier delivered with milestone 1 (ADR-145); both tiers measured under ceiling twice",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792424522.3466194,
+      "timestamp_str": "2026-10-19 18:42:02"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-fixes-2' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792424522.5316043,
+      "timestamp_str": "2026-10-19 18:42:02"
     }
   ]
 }
