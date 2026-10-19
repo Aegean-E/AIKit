@@ -1110,22 +1110,29 @@ class TestKnowledgeCitations(unittest.TestCase):
 
 
 class TestChaosCoverage(unittest.TestCase):
-    """PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite."""
+    """
+    PRINCIPLE-013 R7 (ADR-086, ADR-148): each named fault has a test that drives it. The map holds
+    exact test names, not regexes: a regex matched any name containing "bak" or "corrupt", so
+    renaming or deleting the real test left the fault silently uncovered.
+    """
 
     FAULTS = {
-        "0-byte state file": r"zero_byte|0_byte|truncat",
-        "malformed JSON": r"malformed|corrupt",
-        "insufficient disk space": r"headroom|disk_space|enospc",
-        "recovery from .bak": r"bak|shadow",
-        "concurrent writers": r"parallel|concurren|contention",
+        "0-byte state file": "test_zero_byte_power_loss_truncation_quarantine",
+        "malformed JSON": "test_self_healing_quarantine_corrupted_json",
+        "insufficient disk space": "test_a_full_disk_refuses_the_write_and_keeps_the_old_state",
+        "recovery from .bak": "test_self_healing_recovery_from_shadow_backup",
+        "concurrent writers": "test_parallel_checkpoints_do_not_lose_updates",
+        "unreadable state file": "test_an_io_error_is_reported_not_quarantined",
+        "failed rename": "test_failed_replace_keeps_the_old_ledger_and_removes_temp",
     }
 
     def test_every_named_fault_has_a_test(self):
-        names = re.findall(r"def (test_\w+)", (ROOT_DIR / "tests" / "test_kit.py").read_text(encoding="utf-8")
-                           + (ROOT_DIR / "tests" / "test_integration.py").read_text(encoding="utf-8"))
-        for fault, pattern in self.FAULTS.items():
+        names = set()
+        for module in ("test_kit.py", "test_integration.py"):
+            names |= set(re.findall(r"def (test_\w+)", (ROOT_DIR / "tests" / module).read_text(encoding="utf-8")))
+        for fault, test in self.FAULTS.items():
             with self.subTest(fault=fault):
-                self.assertTrue(any(re.search(pattern, n, re.I) for n in names), f"no test for {fault}")
+                self.assertIn(test, names, f"the test named for {fault} is gone; the fault is uncovered")
 
 
 class TestAdrRegister(unittest.TestCase):
@@ -2975,6 +2982,30 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertTrue(check_disk_headroom(self.test_dir, min_mb=0.001))
         # Impossibly high requirement should return False gracefully
         self.assertFalse(check_disk_headroom(self.test_dir, min_mb=10_000_000_000.0))
+
+    def test_a_full_disk_refuses_the_write_and_keeps_the_old_state(self):
+        # ADR-148: the only disk-space test called check_disk_headroom() and asserted its boolean.
+        # Nothing drove a write under a full disk, so the refusal path itself was never exercised.
+        kept = {"version": 1, "active_task": {"task_id": "kept"}, "checkpoints": []}
+        atomic_write_json(self.ledger_file, kept)
+        before = self.ledger_file.read_bytes()
+        full = shutil.disk_usage(self.test_dir)._replace(free=1024)  # 1 KiB, under the 10MB floor
+        warning = io.StringIO()
+        with mock.patch("scripts.disruption_recovery.shutil.disk_usage", return_value=full), \
+                contextlib.redirect_stderr(warning):
+            with self.assertRaises(OSError) as caught:
+                atomic_write_json(self.ledger_file, {"version": 1, "active_task": {"task_id": "new"},
+                                                     "checkpoints": []})
+        self.assertEqual(caught.exception.errno, 28, "a full disk raises ENOSPC")
+        self.assertIn("headroom", warning.getvalue().lower())
+        self.assertEqual(self.ledger_file.read_bytes(), before, "the previous state survives")
+        self.assertEqual(list(self.test_dir.glob("*.tmp_*")), [], "no partial buffer is left")
+        # PRINCIPLE-011 R6: the CLI turns that refusal into the triad rather than a traceback.
+        triad = io.StringIO()
+        with contextlib.redirect_stderr(triad):
+            report_operational_error(OSError, caught.exception, None)
+        for part in ("Why:", "Fix:"):
+            self.assertIn(part, triad.getvalue())
 
     def test_schema_migration_backward_compatibility(self):
         # Enforces PRINCIPLE-013: state schemas are forward-compatible and auto-migrated

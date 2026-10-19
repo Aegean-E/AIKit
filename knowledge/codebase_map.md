@@ -9,8 +9,8 @@
 - **Total Python Modules**: `16`
 - **Total Classes**: `76`
 - **Total Top-Level Functions**: `237`
-- **Total Class Methods**: `442`
-- **Total Source Lines**: `12519`
+- **Total Class Methods**: `443`
+- **Total Source Lines**: `12550`
 
 ---
 
@@ -492,7 +492,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4844` lines (`269486` bytes)
+**Size**: `4875` lines (`271584` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -576,7 +576,7 @@
   - Method `.test_audit_ledger_labels_predictions_as_predictions()`
   - Method `.test_every_benchmark_row_names_its_source_or_says_unverified()`
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
-- `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086): each named fault has at least one test in the suite.*
+- `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086, ADR-148): each named fault has a test that drives it. The map holds*
   - Method `.test_every_named_fault_has_a_test()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
@@ -746,6 +746,7 @@
   - Method `.test_self_healing_recovery_from_shadow_backup()`
   - Method `.test_advisory_file_lock()`
   - Method `.test_disk_headroom_check()`
+  - Method `.test_a_full_disk_refuses_the_write_and_keeps_the_old_state()`
   - Method `.test_schema_migration_backward_compatibility()`
   - Method `.test_zero_byte_power_loss_truncation_quarantine()`
   - Method `.test_newer_ledger_is_refused_without_mutation()`

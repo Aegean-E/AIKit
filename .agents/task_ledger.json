@@ -5,25 +5,9 @@
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "in_progress",
-    "updated_at": 1792424391.5133595
+    "updated_at": 1792424487.5453858
   },
   "checkpoints": [
-    {
-      "task_id": "project-baseline-gates",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/4] strict check for clean tree and map presence; [2/4] project README canonical gate fix; [3/4] red-green tests and docs; [4/4] Phase 4 gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792368720.4265463,
-      "timestamp_str": "2026-10-19 03:12:00",
-      "impact_assessment": {
-        "why": "aikit check can pass on a dirty tree, then auto-push an older commit, and new projects fall back to an unrunnable aikit.py command from the project root",
-        "benefits": "delivery checks become honest, a dirty project is never pushed as tested, and new projects get a runnable canonical gate",
-        "risks": "contract: adds opt-in --strict behavior and changes only the generated README fallback; dependency: none; concurrency: audit reads git while agents edit, so dirty detection is advisory outside --strict; state: no project files touched",
-        "mitigation": "red-green tests for dirty/clean, map present/missing, ledger refusal, and rendered README; keep default check behavior compatible; no project edits"
-      }
-    },
     {
       "task_id": "project-baseline-gates",
       "phase": "verification",
@@ -238,6 +222,16 @@
       "status": "in_progress",
       "timestamp": 1792424391.5133595,
       "timestamp_str": "2026-10-19 18:39:51"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[milestone 4/5] committed: exact-name chaos map, behavioural full-disk test (ADR-148)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792424487.5453858,
+      "timestamp_str": "2026-10-19 18:41:27"
     }
   ]
 }
