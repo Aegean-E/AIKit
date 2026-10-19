@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `16`
 - **Total Classes**: `75`
-- **Total Top-Level Functions**: `233`
-- **Total Class Methods**: `432`
-- **Total Source Lines**: `12265`
+- **Total Top-Level Functions**: `237`
+- **Total Class Methods**: `435`
+- **Total Source Lines**: `12377`
 
 ---
 
@@ -111,7 +111,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `419` lines (`18593` bytes)
+**Size**: `463` lines (`20969` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -123,10 +123,12 @@
 - `def should_skip(path_str)`
 - `def git_output(args, repo)`
 - `def scan_staged(gaps, repo)` - *Scan staged content only - the surface about to become permanent history.*
+- `def scan_diff(diff, default_label)` - *Every added line of a unified diff, labelled by its file. Pure: removed lines are history*
+- `def scan_commits(rev_range, gaps, repo)` - *Every line the commits in `rev_range` add: what a push uploads. The working tree is not, so a*
 - `def iter_tracked_files(gaps, repo)`
 - `def scan_all(gaps, repo)`
 - `def scan_agent_memory(gaps, repo)` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
-- `def run_scan(mode, target, verbose, repo)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
+- `def run_scan(mode, target, verbose, repo, commits)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
 
 ---
 
@@ -254,7 +256,7 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `223` lines (`10336` bytes)
+**Size**: `245` lines (`11371` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
@@ -262,6 +264,8 @@
 - `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
 - `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for the GitHub description.*
 - `def get_project_repo_url(project_root, runner)` - *Return the URL of the project's 'origin' remote, or None if not configured.*
+- `def push_range(project_root, run)` - *The commits a push uploads: those past the upstream, or the whole history without one.*
+- `def scan_refusal(project_root, rev_range, run)` - *Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
 - `def publish_project(project_root, name, public, runner)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
@@ -400,7 +404,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `917` lines (`46663` bytes)
+**Size**: `914` lines (`45950` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -488,7 +492,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4701` lines (`261076` bytes)
+**Size**: `4750` lines (`263849` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -881,6 +885,7 @@
   - Method `.test_gemini_key_comes_only_from_the_environment()`
   - Method `.test_text_report_keeps_only_the_answer()`
   - Method `.test_a_key_split_across_a_concatenation_is_still_caught()`
+  - Method `.test_commit_diffs_are_scanned_line_by_line_with_their_file()`
   - Method `.test_scanner_catches_a_bare_gemini_key()`
 - `class TestProjectPublish` - *`aikit publish`: a project in its own GitHub repository, private unless asked (ADR-134).*
   - Method `.runner(**replies)` - *A scripted stand-in for git, gh and the secret scan; records every call.*
@@ -888,6 +893,8 @@
   - Method `.test_new_repository_is_private_scanned_first_and_pushed()`
   - Method `.test_public_only_when_asked()`
   - Method `.test_existing_remote_is_pushed_never_recreated_or_forced()`
+  - Method `.test_an_existing_upstream_scans_only_the_commits_it_pushes()`
+  - Method `.test_auto_push_scans_the_commits_it_pushes_and_refuses_a_finding()`
   - Method `.test_refusals_upload_nothing()`
   - Method `.test_uncommitted_work_is_named_in_the_report()`
   - Method `.test_extract_readme_description_finds_first_paragraph_and_truncates()`

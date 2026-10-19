@@ -21,7 +21,7 @@ inline `# aikit:allow-secret` pragma or the ALLOWLIST_SUBSTRINGS set - never a s
 Zero external dependencies (standard library only).
 
 Usage:
-  python scripts/check_secrets.py [--staged | --all | --file <path>] [--verbose]
+  python scripts/check_secrets.py [--staged | --all | --file <path> | --commits <range>] [--verbose]
 Exit codes:
   0 clean    1 potential secret found    2 CLI argument misuse
 """
@@ -79,6 +79,8 @@ INTERPOLATION_ONLY_RE = re.compile(
 ASSIGNMENT_RE = re.compile(
     r"(?i)\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)[A-Z0-9_]*)\s*[:=]\s*[\"']?([^\s\"',;]{16,})[\"']?"
 )
+# A unified-diff hunk header; group 1 is the first line number on the new side.
+HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 # A quoted token long enough to be a generated key; `looks_random` decides whether it is one.
 BARE_LITERAL_RE = re.compile(r"[\"']([A-Za-z0-9_\-]{40,})[\"']")
 
@@ -216,17 +218,43 @@ def scan_staged(gaps: Optional[List[str]] = None,
         if gaps is not None:
             gaps.append("git diff --cached failed, so the staged changes were not scanned")
         return []
+    return scan_diff(diff, "<staged>")
+
+
+def scan_diff(diff: str, default_label: str = "<diff>") -> List[Tuple[str, int, str, str]]:
+    """Every added line of a unified diff, labelled by its file. Pure: removed lines are history
+    already, and context lines are scanned where they were added."""
     findings = []
-    current = "<staged>"
+    current, lineno = default_label, 0
     for line in diff.splitlines():
-        if line.startswith("+++ b/"):
-            current = line[6:].strip()
+        if line.startswith("+++ "):
+            current = line[6:].strip() if line.startswith("+++ b/") else default_label
             continue
-        if line.startswith("+") and not line.startswith("+++"):
-            if should_skip(current):
-                continue
-            findings.extend(scan_text(current, line[1:]))
+        hunk = HUNK_RE.match(line)
+        if hunk:
+            lineno = int(hunk.group(1))
+            continue
+        if line.startswith("+"):
+            if not should_skip(current):
+                findings.extend((label, lineno, detector, excerpt)
+                                for label, _, detector, excerpt in scan_text(current, line[1:]))
+            lineno += 1
     return findings
+
+
+def scan_commits(rev_range: str, gaps: Optional[List[str]] = None,
+                 repo: Path = ROOT_DIR) -> List[Tuple[str, int, str, str]]:
+    """
+    Every line the commits in `rev_range` add: what a push uploads. The working tree is not, so a
+    key committed and then deleted in an uncommitted edit passed a working-tree scan (ADR-145).
+    """
+    log = git_output(["log", "-p", "--format=", "--unified=0", "--no-color", "--no-ext-diff",
+                      rev_range, "--"], repo)
+    if log is None:
+        if gaps is not None:
+            gaps.append(f"git log {rev_range} failed, so those commits were not scanned")
+        return []
+    return scan_diff(log, f"<{rev_range}>")
 
 
 def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR) -> Iterable[Path]:
@@ -277,7 +305,7 @@ def scan_agent_memory(gaps: Optional[List[str]] = None,
 
 
 def run_scan(mode: str = "staged", target: Optional[Path] = None,
-             verbose: bool = False, repo: Path = ROOT_DIR) -> int:
+             verbose: bool = False, repo: Path = ROOT_DIR, commits: Optional[str] = None) -> int:
     """Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4)."""
     print("=" * 58)
     print("SECRET & SENSITIVE DATA SCAN (PRINCIPLE-019)")
@@ -300,6 +328,9 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
     elif mode == "all":
         findings = scan_all(gaps, repo)
         scope = "all tracked text files"
+    elif mode == "commits" and commits:
+        findings = scan_commits(commits, gaps, repo)
+        scope = f"lines added by commits {commits}"
     else:
         findings = scan_staged(gaps, repo)
         scope = "staged changes"
@@ -342,8 +373,8 @@ def run_scan(mode: str = "staged", target: Optional[Path] = None,
     return 1
 
 
-KNOWN_FLAGS = {"--staged", "--all", "--file", "--workspace", "--verbose", "-v", "--help", "-h"}
-VALUE_FLAGS = {"--file", "--workspace"}
+KNOWN_FLAGS = {"--staged", "--all", "--file", "--commits", "--workspace", "--verbose", "-v", "--help", "-h"}
+VALUE_FLAGS = {"--file", "--commits", "--workspace"}
 
 HELP_TEXT = """AIKit Secret & Sensitive Data Scanner (PRINCIPLE-019)
 
@@ -358,6 +389,8 @@ Options:
   --staged         Scan staged changes only (default) - the surface about to become history
   --all            Scan every tracked text file
   --file <path>    Scan a single file
+  --commits <range>  Scan the lines added by the commits in <range> (e.g. HEAD, @{u}..HEAD):
+                   exactly what a push uploads (ADR-145)
   --workspace <dir>  Scan the git repository at <dir> instead of AIKit's, e.g. a project
                    under projects/ (ADR-121)
   --verbose, -v    Print detector and allowlist counts
@@ -405,6 +438,16 @@ if __name__ == "__main__":
             sys.exit(2)
         scan_mode, scan_target = "file", Path(argv[idx + 1])
 
+    scan_commits_range: Optional[str] = None
+    if "--commits" in argv:
+        idx = argv.index("--commits")
+        if idx + 1 >= len(argv) or argv[idx + 1].startswith("-"):
+            print("[INVALID USAGE] --commits requires a revision range.", file=sys.stderr)
+            print("Why: the commits to scan cannot be inferred without it.", file=sys.stderr)
+            print("Fix: pass '--commits <range>', e.g. --commits HEAD or --commits @{u}..HEAD", file=sys.stderr)
+            sys.exit(2)
+        scan_mode, scan_commits_range = "commits", argv[idx + 1]
+
     scan_repo = ROOT_DIR
     if "--workspace" in argv:
         idx = argv.index("--workspace")
@@ -416,4 +459,5 @@ if __name__ == "__main__":
         scan_repo = Path(argv[idx + 1]).resolve()
 
     sys.exit(run_scan(mode=scan_mode, target=scan_target,
-                      verbose=("--verbose" in argv or "-v" in argv), repo=scan_repo))
+                      verbose=("--verbose" in argv or "-v" in argv), repo=scan_repo,
+                      commits=scan_commits_range))

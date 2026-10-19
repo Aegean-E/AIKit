@@ -133,6 +133,28 @@ def get_project_repo_url(project_root: Path, runner: Optional[Runner] = None) ->
     return None
 
 
+def push_range(project_root: Path, run: Runner) -> str:
+    """The commits a push uploads: those past the upstream, or the whole history without one."""
+    return "@{u}..HEAD" if run(["git", "rev-parse", "--verify", "@{u}"], project_root)[0] == 0 else "HEAD"
+
+
+def scan_refusal(project_root: Path, rev_range: str, run: Runner) -> Optional[str]:
+    """
+    Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the
+    refusal triad when the scan does not pass. Scanning the working tree let a key that was
+    committed and then deleted in an uncommitted edit through (ADR-145).
+    """
+    code, output = run([sys.executable, str(SECRETS_CLI), "--workspace", str(project_root),
+                        "--commits", rev_range], project_root)
+    if code == 0:
+        return None
+    return _triad(f"the secret scan of the commits to upload ({rev_range}) did not pass; nothing was "
+                  f"pushed.\n{output[-800:]}",
+                  "a credential pushed to GitHub must be revoked, not just deleted (PRINCIPLE-019 R6).",
+                  "revoke any real credential, rewrite the commits that add it (the scan names each line), "
+                  "or mark a false positive with an 'aikit:allow-secret' comment, then push again.")
+
+
 def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = None) -> Tuple[int, str]:
     """
     Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).
@@ -154,10 +176,13 @@ def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = 
         code_diff, diff_out = run(["git", "log", "@{u}..HEAD", "--oneline"], project_root)
         if code_diff == 0 and not diff_out.strip():
             return 0, ""
-        push_cmd = ["git", "push", "origin", "HEAD"]
+        push_cmd, rev_range = ["git", "push", "origin", "HEAD"], "@{u}..HEAD"
     else:
-        push_cmd = ["git", "push", "-u", "origin", "HEAD"]
+        push_cmd, rev_range = ["git", "push", "-u", "origin", "HEAD"], "HEAD"
 
+    refusal = scan_refusal(project_root, rev_range, run)
+    if refusal:
+        return 1, refusal
     code_push, push_out = run(push_cmd, project_root)
     if code_push != 0:
         return 1, _triad(
@@ -179,21 +204,18 @@ def publish_project(project_root: Path, name: str, public: bool = False,
         return 1, _triad(f"project '{name}' has no commit to publish.",
                          "only committed history is uploaded.",
                          f"commit the project's work first (its gates: `python aikit.py check {name}`).")
-    code, output = run([sys.executable, str(SECRETS_CLI), "--workspace", str(project_root), "--all"],
-                       project_root)
-    if code != 0:
-        return 1, _triad(f"the secret scan of '{name}' did not pass; nothing was uploaded.\n{output[-800:]}",
-                         "a credential pushed to GitHub must be revoked, not just deleted (PRINCIPLE-019 R6).",
-                         "remove each finding from the files and their history, or mark a false positive "
-                         "with an 'aikit:allow-secret' comment, then publish again.")
+    code, origin = run(["git", "remote", "get-url", "origin"], project_root)
+    has_origin = code == 0 and bool(origin.strip())
+    refusal = scan_refusal(project_root, push_range(project_root, run) if has_origin else "HEAD", run)
+    if refusal:
+        return 1, refusal
     notes = []
     if run(["git", "status", "--porcelain"], project_root)[1].strip():
         notes.append("Note: uncommitted changes stay local; commit them and publish again to upload them.")
 
     desc = extract_readme_description(project_root)
 
-    code, origin = run(["git", "remote", "get-url", "origin"], project_root)
-    if code == 0 and origin.strip():
+    if has_origin:
         code, output = run(["git", "push", "-u", "origin", "HEAD"], project_root)
         if code != 0:
             return 1, _triad(f"pushing '{name}' to {origin.strip()} failed.\n{output[-800:]}",

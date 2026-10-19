@@ -142,6 +142,7 @@ from scripts.project_registry import (
     validate_name,
 )
 from scripts.check_secrets import (
+    scan_diff,
     scan_text,
     shannon_entropy,
     run_scan,
@@ -1673,6 +1674,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
             "rules": 7,
             "present": [
                 "Credentials live only in the environment or a secret store",
+                # ADR-145: a push is scanned for what it uploads, not for the working tree.
+                "`--commits <range>` scans the lines the commits in a range add",
+                "push nothing past a finding",
                 # ADR-133: a real key, split in a test fixture, was committed.
                 "a secret detector's test sample is fabricated or generated at run time",
                 "A unit test checks that each is present",
@@ -4407,6 +4411,17 @@ class TestFreeModelPolicy(unittest.TestCase):
             with self.subTest(line=benign[:20]):
                 self.assertEqual(scan_text("t.py", benign), [])
 
+    def test_commit_diffs_are_scanned_line_by_line_with_their_file(self):
+        import base64
+        import hashlib
+        fake = base64.urlsafe_b64encode(hashlib.sha256(b"history").digest()).decode().rstrip("=")
+        diff = ("diff --git a/app.py b/app.py\n--- a/app.py\n+++ b/app.py\n@@ -1 +1 @@\n"
+                f'-old = "{fake}"\n+x = 1\n'
+                "diff --git a/cfg.py b/cfg.py\n--- /dev/null\n+++ b/cfg.py\n@@ -0,0 +1 @@\n"
+                f'+token = "AQ." + "{fake}"\n')
+        findings = scan_diff(diff)
+        self.assertEqual([f[0] for f in findings], ["cfg.py"], "added lines only, labelled by file")
+
     def test_scanner_catches_a_bare_gemini_key(self):
         # A fabricated value: a real key, even split in two, is a committed credential (ADR-133).
         key = "AQ." + "FakeKey0" * 6 + "xy"
@@ -4447,7 +4462,9 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(create[create.index("--remote") + 1], "origin")
         scan_at = next(i for i, c in enumerate(self.calls) if any("check_secrets.py" in str(a) for a in c))
         self.assertLess(scan_at, self.calls.index(create), "the scan runs before anything is uploaded")
-        self.assertIn("--all", self.calls[scan_at])
+        scan = self.calls[scan_at]
+        self.assertEqual(scan[scan.index("--commits") + 1], "HEAD", "every commit about to be uploaded")
+        self.assertNotIn("--all", scan, "the working tree is not what gets pushed (ADR-145)")
 
     def test_public_only_when_asked(self):
         publish_project(Path("/p/app"), "app", public=True, runner=self.runner())
@@ -4461,6 +4478,38 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(self.made("create"), [])
         push = self.made("push")[0]
         self.assertEqual(push, ["git", "push", "-u", "origin", "HEAD"])
+
+    def test_an_existing_upstream_scans_only_the_commits_it_pushes(self):
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(
+            **{"get-url": (0, "https://github.com/me/app.git")}))
+        self.assertEqual(code, 0, report)
+        scan = next(c for c in self.calls if any("check_secrets.py" in str(a) for a in c))
+        self.assertEqual(scan[scan.index("--commits") + 1], "@{u}..HEAD")
+
+    def test_auto_push_scans_the_commits_it_pushes_and_refuses_a_finding(self):
+        def runner(scan_code):
+            def run(argv, cwd):
+                self.calls.append(argv)
+                if "get-url" in argv:
+                    return 0, "https://github.com/me/app.git"
+                if any("check_secrets.py" in str(a) for a in argv):
+                    return scan_code, "[FAIL] 1 potential secret" if scan_code else "[OK]"
+                if "@{u}" in argv:
+                    return 0, "origin/main"
+                if "@{u}..HEAD" in argv:
+                    return 0, "abc1234 feat: x\n"
+                return 0, ""
+            return run
+        self.calls = []
+        code, report = auto_push_project(Path("/p/app"), "app", runner=runner(1))
+        self.assertEqual(code, 1)
+        self.assertIn("Fix:", report)
+        self.assertEqual(self.made("push"), [], "nothing is pushed past a finding")
+        self.calls = []
+        self.assertEqual(auto_push_project(Path("/p/app"), "app", runner=runner(0))[0], 0)
+        scan = next(c for c in self.calls if any("check_secrets.py" in str(a) for a in c))
+        self.assertEqual(scan[scan.index("--commits") + 1], "@{u}..HEAD")
+        self.assertLess(self.calls.index(scan), self.calls.index(self.made("push")[0]))
 
     def test_refusals_upload_nothing(self):
         cases = {"no commit": {"rev-parse": (128, "")},

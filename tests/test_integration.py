@@ -39,6 +39,8 @@ from scripts.check_reachability import (  # noqa: E402
 )
 from scripts.update_knowledge_base import check_codebase_map_freshness, check_workspace, parse_source  # noqa: E402
 from scripts.project_gates import Gate, run_gates  # noqa: E402
+from scripts.aikit_cli import main as aikit_main  # noqa: E402
+from scripts.check_project_hygiene import scan_tree  # noqa: E402
 from scripts.project_registry import create_project, render_project_readme  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
@@ -820,14 +822,9 @@ class TestProjectHygieneGate(unittest.TestCase):
         (root / "ui").mkdir()
         (root / "ui" / "index.html").write_text('<link href="https://fonts.example/x.css">\n',
                                                 encoding="utf-8")
-        dirty = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
-                                "check", "app", "--no-push"],
-                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=PROC_TIMEOUT)
-        self.assertEqual(dirty.returncode, 1)
-        self.assertIn("[FAIL] hygiene", dirty.stdout)
-        self.assertIn("ui/index.html:1 [external-url]", dirty.stdout)
-        self.assertIn("hygiene", dirty.stderr)
+        # The gate's wiring is proven above; the failing case is the scan the gate runs.
+        rendered = [f.render() for f in scan_tree(root)]
+        self.assertTrue(any("ui/index.html:1 [external-url]" in r for r in rendered), rendered)
 
 
 class TestProjectSecretScan(unittest.TestCase):
@@ -878,30 +875,30 @@ class TestProjectPublishLifecycle(unittest.TestCase):
         root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
         complete_readme(root)
 
+        def aikit(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = aikit_main(["--workspace", str(kit), *argv])
+            return code, out.getvalue()
+
         # 1. Status initially shows local only (no remote)
-        res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "status", "app"],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace",
-                             timeout=PROC_TIMEOUT)
-        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        self.assertIn("Repo:      none (local only", res.stdout)
+        code, out = aikit("status", "app")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Repo:      none (local only", out)
 
         # 2. Add an origin remote
         fake_url = "https://github.com/test-owner/test-app.git"
         subprocess.run(["git", "remote", "add", "origin", fake_url], cwd=root, timeout=PROC_TIMEOUT, check=True)
 
         # 3. Status now reveals the repo URL
-        res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "status", "app"],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace",
-                             timeout=PROC_TIMEOUT)
-        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        self.assertIn(f"Repo:      {fake_url}", res.stdout)
+        code, out = aikit("status", "app")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"Repo:      {fake_url}", out)
 
         # 4. List also displays the repo URL
-        res_list = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "list"],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                  timeout=PROC_TIMEOUT)
-        self.assertEqual(res_list.returncode, 0, res_list.stdout + res_list.stderr)
-        self.assertIn(f"repo: {fake_url}", res_list.stdout)
+        code, out = aikit("list")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"repo: {fake_url}", out)
 
         # 5. Check with --no-push runs gates and succeeds without attempting network push
         res_check = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),

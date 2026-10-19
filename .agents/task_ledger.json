@@ -1,106 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "test-duration-budgets",
+    "task_id": "review-fixes-2",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792393560.4528847,
-    "impact_assessment": {
-      "why": "the user chose route B: the absolute per-suite wall clock (<1s, <5s) cannot hold as the suite grows, and nothing measured it, so the overrun drifted in unnoticed; a per-test average preserves the intent of fast feedback and is enforceable",
-      "benefits": "budgets become measured instead of assumed; the gate reports the per-test average on every run; unit 3.59-5.84ms and integration 169.6-176.5ms both pass with headroom",
-      "risks": "contract: this relaxes a stated budget, so the ADR must name the user's approval (PRINCIPLE-014 R3) and carry a cross-principle check over all 20 principles (PRINCIPLE-000 R3); dependency: standard library only; concurrency: the gate must not run the tiers twice per Phase 4 or it doubles the cost it measures; state: the gate only reads, it writes no ledger or repository file",
-      "mitigation": "ceilings set from three measured runs including a cold-cache outlier (8ms and 200ms, 37% and 13% headroom); the gate becomes the single way Phase 4 runs the tiers rather than an extra run; PRINCIPLE-018 R3 item (1) still reads 'both test tiers pass', so its text needs no edit"
-    },
-    "completed_at": 1792394256.991884
+    "active_phase": 3,
+    "status": "in_progress",
+    "updated_at": 1792423529.42754
   },
   "checkpoints": [
-    {
-      "task_id": "harden-and-verify-project-publish",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] plan: harden project publishing, sanitize readme description, and add integration tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792258423.3139858,
-      "timestamp_str": "2026-10-17 20:33:43",
-      "impact_assessment": {
-        "why": "harden project publish lifecycle edge cases: empty repo push, upstream tracking initialization, badge/html pollution in readme description, and duplicate config options",
-        "benefits": "bulletproof publishing, zero unnecessary network pushes via upstream tracking, pristine GitHub repository descriptions, robust git config parsing, and end-to-end integration coverage",
-        "risks": "contract: none; dependency: none; concurrency: independent project directories; state: zero uncommitted state leaks",
-        "mitigation": "verify unit tests under strict _refuse_spawn, run integration tests under real subprocess execution, and pass all Phase 4 verification gates"
-      }
-    },
-    {
-      "task_id": "harden-and-verify-project-publish",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'harden-and-verify-project-publish' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792258756.534742,
-      "timestamp_str": "2026-10-17 20:39:16"
-    },
-    {
-      "task_id": "project-enforcement-wave-1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/6] seed README FILL prerequisites + audit message + tests; [2/6] scripts/check_project_hygiene.py (AST checks, hygiene allow marker) + unit tests; [3/6] register hygiene gate in project_gates.py + refusals + check reminder + tests; [4/6] reviewer claim-fidelity duty + skill runbook + sync; [5/6] P011 R8 checklist-trace rule + ADRs + cross-principle check + sync; [6/6] knowledge map, README/docs, full Phase 4, commit/push",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792350604.086386,
-      "timestamp_str": "2026-10-18 22:10:04",
-      "impact_assessment": {
-        "why": "the project audit found gates enforce process and structure but not the conduct-only clauses, and the README seed passes its own gate while incomplete",
-        "benefits": "mechanical coverage for shell/system/exec, subprocess portability, environ indexing, open encoding, silent broad excepts, absolute paths and external asset URLs; seeds force filled prerequisites; checklist results and claim reviews become recorded artifacts",
-        "risks": "contract: the new gate changes aikit check output and can fail existing projects; the P011 text change needs sync and a cross-principle ADR; dependency: none (stdlib only); concurrency: none (read-only scan); state: knowledge/decisions.md and the codebase map must be regenerated",
-        "mitigation": "inline hygiene allow reason markers or project fixes; failing-first tests; run sync_principles, update_knowledge_base and the full Phase 4 battery before commit; ADRs written before commit"
-      }
-    },
-    {
-      "task_id": "project-enforcement-wave-1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/6]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792350699.187465,
-      "timestamp_str": "2026-10-18 22:11:39"
-    },
-    {
-      "task_id": "project-enforcement-wave-1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/6] seed README FILL prerequisites + audit message + tests; [2/6] check_project_hygiene.py + unit tests; [3/6] hygiene gate wiring + check reminder + tests; [4/6] reviewer claim-fidelity duty + skill runbook + sync; [5/6] P011 R8 checklist-trace rule + ADRs + cross-principle check + sync; [6/6] knowledge map, README/docs, remove the two root launchers per user direction, full Phase 4, commit/push",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792352231.2702796,
-      "timestamp_str": "2026-10-18 22:37:11",
-      "impact_assessment": {
-        "why": "re-plan: the user directed removal of the two project-specific launchers from the kit root; they are unstaged scope, so milestone 6 records them explicitly",
-        "benefits": "the kit repo stops carrying project-specific files and its own README-tree gate turns green again",
-        "risks": "contract: none (files are duplicates of the project own launchers); dependency: none; concurrency: none; state: the deletion stages with the task commit to keep the gate triad green",
-        "mitigation": "the project keeps its own play.bat; the deletion lands in the same commit as the wave so no red-gate commit exists"
-      }
-    },
-    {
-      "task_id": "project-enforcement-wave-1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[1/6]-[6/6] delivered in one commit: seed <FILL:> gate, hygiene scan, hygiene gate + reminder, reviewer claim fidelity, P011 R8 checklist trace + ADRs, README/knowledge regen, launcher removal; full Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792352991.654264,
-      "timestamp_str": "2026-10-18 22:49:51"
-    },
-    {
-      "task_id": "project-enforcement-wave-1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-enforcement-wave-1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792353000.948013,
-      "timestamp_str": "2026-10-18 22:50:00"
-    },
     {
       "task_id": "ledger-version-contract",
       "phase": "planning",
@@ -262,6 +169,80 @@
       "status": "completed",
       "timestamp": 1792394256.9918854,
       "timestamp_str": "2026-10-19 10:17:36"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: verified report; open items: publish scans working tree not pushed commits (auto-push scans nothing), load_ledger quarantines on OSError, retries non-transient errors, integration tier 200.11ms/test, narrow silent-except and README command parity, ungated private-attr ban, name-only chaos check, stale six in services.md",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423077.1082764,
+      "timestamp_str": "2026-10-19 18:17:57"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] check_secrets --commits <range>; publish and auto-push scan exactly the commits they push; [2/5] load_ledger raises on I/O errors instead of quarantining, os.replace retries only PermissionError; [3/5] gates: any-type except:pass and broad except with lone continue/break/return, README python aikit.py subcommands, P009 R5 private-attribute assignment; services.md six; checklist hedge words; [4/5] disk-full behavioural test, chaos coverage by exact test names; [5/5] integration tier back under its per-test ceiling; ADRs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423077.2664883,
+      "timestamp_str": "2026-10-19 18:17:57",
+      "impact_assessment": {
+        "why": "the verified review found gates weaker than their rules, and one upload path that can push a credential",
+        "benefits": "no push without scanning what is pushed; a locked ledger is never mistaken for a corrupt one; three rules become mechanical",
+        "risks": "contract: check_secrets gains --commits, hygiene and architecture gates flag more; dependency: none; concurrency: none; state: load_ledger now raises on unreadable files",
+        "mitigation": "failing-first tests for each; measure new findings over AIKit and all seven projects before tightening; no project file changed without its own gate run"
+      }
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "implementing [1/5]",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423077.437011,
+      "timestamp_str": "2026-10-19 18:17:57"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "superseded",
+      "phase_num": 3,
+      "description": "Superseded by 'project-rule-parity' without --complete or --reset",
+      "status": "superseded",
+      "timestamp": 1792423376.546868,
+      "timestamp_str": "2026-10-19 18:22:56"
+    },
+    {
+      "task_id": "project-rule-parity",
+      "phase": "in_progress",
+      "phase_num": 1,
+      "description": "grounding: measure the 11 confirmed gaps against 31k lines of real project code before building gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423376.546868,
+      "timestamp_str": "2026-10-19 18:22:56"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "resumed after an accidental supersede; verifying milestone [1/5] in flight",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423529.42754,
+      "timestamp_str": "2026-10-19 18:25:29"
+    },
+    {
+      "task_id": "project-rule-parity",
+      "phase": "superseded",
+      "phase_num": 1,
+      "description": "Superseded by 'review-fixes-2' without --complete or --reset",
+      "status": "superseded",
+      "timestamp": 1792423529.42754,
+      "timestamp_str": "2026-10-19 18:25:29"
     }
   ]
 }
