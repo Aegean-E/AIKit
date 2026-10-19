@@ -309,7 +309,10 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_head
             try:
                 os.replace(tmp_path, file_path)
                 break
-            except (PermissionError, OSError):
+            except PermissionError:
+                # Only lock contention is worth retrying (another process holds the file on
+                # Windows). A full or read-only disk fails the same way five times, so it raises
+                # at once and the caller sees the real cause (ADR-146).
                 if attempt == max_retries - 1:
                     raise
                 time.sleep(0.02 * (2 ** attempt))
@@ -349,7 +352,12 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
         return _read_ledger_file(path)
     except UnsupportedLedgerVersion:
         raise
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError) as e:
+    except OSError:
+        # An I/O failure (locked, permission denied, unreadable device) says nothing about the
+        # content: the file may be perfectly valid. Quarantining it renamed a healthy ledger and
+        # started an empty one, losing the active task; the CLI reports this instead (ADR-146).
+        raise
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
         try:
             wreck = _quarantine_ledger(path)
             sys.stderr.write(f"[WARN] Corrupted task ledger quarantined to {wreck.name}: {e}\n")
@@ -365,8 +373,10 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
                 return recovered
             except UnsupportedLedgerVersion:
                 raise
-            except (OSError, ValueError) as e:
-                sys.stderr.write(f"[WARN] Shadow backup {bak_path.name} is unreadable ({e}); "
+            except OSError:
+                raise  # the backup exists but could not be read: an I/O fault, not corruption
+            except ValueError as e:
+                sys.stderr.write(f"[WARN] Shadow backup {bak_path.name} is corrupt too ({e}); "
                                  f"starting an empty ledger. Task history was not recovered.\n")
 
         return empty_ledger()

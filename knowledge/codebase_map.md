@@ -9,8 +9,8 @@
 - **Total Python Modules**: `16`
 - **Total Classes**: `75`
 - **Total Top-Level Functions**: `237`
-- **Total Class Methods**: `435`
-- **Total Source Lines**: `12377`
+- **Total Class Methods**: `438`
+- **Total Source Lines**: `12434`
 
 ---
 
@@ -155,7 +155,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1488` lines (`66139` bytes)
+**Size**: `1498` lines (`66815` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -492,7 +492,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4750` lines (`263849` bytes)
+**Size**: `4797` lines (`266951` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -757,6 +757,9 @@
   - Method `.test_save_refuses_a_newer_backup()`
   - Method `.test_save_does_not_write_after_lock_timeout()`
   - Method `.test_noop_completion_does_not_rewrite_the_ledger()`
+  - Method `.test_an_io_error_is_reported_not_quarantined()`
+  - Method `.test_corruption_is_still_quarantined_and_recovered()`
+  - Method `.test_replace_retries_lock_contention_but_not_a_full_disk()`
   - Method `.test_failed_replace_keeps_the_old_ledger_and_removes_temp()`
   - Method `.test_record_checkpoint_and_complete()`
   - Method `.test_dangling_temp_file_detection()`

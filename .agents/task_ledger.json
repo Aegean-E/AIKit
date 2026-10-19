@@ -3,37 +3,11 @@
   "active_task": {
     "task_id": "review-fixes-2",
     "last_phase": "in_progress",
-    "active_phase": 3,
+    "active_phase": 5,
     "status": "in_progress",
-    "updated_at": 1792423529.42754
+    "updated_at": 1792423924.3071313
   },
   "checkpoints": [
-    {
-      "task_id": "ledger-version-contract",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/6] version gate + pure load; [2/6] write-path hardening; [3/6] resume/audit refusal reporting; [4/6] red-green tests; [5/6] rule/template/docs; [6/6] Phase 4 gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792364509.9271483,
-      "timestamp_str": "2026-10-19 02:01:49",
-      "impact_assessment": {
-        "why": "the ledger accepts a newer schema silently, may overwrite it, and the CLI cannot report the refusal safely",
-        "benefits": "newer ledgers are refused without modification, older/missing ledgers still resume, and concurrent writes cannot downgrade the file",
-        "risks": "contract: ledger load/save error behavior changes; dependency: none; concurrency: lock-contention path stops writing unprotected; state: ledger schema stays version 1 with in-memory legacy migration",
-        "mitigation": "red-green tests for newer, legacy, backup, failed replace, no-op save and resume; keep version 1; no project edits; run full Phase 4"
-      }
-    },
-    {
-      "task_id": "ledger-version-contract",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/6]-[6/6] delivered: pure version gate, newer/legacy/backup handling, lock-safe save, blocked resume/audit reporting, red-green tests, policy/template/docs, Phase 4 gates green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792366038.0028322,
-      "timestamp_str": "2026-10-19 02:27:18"
-    },
     {
       "task_id": "ledger-version-contract",
       "phase": "completed",
@@ -243,6 +217,26 @@
       "status": "superseded",
       "timestamp": 1792423529.42754,
       "timestamp_str": "2026-10-19 18:25:29"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[milestone 1/5] committed: --commits scan, publish/auto-push scan what they push, tier in-process (ADR-145)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423681.4452074,
+      "timestamp_str": "2026-10-19 18:28:01"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[milestone 2/5] committed: load_ledger re-raises OSError, replace retries PermissionError only, P013 R4 clause (ADR-146)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792423924.3071313,
+      "timestamp_str": "2026-10-19 18:32:04"
     }
   ]
 }

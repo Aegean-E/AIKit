@@ -1582,6 +1582,9 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "retried up to 5 times with exponential backoff",
                 "at least 10MB are free",
                 "acquired with a 3-second timeout; a lock older than 30 seconds is broken",
+                # ADR-146: an unreadable file is not a corrupt one.
+                "A file the process cannot read at all (locked, permission denied, unreadable device) has "
+                "not failed to parse",
                 "A *long-running* process runs until stopped",
                 "a command that ends after one action exits 1 with PRINCIPLE-011 R6's message, never a traceback",
                 "removed by `--clean` as PRINCIPLE-006 R6 specifies, never by an automatic sweep at startup",
@@ -3094,6 +3097,50 @@ class TestDisruptionRecovery(unittest.TestCase):
         with mock.patch("scripts.disruption_recovery.atomic_write_json") as write:
             self.assertFalse(mark_task_completed("other", ledger_file=self.ledger_file))
         write.assert_not_called()
+
+    def test_an_io_error_is_reported_not_quarantined(self):
+        # ADR-146: a locked or permission-denied ledger is valid data this process cannot read.
+        # Quarantining it renamed a healthy file and started an empty ledger, losing the task.
+        atomic_write_json(self.ledger_file, {"version": 1, "active_task": {"task_id": "live"},
+                                             "checkpoints": []})
+        before = self.ledger_file.read_bytes()
+        with mock.patch("scripts.disruption_recovery._read_ledger_file",
+                        side_effect=PermissionError(13, "locked by another process")):
+            with self.assertRaises(OSError):
+                load_ledger(self.ledger_file)
+        self.assertEqual(self.ledger_file.read_bytes(), before, "the file is left untouched")
+        self.assertEqual(list(self.test_dir.glob("*.corrupt_*")), [], "nothing was quarantined")
+
+    def test_corruption_is_still_quarantined_and_recovered(self):
+        # The companion case: malformed content is corruption, so the .bak path still runs.
+        # Written twice: the first write creates the file, the second rotates it into the .bak
+        # that recovery reads (atomic_write_json only rotates a file that already exists).
+        saved = {"version": 1, "active_task": {"task_id": "saved"}, "checkpoints": []}
+        atomic_write_json(self.ledger_file, saved)
+        atomic_write_json(self.ledger_file, saved)
+        self.ledger_file.write_text("{ not json", encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()):
+            recovered = load_ledger(self.ledger_file)
+        self.assertEqual(recovered["active_task"]["task_id"], "saved")
+        self.assertEqual(len(list(self.test_dir.glob("*.corrupt_*"))), 1)
+
+    def test_replace_retries_lock_contention_but_not_a_full_disk(self):
+        # ADR-146: `except (PermissionError, OSError)` collapsed to OSError, so a full or
+        # read-only disk was retried five times before the same failure surfaced.
+        atomic_write_json(self.ledger_file, {"version": 1, "active_task": None, "checkpoints": []})
+        for error, expected in ((PermissionError(13, "busy"), 3), (OSError(28, "No space left"), 1)):
+            with self.subTest(error=type(error).__name__):
+                attempts = []
+
+                def fail(src, dst, error=error):
+                    attempts.append(src)
+                    raise error
+                with mock.patch("scripts.disruption_recovery.os.replace", side_effect=fail):
+                    with self.assertRaises(OSError):
+                        atomic_write_json(self.ledger_file, {"version": 1, "active_task": None,
+                                                             "checkpoints": []}, max_retries=3)
+                self.assertEqual(len(attempts), expected)
+                self.assertEqual(list(self.test_dir.glob("*.tmp_*")), [])
 
     def test_failed_replace_keeps_the_old_ledger_and_removes_temp(self):
         old = {"version": 1, "active_task": {"task_id": "old"}, "checkpoints": []}
