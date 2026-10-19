@@ -751,14 +751,15 @@ def clean_dangling_temp_files(workspace_dir: Optional[Path] = None, min_age_seco
     deleted = []
     now = time.time()
     try:
-        for p in sweep_files(ws, "*.tmp_*"):
-            if p.is_file() and now - p.stat().st_mtime >= min_age_seconds:
-                try:
-                    rel = str(p.relative_to(ws))
-                    p.unlink()
-                    deleted.append(rel)
-                except OSError as e:
-                    sys.stderr.write(f"[WARN] Could not delete {p}: {e}\n")
+        for pat in ("*.tmp_*", "*.steal_*"):
+            for p in sweep_files(ws, pat):
+                if p.is_file() and now - p.stat().st_mtime >= min_age_seconds:
+                    try:
+                        rel = str(p.relative_to(ws))
+                        p.unlink()
+                        deleted.append(rel)
+                    except OSError as e:
+                        sys.stderr.write(f"[WARN] Could not delete {p}: {e}\n")
     except OSError as e:
         sys.stderr.write(f"[WARN] Temp-buffer scan of {ws} stopped early ({e}); list is partial.\n")
     return deleted
@@ -771,6 +772,8 @@ def git_porcelain_status(workspace: Path) -> Tuple[int, str, str]:
         cwd=str(workspace),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=5,
     )
     return proc.returncode, proc.stdout, proc.stderr
@@ -1041,7 +1044,7 @@ def validate_conventional_commit(message: str) -> Tuple[bool, str]:
         return False, f"Subject line exceeds 72 characters ({len(subject)} chars)."
 
     import re
-    pattern = r"^([a-z]+)(?:\(([a-zA-Z0-9_\-\./]+)\))?(!)?:\s+(.+)$"
+    pattern = r"^([a-z]+)(?:\(([a-zA-Z0-9_\-\./,@]+)\))?(!)?:\s+(.+)$"
     match = re.match(pattern, subject)
     if not match:
         return False, "Message does not match Conventional Commits format: '<type>[(<scope>)]: <description>'."
@@ -1168,8 +1171,11 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
             i += 1  # -z puts the rename/copy source in the next field; we classify the new path
         if path in BOOKKEEPING_PATHS:
             continue
-        head = git("show", f"HEAD:{path}")
-        old = head.stdout if head.returncode == 0 else None
+        if xy == "??":
+            old = None
+        else:
+            head = git("show", f"HEAD:{path}")
+            old = head.stdout if head.returncode == 0 else None
         target = workspace / path
         new = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
         changes.append((path, old, new))

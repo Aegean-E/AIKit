@@ -102,7 +102,8 @@ ALLOWLIST_SUBSTRINGS = STRONG_ALLOWLIST | WEAK_ALLOWLIST
 # Paths whose content is documentation *about* secrets rather than secrets.
 SKIP_PATH_PARTS = ("knowledge/decisions.md", "AGENTS.md", "GUIDELINES.md", "README.md",
                    "CLAUDE.md", "GEMINI.md", ".cursorrules", "copilot-instructions.md",
-                   "principles.md", "check_secrets.py", "domain.md.template")
+                   "principles.md", ".windsurfrules", ".clinerules", "check_secrets.py",
+                   "domain.md.template")
 
 TEXT_SUFFIXES = frozenset({
     ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".cfg", ".ini", ".env",

@@ -796,6 +796,14 @@ class TestPrinciple007Tooling(unittest.TestCase):
             "m.py:7: function 'later' is a stub",
             "m.py:9: function 'dots' is a stub",
         ])
+        source_inline = (
+            "# Note: TODO: fix inline\n"
+            "# Urgent: FIXME(alice): check this\n"
+        )
+        self.assertEqual(audit_lazy_code(source_inline, "inline.py"), [
+            "inline.py:1: '# Note: TODO: fix inline' marks unfinished code",
+            "inline.py:2: '# Urgent: FIXME(alice): check this' marks unfinished code",
+        ])
 
     def test_protocols_abstract_methods_and_named_suppressions_pass(self):
         source = (
@@ -1307,6 +1315,10 @@ class TestPrinciple000Unambiguity(unittest.TestCase):
         adr = "### ADR-001: t\n- body\n"
         self.assertEqual(changed_principles(old, new), ["PRINCIPLE-001"])
         self.assertEqual(changed_principles(old, old.replace("plain.", "plain.  ")), [])  # whitespace only
+        # Pre-Flight or Post-Flight checklist changes attribute to PRINCIPLE-001
+        checklist_old = "### PRINCIPLE-001: A\n- body\n### Pre-Flight Checklist\n- [ ] item 1\n"
+        checklist_new = "### PRINCIPLE-001: A\n- body\n### Pre-Flight Checklist\n- [ ] item 1 modified\n"
+        self.assertEqual(changed_principles(checklist_old, checklist_new), ["PRINCIPLE-001"])
         self.assertEqual(cross_check_errors(old, old, adr, adr), [])
         self.assertEqual(cross_check_errors(old, new, adr, adr),
                          ["PRINCIPLE-001 changed but no ADR was added to knowledge/decisions.md (PRINCIPLE-004 R4)"])
@@ -2729,6 +2741,15 @@ class TestSecretHygieneScanner(unittest.TestCase):
             with self.subTest(surface=surface):
                 self.assertIn(surface, ignore, f".gitignore does not exclude {surface}")
 
+    def test_skip_path_parts_includes_generated_rule_files(self):
+        # Tier 1 generated files and documentation containing principle examples must be skipped
+        from scripts.check_secrets import SKIP_PATH_PARTS, should_skip
+        for filename in (".windsurfrules", ".clinerules", "AGENTS.md", "GEMINI.md"):
+            with self.subTest(filename=filename):
+                self.assertIn(filename, SKIP_PATH_PARTS)
+                self.assertTrue(should_skip(filename))
+
+
 
 class TestInvariantReachabilityShield(unittest.TestCase):
     """
@@ -2769,6 +2790,25 @@ if __name__ == "__main__":
             "shield failed to detect a tested-but-unwired safety mechanism",
         )
         self.assertNotIn("do_work", unreachable, "shield flagged a referenced function")
+
+    def test_detects_self_recursive_function_with_no_external_callers(self):
+        # A function calling itself recursively but having zero external callers is unreachable
+        files = self._write("mod_recur.py", '''"""Recursion."""
+def dead_recursive(n):
+    if n <= 0:
+        return 0
+    return dead_recursive(n - 1)
+
+def main():
+    return 42
+
+if __name__ == "__main__":
+    main()
+''')
+        unreachable = [name for name, _ in find_unreachable(files)]
+        self.assertIn("dead_recursive", unreachable)
+        self.assertNotIn("main", unreachable)
+
 
     def test_detects_state_key_read_with_no_producer(self):
         # Reconstruction of the real defect: format_resume_report() read 'last_phase_num',
@@ -3257,20 +3297,27 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertIn("Superseded by user request", updated_ledger["checkpoints"][-1]["description"])
 
     def test_clean_dangling_temp_files(self):
-        # Enforces PRINCIPLE-006: safe automated purging of orphaned *.tmp_* buffers
+        # Enforces PRINCIPLE-006: safe automated purging of orphaned *.tmp_* and *.steal_* buffers
         tmp_file = self.test_dir / "model.py.tmp_8888_7777"
         tmp_file.write_text("corrupted buffer", encoding="utf-8")
+        steal_file = self.test_dir / "data.json.steal_9999_1111"
+        steal_file.write_text("abandoned steal buffer", encoding="utf-8")
         old = time.time() - 120
         os.utime(tmp_file, (old, old))
+        os.utime(steal_file, (old, old))
         # Red-green pin (ADR-078): a buffer younger than 60 s may belong to a write in progress
         # (a parallel agent, a sync run); --clean used to delete it too.
         live = self.test_dir / "state.json.tmp_1_2"
         live.write_text("being written", encoding="utf-8")
+        live_steal = self.test_dir / "state.json.steal_1_2"
+        live_steal.write_text("active steal", encoding="utf-8")
 
         purged = clean_dangling_temp_files(workspace_dir=self.test_dir)
-        self.assertEqual([Path(p).name for p in purged], ["model.py.tmp_8888_7777"])
+        self.assertEqual(sorted(Path(p).name for p in purged), ["data.json.steal_9999_1111", "model.py.tmp_8888_7777"])
         self.assertFalse(tmp_file.exists())
+        self.assertFalse(steal_file.exists())
         self.assertTrue(live.exists())
+        self.assertTrue(live_steal.exists())
 
     def test_non_git_workspace_detection(self):
         # In isolated test_dir (not a git repo), audit must detect missing git tracking
@@ -3389,6 +3436,8 @@ class TestDisruptionRecovery(unittest.TestCase):
             "test(kit): add regression test for recovery",
             "feat(pipeline): [milestone 1/3] create initial schema",
             "feat!: breaking change in public API contract",
+            "feat(cli,rules): add multi-domain support",
+            "fix(@aikit/core): resolve path resolution issue",
         ]
         for msg in valid_samples:
             valid, reason = validate_conventional_commit(msg)

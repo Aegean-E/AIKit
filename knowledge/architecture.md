@@ -3,7 +3,7 @@
 This document describes how AIKit is built. The rules it follows live only in `GUIDELINES.md`; this file names the principle a mechanism serves and never restates its rules (PRINCIPLE-001 R7). Numbers below cite the code constant that holds them, so the value has one home.
 
 ## 🏛️ Components & Data Flow
-AIKit is seven standard-library CLIs in `scripts/` plus the files they read and write. No CLI imports another (PRINCIPLE-009 R5); `services.md` lists each one's responsibility and gate.
+AIKit is standard-library CLIs in `scripts/` plus the project CLI `aikit.py` and the files they read and write. No gate CLI imports another (PRINCIPLE-009 R5); `services.md` lists each one's responsibility and gate.
 
 ```text
 GUIDELINES.md ──sync_principles.py──▶ AGENTS.md, CLAUDE.md, GEMINI.md, .cursorrules,

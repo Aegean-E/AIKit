@@ -55,20 +55,22 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def fsync_dir(dir_path: Path) -> None:
+def fsync_dir(dir_path: Path) -> bool:
     """Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).
 
     No-op on win32, which exposes no directory handle to sync. Kept local to preserve this
     script's standalone clone-and-run execution (PRINCIPLE-011) with zero cross-script imports.
     """
     if sys.platform == "win32":
-        return
+        return True
     fd = None
     try:
         fd = os.open(str(dir_path), os.O_RDONLY)
         os.fsync(fd)
+        return True
     except OSError as e:
         sys.stderr.write(f"[WARN] Could not fsync directory {dir_path}: {e}\n")
+        return False
     finally:
         if fd is not None:
             try:
@@ -651,12 +653,24 @@ def _adr_blocks(decisions: str) -> Dict[str, str]:
             re.finditer(r"^### (ADR-\d+):(.*?)(?=^### ADR-|\Z)", decisions, re.M | re.S)}
 
 
+def checklist_sections(ssot_text: str) -> str:
+    """Extract Pre-Flight and Post-Flight checklist text if present."""
+    matches = re.findall(r"^###\s*[🛫🛬]?\s*(?:Pre-Flight|Post-Flight) Checklist.*?(?=^###|\Z)",
+                         ssot_text, re.M | re.S)
+    return "\n".join(matches)
+
+
 def changed_principles(old_text: str, new_text: str) -> List[str]:
-    """Principles whose `### PRINCIPLE-NNN:` section differs between two texts (PRINCIPLE-000 R3)."""
+    """Principles whose `### PRINCIPLE-NNN:` section or governed checklists differ (PRINCIPLE-000 R3)."""
     def norm(section: Optional[str]) -> Optional[str]:
         return None if section is None else "\n".join(l.rstrip() for l in section.strip().splitlines())
     old, new = principle_sections(old_text), principle_sections(new_text)
-    return sorted(pid for pid in set(old) | set(new) if norm(old.get(pid)) != norm(new.get(pid)))
+    changed = sorted(pid for pid in set(old) | set(new) if norm(old.get(pid)) != norm(new.get(pid)))
+    if norm(checklist_sections(old_text)) != norm(checklist_sections(new_text)):
+        if "PRINCIPLE-001" not in changed and "PRINCIPLE-001" in (set(old) | set(new)):
+            changed.append("PRINCIPLE-001")
+            changed.sort()
+    return changed
 
 
 def cross_check_errors(old_text: str, new_text: str, old_decisions: str, new_decisions: str) -> List[str]:

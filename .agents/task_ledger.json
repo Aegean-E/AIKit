@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "post-commit-verify",
+    "task_id": "aikit-core-fixes",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792425214.7784297,
-    "completed_at": 1792425250.5912492
+    "updated_at": 1792439862.3926625,
+    "completed_at": 1792440709.780546
   },
   "checkpoints": [
-    {
-      "task_id": "test-duration-budgets",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] measurement invalidated the first plan: no implementation started, decision is with the user. Unit 1.21s/317 tests is 1047 real file opens (0.37s); cached repo reads save only 55ms of the 250-450ms gap, and the rest is ledger atomicity/locking I/O that PRINCIPLE-013 requires to be real. Integration 7.76s/45 tests has a 3.49s floor from 35 real CLI spawns (100ms each) plus real git work; the slowest test already uses a trivial nested test command. Neither tier reaches its budget by removing waste alone.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792393160.6211498,
-      "timestamp_str": "2026-10-19 09:59:20",
-      "impact_assessment": {
-        "why": "PRINCIPLE-003 requires the plan to rest on measurement, and the measurement refuted the caching lever before any file was edited",
-        "benefits": "no speculative refactor was committed; the remaining routes are named with numbers so the user can choose",
-        "risks": "contract: closing the gap now needs either weaker atomicity tests (PRINCIPLE-014 needs user approval plus an ADR) or an amended budget in PRINCIPLE-010/014 (PRINCIPLE-000 R3 cross-principle check); dependency: none; concurrency: none; state: task stays in_progress with zero edits, so the tree is still the committed b4f9582",
-        "mitigation": "stop at Phase 2, report the measurements and the three routes, and re-plan as a new [1/M] checkpoint once the user picks one"
-      }
-    },
-    {
-      "task_id": "test-duration-budgets",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] scripts/check_test_budgets.py runs both tiers and enforces a per-test average, with failing-first tests pinning the breach path; [2/4] amend PRINCIPLE-010 and PRINCIPLE-014 to per-test budgets naming the gate, then sync_principles regenerates the 8 Tier 1 targets, the README table and SKILL.md; [3/4] README gate table and tree, runbook Phase 4 list, ADR-144 with its cross-principle check, knowledge base refresh; [4/4] Phase 4 gates and delivery",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792393560.4528847,
-      "timestamp_str": "2026-10-19 10:06:00",
-      "impact_assessment": {
-        "why": "the user chose route B: the absolute per-suite wall clock (<1s, <5s) cannot hold as the suite grows, and nothing measured it, so the overrun drifted in unnoticed; a per-test average preserves the intent of fast feedback and is enforceable",
-        "benefits": "budgets become measured instead of assumed; the gate reports the per-test average on every run; unit 3.59-5.84ms and integration 169.6-176.5ms both pass with headroom",
-        "risks": "contract: this relaxes a stated budget, so the ADR must name the user's approval (PRINCIPLE-014 R3) and carry a cross-principle check over all 20 principles (PRINCIPLE-000 R3); dependency: standard library only; concurrency: the gate must not run the tiers twice per Phase 4 or it doubles the cost it measures; state: the gate only reads, it writes no ledger or repository file",
-        "mitigation": "ceilings set from three measured runs including a cold-cache outlier (8ms and 200ms, 37% and 13% headroom); the gate becomes the single way Phase 4 runs the tiers rather than an extra run; PRINCIPLE-018 R3 item (1) still reads 'both test tiers pass', so its text needs no edit"
-      }
-    },
-    {
-      "task_id": "test-duration-budgets",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'test-duration-budgets' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792394256.9918854,
-      "timestamp_str": "2026-10-19 10:17:36"
-    },
     {
       "task_id": "review-fixes-2",
       "phase": "in_progress",
@@ -227,6 +186,41 @@
       "status": "completed",
       "timestamp": 1792425250.5912507,
       "timestamp_str": "2026-10-19 18:54:10"
+    },
+    {
+      "task_id": "aikit-core-fixes",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] Planning and architectural design for AIKit core fixes",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792439857.4274745,
+      "timestamp_str": "2026-10-19 22:57:37",
+      "impact_assessment": {
+        "why": "Fix 11 confirmed bugs, performance bottlenecks, platform/encoding flaws, and static analysis gaps in core AIKit",
+        "benefits": "Resilient Windows execution under non-UTF8 locale, 100% accurate secret scanning on all Tier 1 targets, zero wasted subprocesses in --track, clean worktree recovery, tighter AST/reachability gates, and multi-IDE agent parity",
+        "risks": "contract: none, backwards compatible; dependency: none, stdlib only; concurrency: safe, lock atomicity preserved; state: task_ledger schema unchanged, clean temporary buffer sweeping expanded",
+        "mitigation": "Comprehensive unit tests in test_kit.py for all fixed behaviors; full Phase 4 gate verification triad before commit"
+      }
+    },
+    {
+      "task_id": "aikit-core-fixes",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/5] Implementing core platform and disruption recovery fixes",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792439862.3926625,
+      "timestamp_str": "2026-10-19 22:57:42"
+    },
+    {
+      "task_id": "aikit-core-fixes",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'aikit-core-fixes' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792440709.7805474,
+      "timestamp_str": "2026-10-19 23:11:49"
     }
   ]
 }

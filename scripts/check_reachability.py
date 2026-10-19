@@ -166,19 +166,51 @@ def collect_references(files: List[Path]) -> Set[str]:
 
 
 def find_unreachable(files: List[Path]) -> List[Tuple[str, str]]:
-    """Functions defined in production code with no production reference and no allowlist entry."""
-    defined = collect_definitions(files)
-    referenced = collect_references(files)
-    unreachable = []
-    for name, module in sorted(defined.items()):
-        if name in PUBLIC_API_ALLOWLIST:
-            continue
-        if name.startswith(DYNAMIC_DISPATCH_PREFIXES):
-            continue
-        # A definition always appears once as its own def; references are counted separately.
-        if name not in referenced:
-            unreachable.append((name, module))
-    return unreachable
+    """Functions defined in production code with no production reference outside themselves and no allowlist entry."""
+    refs_by_file: Dict[Path, Set[str]] = {}
+    for p in files:
+        s: Set[str] = set()
+        for n in module_nodes(p):
+            if isinstance(n, ast.Name):
+                s.add(n.id)
+            elif isinstance(n, ast.Attribute):
+                s.add(n.attr)
+            elif isinstance(n, ast.ImportFrom):
+                for a in n.names:
+                    s.add(a.name)
+        refs_by_file[p] = s
+
+    unreachable: List[Tuple[str, str]] = []
+    seen: Set[Tuple[str, str]] = set()
+    for p in files:
+        tree = parse_module(p)
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                name = node.name
+                if (name, p.name) in seen:
+                    continue
+                seen.add((name, p.name))
+                if name in PUBLIC_API_ALLOWLIST or name.startswith(DYNAMIC_DISPATCH_PREFIXES):
+                    continue
+                if any(name in refs_by_file[op] for op in files if op != p):
+                    continue
+                in_this_file_outside = False
+                for top in tree.body:
+                    if top is node:
+                        continue
+                    for n in ast.walk(top):
+                        if (isinstance(n, ast.Name) and n.id == name) or (
+                            isinstance(n, ast.Attribute) and n.attr == name
+                        ) or (
+                            isinstance(n, ast.ImportFrom) and any(a.name == name for a in n.names)
+                        ):
+                            in_this_file_outside = True
+                            break
+                    if in_this_file_outside:
+                        break
+                if not in_this_file_outside:
+                    unreachable.append((name, p.name))
+    return sorted(unreachable)
 
 
 def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:

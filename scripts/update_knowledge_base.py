@@ -60,20 +60,22 @@ MIN_PYTHON = (3, 10)
 FUNCTION_NODES = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
-def fsync_dir(dir_path: Path) -> None:
+def fsync_dir(dir_path: Path) -> bool:
     """Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).
 
     No-op on win32, which exposes no directory handle to sync. Kept local to preserve this
     script's standalone clone-and-run execution (PRINCIPLE-011) with zero cross-script imports.
     """
     if sys.platform == "win32":
-        return
+        return True
     fd = None
     try:
         fd = os.open(str(dir_path), os.O_RDONLY)
         os.fsync(fd)
+        return True
     except OSError as e:
         sys.stderr.write(f"[WARN] Could not fsync directory {dir_path}: {e}\n")
+        return False
     finally:
         if fd is not None:
             try:
@@ -463,7 +465,7 @@ _AIKIT_SUBCOMMAND = re.compile(r'(?:add_parser|project_command)\(\s*"([a-z][\w-]
 _FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
-_LAZY_MARKER = re.compile(r"#\s*(TODO|FIXME|XXX|HACK)\b")
+_LAZY_MARKER = re.compile(r"#\s*(TODO|FIXME|XXX|HACK)\b|#.*?\b(TODO|FIXME|XXX|HACK)(?:\([^)]*\))?:")
 _UNNAMED_SUPPRESSION = re.compile(r"#\s*(type:\s*ignore(?!\[)|noqa(?!\s*:))")
 _LAZY_WORDS = re.compile(r"TODO|FIXME|XXX|HACK|type:\s*ignore|noqa")
 _EXEMPT_DECORATORS = {"abstractmethod", "overload"}

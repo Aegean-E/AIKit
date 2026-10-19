@@ -1649,3 +1649,33 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `scripts/verify_commit.py` checks the commit out into a throwaway worktree under the system temp directory and runs the tiers, the four read-only gates and dogfood inside it, then removes the worktree in a `finally` block whether or not a gate failed. The secret scan reads the commit range, not the tree (ADR-145). PRINCIPLE-018 R7 requires it after each commit and before R4's push, so a bad commit is caught while R5's `git reset --soft HEAD^` still applies and the pushed history stays green for `git bisect`.
 - **Consequences**: About 15 seconds per commit (measured 14.5s), outside both test tiers. Writing it surfaced two real defects in itself: the first draft returned a bare SHA when no upstream resolved, and `git log -p <sha>` walks every commit reachable from it, so the scan covered the whole history and failed over the already-revoked key of ADR-133; this repository hit that because `@{u}` resolves as a name while `origin/main` has no local ref. `scanned_range` now returns `upstream..head`, else `parent..head`, and a bare SHA only for a root commit. The kit's own citation gate then refused the first commit of this work because the code cited R7 before R7 existed, which is why the rule and the script land together.
 - Cross-principle check: PRINCIPLE-001 (no conflict), PRINCIPLE-002 (no conflict), PRINCIPLE-003 (no conflict), PRINCIPLE-006 (no conflict), PRINCIPLE-007 (no conflict), PRINCIPLE-008 (no conflict), PRINCIPLE-010 (one extra ~15s run per commit, outside both test tiers; no conflict), PRINCIPLE-011 (R8 projects keep `aikit check --strict` as their equivalent; no conflict), PRINCIPLE-015 (R4 the worktree lives in the system temp directory, never in the repository), PRINCIPLE-016 (no conflict), PRINCIPLE-017 (no conflict), PRINCIPLE-018 (R7 added; R3 unchanged, R4's push now waits on it, R5 is the stated undo), PRINCIPLE-019 (the scan covers the commits the push would upload (ADR-145); no conflict).
+
+### ADR-150: Core Platform Reliability, Windows Parity, and Static Analysis Tightening
+- **Date**: 2026-10-19
+- **Status**: Accepted
+- **Context**: An end-to-end audit across core AIKit scripts and gates identified edge cases and platform-parity hazards:
+  1. `git_porcelain_status` did not specify UTF-8 encoding or replacement on decoding, causing crashes on Windows under non-UTF-8 code pages (`cp1254`).
+  2. `collect_working_changes` invoked redundant failing `git show HEAD:{path}` subprocesses on untracked files (`xy == "??"`).
+  3. `clean_dangling_temp_files` purged stale `*.tmp_*` buffers but omitted orphaned `*.steal_*` lock-steal files created during crash recovery.
+  4. `validate_conventional_commit` scope parsing rejected valid conventional commit scopes with commas (e.g. `feat(cli,rules):`) or scoped package identifiers (e.g. `fix(@aikit/core):`).
+  5. `check_secrets.py` scanned generated Tier 1 rules `.windsurfrules` and `.clinerules`, risking false-positive alarms on legitimate rule text.
+  6. `verify_commit.py` unconditionally invoked `git worktree remove` in a `finally:` block even if worktree creation failed, masking the root failure.
+  7. `check_reachability.py` counted intra-function self-references as valid call sites, failing to detect dead self-recursive functions without external callers.
+  8. `sync_principles.py` and `update_knowledge_base.py` `fsync_dir` had inconsistent return types.
+  9. `sync_principles.py` only checked principle bodies for changes, failing to detect edits to Pre-Flight and Post-Flight checklists in `GUIDELINES.md` to trigger PRINCIPLE-001 citations.
+  10. `update_knowledge_base.py` `_LAZY_MARKER` regex only matched markers anchored at `#\s*`, missing inline markers (`# Urgent: TODO: ...`).
+- **Decision**:
+  1. Decode subprocess git status with `encoding="utf-8", errors="replace"`.
+  2. Guard `git show HEAD:{path}` to skip untracked files (`xy != "??"`).
+  3. Expand `clean_dangling_temp_files` to sweep both `*.tmp_*` and `*.steal_*` files exceeding `TEMP_STALE_SECONDS`.
+  4. Broaden `validate_conventional_commit` scope regex to `r"^([a-z]+)(?:\(([a-zA-Z0-9_\-\./,@]+)\))?(!)?:\s+(.+)$"`.
+  5. Add `.windsurfrules` and `.clinerules` to `SKIP_PATH_PARTS`.
+  6. Guard worktree cleanup with `worktree_added = False` flag in `verify_commit.py`.
+  7. Refactor reachability analysis to measure external call sites per function definition and exclude intra-function recursive references.
+  8. Standardize `fsync_dir` to return `bool`.
+  9. Parse and track checklist changes in `sync_principles.py`, attributing diffs to `PRINCIPLE-001`.
+  10. Update `_LAZY_MARKER` to detect inline TODO/FIXME/XXX/HACK with optional scopes and colons.
+- **Consequences**:
+  Closes Windows-specific encoding vulnerabilities, cleans orphaned lock-steal remnants, prevents spurious secret-scanner alarms, and catches dead recursive functions. All unit and integration tests, rule sync checks, secret scans, reachability checks, and dogfood gates pass cleanly.
+- Cross-principle check: none required; no principle section changed. Serves PRINCIPLE-000, PRINCIPLE-001, PRINCIPLE-002, PRINCIPLE-003 (R4 platform parity, R7 AST gate), PRINCIPLE-006 (R5 temp/steal buffer cleanup), PRINCIPLE-007 (R3 lazy marker auditing), PRINCIPLE-010 (eliminates redundant git show calls), PRINCIPLE-013 (lock steal buffer lifecycle), PRINCIPLE-014 (reachability dead recursion detection), PRINCIPLE-018 (conventional commit scope spec compliance), PRINCIPLE-019 (secret scanner path skip list).
+

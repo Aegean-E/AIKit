@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `17`
 - **Total Classes**: `77`
-- **Total Top-Level Functions**: `241`
-- **Total Class Methods**: `452`
-- **Total Source Lines**: `12843`
+- **Total Top-Level Functions**: `242`
+- **Total Class Methods**: `454`
+- **Total Source Lines**: `12950`
 
 ---
 
@@ -93,7 +93,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `310` lines (`12450` bytes)
+**Size**: `342` lines (`13809` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -101,7 +101,7 @@
 - `def production_modules()` - *Production source files whose reachability is audited (excludes this checker itself).*
 - `def collect_definitions(files)` - *Map every top-level function name to the module that defines it.*
 - `def collect_references(files)` - *Every name referenced in production code, however it is reached.*
-- `def find_unreachable(files)` - *Functions defined in production code with no production reference and no allowlist entry.*
+- `def find_unreachable(files)` - *Functions defined in production code with no production reference outside themselves and no allowlist entry.*
 - `def collect_state_keys(files)` - *Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals or*
 - `def find_phantom_keys(files)` - *State keys read by production code that no production code ever writes.*
 - `def run_check(verbose)` - *Audit reachability and key round-trips, reporting tersely (PRINCIPLE-012 Rule 4).*
@@ -111,7 +111,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `463` lines (`20969` bytes)
+**Size**: `464` lines (`21021` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -155,7 +155,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1502` lines (`67652` bytes)
+**Size**: `1508` lines (`67845` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -334,7 +334,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `799` lines (`39805` bytes)
+**Size**: `813` lines (`40418` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -356,7 +356,8 @@
 - `def principle_sections(ssot_text)` - *Each `### PRINCIPLE-NNN:` section's text, ending at the next heading of level 2 or 3.*
 - `def citing_principles(ssot_text, pid)` - *The principles a change to `pid` must be checked against (PRINCIPLE-000 R3): those whose*
 - `def _adr_blocks(decisions)` - *ADR ID -> its text, for every `### ADR-NNN:` heading.*
-- `def changed_principles(old_text, new_text)` - *Principles whose `### PRINCIPLE-NNN:` section differs between two texts (PRINCIPLE-000 R3).*
+- `def checklist_sections(ssot_text)` - *Extract Pre-Flight and Post-Flight checklist text if present.*
+- `def changed_principles(old_text, new_text)` - *Principles whose `### PRINCIPLE-NNN:` section or governed checklists differ (PRINCIPLE-000 R3).*
 - `def cross_check_errors(old_text, new_text, old_decisions, new_decisions)` - *PRINCIPLE-000 R3 made decidable: every principle whose section changed since the last commit*
 - `def git_head_text(rel_path)` - *`rel_path` as committed at HEAD, or None when git, a commit or the file is missing.*
 - `def print_help()` - *Print command line usage for sync_principles.py.*
@@ -366,7 +367,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1004` lines (`46667` bytes)
+**Size**: `1006` lines (`46756` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -404,7 +405,7 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `187` lines (`8467` bytes)
+**Size**: `190` lines (`8555` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
@@ -505,7 +506,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4981` lines (`277494` bytes)
+**Size**: `5030` lines (`279859` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -734,10 +735,12 @@
   - Method `.test_entropy_separates_random_from_prose()`
   - Method `.test_agent_memory_free_text_is_scanned()`
   - Method `.test_gitignore_carries_the_credential_baseline()`
+  - Method `.test_skip_path_parts_includes_generated_rule_files()`
 - `class TestInvariantReachabilityShield` - *PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These*
   - Method `.setUp()`
   - Method `._write(name, source)`
   - Method `.test_detects_capability_with_zero_production_call_sites()`
+  - Method `.test_detects_self_recursive_function_with_no_external_callers()`
   - Method `.test_detects_state_key_read_with_no_producer()`
   - Method `.test_key_with_a_producer_is_not_flagged()`
 - `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*

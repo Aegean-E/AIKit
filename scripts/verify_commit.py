@@ -101,12 +101,14 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
 
     tree = Path(tempfile.mkdtemp(prefix="aikit_verify_"))
     worktree = tree / "commit"
+    worktree_added = False
     try:
         code, output = run(["git", "worktree", "add", "--detach", str(worktree), ref], repo)
         if code != 0:
             return 1, [f"Error: the commit {resolved} could not be checked out on its own.",
                        f"Why: `git worktree add` failed: {output[-300:]}",
                        "Fix: fix the git error above, then run this gate again."]
+        worktree_added = True
         failures = []
         for name, argv in gate_commands(secret_range):
             code, output = run(argv, worktree)
@@ -117,7 +119,8 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
                            [l for l in output.splitlines() if l.strip()][-FAILURE_TAIL_LINES:]]
     finally:
         # The worktree is removed whether or not a gate failed, and its registration with it.
-        run(["git", "worktree", "remove", "--force", str(worktree)], repo)
+        if worktree_added:
+            run(["git", "worktree", "remove", "--force", str(worktree)], repo)
         shutil.rmtree(tree, ignore_errors=True)
 
     if failures:
