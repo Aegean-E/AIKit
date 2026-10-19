@@ -1,84 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ledger-version-contract",
+    "task_id": "guideline-script-alignment",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792366038.0028322,
-    "completed_at": 1792366072.380304
+    "updated_at": 1792392307.3262107,
+    "completed_at": 1792392312.5615444
   },
   "checkpoints": [
-    {
-      "task_id": "free-providers",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'free-providers' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792251692.8866076,
-      "timestamp_str": "2026-10-17 18:41:32"
-    },
-    {
-      "task_id": "secret-leak-fix",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] remove the real key from the test fixture, add the bare-literal detector, P019 R1 fixture rule (ADR-133); [2/2] user revokes the key",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251844.3858414,
-      "timestamp_str": "2026-10-17 18:44:04",
-      "impact_assessment": {
-        "why": "a real Gemini key was committed inside a split test literal",
-        "benefits": "the fixture is fake and the scanner now catches split random literals",
-        "risks": "contract: scanner flags more literals; dependency: none; concurrency: none; state: key stays in private history until revoked",
-        "mitigation": "measured over all tracked files: one fake fixture flagged and pragma-marked; user told to rotate first"
-      }
-    },
-    {
-      "task_id": "secret-leak-fix",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2] committed; awaiting key revocation by the user",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251844.6404212,
-      "timestamp_str": "2026-10-17 18:44:04"
-    },
-    {
-      "task_id": "secret-leak-fix",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'secret-leak-fix' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792251844.7913458,
-      "timestamp_str": "2026-10-17 18:44:04"
-    },
-    {
-      "task_id": "project-publish",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] scripts/project_publish.py + aikit publish <name> [--public]: needs a commit, full secret scan of the project, gh auth; creates the project's own private GitHub repo (gh repo create --source --remote origin --push) or pushes to its existing origin; unit tests with an injected runner; [2/2] P011 R8 names publish; docs; ADR-134",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251972.249771,
-      "timestamp_str": "2026-10-17 18:46:12",
-      "impact_assessment": {
-        "why": "projects live only on this disk; the user wants each in its own GitHub repository",
-        "benefits": "one command backs up and shares a project in its own repo, private unless asked, never with a credential in it",
-        "risks": "contract: new publish command; dependency: gh CLI (declared optional, checked at run time); concurrency: none; state: creates a remote repository, which is outward-facing",
-        "mitigation": "private by default, secret scan of every tracked file first, no force push, refusal triads; tests never call gh"
-      }
-    },
-    {
-      "task_id": "project-publish",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "implementing [1/2]",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792251972.378404,
-      "timestamp_str": "2026-10-17 18:46:12"
-    },
     {
       "task_id": "project-publish",
       "phase": "in_progress",
@@ -243,6 +173,76 @@
       "status": "completed",
       "timestamp": 1792366072.3803058,
       "timestamp_str": "2026-10-19 02:27:52"
+    },
+    {
+      "task_id": "project-baseline-gates",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] strict check for clean tree and map presence; [2/4] project README canonical gate fix; [3/4] red-green tests and docs; [4/4] Phase 4 gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792368720.4265463,
+      "timestamp_str": "2026-10-19 03:12:00",
+      "impact_assessment": {
+        "why": "aikit check can pass on a dirty tree, then auto-push an older commit, and new projects fall back to an unrunnable aikit.py command from the project root",
+        "benefits": "delivery checks become honest, a dirty project is never pushed as tested, and new projects get a runnable canonical gate",
+        "risks": "contract: adds opt-in --strict behavior and changes only the generated README fallback; dependency: none; concurrency: audit reads git while agents edit, so dirty detection is advisory outside --strict; state: no project files touched",
+        "mitigation": "red-green tests for dirty/clean, map present/missing, ledger refusal, and rendered README; keep default check behavior compatible; no project edits"
+      }
+    },
+    {
+      "task_id": "project-baseline-gates",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/4]-[4/4] strict delivery gate, dirty-tree push guard, map baseline, project README canonical gate fix, tests/docs/ADR; 361 tests and dogfood green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792369453.7043014,
+      "timestamp_str": "2026-10-19 03:24:13"
+    },
+    {
+      "task_id": "project-baseline-gates",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'project-baseline-gates' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792369457.2015052,
+      "timestamp_str": "2026-10-19 03:24:17"
+    },
+    {
+      "task_id": "guideline-script-alignment",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] resolve P002 R5/P018 R3 and Tier1 enumeration; [2/4] separate functions/properties/methods in map; [3/4] regenerate maps and tests; [4/4] sync, ADR and Phase 4 gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792391850.0040736,
+      "timestamp_str": "2026-10-19 09:37:30",
+      "impact_assessment": {
+        "why": "verified subagent review found a real rule conflict and stale Tier 1 text, while the map mislabels totals and properties",
+        "benefits": "agents get one commit rule, one Tier 1 source of truth, and a structurally accurate codebase map",
+        "risks": "contract: P018 R3 and map output change; dependency: none; concurrency: maps are generated per workspace; state: no project source edits",
+        "mitigation": "update pinned tests with the rule text, regenerate every map, and run both tiers plus dogfood; keep timing and gate expansion for a separate batch"
+      }
+    },
+    {
+      "task_id": "guideline-script-alignment",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/4]-[4/4] P002/P018 conflict resolved, Tier 1 list de-duplicated, map functions/methods/properties separated, all five maps regenerated, ADR-143 and gates green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792392307.3262107,
+      "timestamp_str": "2026-10-19 09:45:07"
+    },
+    {
+      "task_id": "guideline-script-alignment",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'guideline-script-alignment' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792392312.5615473,
+      "timestamp_str": "2026-10-19 09:45:12"
     }
   ]
 }

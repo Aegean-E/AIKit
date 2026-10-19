@@ -74,7 +74,7 @@ def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
         "- **Runtime Prerequisites**: <FILL: each runtime this project needs and its minimum version>\n"
         "- **Canonical Regression Shield Gate**:\n"
         "  ```bash\n"
-        f"  {test_command or f'python aikit.py check {name}'}\n"
+        f"  {test_command or '<FILL: the command that runs the whole test suite from this project root>'}\n"
         "  ```\n\n"
         "### 🛠️ AIKit Commands (run from the AIKit folder)\n"
         "| Role | Command |\n"

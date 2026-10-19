@@ -138,6 +138,7 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     load_config,
+    render_project_readme,
     validate_name,
 )
 from scripts.check_secrets import (
@@ -686,10 +687,10 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         # Red-green pin: "paste the Quick Reference section" carried AIKit's own test modules into
         # adopter READMEs, and an unfilled placeholder satisfied the label check.
         template = (ROOT_DIR / README_TEMPLATE).read_text(encoding="utf-8")
-        tracked = ["README.md", "GUIDELINES.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules",
-                   ".github/copilot-instructions.md", ".agents/rules/principles.md",
-                   "knowledge/INDEX.md", "scripts/dogfood.py", "src/app.py"]
-        on_disk = set(tracked) | {".github", ".agents", "knowledge", "scripts", "src"}
+        tracked = ["README.md", "pyproject.toml", ".gitignore", ".aikit/project.json",
+                   ".aikit/guidelines.md", ".aikit/decisions.md", ".aikit/task_ledger.json",
+                   "src/app.py", "tests/test_app.py", "docs/usage.md"]
+        on_disk = set(tracked) | {".aikit", "src", "tests", "docs"}
 
         def script_source(rel):
             path = ROOT_DIR / rel
@@ -704,7 +705,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         filled = re.sub(r"<FILL: every runtime[^>]*>", "Python 3.11+ and `git`", template)
         filled = re.sub(r"<FILL: the one command[^>]*>", "python -m unittest discover tests", filled)
         filled = filled.replace("<FILL: repository name>/", "app/")
-        filled = re.sub(r"└── <FILL:[^>]*>", "└── src/", filled)
+        filled = filled.replace("<package>/", "src/")
+        filled = re.sub(r"└── <FILL:[^>]*>", "└── docs/", filled)
         self.assertEqual(audit(filled), [])
 
 
@@ -1650,7 +1652,7 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 "unless the user said not to commit; then it stops after Phase 4",
                 "MUST pass before the commit",
                 "It MUST NOT run `git add .`, `git add -A`, `git add --all`, `git add -u` or `git commit -a`",
-                "No hook enforces this; the agent MUST NOT commit until all three hold",
+                "except when the informed override of PRINCIPLE-002 R5 applies, the agent MUST NOT commit until all three hold",
                 "it runs `git rebase --abort` and asks the user",
                 "A branch without an upstream is pushed with `git push -u origin <branch>`",
                 "with remotes but none named `origin` it asks the user which to use",
@@ -3427,6 +3429,30 @@ class TestKnowledgeBase(unittest.TestCase):
         self.assertIn("parse_principles", func_names)
         self.assertIn("sync_all", func_names)
 
+    def test_ast_distinguishes_properties_from_methods(self):
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_ast_kind_"))
+        try:
+            source = temp_dir / "box.py"
+            source.write_text(
+                "class Box:\n"
+                "    @property\n"
+                "    def size(self):\n"
+                "        return 1\n"
+                "    def open(self):\n"
+                "        return True\n",
+                encoding="utf-8",
+            )
+            symbols = extract_python_symbols(source)
+            methods = {m["name"]: m["kind"] for m in symbols["classes"][0]["methods"]}
+            self.assertEqual(methods, {"size": "property", "open": "method"})
+            generated = generate_codebase_map(root=temp_dir)
+            self.assertIn("Total Top-Level Functions", generated)
+            self.assertIn("Total Class Methods", generated)
+            self.assertIn("Property `.size`", generated)
+            self.assertIn("Method `.open()", generated)
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
     def test_ast_strict_mode_fails_on_syntax_error(self):
         # Enforces PRINCIPLE-003: mechanical AST gate catches syntax errors
         temp_dir = Path(tempfile.mkdtemp(prefix="test_ast_"))
@@ -3922,6 +3948,56 @@ class TestProjectRegistry(unittest.TestCase):
             code, out, _ = self.run_cli("check", "pushapp", "--no-push")
             self.assertEqual(code, 0)
             mock_push.assert_not_called()
+
+    def _gate_result(self):
+        gate_res = mock.MagicMock()
+        gate_res.passed = True
+        gate_res.gate.name = "test"
+        gate_res.seconds = 0.1
+        gate_res.gate.source = "detected"
+        gate_res.gate.command = "dummy"
+        return gate_res
+
+    def test_dirty_check_skips_auto_push_and_strict_fails(self):
+        folder = self.make_folder(("core.py", "value = 1\n"))
+        attach_project(folder, "dirtyapp", test_command="python -c exit(0)", workspace=self.kit)
+        dirty_audit = {"modified_files": ["core.py"], "untracked_files": [], "ledger_error": None,
+                       "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty_audit), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
+            code, out, err = self.run_cli("check", "dirtyapp")
+            self.assertEqual(code, 0)
+            self.assertIn("skipping auto-push", err)
+            push.assert_not_called()
+
+            code, out, err = self.run_cli("check", "dirtyapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("uncommitted non-bookkeeping changes", out)
+            self.assertIn("not delivery-ready", err)
+
+    def test_strict_requires_a_codebase_map(self):
+        folder = self.make_folder(("core.py", "value = 1\n"))
+        attach_project(folder, "mapapp", test_command="python -c exit(0)", workspace=self.kit)
+        clean_audit = {"modified_files": [], "untracked_files": [], "ledger_error": None,
+                       "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean_audit):
+            code, out, _ = self.run_cli("check", "mapapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("codebase_map.md is missing", out)
+
+            (folder / ".aikit" / "codebase_map.md").write_text("# map\n", encoding="utf-8")
+            code, _, _ = self.run_cli("check", "mapapp", "--strict", "--no-push")
+            self.assertEqual(code, 0)
+
+    def test_rendered_readme_uses_a_project_test_command(self):
+        self.assertIn("<FILL: the command that runs the whole test suite",
+                      render_project_readme("app"))
+        self.assertIn("python -m unittest discover",
+                      render_project_readme("app", "python -m unittest discover"))
 
 
 

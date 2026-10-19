@@ -8,8 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `15`
 - **Total Classes**: `73`
-- **Total Functions / Methods**: `227`
-- **Total Source Lines**: `11894`
+- **Total Top-Level Functions**: `228`
+- **Total Class Methods**: `419`
+- **Total Source Lines**: `12015`
 
 ---
 
@@ -25,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `373` lines (`17357` bytes)
+**Size**: `409` lines (`19434` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -45,6 +46,7 @@
 - `def cmd_checkpoint(args)`
 - `def cmd_complete(args)`
 - `def cmd_clean(args)`
+- `def project_baseline_errors(project, audit)` - *The delivery baseline `--strict` requires; ordinary check reports these as warnings.*
 - `def cmd_check(args)`
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_publish(args)`
@@ -213,7 +215,7 @@
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
 - `class GateResult` - *One gate's outcome; `returncode` is -1 when the gate could not start or timed out.*
-  - Method `.passed()`
+  - Property `.passed`
 
 **Functions:**
 - `def _python_gates(root)`
@@ -248,7 +250,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `537` lines (`23485` bytes)
+**Size**: `537` lines (`23529` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -340,7 +342,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `975` lines (`44370` bytes)
+**Size**: `984` lines (`44940` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -466,7 +468,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4560` lines (`254201` bytes)
+**Size**: `4636` lines (`258207` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -753,6 +755,7 @@
   - Method `.test_update_and_validate_runs()`
   - Method `.test_codebase_map_freshness_stale_detection()`
   - Method `.test_ast_symbol_extraction()`
+  - Method `.test_ast_distinguishes_properties_from_methods()`
   - Method `.test_ast_strict_mode_fails_on_syntax_error()`
   - Method `.test_link_integrity_shield()`
 - `class TestConcurrencyAndResumptionCorrectness` - *Red-green defect pins for four invariants that reported green while broken in production*
@@ -802,6 +805,10 @@
   - Method `.test_new_with_publish_flag_calls_publish_project()`
   - Method `.test_status_displays_repo_url()`
   - Method `.test_check_triggers_auto_push_unless_opted_out()`
+  - Method `._gate_result()`
+  - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`
+  - Method `.test_strict_requires_a_codebase_map()`
+  - Method `.test_rendered_readme_uses_a_project_test_command()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`

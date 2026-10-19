@@ -3,33 +3,26 @@
 - **Runtime Prerequisites**: <FILL: every runtime and external program the project needs, each with its minimum version>
 - **Canonical Regression Shield Gate**:
   ```bash
-  <FILL: the one command that runs the whole test suite>
+  <FILL: the one command that runs the whole test suite from this project root>
   ```
 
-### 🛠️ AIKit Gates
+### 🛠️ AIKit Commands (run from the AIKit workspace root)
 | Role | Command |
 |---|---|
-| Resume after a cold start | `python scripts/disruption_recovery.py --resume` |
-| Classify the lifecycle track | `python scripts/disruption_recovery.py --track` |
-| Verify rule freshness | `python scripts/sync_principles.py --check` |
-| Verify AST map and README | `python scripts/update_knowledge_base.py --check` |
-| Reachability shield | `python scripts/check_reachability.py` |
-| Secret scan | `python scripts/check_secrets.py --staged` |
-| Dogfood gate | `python scripts/dogfood.py` |
+| Status, task and gates | `python aikit.py status <project>` |
+| Delivery check (clean tree + map) | `python aikit.py check <project> --strict` |
+| Repair memory and map, then check | `python aikit.py fix <project>` |
+| Resume an interrupted task | `python aikit.py resume <project>` |
 
 ## 📦 What's Inside
 
 ```text
 <FILL: repository name>/
 ├── README.md
-├── GUIDELINES.md
-├── AGENTS.md
-├── CLAUDE.md
-├── GEMINI.md
-├── .cursorrules
-├── .github/
-├── .agents/
-├── knowledge/
-├── scripts/
+├── pyproject.toml
+├── .gitignore
+├── .aikit/                  <- project memory: project, guidelines, decisions, ledger, map
+├── <package>/               <- project source
+├── tests/                   <- the project's own regression suite
 └── <FILL: every other tracked top-level file and directory, one line each>
 ```

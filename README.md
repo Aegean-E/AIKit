@@ -2,7 +2,7 @@
 
 > **AI governance, architecture principles & disruption recovery for any software project.**
 
-The AI governance system extracted from production development: engineering principles, power-cut recovery, living documentation and regression-shielded git workflows.
+The AI governance system extracted from production development: principles, power-cut recovery, documentation and regression-shielded workflows.
 
 
 ---
@@ -54,7 +54,7 @@ The AI governance system extracted from production development: engineering prin
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
 ├── LICENSE                             <- MIT Open Source License
-├── aikit.py                            <- Project CLI: new, attach, list, status, check, fix, delegate
+├── aikit.py                            <- Project CLI
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
 ├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
@@ -131,6 +131,7 @@ python aikit.py attach ../existing  # register a folder elsewhere; adds only .ai
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, open changes, last decision
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
+python aikit.py check my-app --strict  # delivery: clean tree + map
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first

@@ -122,6 +122,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = project_command("check", "run every gate of a project (its Phase 4)")
     check.add_argument("--no-push", action="store_true", help="skip pushing commits to remote origin after gates pass")
+    check.add_argument("--strict", action="store_true",
+                       help="require a clean non-bookkeeping tree and a codebase map before passing")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
     publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
@@ -267,6 +269,20 @@ def cmd_clean(args: argparse.Namespace) -> int:
     return 0
 
 
+def project_baseline_errors(project: Project, audit: dict) -> List[str]:
+    """The delivery baseline `--strict` requires; ordinary check reports these as warnings."""
+    errors: List[str] = []
+    if audit.get("ledger_error"):
+        errors.append("the project ledger declares a schema this AIKit cannot read")
+    if audit.get("git_missing"):
+        errors.append("the project is not a git repository, so a clean tree cannot be verified")
+    if audit.get("modified_files") or audit.get("untracked_files"):
+        errors.append("the project has uncommitted non-bookkeeping changes")
+    if find_python_files(project.path) and not (project.path / ".aikit" / "codebase_map.md").is_file():
+        errors.append("Python sources exist but .aikit/codebase_map.md is missing")
+    return errors
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
     results = run_gates(project.path, resolve_gates(project))
@@ -295,13 +311,33 @@ def cmd_check(args: argparse.Namespace) -> int:
         print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not detected.",
               file=sys.stderr)
         return 1
+
+    audit = run_disruption_audit(workspace_dir=project.path)
+    baseline_errors = project_baseline_errors(project, audit)
+    strict = bool(getattr(args, "strict", False))
+    for error in baseline_errors:
+        print(f"[{'FAIL' if strict else 'WARN'}] {error}")
+    if audit.get("ledger_error") or (strict and baseline_errors):
+        print("Error: the project is not delivery-ready.", file=sys.stderr)
+        print("Why: a passing gate run must describe the committed tree, not an unverified working copy.",
+              file=sys.stderr)
+        print("Fix: commit the non-bookkeeping changes, run `python aikit.py fix <name>` for a missing "
+              "map, or open the ledger with the AIKit version that wrote it; then rerun with --strict.",
+              file=sys.stderr)
+        return 1
+
+    dirty = bool(audit.get("modified_files") or audit.get("untracked_files"))
     if not getattr(args, "no_push", False):
-        push_code, push_report = auto_push_project(project.path, project.name)
-        if push_code == 0:
-            if push_report:
-                print(push_report)
+        if dirty:
+            print("[WARN] Uncommitted non-bookkeeping changes exist; skipping auto-push. "
+                  "Commit them and run `check --strict` before pushing.", file=sys.stderr)
         else:
-            print(f"[WARN] {push_report}", file=sys.stderr)
+            push_code, push_report = auto_push_project(project.path, project.name)
+            if push_code == 0:
+                if push_report:
+                    print(push_report)
+            else:
+                print(f"[WARN] {push_report}", file=sys.stderr)
     return 0
 
 

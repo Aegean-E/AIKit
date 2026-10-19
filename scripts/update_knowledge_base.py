@@ -188,10 +188,13 @@ def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Di
             methods = []
             for item in node.body:
                 if isinstance(item, FUNCTION_NODES):
+                    decorators = {ast.unparse(d).split(".")[-1] for d in item.decorator_list}
+                    kind = "property" if decorators & {"property", "cached_property"} else "method"
                     methods.append({
                         "name": item.name,
                         "args": render_signature(item, drop_self=True),
                         "is_async": isinstance(item, ast.AsyncFunctionDef),
+                        "kind": kind,
                         "docstring": ast.get_docstring(item)
                     })
             classes.append({
@@ -248,6 +251,7 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
 
     total_classes = 0
     total_functions = 0
+    total_methods = 0
     total_lines = 0
 
     modules_data = []
@@ -266,6 +270,7 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
 
         total_classes += c_count
         total_functions += f_count
+        total_methods += sum(len(c.get("methods", [])) for c in info.get("classes", []))
         total_lines += l_count
 
         modules_data.append((rel_path, info))
@@ -279,7 +284,8 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
     lines.append(f"## 📊 Codebase Metrics")
     lines.append(f"- **Total Python Modules**: `{len(modules_data)}`")
     lines.append(f"- **Total Classes**: `{total_classes}`")
-    lines.append(f"- **Total Functions / Methods**: `{total_functions}`")
+    lines.append(f"- **Total Top-Level Functions**: `{total_functions}`")
+    lines.append(f"- **Total Class Methods**: `{total_methods}`")
     lines.append(f"- **Total Source Lines**: `{total_lines}`")
     lines.append("")
     lines.append("---")
@@ -306,8 +312,11 @@ def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> s
                 c_doc = f" - *{c['docstring'].strip().split(chr(10))[0]}*" if c.get("docstring") else ""
                 lines.append(f"- `class {c_name}`{c_doc}")
                 for m in c.get("methods", []):
-                    args_str = ", ".join(m["args"])
                     m_doc = f" - *{m['docstring'].strip().split(chr(10))[0]}*" if m.get("docstring") else ""
+                    if m.get("kind") == "property":
+                        lines.append(f"  - Property `.{m['name']}`{m_doc}")
+                        continue
+                    args_str = ", ".join(m["args"])
                     m_kind = "async def " if m.get("is_async") else ""
                     lines.append(f"  - Method `{m_kind}.{m['name']}({args_str})`{m_doc}")
             lines.append("")
