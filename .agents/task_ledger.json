@@ -4,26 +4,11 @@
     "task_id": "post-commit-verify",
     "last_phase": "in_progress",
     "active_phase": 5,
-    "status": "in_progress",
-    "updated_at": 1792425214.7784297
+    "status": "completed",
+    "updated_at": 1792425214.7784297,
+    "completed_at": 1792425250.5912492
   },
   "checkpoints": [
-    {
-      "task_id": "test-duration-budgets",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] cached repo-source reader for the unit suite; [2/5] trim redundant spawns in the four slowest integration tests; [3/5] defer heavy CLI imports so every spawn and --help cost less; [4/5] enforcement chosen from measurements so the budgets cannot drift again; [5/5] regenerate maps, sync, ADR and Phase 4",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792393029.5740864,
-      "timestamp_str": "2026-10-19 09:57:09",
-      "impact_assessment": {
-        "why": "PRINCIPLE-010 and PRINCIPLE-014 budget the unit suite under 1s and integration under 5s; measured 1.21-1.45s and 7.76-8.21s, and no gate measures either, so the overrun drifted in unnoticed",
-        "benefits": "both suites back inside budget; every CLI spawn and --help cheaper (PRINCIPLE-011 R5); the budget becomes measurable instead of assumed",
-        "risks": "contract: no production behaviour may change, only test-side caching and import timing; dependency: stdlib only, no new imports in production modules; concurrency: a module-level cache must not leak state between tests or hide a stale read; state: deferring imports must not move a side effect out of module import that a command relies on",
-        "mitigation": "cache keyed by resolved path and read-only; run both suites plus dogfood after each milestone; grep every call site before moving an import and keep the moved import inside the function that uses it"
-      }
-    },
     {
       "task_id": "test-duration-budgets",
       "phase": "in_progress",
@@ -233,6 +218,15 @@
       "status": "in_progress",
       "timestamp": 1792425214.7784297,
       "timestamp_str": "2026-10-19 18:53:34"
+    },
+    {
+      "task_id": "post-commit-verify",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'post-commit-verify' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792425250.5912507,
+      "timestamp_str": "2026-10-19 18:54:10"
     }
   ]
 }
