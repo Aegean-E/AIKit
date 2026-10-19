@@ -356,11 +356,11 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] **Modularity & Layering Plan**: Is the architecture 4-layer decoupled with role protocols, zero-config DI, and zero circular imports (**PRINCIPLE-009**)?
 - [ ] **Performance & Resource Plan**: Is the solution designed for stream efficiency, non-blocking I/O, RAII cleanup, and lean dependencies (**PRINCIPLE-010**)?
 - [ ] **Friction & Accessibility Check**: Is it pure-stdlib clone-and-run, self-bootstrapping, zero-crash, and headless-ready (**PRINCIPLE-011**)?
-- [ ] **Code Conciseness & Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and code syntactically dense (**PRINCIPLE-012**)?
+- [ ] **Token Budget Plan**: Are prompt prefixes cache-aligned, tool outputs bounded, and every payload inside **PRINCIPLE-012**'s stated limits?
 - [ ] **Crash Resilience & Atomicity Plan**: Are state writes atomic, lock-retried, shadow-backed, schema-migrated, and ENOSPC-guarded (**PRINCIPLE-013**)?
 - [ ] **Test Coverage Plan**: Have I planned hermetic unit tests inside their per-test budget with RAII fixture cleanup, red-green defect pinning, and negative path coverage (**PRINCIPLE-014**)?
 - [ ] **Operational Dogfooding & Safety Plan**: Is there an interactive dogfooding plan with portable RAII process teardown, non-interactive stdin parity, safety jailing, and chaos fault injection (**PRINCIPLE-015**)?
-- [ ] **Knowledge Base Context**: Have I checked relevant guides in `knowledge/` and planned atomic doc updates for any schema or service changes (**PRINCIPLE-016**)?
+- [ ] **Knowledge Base Context**: Have I read the `knowledge/` document that covers each file I will change, and planned its update in the same commit (**PRINCIPLE-016**)?
 - [ ] **Rule Freshness Baseline**: Have I confirmed the rule sync and codebase map are fresh at cold start (`python scripts/sync_principles.py --check`, `python scripts/update_knowledge_base.py --check`) so pre-existing drift is never misattributed to my changes (**PRINCIPLE-017**)?
 - [ ] **Delivery Baseline & Rollback Path**: Is the working tree clean (`git status --short`) on a tracked branch with a known-good `HEAD` to recoil to via `git reset --soft` (**PRINCIPLE-018**)?
 - [ ] **Secret Exposure Plan**: Will any credential, token or auth header touch code, fixtures, logs, prompts or ledger free-text, and is it supplied by env/secret store and referenced only by name (**PRINCIPLE-019**)?
@@ -378,7 +378,7 @@ Principles follow the 5-step execution lifecycle (PRINCIPLE-002): Meta-Governanc
 - [ ] Is the architecture **4-layer decoupled with role protocols, zero-config DI, and immutable DTOs** (**PRINCIPLE-009**)?
 - [ ] Are code paths **stream-efficient, non-blocking, leak-free (RAII), and inside both tier budgets** (**PRINCIPLE-010**)?
 - [ ] Does the app maintain **clone-and-run accessibility, self-bootstrapping, and actionable errors** (**PRINCIPLE-011**)?
-- [ ] Is the code **token-frugal, prompt-cache aligned, tool-bounded, and syntactically dense** (**PRINCIPLE-012**)?
+- [ ] Does every payload, tool output and search result stay inside **PRINCIPLE-012**'s stated limits?
 - [ ] Are all state changes **crash-resilient, atomically written, shadow-backed, and schema-migrated** (**PRINCIPLE-013**)?
 - [ ] Have all **tests passed with 100% success under the Test Sanctity Invariant with zero working-tree pollution and RAII fixture reversion** (**PRINCIPLE-014**)?
 - [ ] Has **domain-specific operational dogfooding & chaos verification** passed in a sandboxed safety jail with portable process cleanup and stdin parity (**PRINCIPLE-015**)?

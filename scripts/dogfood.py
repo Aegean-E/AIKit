@@ -73,12 +73,12 @@ def terminate_process_tree(proc: "subprocess.Popen") -> None:
         # Last resort: at least kill the direct child rather than leaving it running.
         try:
             proc.kill()
-        except OSError:
+        except OSError:  # hygiene: allow the child is already gone; the tree teardown continues
             pass
     finally:
         try:
             proc.wait(timeout=PROC_TIMEOUT)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired:  # hygiene: allow the process was killed; waiting longer cannot help
             pass
 
 

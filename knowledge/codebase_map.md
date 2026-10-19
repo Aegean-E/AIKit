@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `16`
-- **Total Classes**: `75`
+- **Total Classes**: `76`
 - **Total Top-Level Functions**: `237`
-- **Total Class Methods**: `438`
-- **Total Source Lines**: `12434`
+- **Total Class Methods**: `442`
+- **Total Source Lines**: `12519`
 
 ---
 
@@ -58,7 +58,7 @@
 ### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
 > *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
 
-**Size**: `424` lines (`19143` bytes)
+**Size**: `438` lines (`20028` bytes)
 
 **Classes:**
 - `class Finding` - *One violation, addressed to the line a developer must change.*
@@ -75,7 +75,7 @@
 - `def _open_mode(call)` - *The literal mode of an open() call, or None when binary-ness is not decidable.*
 - `def _is_open_call(node)` - *Whether the node is a builtin `open(...)` or an object's `.open(...)` method call.*
 - `def check_open_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: text mode needs an explicit encoding and a with block.*
-- `def check_silent_except(rel, tree)` - *PRINCIPLE-000 R5: a broad handler whose whole body is pass hides the error.*
+- `def check_silent_except(rel, tree)` - *PRINCIPLE-000 R5: a handler that discards the error and does nothing hides the failure.*
 - `def _docstring_ids(tree)` - *Ids of docstring constants: prose may name any path without baking it into behaviour.*
 - `def _call_head(node)` - *The called function's final name: `Path` for Path(...), `join` for os.path.join(...).*
 - `def _direct_arguments(call)` - *Positional and keyword argument expressions of a call.*
@@ -155,7 +155,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1498` lines (`66815` bytes)
+**Size**: `1502` lines (`67652` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -212,7 +212,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `487` lines (`21780` bytes)
+**Size**: `487` lines (`21922` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -334,7 +334,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `799` lines (`39739` bytes)
+**Size**: `799` lines (`39805` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -366,7 +366,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `984` lines (`44940` bytes)
+**Size**: `1004` lines (`46667` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -492,7 +492,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4797` lines (`266951` bytes)
+**Size**: `4844` lines (`269486` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -850,6 +850,7 @@
   - Method `.test_subprocess_rules_are_decidable()`
   - Method `.test_only_imported_subprocess_names_count()`
   - Method `.test_startup_and_file_rules()`
+  - Method `.test_any_handler_that_only_discards_is_flagged()`
   - Method `.test_absolute_paths_only_when_they_reach_file_access()`
   - Method `.test_inline_allow_marker_needs_a_reason()`
   - Method `.test_asset_urls_skip_loopback_namespaces_and_marked_lines()`
@@ -915,6 +916,10 @@
   - Method `.test_unparseable_tier_output_fails_instead_of_reporting_zero()`
   - Method `.test_every_test_module_in_the_repository_has_a_budget()`
   - Method `.test_budget_errors_is_silent_when_every_tier_fits()`
+- `class TestChecklistWording` - *PRINCIPLE-000 R7 bans hedge words in "every rule added or changed", but the slices the*
+  - Method `.setUpClass()`
+  - Method `.test_checklists_contain_no_hedge_words()`
+  - Method `.test_every_checklist_item_cites_a_principle()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

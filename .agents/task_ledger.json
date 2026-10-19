@@ -5,18 +5,9 @@
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "in_progress",
-    "updated_at": 1792423924.3071313
+    "updated_at": 1792424391.5133595
   },
   "checkpoints": [
-    {
-      "task_id": "ledger-version-contract",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ledger-version-contract' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792366072.3803058,
-      "timestamp_str": "2026-10-19 02:27:52"
-    },
     {
       "task_id": "project-baseline-gates",
       "phase": "planning",
@@ -237,6 +228,16 @@
       "status": "in_progress",
       "timestamp": 1792423924.3071313,
       "timestamp_str": "2026-10-19 18:32:04"
+    },
+    {
+      "task_id": "review-fixes-2",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "[milestone 3/5] committed: any-discard except, README aikit parity, P009 R5 private attrs, checklist wording (ADR-147)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792424391.5133595,
+      "timestamp_str": "2026-10-19 18:39:51"
     }
   ]
 }

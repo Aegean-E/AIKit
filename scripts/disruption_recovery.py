@@ -25,7 +25,7 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, ValueError, OSError):
+    except (AttributeError, ValueError, OSError):  # hygiene: allow console encoding is cosmetic and no input is read
         pass  # documented default: keep the console's own encoding (cosmetic; no input is read)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -124,10 +124,10 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
                     # Exactly one racer wins the rename; the winner clears its claim and retries.
                     try:
                         claim.unlink(missing_ok=True)
-                    except OSError:
+                    except OSError:  # hygiene: allow best-effort claim cleanup; the loop retries and a timeout raises
                         pass
                     continue
-            except OSError:
+            except OSError:  # hygiene: allow the poll loop retries; a lock timeout raises the triad
                 pass
             time.sleep(poll_interval)
 
@@ -137,7 +137,7 @@ def file_lock(lock_path: Path, timeout_seconds: float = 3.0, poll_interval: floa
         if acquired:
             try:
                 lock_file.unlink(missing_ok=True)
-            except OSError:
+            except OSError:  # hygiene: allow best-effort unlink; a stale lock is broken by age
                 pass
 
 
@@ -203,7 +203,7 @@ def fsync_dir(dir_path: Path) -> bool:
         if fd is not None:
             try:
                 os.close(fd)
-            except OSError:
+            except OSError:  # hygiene: allow the fd is discarded here; the write already succeeded or raised
                 pass
 
 
@@ -323,7 +323,7 @@ def atomic_write_json(file_path: Path, data: Any, max_retries: int = 5, min_head
         if tmp_path.exists():
             try:
                 tmp_path.unlink()
-            except OSError:
+            except OSError:  # hygiene: allow temp cleanup only; the original failure re-raises
                 pass
         raise
 
@@ -344,7 +344,11 @@ def load_ledger(ledger_file: Optional[Path] = None) -> Dict[str, Any]:
                 return _read_ledger_file(bak_path)
             except UnsupportedLedgerVersion:
                 raise
-            except (OSError, ValueError):
+            except OSError:
+                raise  # the backup is there but unreadable: an I/O fault, not corruption (ADR-146)
+            except ValueError:  # hygiene: allow nothing readable remains to recover or report
+                # Corrupt backup and no main file: nothing is left to recover from, so the
+                # caller starts fresh.
                 pass
         return empty_ledger()
 
@@ -1404,7 +1408,7 @@ if __name__ == "__main__":
             if len(sys.argv) > pnidx + 1 and not sys.argv[pnidx + 1].startswith("--"):
                 try:
                     phase_num = int(sys.argv[pnidx + 1])
-                except ValueError:
+                except ValueError:  # hygiene: allow argv_value_errors already refused a non-numeric value with exit 2
                     pass
                     
         desc = ""

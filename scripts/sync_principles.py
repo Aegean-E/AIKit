@@ -73,7 +73,7 @@ def fsync_dir(dir_path: Path) -> None:
         if fd is not None:
             try:
                 os.close(fd)
-            except OSError:
+            except OSError:  # hygiene: allow the fd is discarded after the lock was released
                 pass
 
 

@@ -4157,7 +4157,25 @@ class TestProjectHygieneScan(unittest.TestCase):
         self.assertEqual(self.rules("with open('x', 'rb') as handle:\n    handle.read()\n"), set())
         self.assertEqual(self.rules("try:\n    pass\nexcept Exception:\n    pass\n"),
                          {"silent-except"})
-        self.assertEqual(self.rules("try:\n    pass\nexcept OSError:\n    pass\n"), set())
+
+    def test_any_handler_that_only_discards_is_flagged(self):
+        # ADR-147: the gate passed `except OSError: pass`, the commonest way a real failure is
+        # thrown away; this assertion previously required it to pass (PRINCIPLE-014 R2).
+        for body in ("pass", "return", "continue", "break"):
+            loop = "for x in []:\n    try:\n        pass\n    except OSError:\n        %s\n" % body
+            with self.subTest(typed=body):
+                expected = {"silent-except"} if body == "pass" else set()
+                self.assertEqual(self.rules(loop), expected)
+            broad = loop.replace("except OSError", "except Exception")
+            with self.subTest(broad=body):
+                self.assertEqual(self.rules(broad), {"silent-except"})
+        # A reason on the handler's own line is the documented exception; it needs real words.
+        self.assertEqual(self.rules("try:\n    pass\nexcept OSError:  # hygiene: allow best effort\n    pass\n"),
+                         set())
+        self.assertEqual(self.rules("try:\n    pass\nexcept OSError:  # hygiene: allow no\n    pass\n"),
+                         {"silent-except"})
+        # A handler that acts is never silent, however broad it is.
+        self.assertEqual(self.rules("try:\n    pass\nexcept Exception:\n    return report()\n"), set())
 
     def test_absolute_paths_only_when_they_reach_file_access(self):
         self.assertEqual(self.rules('with open("C:/Users/me/x.txt", encoding="utf-8") as f:\n    f.read()\n'),
@@ -4792,6 +4810,35 @@ class TestTestTierBudgetGate(unittest.TestCase):
 
     def test_budget_errors_is_silent_when_every_tier_fits(self):
         self.assertEqual(budget_errors([]), [])
+
+class TestChecklistWording(unittest.TestCase):
+    """
+    PRINCIPLE-000 R7 bans hedge words in "every rule added or changed", but the slices the
+    wording tests read stopped at the principle sections. The two checklists an agent actually
+    runs sat outside them and carried "concise", "dense" and "relevant" (ADR-147).
+    """
+
+    HEDGES = TestPrinciple001Unambiguity.HEDGES
+
+    @classmethod
+    def setUpClass(cls):
+        text = SSOT_MD.read_text(encoding="utf-8")
+        cls.section = text[text.index("## 🛠️ AI Task Checklists"):]
+
+    def test_checklists_contain_no_hedge_words(self):
+        for hedge in self.HEDGES:
+            with self.subTest(hedge=hedge):
+                self.assertNotIn(hedge, self.section,
+                                 f"a checklist item uses '{hedge}', which PRINCIPLE-000 R7 bans")
+
+    def test_every_checklist_item_cites_a_principle(self):
+        items = re.findall(r"^- \[ \] ([^\n]+)$", self.section, re.M)
+        self.assertGreater(len(items), 10, "both checklists must be in the slice")
+        for item in items:
+            with self.subTest(item=item[:50]):
+                self.assertRegex(item, r"PRINCIPLE-\d{3}",
+                                 "a checklist item names the principle it checks, so its verdict is traceable")
+
 
 if __name__ == "__main__":
     unittest.main()

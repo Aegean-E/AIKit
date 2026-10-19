@@ -196,15 +196,29 @@ def check_open_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
 
 
 def check_silent_except(rel: str, tree: ast.Module) -> Iterable[Finding]:
-    """PRINCIPLE-000 R5: a broad handler whose whole body is pass hides the error."""
+    """
+    PRINCIPLE-000 R5: a handler that discards the error and does nothing hides the failure.
+    Flagged: any `except ...: pass`, whatever it catches, and a broad handler (bare, `Exception`
+    or `BaseException`) whose whole body is a lone `return`, `continue` or `break`. A typed
+    handler that skips an item is a decision, not a silence, so it is left alone. A deliberate
+    discard carries `hygiene: allow <reason>` on the handler's own line (ADR-147).
+    """
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ExceptHandler):
+        if not isinstance(node, ast.ExceptHandler) or len(node.body) != 1:
             continue
+        body = node.body[0]
         broad = node.type is None or (isinstance(node.type, ast.Name)
                                       and node.type.id in ("Exception", "BaseException"))
-        if broad and len(node.body) == 1 and isinstance(node.body[0], ast.Pass):
+        bare_exit = (isinstance(body, (ast.Continue, ast.Break))
+                     or (isinstance(body, ast.Return) and body.value is None))
+        if isinstance(body, ast.Pass):
+            caught = "a bare except" if node.type is None else f"`except {ast.unparse(node.type)}`"
             yield Finding(rel, node.lineno, "silent-except",
-                          "a broad except with only pass swallows every error (PRINCIPLE-000 R5)")
+                          f"{caught} with only pass discards the error (PRINCIPLE-000 R5)")
+        elif broad and bare_exit:
+            yield Finding(rel, node.lineno, "silent-except",
+                          f"a broad except with only {type(body).__name__.lower()} discards every "
+                          f"error (PRINCIPLE-000 R5)")
 
 
 def _docstring_ids(tree: ast.Module) -> Set[int]:

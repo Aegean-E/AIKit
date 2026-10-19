@@ -78,7 +78,7 @@ def fsync_dir(dir_path: Path) -> None:
         if fd is not None:
             try:
                 os.close(fd)
-            except OSError:
+            except OSError:  # hygiene: allow the fd is discarded after the write completed
                 pass
 
 
@@ -456,6 +456,10 @@ README_LABELS = (
 _TREE_LINE = re.compile(r"^((?:│   |    )*)(?:├── |└── )(.+)$")
 _SCRIPT_COMMAND = re.compile(r"python (scripts/[\w.]+\.py)([^`\n|]*)")
 _UNITTEST_COMMAND = re.compile(r"python -m unittest (tests\.\w+)")
+_AIKIT_COMMAND = re.compile(r"python aikit\.py (?:--workspace \S+ )?([a-z][\w-]*)")
+# The project CLI declares each subcommand once; parsed from source, never imported, because
+# `aikit_cli` imports this module (ADR-147).
+_AIKIT_SUBCOMMAND = re.compile(r'(?:add_parser|project_command)\(\s*"([a-z][\w-]*)"')
 _FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
@@ -492,7 +496,7 @@ def audit_lazy_code(source: str, rel: str) -> List[str]:
                     errors.append(f"{rel}:{token.start[0]}: '{token.string.strip()[:40]}' marks unfinished code")
                 if _UNNAMED_SUPPRESSION.search(token.string):
                     errors.append(f"{rel}:{token.start[0]}: suppression names no error code")
-        except (tokenize.TokenError, IndentationError, SyntaxError):
+        except (tokenize.TokenError, IndentationError, SyntaxError):  # hygiene: allow the AST gate reports an unparsable file with its own line
             pass  # the AST gate (PRINCIPLE-003 R7) reports unparsable files with file and line
     try:
         tree = parse_source(source, rel)
@@ -538,8 +542,9 @@ def audit_architecture(modules: Dict[str, str]) -> List[str]:
     """
     The parts of PRINCIPLE-009 and PRINCIPLE-010 every module can be checked against: no
     junk-drawer module name (P009 R1), a Protocol or ABC declares 1 to 5 methods (P009 R2), no
-    import cycle between the repository's own modules (P009 R5), every blocking subprocess call
-    has a timeout (P010 R3), and `open()` runs only in a `with` statement (P010 R4).
+    import cycle between the repository's own modules and no assignment to another object's
+    `_private` attribute (P009 R5), every blocking subprocess call has a timeout (P010 R3),
+    and `open()` runs only in a `with` statement (P010 R4).
     `modules` maps a module's dotted name to its source.
     """
     errors: List[str] = []
@@ -557,6 +562,16 @@ def audit_architecture(modules: Dict[str, str]) -> List[str]:
         managed = {id(item.context_expr) for node in ast.walk(tree)
                    if isinstance(node, (ast.With, ast.AsyncWith)) for item in node.items}
         for node in ast.walk(tree):
+            # P009 R5: `other._x = v` reaches past a module's interface; `self`/`cls` is its own.
+            if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets:
+                    if (isinstance(target, ast.Attribute) and target.attr.startswith("_")
+                            and not target.attr.startswith("__")
+                            and getattr(target.value, "id", None) not in ("self", "cls", None)):
+                        owner = ast.unparse(target.value)
+                        errors.append(f"{name}:{target.lineno}: assigns to {owner}.{target.attr}, "
+                                      f"another object's private attribute (PRINCIPLE-009 R5)")
             if isinstance(node, ast.Call):
                 func = node.func
                 owner = getattr(getattr(func, "value", None), "id", "")
@@ -734,6 +749,11 @@ def audit_readme(
             continue
         errors += [f"README.md passes {flag} to {script}, which does not declare it (R3)"
                    for flag in _FLAG.findall(match.group(2)) if f'"{flag}"' not in source]
+    cli_source = script_source("scripts/aikit_cli.py")
+    if cli_source:
+        known = set(_AIKIT_SUBCOMMAND.findall(cli_source))
+        errors += [f"README.md runs 'python aikit.py {cmd}', which the CLI does not declare (R3)"
+                   for cmd in sorted(set(_AIKIT_COMMAND.findall(readme))) if cmd not in known]
     for module in _UNITTEST_COMMAND.findall(readme):
         if not exists(module.replace(".", "/") + ".py"):
             errors.append(f"README.md runs test module '{module}', which does not exist (R3)")
@@ -751,7 +771,7 @@ def check_readme(root: Path = ROOT_DIR) -> List[str]:
                                  text=True, encoding="utf-8", timeout=10)
         if listing.returncode == 0:
             tracked = [p for p in listing.stdout.split("\0") if p]
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError):  # hygiene: allow git is optional here; the caller prints the WARN that follows
         pass
     if tracked is None:
         print("[WARN] git is unavailable, so README tree completeness was not checked (PRINCIPLE-005 R5).")
