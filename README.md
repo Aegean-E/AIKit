@@ -38,6 +38,7 @@ The AI governance system extracted from production development: principles, powe
 | **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
 | **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress |
 | **Secret Scan Gate** | `python scripts/check_secrets.py --staged\|--commits <range> [--workspace <project>]` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
+| **Verify the Commit Itself** | `python scripts/verify_commit.py` | Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7) |
 | **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
 | **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
 | **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
@@ -100,7 +101,8 @@ portable_agent_kit/
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py              <- Uploads a project to its own GitHub repository
-│   └── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
+│   ├── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
+│   └── verify_commit.py                <- Verifies a commit alone in a throwaway worktree
 
 ├── tests/
 │   ├── test_kit.py                     <- Unit tier: in-process regression shield (<=8ms per test)
@@ -136,40 +138,30 @@ python aikit.py fix my-app          # restore memory/README, refresh map, then c
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8); a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
-### Step 1: Copy Governance Assets
-
-- Copy the source of truth and tooling; Tier 1 files are generated in Step 3, never copied:
-  ```bash
-  cd portable_agent_kit
-  mkdir -p /path/to/target/.agents
-  cp -r GUIDELINES.md scripts knowledge /path/to/target/
-  cp -r .agents/rules .agents/skills /path/to/target/.agents/
-  ```
-  Do **not** copy `tests/`, `.github/` or `.agents/task_ledger.json` (AIKit's own); the CLI gates above carry enforcement. Replace copied `knowledge/` documents with your project's, and copy `.agents/rules/readme_quickref.md.template` into your `README.md`, replacing `<FILL` placeholders.
-
-### Step 2: Move Your Own Agent Instructions into Tier 1B
-If the target already has instruction files, move project-specific rules into `.agents/rules/domain.md` (max 1,200 chars), then delete the originals. Sync injects the block into every generated file and never overwrites hand-authored files without a generated header (`[PROTECTED]`).
-
-### Step 3: Run Principle Synchronization
-Generate every Tier 1 file from `GUIDELINES.md`:
+The primary path is above: keep the project under `projects/`. To instead govern a repository in
+place, copy the source of truth and tooling into it and generate the rest:
 
 ```bash
-python scripts/sync_principles.py
+cd portable_agent_kit
+mkdir -p /path/to/target/.agents
+cp -r GUIDELINES.md scripts knowledge /path/to/target/
+cp -r .agents/rules .agents/skills /path/to/target/.agents/
+cd /path/to/target && python scripts/sync_principles.py && python scripts/update_knowledge_base.py
 ```
-This writes all 8 Tier 1 files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules`, `.clinerules`, `.agents/rules/principles.md`), each <=1,600 tokens including Tier 1B.
 
-### Step 4: Generate Your Knowledge Base
-Run the knowledge base AST scanner to automatically index your project's classes and functions:
-
-```bash
-python scripts/update_knowledge_base.py
-```
-This generates `knowledge/codebase_map.md` with every exported class, method, argument, and docstring.
-
+- **Do not copy** `tests/`, `.github/` or `.agents/task_ledger.json`: they are AIKit's own. The CLI
+  gates in the matrix above carry the enforcement.
+- Replace the copied `knowledge/` documents with your project's, and copy
+  `.agents/rules/readme_quickref.md.template` into your `README.md`, filling every `<FILL` placeholder.
+- If the target already has instruction files, move their project-specific rules into
+  `.agents/rules/domain.md` (max 1,200 chars) and delete the originals. Sync injects that block into
+  all 8 Tier 1 files and refuses to overwrite a hand-authored file (`[PROTECTED]`).
+- The two commands above generate the 8 Tier 1 files (each <=1,600 tokens including Tier 1B) and
+  `knowledge/codebase_map.md`, the AST catalogue of every class, method, argument and docstring.
 
 ---
 
@@ -215,7 +207,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
 | **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Rule sync (`scripts/sync_principles.py`); context budget check; schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
-| **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (`--validate-commit`) + adaptive push, unless the user opts out, never forced; explicit staging (zero `git add .`); pre-commit delivery triad (tests, read-only gates, staged diff); non-destructive recoil. |
+| **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (`--validate-commit`) + adaptive push, never forced; explicit staging (zero `git add .`); pre-commit delivery triad (tests, gates, diff); each commit verified alone pre-push (R7); non-destructive recoil. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
 <!-- principles:end -->
 ---

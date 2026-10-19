@@ -16,6 +16,7 @@ AIKit's services are its seven gate CLIs in `scripts/` plus the project CLI `aik
 | `check_project_hygiene.py` | Scans a project's Python source and static assets: shell/system/exec, non-portable subprocess, unencoded `open()`, any `except` that only discards the error, absolute paths, third-party asset URLs | exit 1 on a finding; built into `aikit check` (ADR-137) |
 | `project_publish.py` | Uploads a project's commits to its own GitHub repository (`gh repo create --private --source --remote origin --push`, or a push to an existing `origin`) and auto-pushes after a passing `aikit check`; both first scan exactly the commits they push (`check_secrets.py --commits`: the whole history for a new remote, `@{u}..HEAD` after) and refuse on a finding | `aikit publish` exits 1 on a refusal (ADR-134, ADR-145) |
 | `subagent_delegate.py` | Runs one OpenCode sub-agent (roles = `.opencode/agents/*.md`) supervised, stdin closed, with a timeout; reports a ledger changed during the run | `aikit delegate` exits 1 on timeout or a changed ledger (ADR-128) |
+| `verify_commit.py` | Checks a commit out into a throwaway worktree and runs the whole gate set there, so a commit that cannot stand alone is caught while it is still local | exit 1 on any failed gate, naming `git reset --soft HEAD^` (PRINCIPLE-018 R7, ADR-149) |
 | `dogfood.py` | Runs AIKit's CLIs as real processes in a sandbox: golden path, chaos, gates, `--help` budget | exit 1 on any failed track (PRINCIPLE-015) |
 
 ## 📋 Design Rules

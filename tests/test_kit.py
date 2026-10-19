@@ -115,6 +115,7 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.aikit_cli import main as aikit_main
+from scripts.verify_commit import scanned_range, verify_commit
 from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
 from scripts.project_publish import (
     auto_push_project,
@@ -1665,8 +1666,11 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                      "strictly prohibited"],
         },
         "PRINCIPLE-018": {
-            "rules": 6,
+            "rules": 7,
             "present": [
+                # ADR-149: the commit is verified on its own before it is pushed.
+                "the agent runs `python scripts/verify_commit.py`; the push follows only when it exits 0",
+                "the commit is a different tree whenever staging is a subset of it",
                 "unless the user said not to commit; then it stops after Phase 4",
                 "MUST pass before the commit",
                 "It MUST NOT run `git add .`, `git add -A`, `git add --all`, `git add -u` or `git commit -a`",
@@ -4869,6 +4873,108 @@ class TestChecklistWording(unittest.TestCase):
             with self.subTest(item=item[:50]):
                 self.assertRegex(item, r"PRINCIPLE-\d{3}",
                                  "a checklist item names the principle it checks, so its verdict is traceable")
+
+class TestPostCommitVerification(unittest.TestCase):
+    """PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149)."""
+
+    def runner(self, failing=(), worktree_fails=False):
+        """A scripted git/gate stand-in; records every call so order and cwd can be asserted."""
+        self.calls = []
+
+        def run(argv, cwd):
+            self.calls.append((argv, Path(cwd)))
+            joined = " ".join(str(a) for a in argv)
+            if "rev-parse --short" in joined:
+                return 0, "abc1234"
+            if "rev-parse HEAD@{u}" in joined:
+                return 0, "0000upstream"
+            if "rev-parse" in joined:
+                return 0, "9999head"
+            if "worktree add" in joined:
+                return (1, "fatal: invalid reference") if worktree_fails else (0, "")
+            for name in failing:
+                if name == "tiers" and "check_test_budgets" in joined:
+                    return 1, "[FAIL] tests.test_kit: the tier failed"
+                if name == "knowledge" and "update_knowledge_base" in joined:
+                    return 1, "[FAIL] codebase_map.md is stale"
+            return 0, "ok"
+        return run
+
+    def ran(self, fragment):
+        return [(argv, cwd) for argv, cwd in self.calls if any(fragment in str(a) for a in argv)]
+
+    def test_a_green_commit_passes_and_every_gate_runs_in_the_worktree(self):
+        code, report = verify_commit(repo=Path("/repo"), runner=self.runner())
+        self.assertEqual(code, 0, report)
+        self.assertIn("[OK] Commit abc1234 passes every gate on its own.", report)
+        added = self.ran("worktree")[0][0]
+        self.assertIn("--detach", added)
+        worktree = Path(added[added.index("--detach") + 1])
+        for gate in ("check_test_budgets", "sync_principles", "update_knowledge_base",
+                     "check_reachability", "check_secrets", "dogfood"):
+            with self.subTest(gate=gate):
+                calls = self.ran(gate)
+                self.assertTrue(calls, f"{gate} never ran")
+                self.assertEqual(calls[0][1], worktree, f"{gate} ran outside the worktree")
+
+    def test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas(self):
+        verify_commit(repo=Path("/repo"), runner=self.runner())
+        argv = self.ran("check_secrets")[0][0]
+        self.assertIn("--commits", argv)
+        self.assertEqual(argv[argv.index("--commits") + 1], "0000upstream..9999head",
+                         "a detached worktree cannot resolve @{u} or HEAD itself")
+
+    def test_the_scanned_range_is_what_this_verification_covers(self):
+        # ADR-149: the first draft returned a bare SHA when no upstream resolved, and
+        # `git log -p <sha>` means every commit reachable from it: the whole history, which is
+        # red forever because of the key ADR-133 records. This repository hit it: `@{u}` resolves
+        # as a name while `origin/main` has no local ref, so the bare-SHA branch was taken.
+        cases = {
+            "ahead of a resolvable upstream": ({"up": (0, "aaa"), "parent": (0, "ppp")}, "aaa..hhh"),
+            "upstream equal to the commit": ({"up": (0, "hhh"), "parent": (0, "ppp")}, "ppp..hhh"),
+            "upstream name without a local ref": ({"up": (128, "fatal"), "parent": (0, "ppp")}, "ppp..hhh"),
+            "a root commit": ({"up": (128, "fatal"), "parent": (128, "fatal")}, "hhh"),
+        }
+        for label, (replies, expected) in cases.items():
+            with self.subTest(case=label):
+                def run(argv, cwd, replies=replies):
+                    joined = " ".join(str(a) for a in argv)
+                    if "@{u}" in joined:
+                        return replies["up"]
+                    if joined.endswith("^"):
+                        return replies["parent"]
+                    return 0, "hhh"
+                self.assertEqual(scanned_range(Path("/repo"), "HEAD", run), expected)
+
+    def test_a_failing_gate_is_named_with_the_undo_that_fits_an_unpushed_commit(self):
+        code, report = verify_commit(repo=Path("/repo"), runner=self.runner(failing=("knowledge",)))
+        self.assertEqual(code, 1)
+        text = "\n".join(report)
+        self.assertIn("[FAIL] knowledge", text)
+        self.assertIn("codebase_map.md is stale", text, "the gate's own output is quoted")
+        self.assertIn("does not pass on its own: knowledge", text)
+        self.assertIn("git reset --soft HEAD^", text)
+        for part in ("Why:", "Fix:"):
+            self.assertIn(part, text)
+
+    def test_the_worktree_is_removed_even_when_a_gate_fails(self):
+        for failing in ((), ("tiers", "knowledge")):
+            with self.subTest(failing=failing):
+                verify_commit(repo=Path("/repo"), runner=self.runner(failing=failing))
+                removed = self.ran("remove")
+                self.assertTrue(removed, "the worktree was left behind")
+                self.assertIn("--force", removed[0][0])
+
+    def test_a_worktree_that_cannot_be_made_is_reported_not_passed(self):
+        code, report = verify_commit(repo=Path("/repo"), runner=self.runner(worktree_fails=True))
+        self.assertEqual(code, 1)
+        self.assertIn("could not be checked out on its own", "\n".join(report))
+        self.assertEqual(self.ran("dogfood"), [], "no gate runs when the checkout failed")
+
+    def test_a_ref_that_is_no_commit_is_refused(self):
+        code, report = verify_commit(repo=Path("/repo"), runner=lambda argv, cwd: (128, "fatal"))
+        self.assertEqual(code, 1)
+        self.assertIn("no commit to verify", report[0])
 
 
 if __name__ == "__main__":

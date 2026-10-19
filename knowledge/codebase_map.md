@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `16`
-- **Total Classes**: `76`
-- **Total Top-Level Functions**: `237`
-- **Total Class Methods**: `443`
-- **Total Source Lines**: `12550`
+- **Total Python Modules**: `17`
+- **Total Classes**: `77`
+- **Total Top-Level Functions**: `241`
+- **Total Class Methods**: `452`
+- **Total Source Lines**: `12843`
 
 ---
 
@@ -401,6 +401,19 @@
 
 ---
 
+### [`scripts/verify_commit.py`](scripts/verify_commit.py)
+> *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
+
+**Size**: `187` lines (`8467` bytes)
+
+**Functions:**
+- `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
+- `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the*
+- `def scanned_range(repo, ref, run)` - *The commits this verification covers, as resolved SHAs: everything past the upstream when one*
+- `def verify_commit(ref, repo, runner)` - *Run every gate against `ref` checked out on its own; returns (exit code, report lines).*
+
+---
+
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
@@ -492,7 +505,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `4875` lines (`271584` bytes)
+**Size**: `4981` lines (`277494` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -921,6 +934,16 @@
   - Method `.setUpClass()`
   - Method `.test_checklists_contain_no_hedge_words()`
   - Method `.test_every_checklist_item_cites_a_principle()`
+- `class TestPostCommitVerification` - *PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149).*
+  - Method `.runner(failing, worktree_fails)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
+  - Method `.ran(fragment)`
+  - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
+  - Method `.test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas()`
+  - Method `.test_the_scanned_range_is_what_this_verification_covers()`
+  - Method `.test_a_failing_gate_is_named_with_the_undo_that_fits_an_unpushed_commit()`
+  - Method `.test_the_worktree_is_removed_even_when_a_gate_fails()`
+  - Method `.test_a_worktree_that_cannot_be_made_is_reported_not_passed()`
+  - Method `.test_a_ref_that_is_no_commit_is_refused()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`
