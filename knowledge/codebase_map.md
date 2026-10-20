@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `17`
 - **Total Classes**: `77`
-- **Total Top-Level Functions**: `242`
-- **Total Class Methods**: `454`
-- **Total Source Lines**: `12950`
+- **Total Top-Level Functions**: `243`
+- **Total Class Methods**: `457`
+- **Total Source Lines**: `13076`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `409` lines (`19434` bytes)
+**Size**: `411` lines (`19510` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -274,7 +274,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `537` lines (`23529` bytes)
+**Size**: `600` lines (`25747` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -285,6 +285,7 @@
 **Functions:**
 - `def render_project_readme(name, test_command)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def seed_readme(project_root, name, test_command)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
 - `def node_runner(root)` - *The package manager the project's lockfile names: pnpm, yarn, or npm by default.*
@@ -367,7 +368,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1006` lines (`46756` bytes)
+**Size**: `1006` lines (`46774` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -506,7 +507,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5030` lines (`279859` bytes)
+**Size**: `5091` lines (`282615` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -540,6 +541,7 @@
 - `class TestPrinciple005ReadmeGate` - *PRINCIPLE-005: every README rule a program can decide is decided by `audit_readme`.*
   - Method `.audit(readme, tracked, exists)`
   - Method `.test_a_correct_readme_passes()`
+  - Method `.test_check_readme_uses_utf8_with_replace_on_git_listing()`
   - Method `.test_tree_paths_and_directories()`
   - Method `.test_a_dead_tree_path_fails()`
   - Method `.test_a_missing_top_level_entry_fails()`
@@ -844,6 +846,7 @@
   - Method `.run_cli(*argv)` - *`aikit` in-process against this test's kit; returns (exit code, stdout, stderr).*
   - Method `.stale(path)`
   - Method `.test_fix_restores_memory_and_readme_and_removes_only_stale_buffers()`
+  - Method `.test_fix_reconciles_omitted_tracked_files_in_readme_tree()`
   - Method `.test_project_ledger_commands_keep_the_impact_gate()`
   - Method `.test_workspace_is_explicit_never_the_working_directory()`
   - Method `.test_new_with_publish_flag_calls_publish_project()`
@@ -853,6 +856,7 @@
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`
+  - Method `.test_run_git_uses_utf8_encoding_with_replacement()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
   - Method `.setUp()`
   - Method `.project(files, gates)`

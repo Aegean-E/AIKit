@@ -39,6 +39,7 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     project_guidelines,
+    reconcile_readme_tree,
     seed_readme,
     write_memory,
 )
@@ -356,6 +357,7 @@ def cmd_fix(args: argparse.Namespace) -> int:
     fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
     if seed_readme(project.path, project.name, project.test_command):
         fixes.append("seeded README.md from the project template (complete it by hand)")
+    fixes += reconcile_readme_tree(project.path)
     fixes += [f"removed stale buffer {rel}" for rel in clean_dangling_temp_files(project.path)]
     if find_python_files(project.path):
         write_generated_file(memory / "codebase_map.md", generate_codebase_map(root=project.path, strict=False))

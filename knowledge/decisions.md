@@ -1689,3 +1689,17 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Trade-offs*: AIKit moves from a permissive license to a strong copyleft license; consumers who need MIT terms must use an earlier commit or request a separate grant.
 - Cross-principle check: PRINCIPLE-005 (README), PRINCIPLE-016 (ADR), PRINCIPLE-018 (commit and push).
 
+
+### ADR-152: Subprocess UTF-8 Parity and Mechanical README Tree Reconciliation
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: A cross-project operational audit of AIKit across six projects (Chronos, CyberPulse, Lattice, Pebble, Primordia, Tally) identified two platform and governance gaps:
+  1. `_run_git` in `scripts/project_registry.py` and `check_readme` in `scripts/update_knowledge_base.py` invoked `subprocess.run` with `text=True` but omitted explicit `encoding="utf-8", errors="replace"`. On Windows hosts with non-UTF-8 local code pages (`cp1254`, `cp1252`), non-ASCII paths, commit metadata or emojis (such as `🗺️` or `💡`) crashed child processes with `UnicodeDecodeError`.
+  2. Adding new root-level tracked files (e.g. `LICENSE`, `pyproject.toml`) caused `python aikit.py check` to strictly fail on `README.md tree omits tracked '<file>' (R5)`. Running `python aikit.py fix <project>` repaired codebase maps and missing memory, but omitted README tree repair, advising the user to run `aikit fix` in a circular loop.
+- **Decision**:
+  1. Enforce explicit `encoding="utf-8", errors="replace"` on `_run_git` in `scripts/project_registry.py` and `check_readme` in `scripts/update_knowledge_base.py`, achieving full Windows locale parity.
+  2. Implement `reconcile_readme_tree` in `scripts/project_registry.py` and wire it into `cmd_fix` in `scripts/aikit_cli.py`. When top-level tracked files are omitted from a project's README directory tree, `aikit fix` automatically inserts them at depth 0 immediately following `.gitignore` or `README.md`, preserving subdirectory tree structures and resolving gate drift in a single pass.
+- **Consequences**:
+  - *Positive*: Subprocess git calls across the entire suite are shielded against locale decode crashes on Windows. Projects experiencing root-level tracked file drift are automatically repaired by `python aikit.py fix <project>`. Chronos, Lattice, Pebble, and Tally all reach 4/4 passing Phase 4 gates.
+  - *Trade-offs*: None. `_run_git` and `cmd_fix` interfaces remain backward-compatible; unit tests verify both decoding resilience and README tree auto-reconciliation.
+- Cross-principle check: none required; no principle section changed. Serves PRINCIPLE-003 (R4 platform parity), PRINCIPLE-005 (R5 living README tree synchronization), PRINCIPLE-011 (actionable repair ergonomics), PRINCIPLE-014 (failing-first unit tests).

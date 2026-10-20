@@ -770,7 +770,7 @@ def check_readme(root: Path = ROOT_DIR) -> List[str]:
     tracked: Optional[List[str]] = None
     try:
         listing = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True,
-                                 text=True, encoding="utf-8", timeout=10)
+                                 text=True, encoding="utf-8", errors="replace", timeout=10)
         if listing.returncode == 0:
             tracked = [p for p in listing.stdout.split("\0") if p]
     except (OSError, subprocess.SubprocessError):  # hygiene: allow git is optional here; the caller prints the WARN that follows

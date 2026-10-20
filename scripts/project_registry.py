@@ -28,7 +28,7 @@ from scripts.disruption_recovery import (
     atomic_write_json,
     file_lock,
 )
-from scripts.update_knowledge_base import guideline_errors, write_generated_file
+from scripts.update_knowledge_base import check_readme, guideline_errors, write_generated_file
 
 PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
@@ -103,6 +103,69 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
         return False
     write_generated_file(readme, render_project_readme(name, test_command))
     return True
+
+
+def reconcile_readme_tree(project_root: Path, runner: Optional[Callable] = None) -> List[str]:
+    """
+    Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).
+    Returns a list of descriptions for files added to the tree.
+    """
+    readme_path = project_root / "README.md"
+    if not readme_path.is_file():
+        return []
+    if runner is None and not (project_root / ".git").exists() and not (project_root / ".git").is_file():
+        return []
+    findings = check_readme(project_root)
+    omitted: List[str] = []
+    for f in findings:
+        m = re.search(r"README\.md tree omits tracked '([^']+)' \(R5\)", f)
+        if m:
+            omitted.append(m.group(1))
+    if not omitted:
+        return []
+
+    top_omitted = [p for p in omitted if "/" not in p and (project_root / p).exists()]
+    if not top_omitted:
+        return []
+
+    text = readme_path.read_text(encoding="utf-8")
+    heading = re.search(r"^#+ .*What's Inside", text, re.M)
+    if not heading:
+        return []
+    fence = text.find("```text\n", heading.end())
+    if fence < 0:
+        return []
+    end_fence = text.find("```", fence + len("```text\n"))
+    if end_fence < 0:
+        return []
+
+    block = text[fence + len("```text\n"):end_fence]
+    lines = block.splitlines()
+    if len(lines) < 2:
+        return []
+
+    insert_idx = 1
+    for idx, line in enumerate(lines):
+        if line.startswith("├── .gitignore") or line.startswith("├── README.md"):
+            insert_idx = idx + 1
+
+    reconciled = []
+    new_lines = list(lines[:insert_idx])
+    for item in top_omitted:
+        if any(item in line for line in lines):
+            continue
+        suffix = "/" if (project_root / item).is_dir() else ""
+        new_lines.append(f"├── {item}{suffix}")
+        reconciled.append(item)
+
+    if not reconciled:
+        return []
+
+    new_lines.extend(lines[insert_idx:])
+    new_block = "\n".join(new_lines) + "\n"
+    new_text = text[:fence + len("```text\n")] + new_block + text[end_fence:]
+    write_generated_file(readme_path, new_text)
+    return [f"added '{item}' to README.md tree" for item in reconciled]
 
 
 SCHEMA_VERSION = 1
@@ -343,7 +406,7 @@ def _registered_names(workspace: Path, attached: Optional[Dict[str, str]] = None
 def _run_git(project_root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
     try:
         return subprocess.run(["git", *args], cwd=project_root, capture_output=True, text=True,
-                              timeout=GIT_TIMEOUT_SECONDS)
+                              encoding="utf-8", errors="replace", timeout=GIT_TIMEOUT_SECONDS)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ProjectError(
             f"`git {args[0]}` failed in {project_root}: {exc}",

@@ -128,6 +128,7 @@ from scripts.project_publish import (
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
+    _run_git,
     add_guideline,
     project_guidelines,
     ProjectError,
@@ -182,6 +183,7 @@ from scripts.update_knowledge_base import (
     README_MAX_CHARS,
     README_TEMPLATE,
     audit_readme,
+    check_readme,
     audit_adr_register,
     audit_lazy_code,
     audit_architecture,
@@ -644,6 +646,23 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
 
     def test_a_correct_readme_passes(self):
         self.assertEqual(self.audit(self.TREE), [])
+
+    def test_check_readme_uses_utf8_with_replace_on_git_listing(self):
+        folder = Path(tempfile.mkdtemp(prefix="test_check_readme_"))
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        (folder / "README.md").write_text("# title\n", encoding="utf-8")
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(["git", "ls-files", "-z"], 0, "README.md\0", "")
+            check_readme(folder)
+            mock_run.assert_called_once_with(
+                ["git", "ls-files", "-z"],
+                cwd=folder,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=10,
+            )
 
     def test_tree_paths_and_directories(self):
         self.assertEqual(parse_readme_tree(self.TREE), ["README.md", "scripts/", "scripts/tool.py", "docs/"])
@@ -4012,6 +4031,33 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("unfilled '<FILL:' placeholder", "".join(audit(readme)))
         self.assertEqual(audit(re.sub(r"<FILL:[^>]*>", "Python 3.10+ and git", readme)), [])
 
+    def test_fix_reconciles_omitted_tracked_files_in_readme_tree(self):
+        folder = self.make_folder(
+            ("README.md",
+             "# demo\n\n## ⚡ 30-Second Cold-Start Quick Reference\n"
+             "- **Runtime Prerequisites**: Python 3.10+\n"
+             "- **Canonical Regression Shield Gate**:\n  ```bash\n  python -m unittest discover\n  ```\n\n"
+             "## 📦 What's Inside\n\n```text\ndemo/\n"
+             "├── .gitignore\n"
+             "├── README.md\n"
+             "└── .aikit/\n```\n"),
+            ("LICENSE", "AGPL-3.0 text\n"),
+            (".gitignore", ".aikit/*.lock\n"),
+        )
+        (folder / ".git").mkdir()
+        attach_project(folder, "demoapp", workspace=self.kit)
+        with mock.patch("scripts.update_knowledge_base.subprocess.run") as mock_run, \
+             mock.patch("scripts.aikit_cli.cmd_check", return_value=0):
+            mock_run.return_value = subprocess.CompletedProcess(
+                ["git", "ls-files", "-z"], 0,
+                ".gitignore\0README.md\0LICENSE\0.aikit/project.json\0", ""
+            )
+            code, out, _ = self.run_cli("fix", "demoapp")
+        self.assertEqual(code, 0)
+        self.assertIn("added 'LICENSE' to README.md tree", out)
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn("LICENSE", readme)
+
     def test_project_ledger_commands_keep_the_impact_gate(self):
         folder = self.make_folder()
         attach_project(folder, "demo", workspace=self.kit)
@@ -4140,6 +4186,21 @@ class TestProjectRegistry(unittest.TestCase):
                       render_project_readme("app"))
         self.assertIn("python -m unittest discover",
                       render_project_readme("app", "python -m unittest discover"))
+
+    def test_run_git_uses_utf8_encoding_with_replacement(self):
+        folder = self.make_folder()
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(["git", "status"], 0, "clean", "")
+            _run_git(folder, "status")
+            mock_run.assert_called_once_with(
+                ["git", "status"],
+                cwd=folder,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=mock.ANY,
+            )
 
 
 
