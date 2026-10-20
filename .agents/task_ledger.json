@@ -1,40 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "aikit-core-fixes",
+    "task_id": "license-agpl-metadata-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792439862.3926625,
-    "completed_at": 1792440709.780546
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792511134.7508595
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-2",
-      "phase": "in_progress",
-      "phase_num": 1,
-      "description": "grounding: verified report; open items: publish scans working tree not pushed commits (auto-push scans nothing), load_ledger quarantines on OSError, retries non-transient errors, integration tier 200.11ms/test, narrow silent-except and README command parity, ungated private-attr ban, name-only chaos check, stale six in services.md",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792423077.1082764,
-      "timestamp_str": "2026-10-19 18:17:57"
-    },
-    {
-      "task_id": "review-fixes-2",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] check_secrets --commits <range>; publish and auto-push scan exactly the commits they push; [2/5] load_ledger raises on I/O errors instead of quarantining, os.replace retries only PermissionError; [3/5] gates: any-type except:pass and broad except with lone continue/break/return, README python aikit.py subcommands, P009 R5 private-attribute assignment; services.md six; checklist hedge words; [4/5] disk-full behavioural test, chaos coverage by exact test names; [5/5] integration tier back under its per-test ceiling; ADRs",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792423077.2664883,
-      "timestamp_str": "2026-10-19 18:17:57",
-      "impact_assessment": {
-        "why": "the verified review found gates weaker than their rules, and one upload path that can push a credential",
-        "benefits": "no push without scanning what is pushed; a locked ledger is never mistaken for a corrupt one; three rules become mechanical",
-        "risks": "contract: check_secrets gains --commits, hygiene and architecture gates flag more; dependency: none; concurrency: none; state: load_ledger now raises on unreadable files",
-        "mitigation": "failing-first tests for each; measure new findings over AIKit and all seven projects before tightening; no project file changed without its own gate run"
-      }
-    },
     {
       "task_id": "review-fixes-2",
       "phase": "in_progress",
@@ -221,6 +194,32 @@
       "status": "completed",
       "timestamp": 1792440709.7805474,
       "timestamp_str": "2026-10-19 23:11:49"
+    },
+    {
+      "task_id": "license-agpl-metadata-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Switch AIKit from MIT to AGPL-3.0: replace LICENSE with the canonical AGPL text, update the README license line, record ADR-151, run the full delivery gates, commit and push non-destructively",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792511024.609779,
+      "timestamp_str": "2026-10-20 18:43:44",
+      "impact_assessment": {
+        "why": "The project portfolio now uses AGPL-3.0, but AIKit itself, NeuralBeat and VoidFarer still expose MIT, Apache-2.0 and no license respectively, so the public repositories are inconsistent and GitHub cannot advertise the intended license",
+        "benefits": "One license across the portfolio, correct GitHub license detection, an explicit legal contract in every repository, and README/ADR records that match the shipped LICENSE",
+        "risks": "contract: AIKit moves from permissive MIT to copyleft AGPL-3.0; dependency: none; concurrency: another session may touch the shared root; state: no runtime state changes",
+        "mitigation": "Use the canonical AGPL-3.0 text already staged in agpl_text.txt, keep the change to LICENSE/README/ADR, run the full AIKit gate set, stage explicitly, and push only after the commit is verified; abort on unrelated working-tree drift"
+      }
+    },
+    {
+      "task_id": "license-agpl-metadata-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/1] LICENSE replaced with canonical AGPL-3.0, README license line updated, ADR-151 recorded; tests 388/388 pass; sync, knowledge, secrets, reachability and dogfood gates pass; PRINCIPLE-010 test-budget gate reports integration 216.13ms/test against a 200ms ceiling on this host, pre-existing and unrelated to this license-only change; checklists: passed with that budget item deferred",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792511134.7508595,
+      "timestamp_str": "2026-10-20 18:45:34"
     }
   ]
 }

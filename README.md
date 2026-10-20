@@ -53,7 +53,7 @@ The AI governance system extracted from production development: principles, powe
 ```text
 portable_agent_kit/
 ├── README.md                           <- This Integration & Setup Guide
-├── LICENSE                             <- MIT Open Source License
+├── LICENSE                             <- GNU AGPL-3.0 License
 ├── aikit.py                            <- Project CLI
 ├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)

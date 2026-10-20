@@ -1679,3 +1679,13 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   Closes Windows-specific encoding vulnerabilities, cleans orphaned lock-steal remnants, prevents spurious secret-scanner alarms, and catches dead recursive functions. All unit and integration tests, rule sync checks, secret scans, reachability checks, and dogfood gates pass cleanly.
 - Cross-principle check: none required; no principle section changed. Serves PRINCIPLE-000, PRINCIPLE-001, PRINCIPLE-002, PRINCIPLE-003 (R4 platform parity, R7 AST gate), PRINCIPLE-006 (R5 temp/steal buffer cleanup), PRINCIPLE-007 (R3 lazy marker auditing), PRINCIPLE-010 (eliminates redundant git show calls), PRINCIPLE-013 (lock steal buffer lifecycle), PRINCIPLE-014 (reachability dead recursion detection), PRINCIPLE-018 (conventional commit scope spec compliance), PRINCIPLE-019 (secret scanner path skip list).
 
+### ADR-151: Relicense AIKit to AGPL-3.0
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: The project portfolio now ships under AGPL-3.0, but AIKit itself still carried an MIT LICENSE, so the kit that generates and governs those projects advertised different terms from the projects it produces and from the rest of the portfolio.
+- **Decision**: Replace the MIT LICENSE with the canonical GNU Affero General Public License v3.0 text, update the README license line, and publish the change with the repository's existing AGPL-3.0 peers.
+- **Consequences**:
+  - *Positive*: One copyleft contract across the portfolio; GitHub detects AGPL-3.0 for the repository; downstream users see the same terms in LICENSE, README and project metadata.
+  - *Trade-offs*: AIKit moves from a permissive license to a strong copyleft license; consumers who need MIT terms must use an earlier commit or request a separate grant.
+- Cross-principle check: PRINCIPLE-005 (README), PRINCIPLE-016 (ADR), PRINCIPLE-018 (commit and push).
+
