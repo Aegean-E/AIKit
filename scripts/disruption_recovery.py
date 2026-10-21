@@ -1094,7 +1094,8 @@ TRACK_C_DOC_NAMES = frozenset({
 # Bookkeeping written by AIKit's own lifecycle commands. PRINCIPLE-002 R4 requires these writes,
 # so they must not move the track: before this, recording the mandated checkpoint alone turned a
 # documentation-only task into Track C.
-BOOKKEEPING_PATHS = frozenset({".agents/task_ledger.json", ".aikit/task_ledger.json"})
+BOOKKEEPING_PATHS = frozenset({".agents/task_ledger.json", ".aikit/task_ledger.json",
+                               ".aikit/ui_task.json", ".aikit/ui_task.json.bak"})
 
 
 def _ast_without_docstrings(source: str) -> str:

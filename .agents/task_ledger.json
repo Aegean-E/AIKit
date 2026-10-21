@@ -1,49 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "governance-evidence-v1",
+    "task_id": "ui-surface-guard-v1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792601767.7189853,
-    "completed_at": 1792601772.1114852
+    "updated_at": 1792604415.139823,
+    "completed_at": 1792604415.3215568
   },
   "checkpoints": [
-    {
-      "task_id": "post-commit-verify",
-      "phase": "in_progress",
-      "phase_num": 5,
-      "description": "[1/2]+[2/2] verify_commit.py and PRINCIPLE-018 R7 land together: the code cites R7, so the citation gate refused them apart (ADR-149)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792425214.7784297,
-      "timestamp_str": "2026-10-19 18:53:34"
-    },
-    {
-      "task_id": "post-commit-verify",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'post-commit-verify' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792425250.5912507,
-      "timestamp_str": "2026-10-19 18:54:10"
-    },
-    {
-      "task_id": "aikit-core-fixes",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Planning and architectural design for AIKit core fixes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792439857.4274745,
-      "timestamp_str": "2026-10-19 22:57:37",
-      "impact_assessment": {
-        "why": "Fix 11 confirmed bugs, performance bottlenecks, platform/encoding flaws, and static analysis gaps in core AIKit",
-        "benefits": "Resilient Windows execution under non-UTF8 locale, 100% accurate secret scanning on all Tier 1 targets, zero wasted subprocesses in --track, clean worktree recovery, tighter AST/reachability gates, and multi-IDE agent parity",
-        "risks": "contract: none, backwards compatible; dependency: none, stdlib only; concurrency: safe, lock atomicity preserved; state: task_ledger schema unchanged, clean temporary buffer sweeping expanded",
-        "mitigation": "Comprehensive unit tests in test_kit.py for all fixed behaviors; full Phase 4 gate verification triad before commit"
-      }
-    },
     {
       "task_id": "aikit-core-fixes",
       "phase": "in_progress",
@@ -233,6 +198,41 @@
       "status": "completed",
       "timestamp": 1792601772.111488,
       "timestamp_str": "2026-10-21 19:56:12"
+    },
+    {
+      "task_id": "ui-surface-guard-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Opt-in UI surface guard in AIKit plus user-approved README ceiling 22,500",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792604400.2744925,
+      "timestamp_str": "2026-10-21 20:40:00",
+      "impact_assessment": {
+        "why": "AI UI edits can drift outside a reviewed surface and compound on a broken baseline; dogfooding only detects process failures after the fact.",
+        "benefits": "Any project can bound UI edits to one committed surface with protected paths, a diff budget, a green baseline, an atomic task record and a backup-preserving abort; no browser or framework enters AIKit.",
+        "risks": "contract: new opt-in CLI and ui.json schema; dependency: stdlib plus project-declared commands; concurrency: atomic task state under file_lock; state: .aikit/ui_task.json is bookkeeping",
+        "mitigation": "Unit tests with injected git, one real-git integration test, CLI smoke test, ADR-158/159, map and full gate shield; no default gate change."
+      }
+    },
+    {
+      "task_id": "ui-surface-guard-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] UI guard and README ceiling delivered. checklists: passed; budgets 5.64ms/236.90ms within 8/250; map, principles, reachability, secrets and dogfood green.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792604415.139823,
+      "timestamp_str": "2026-10-21 20:40:15"
+    },
+    {
+      "task_id": "ui-surface-guard-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-surface-guard-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792604415.321559,
+      "timestamp_str": "2026-10-21 20:40:15"
     }
   ]
 }

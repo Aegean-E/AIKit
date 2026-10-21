@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `17`
-- **Total Classes**: `78`
-- **Total Top-Level Functions**: `252`
-- **Total Class Methods**: `469`
-- **Total Source Lines**: `13486`
+- **Total Python Modules**: `18`
+- **Total Classes**: `82`
+- **Total Top-Level Functions**: `278`
+- **Total Class Methods**: `487`
+- **Total Source Lines**: `14159`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `427` lines (`20448` bytes)
+**Size**: `485` lines (`23504` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -51,6 +51,7 @@
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_publish(args)`
 - `def cmd_delegate(args)`
+- `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
 
 ---
@@ -98,7 +99,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `342` lines (`13809` bytes)
+**Size**: `344` lines (`13983` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -160,7 +161,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1508` lines (`67845` bytes)
+**Size**: `1509` lines (`67926` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -217,7 +218,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `506` lines (`22944` bytes)
+**Size**: `506` lines (`22982` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -370,6 +371,43 @@
 
 ---
 
+### [`scripts/ui_contract.py`](scripts/ui_contract.py)
+> *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
+
+**Size**: `433` lines (`20076` bytes)
+
+**Classes:**
+- `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
+
+**Functions:**
+- `def _error(message, why, fix, exit_code)`
+- `def _tail(output)`
+- `def _valid_pattern(pattern)`
+- `def _path_list(raw, field)`
+- `def load_contract(root)` - *Load and validate the project's committed UI contract.*
+- `def _matches(path, patterns)`
+- `def _is_bookkeeping(path)`
+- `def parse_status(text)` - *(XY, path) pairs from `git status --porcelain=v1 -z`, renames expanded to both paths.*
+- `def _git(root, args, git_io)`
+- `def _git_ok(root, args, git_io)`
+- `def _tracked(root, git_io)`
+- `def _changes(root, git_io)`
+- `def _head(root, git_io)`
+- `def _run_fast(contract, root, runner)`
+- `def _task_path(root)`
+- `def read_task(root)` - *The open UI task record, refusing a missing or unreadable one.*
+- `def _task_error(message, fix)`
+- `def begin(root, surface, git_io, shell_runner)` - *Open a bounded task for one named surface, from a clean, green baseline.*
+- `def _diff_lines(root, baseline, git_io)`
+- `def _line_count(path)`
+- `def _budget_findings(root, changes, contract, task, git_io)`
+- `def verify(root, git_io, shell_runner)` - *Check the open task's scope, contract, baseline, budget and fast proof command.*
+- `def finish(root, git_io, shell_runner)` - *Close a task only after a successful verify.*
+- `def abort(root, git_io)` - *Restore only the surface to its baseline, preserving and reporting everything else.*
+- `def status(root, git_io)` - *The open task, its baseline and the paths changed under it right now.*
+
+---
+
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
@@ -424,7 +462,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `991` lines (`48325` bytes)
+**Size**: `1045` lines (`51069` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -499,6 +537,11 @@
   - Method `.test_check_passes_clean_and_fails_on_a_third_party_asset()`
   - Method `.test_artifact_scan_reads_a_real_untracked_file_list()`
   - Method `.test_artifact_scan_is_scoped_to_a_subdirectory_workspace()`
+- `class TestUiContractGate` - *The UI guard bounds real git changes to one committed surface (ADR-158).*
+  - Method `.setUpClass()`
+  - Method `.tearDownClass()`
+  - Method `.setUp()`
+  - Method `.test_bounds_edits_and_abort_restores_only_the_surface()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
@@ -518,7 +561,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5261` lines (`291954` bytes)
+**Size**: `5386` lines (`298239` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -898,6 +941,22 @@
   - Method `.test_artifact_scan_reports_missing_git_without_a_traceback()`
   - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
+- `class FakeGit` - *A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned.*
+  - Method `.__init__(status, head, tracked, diff)`
+  - Method `.__call__(root, args)`
+- `class TestUiContract` - *The UI guard's decidable parts: patterns, porcelain, contract loading and task records.*
+  - Method `.setUp()`
+  - Method `.write_contract(**overrides)`
+  - Method `.test_patterns_scope_surfaces_and_protected_paths()`
+  - Method `.test_porcelain_renames_expand_and_bookkeeping_is_ignored()`
+  - Method `.test_contract_accepts_a_utf8_bom_from_windows_editors()`
+  - Method `.test_contract_rejects_escaping_paths_and_bad_schema()`
+  - Method `.test_begin_refuses_an_unknown_surface_before_touching_git()`
+  - Method `.test_corrupt_task_record_names_the_abort_remedy()`
+  - Method `.test_cli_parses_every_ui_action()`
+  - Method `.test_verify_flags_protected_paths_and_a_moved_baseline()`
+  - Method `.test_finish_closes_only_a_green_task()`
+  - Method `.test_a_red_fast_command_increments_strikes_and_blocks_finish()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`

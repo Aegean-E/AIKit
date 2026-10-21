@@ -98,6 +98,7 @@ portable_agent_kit/
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── check_project_hygiene.py        <- Project source, asset & artifact hygiene scan
+│   ├── ui_contract.py                  <- Bounded UI-surface guard (opt-in .aikit/ui.json)
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py              <- Uploads a project to its own GitHub repository
@@ -134,11 +135,14 @@ python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
 python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts
+python aikit.py ui begin my-app --surface menu  # bound edits to one declared UI surface
+python aikit.py ui verify my-app       # scope, protected paths, budget, fast UI proof
+python aikit.py ui abort my-app        # restore only the surface; keep unrelated work
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command and file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline or a red proof.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
@@ -182,7 +186,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=20k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=22.5k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
 | **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit each `[milestone N/M]` once Phase 4 passes; failing work stays uncommitted, described by `--checkpoint`; `--complete` or `--reset` before switching tasks; `--clean` stale `.tmp_*`. |
 | **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan. |
 | **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger. |

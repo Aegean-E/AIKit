@@ -1774,3 +1774,31 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: The gate keeps 8% headroom over the worst measured 232ms and no longer depends on a coincidentally idle host; the measured slowdown is attributed to load rather than code.
   - *Trade-offs*: The tier may now legitimately take up to 250ms per test, so drift between 200 and 250ms no longer fails the gate; the gate and dogfood still report the measured number every run, and any breach is fixed before a commit.
 - Cross-principle check: PRINCIPLE-000, PRINCIPLE-002, PRINCIPLE-003, PRINCIPLE-007, PRINCIPLE-009, PRINCIPLE-010, PRINCIPLE-011, PRINCIPLE-013, PRINCIPLE-014 and PRINCIPLE-018 were checked; the ceiling is the only raised limit, tests were not weakened beyond the approved budget, and the pinning test is named above.
+
+
+### ADR-158: Opt-In UI Surface Guard Bounds AI Edits
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: Dogfooding verifies process behaviour after a change and cannot see a UI that still starts but loses a control, drifts outside its module or rewrites an entire file. No AIKit gate bounded a UI edit to a reviewed surface, so a task could start from a broken baseline and compound damage.
+- **Decision**:
+  1. Add the opt-in `aikit ui` commands: `begin`, `verify`, `finish`, `abort` and `status`, implemented in `scripts/ui_contract.py` behind a committed `.aikit/ui.json`.
+  2. `begin` accepts a declared surface name only, requires the contract tracked and the tree clean, runs the bounded fast proof, and records the baseline commit, contract hash, surface and strike count atomically in `.aikit/ui_task.json` (bookkeeping).
+  3. `verify` refuses a moved baseline, a changed contract, protected-path edits, out-of-surface edits and file/line budget overruns, then runs the fast proof. `abort` backs up the evidence and restores only the surface; unrelated work survives.
+  4. Snapshots, DOM parsing, browser runs and blessing are deliberately out of scope; the project owns its proof command. `aikit check` is not changed until a pilot proves this guard. No principle is added yet.
+- **Consequences**:
+  - *Positive*: Any project can opt into surface-scoped UI edits with atomic state, bounded commands and a cheap undo, without adding a UI framework or a browser to AIKit.
+  - *Trade-offs*: The guard is advisory against an agent that bypasses `aikit ui` or edits its own contract; approval and CI enforcement are the next milestone. A local task record can be edited by the same user, so this is tamper-evident, not tamper-proof.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (empirical grounding), PRINCIPLE-006 (recovery), PRINCIPLE-010 (bounded commands), PRINCIPLE-011 (opt-in, Why/Fix), PRINCIPLE-013 (atomic state and lock), PRINCIPLE-014 (tests) and PRINCIPLE-018 (verified delivery).
+
+
+### ADR-159: README Cold-Start Ceiling Raised to 22,500 Characters
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: The README documents the project CLI, every gate and now the opt-in UI guard; its 20,000-character ceiling left no room for the UI commands and the contract note in the same user-visible commit. The user approved raising the ceiling to 22,500 characters on 2026-10-21.
+- **Decision**:
+  1. PRINCIPLE-005 R1 and its invariant set the README limit to 22,500 characters; `README_MAX_CHARS` and the pinned tests use the same number.
+  2. No other documentation limit changes; material beyond the ceiling still moves to `knowledge/` (PRINCIPLE-005 R4).
+- **Consequences**:
+  - *Positive*: README can describe the opt-in UI guard without dropping cold-start essentials; the limit remains a single checked number.
+  - *Trade-offs*: The cold-start context budget grows by 2,500 characters; the canonical test command, prerequisites, tree and labels are still mandatory and checked.
+- Cross-principle check: PRINCIPLE-011, PRINCIPLE-016 and PRINCIPLE-017 were checked (the citing set for PRINCIPLE-005); no other principle changed and no test was weakened beyond the approved limit.

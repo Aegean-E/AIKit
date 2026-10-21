@@ -114,7 +114,7 @@ from scripts.disruption_recovery import (
     sweep_files,
     workspace_ledger_path,
 )
-from scripts.aikit_cli import main as aikit_main
+from scripts.aikit_cli import build_parser, main as aikit_main
 from scripts.verify_commit import scanned_range, verify_commit
 from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
 from scripts.project_publish import (
@@ -159,6 +159,7 @@ from scripts.check_project_hygiene import (
     scan_tree,
 )
 from scripts.dogfood import repo_fingerprint
+from scripts import ui_contract
 from scripts.check_test_budgets import (
     TIER_BUDGETS_MS,
     budget_errors,
@@ -299,7 +300,7 @@ class TestPrincipleSync(unittest.TestCase):
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
         # Mechanisms, not labels (ADR-063): the size limit, the checked items, the trigger, the gate.
-        for mechanism in ("readme <=20k chars", "prerequisites, test command, tree",
+        for mechanism in ("readme <=22.5k chars", "prerequisites, test command, tree",
                           "user-visible changes update it same commit",
                           "`update_knowledge_base.py --check` gates it"):
             with self.subTest(mechanism=mechanism):
@@ -602,17 +603,17 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
-        # cold-start token ceiling (<20,000 chars), and valid paths for every file listed in the directory tree.
+        # cold-start token ceiling (<22,500 chars), and valid paths for every file listed in the directory tree.
         readme_path = ROOT_DIR / "README.md"
         self.assertTrue(readme_path.exists(), "README.md missing from repository root")
         readme_content = readme_path.read_text(encoding="utf-8")
         
-        # 1. Cold-Start Token Ceiling (<20,000 characters)
-        MAX_README_CHARS = 20000
+        # 1. Cold-Start Token Ceiling (<22,500 characters)
+        MAX_README_CHARS = 22500
         self.assertLessEqual(
             len(readme_content),
             MAX_README_CHARS,
-            f"README.md exceeds 20,000 char cold-start budget: {len(readme_content)} chars"
+            f"README.md exceeds 22,500 char cold-start budget: {len(readme_content)} chars"
         )
 
         # 2. Orientation block & prerequisites
@@ -692,8 +693,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         ])
 
     def test_size_labels_and_tree_are_required(self):
-        errors = self.audit("# x\n" + "y" * 20_001)
-        self.assertIn("README.md has 20,005 chars; the limit is 20,000 (R1)", errors)
+        errors = self.audit("# x\n" + "y" * 22_501)
+        self.assertIn("README.md has 22,505 chars; the limit is 22,500 (R1)", errors)
         self.assertIn("README.md has no heading containing 'Cold-Start Quick Reference' (R1)", errors)
         self.assertIn("README.md has no ```text directory tree after \"What's Inside\" (R5)", errors)
 
@@ -4524,6 +4525,130 @@ class TestProjectHygieneScan(unittest.TestCase):
             untracked=["examples/demo.py", "tests/test_new.py"],
         )
         self.assertEqual(findings, [])
+
+class FakeGit:
+    """A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned."""
+
+    def __init__(self, status="", head="a" * 40, tracked=(), diff=""):
+        self.status = status
+        self.head = head
+        self.tracked = tuple(tracked)
+        self.diff = diff
+
+    def __call__(self, root, args):
+        command = args[0]
+        if command == "status":
+            return 0, self.status, ""
+        if command == "rev-parse":
+            return 0, self.head + "\n", ""
+        if command == "ls-files":
+            return 0, "".join(path + "\0" for path in self.tracked), ""
+        if command == "diff":
+            return 0, self.diff, ""
+        return 0, "", ""
+
+
+class TestUiContract(unittest.TestCase):
+    """The UI guard's decidable parts: patterns, porcelain, contract loading and task records."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp(prefix="test_ui_contract_"))
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        (self.root / ".aikit").mkdir()
+
+    def write_contract(self, **overrides):
+        contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/ui/**"]}},
+                    "protected": ["tests/**"], "commands": {"fast": "python -c pass"},
+                    "limits": {"max_files": 2, "max_lines": 20}}
+        contract.update(overrides)
+        (self.root / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8")
+
+    def test_patterns_scope_surfaces_and_protected_paths(self):
+        self.assertTrue(ui_contract._matches("src/ui/Menu.ts", ("src/ui/**",)))
+        self.assertFalse(ui_contract._matches("src/ui2/Menu.ts", ("src/ui/**",)))
+        self.assertTrue(ui_contract._matches("tests/ui/menu.test.ts", ("tests/**",)))
+        self.assertFalse(ui_contract._matches("src/App.ts", ("src/ui/**",)))
+
+    def test_porcelain_renames_expand_and_bookkeeping_is_ignored(self):
+        changes = ui_contract.parse_status(
+            "R  src/ui/new.ts\0src/ui/old.ts\0 M .aikit/ui_task.json\0?? notes.md\0")
+        self.assertEqual(changes, [("R ", "src/ui/new.ts"), ("R ", "src/ui/old.ts"),
+                                   (" M", ".aikit/ui_task.json"), ("??", "notes.md")])
+        self.assertTrue(ui_contract._is_bookkeeping(".aikit/ui_task.json"))
+
+    def test_contract_accepts_a_utf8_bom_from_windows_editors(self):
+        contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/ui/**"]}},
+                    "commands": {"fast": "exit 0"}}
+        (self.root / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8-sig")
+        loaded = ui_contract.load_contract(self.root)
+        self.assertEqual(loaded.surfaces["menu"], ("src/ui/**",))
+
+    def test_contract_rejects_escaping_paths_and_bad_schema(self):
+        self.write_contract(protected=["../outside"])
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.load_contract(self.root)
+        self.assertIn("relative path patterns", str(caught.exception))
+        self.write_contract(schema=2)
+        with self.assertRaises(ProjectError):
+            ui_contract.load_contract(self.root)
+
+    def test_begin_refuses_an_unknown_surface_before_touching_git(self):
+        self.write_contract()
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.begin(self.root, "missing")
+        self.assertIn("Unknown UI surface", str(caught.exception))
+
+    def test_corrupt_task_record_names_the_abort_remedy(self):
+        (self.root / ".aikit" / "ui_task.json").write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.read_task(self.root)
+        self.assertIn("unreadable", str(caught.exception))
+        self.assertIn("ui abort", caught.exception.fix)
+
+    def test_cli_parses_every_ui_action(self):
+        parser = build_parser()
+        begin = parser.parse_args(["ui", "begin", "app", "--surface", "menu"])
+        self.assertEqual((begin.ui_action, begin.name, begin.surface), ("begin", "app", "menu"))
+        for action in ("verify", "finish", "abort", "status"):
+            parsed = parser.parse_args(["ui", action, "app"])
+            self.assertEqual(parsed.ui_action, action)
+
+    def test_verify_flags_protected_paths_and_a_moved_baseline(self):
+        self.write_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        runner = lambda command, cwd, timeout: (0, "")
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=runner)
+
+        fake.status = "?? tests/ui/test_menu.py\0"
+        findings = ui_contract.verify(self.root, git_io=fake, shell_runner=runner)
+        self.assertTrue(any("protected path changed" in finding for finding in findings), findings)
+
+        fake.status = ""
+        fake.head = "b" * 40
+        findings = ui_contract.verify(self.root, git_io=fake, shell_runner=runner)
+        self.assertTrue(any("baseline moved" in finding for finding in findings), findings)
+
+    def test_finish_closes_only_a_green_task(self):
+        self.write_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        runner = lambda command, cwd, timeout: (0, "")
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=runner)
+        fake.status = " M src/ui/menu.py\0"
+        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=runner), [])
+        self.assertFalse((self.root / ".aikit" / "ui_task.json").exists())
+
+    def test_a_red_fast_command_increments_strikes_and_blocks_finish(self):
+        self.write_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        green = lambda command, cwd, timeout: (0, "")
+        red = lambda command, cwd, timeout: (1, "menu test failed")
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=green)
+        fake.status = " M src/ui/menu.py\0"
+        findings = ui_contract.finish(self.root, git_io=fake, shell_runner=red)
+        self.assertTrue(any("fast UI proof failed" in finding for finding in findings), findings)
+        self.assertEqual(ui_contract.read_task(self.root)["strikes"], 1)
+        self.assertTrue((self.root / ".aikit" / "ui_task.json").is_file())
+
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""

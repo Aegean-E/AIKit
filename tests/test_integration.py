@@ -42,6 +42,7 @@ from scripts.check_reachability import (  # noqa: E402
 from scripts.update_knowledge_base import check_codebase_map_freshness, check_workspace, parse_source  # noqa: E402
 from scripts.project_gates import Gate, run_gates  # noqa: E402
 from scripts.aikit_cli import main as aikit_main  # noqa: E402
+from scripts import ui_contract  # noqa: E402
 from scripts.check_project_hygiene import scan_artifacts, scan_tree  # noqa: E402
 from scripts.project_registry import create_project, render_project_readme  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
@@ -73,7 +74,7 @@ def remove_tree(path: Path) -> None:
         try:
             os.chmod(target, stat.S_IWRITE)
             function(target)
-        except OSError:
+        except OSError:  # hygiene: allow locked cleanup is reported by the leftover-dir check
             pass
     # A transient antivirus or indexer lock can survive the first rmtree; retry briefly rather
     # than leave a repository behind (the integration tier only, so no unit-tier sleep).
@@ -906,6 +907,59 @@ class TestProjectHygieneGate(unittest.TestCase):
         findings = scan_artifacts(nested)
         self.assertEqual({(finding.path, finding.rule) for finding in findings},
                          {("test_inner.py", "root-test-module")})
+
+
+class TestUiContractGate(unittest.TestCase):
+    """The UI guard bounds real git changes to one committed surface (ADR-158)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix="test_ui_gate_base_"))
+        cls.identity = mock.patch.dict(os.environ, {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"})
+        cls.identity.start()
+        (cls.base / ".aikit").mkdir()
+        contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/ui/**"]}},
+                    "protected": ["tests/**"], "commands": {"fast": "exit 0"},
+                    "limits": {"max_files": 3, "max_lines": 20}}
+        (cls.base / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8")
+        (cls.base / "src" / "ui").mkdir(parents=True)
+        (cls.base / "src" / "ui" / "menu.py").write_text("value = 1\n", encoding="utf-8")
+        for args in (("init", "-q"), ("config", "user.email", "t@example.com"),
+                     ("config", "user.name", "T"), ("add", "-A"), ("commit", "-qm", "base")):
+            subprocess.run(["git", *args], cwd=cls.base, timeout=PROC_TIMEOUT, check=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.identity.stop()
+        remove_tree(cls.base)
+
+    def setUp(self):
+        root = Path(tempfile.mkdtemp(prefix="test_ui_gate_"))
+        self.addCleanup(remove_tree, root)
+        shutil.copytree(self.base, root, dirs_exist_ok=True)
+        self.root = root
+
+    def test_bounds_edits_and_abort_restores_only_the_surface(self):
+        root = self.root
+        ui_contract.begin(root, "menu")
+        menu = root / "src" / "ui" / "menu.py"
+        menu.write_text("value = 2\n", encoding="utf-8")
+        (root / "src" / "ui" / "extra.py").write_text("value = 3\n", encoding="utf-8")
+        self.assertEqual(ui_contract.verify(root), [])
+
+        (root / "outside.py").write_text("value = 4\n", encoding="utf-8")
+        findings = ui_contract.verify(root)
+        self.assertTrue(any("path outside surface" in finding for finding in findings), findings)
+
+        result = ui_contract.abort(root)
+        self.assertEqual(menu.read_text(encoding="utf-8"), "value = 1\n")
+        self.assertFalse((root / "src" / "ui" / "extra.py").exists())
+        self.assertTrue((root / "outside.py").exists(), "non-surface work must survive abort")
+        self.assertIn("src/ui/menu.py", result["restored"])
+        self.assertTrue(Path(result["backup"]).is_dir())
+        self.assertFalse((root / ".aikit" / "ui_task.json").exists())
 
 
 class TestProjectSecretScan(unittest.TestCase):

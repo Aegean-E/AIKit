@@ -44,6 +44,7 @@ from scripts.project_registry import (
     write_memory,
 )
 from scripts.subagent_delegate import delegate_subagent
+from scripts import ui_contract
 from scripts.update_knowledge_base import (
     find_python_files,
     generate_codebase_map,
@@ -131,6 +132,19 @@ def build_parser() -> argparse.ArgumentParser:
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
     publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
+
+    ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
+    ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)
+    for action, text in (("begin", "open a bounded task from a clean green baseline"),
+                         ("verify", "check scope, protected paths, budget and the fast UI proof"),
+                         ("finish", "verify, then close the task"),
+                         ("abort", "restore only the surface to its baseline"),
+                         ("status", "show the open task and its changed paths")):
+        sub = ui_commands.add_parser(action, help=text)
+        sub.add_argument("name", help="project name, as `list` shows it")
+        if action == "begin":
+            sub.add_argument("--surface", required=True,
+                             help="surface name declared in .aikit/ui.json")
 
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
@@ -399,6 +413,49 @@ def cmd_delegate(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    """Bound a UI task to one declared surface and keep it inside that contract."""
+    project = present_project(args.name, args.workspace)
+    if args.ui_action == "begin":
+        task = ui_contract.begin(project.path, args.surface)
+        print(f"[OK] UI task opened on '{args.surface}' from "
+              f"{str(task['baseline_commit'])[:12]}; edit only the contract surface.")
+        return 0
+    if args.ui_action in ("verify", "finish"):
+        if args.ui_action == "finish":
+            findings = ui_contract.finish(project.path)
+        else:
+            findings = ui_contract.verify(project.path)
+        for finding in findings:
+            print(f"[FAIL] {finding}")
+        if findings:
+            print("Error: the UI change is outside its contract.", file=sys.stderr)
+            print("Why: a UI task proves one reviewed surface, not an unbounded rewrite.",
+                  file=sys.stderr)
+            print(f"Fix: revert the listed paths, or run `python aikit.py ui abort {project.name}` "
+                  "to restore the surface; then rerun.", file=sys.stderr)
+            return 1
+        print(f"[OK] UI surface verified for '{project.name}'." if args.ui_action == "verify"
+              else f"[OK] UI task closed for '{project.name}'.")
+        return 0
+    if args.ui_action == "abort":
+        result = ui_contract.abort(project.path)
+        if result["backup"]:
+            print(f"[OK] Restored {len(result['restored'])} path(s); backup: {result['backup']}")
+        else:
+            print("[OK] Restored 0 path(s); there was nothing to back up.")
+        if result["skipped"]:
+            print("[WARN] Left outside the surface: " + ", ".join(result["skipped"]),
+                  file=sys.stderr)
+        return 0
+    info = ui_contract.status(project.path)
+    print(f"Surface:  {info['surface']}")
+    print(f"Baseline: {str(info['baseline_commit'])[:12]}")
+    print(f"Strikes:  {info['strikes']}")
+    print("Changed:  " + (", ".join(info["changed"]) if info["changed"] else "none"))
+    return 0
+
+
 HANDLERS = {
     "new": cmd_new,
     "attach": cmd_attach,
@@ -413,6 +470,7 @@ HANDLERS = {
     "fix": cmd_fix,
     "publish": cmd_publish,
     "delegate": cmd_delegate,
+    "ui": cmd_ui,
 }
 
 

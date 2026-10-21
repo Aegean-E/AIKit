@@ -186,7 +186,7 @@ def repo_fingerprint() -> Optional[str]:
                 digest.update(entries[index].encode("utf-8"))
                 index += 1
         try:
-            with (ROOT_DIR / path).open("rb") as handle:
+            with (ROOT_DIR / path).open("rb") as handle:  # hygiene: allow binary content hash
                 while chunk := handle.read(FINGERPRINT_CHUNK):
                     digest.update(chunk)
         except OSError:

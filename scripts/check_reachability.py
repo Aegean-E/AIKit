@@ -87,7 +87,9 @@ PUBLIC_API_ALLOWLIST: Set[str] = {
 # project's own `package.json` (`scripts.test`, project_registry stack detection); OpenCode's
 # `opencode.jsonc` (`providers.<p>.models`) and its `--format json` event stream (`type`,
 # `part.text`), both read by subagent_delegate (ADR-132).
-EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test", "providers", "models", "type", "part", "text"}
+EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test", "providers", "models", "type", "part",
+                                  "text", "surfaces", "paths", "protected", "commands", "fast",
+                                  "fast_timeout", "limits", "max_files", "max_lines"}
 
 # Generator/content functions referenced only through data structures or f-strings.
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")
