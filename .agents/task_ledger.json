@@ -1,33 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-surface-guard-v1",
+    "task_id": "ui-proof-gate-v1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792604415.139823,
-    "completed_at": 1792604415.3215568
+    "updated_at": 1792606547.3944187,
+    "impact_assessment": {
+      "why": "UI tasks still go rogue inside the bounded surface: ADR-158 bounds where edits land but no gate verifies what the UI renders, so lost controls, dropped handlers and aesthetic drift pass every green proof",
+      "benefits": "ui verify mechanically fails on removed controls/handlers via a baseline snapshot diff; hardcoded colors/fonts outside theme paths become findings; ui finish refuses without --reviewed human eyes; deterministic, stdlib-only, framework-agnostic",
+      "risks": "contract: additive schema fields (commands.snapshot, commands.snapshot_timeout, style.theme_paths) change the contract digest and invalidate open tasks (none exist; verified no project commits ui.json); dependency: none, stdlib re/fnmatch only; concurrency: snapshot and lint run inside the existing task file_lock; state: task record gains baseline_snapshot and allowed_removals, written via atomic_write_json",
+      "mitigation": "old contracts without the new fields keep working with snapshot and lint off; AIKit sorts and dedups snapshot lines so adapter order does not matter; style lint is opt-in via declared theme_paths with file:line findings; snapshot_timeout bounds the proof run"
+    },
+    "completed_at": 1792608891.8055627
   },
   "checkpoints": [
-    {
-      "task_id": "aikit-core-fixes",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/5] Implementing core platform and disruption recovery fixes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792439862.3926625,
-      "timestamp_str": "2026-10-19 22:57:42"
-    },
-    {
-      "task_id": "aikit-core-fixes",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-core-fixes' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792440709.7805474,
-      "timestamp_str": "2026-10-19 23:11:49"
-    },
     {
       "task_id": "license-agpl-metadata-v1",
       "phase": "in_progress",
@@ -233,6 +220,31 @@
       "status": "completed",
       "timestamp": 1792604415.321559,
       "timestamp_str": "2026-10-21 20:40:15"
+    },
+    {
+      "task_id": "ui-proof-gate-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] UI proof gate: pure inventory-diff and style-lint helpers in scripts/ui_proof.py with failing-first unit tests",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792606547.3944187,
+      "timestamp_str": "2026-10-21 21:15:47",
+      "impact_assessment": {
+        "why": "UI tasks still go rogue inside the bounded surface: ADR-158 bounds where edits land but no gate verifies what the UI renders, so lost controls, dropped handlers and aesthetic drift pass every green proof",
+        "benefits": "ui verify mechanically fails on removed controls/handlers via a baseline snapshot diff; hardcoded colors/fonts outside theme paths become findings; ui finish refuses without --reviewed human eyes; deterministic, stdlib-only, framework-agnostic",
+        "risks": "contract: additive schema fields (commands.snapshot, commands.snapshot_timeout, style.theme_paths) change the contract digest and invalidate open tasks (none exist; verified no project commits ui.json); dependency: none, stdlib re/fnmatch only; concurrency: snapshot and lint run inside the existing task file_lock; state: task record gains baseline_snapshot and allowed_removals, written via atomic_write_json",
+        "mitigation": "old contracts without the new fields keep working with snapshot and lint off; AIKit sorts and dedups snapshot lines so adapter order does not matter; style lint is opt-in via declared theme_paths with file:line findings; snapshot_timeout bounds the proof run"
+      }
+    },
+    {
+      "task_id": "ui-proof-gate-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-proof-gate-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792608891.805564,
+      "timestamp_str": "2026-10-21 21:54:51"
     }
   ]
 }

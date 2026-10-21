@@ -89,7 +89,8 @@ PUBLIC_API_ALLOWLIST: Set[str] = {
 # `part.text`), both read by subagent_delegate (ADR-132).
 EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test", "providers", "models", "type", "part",
                                   "text", "surfaces", "paths", "protected", "commands", "fast",
-                                  "fast_timeout", "limits", "max_files", "max_lines"}
+                                  "fast_timeout", "snapshot", "snapshot_timeout", "style",
+                                  "theme_paths", "limits", "max_files", "max_lines"}
 
 # Generator/content functions referenced only through data structures or f-strings.
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")

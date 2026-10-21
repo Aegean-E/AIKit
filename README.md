@@ -99,6 +99,7 @@ portable_agent_kit/
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
 │   ├── check_project_hygiene.py        <- Project source, asset & artifact hygiene scan
 │   ├── ui_contract.py                  <- Bounded UI-surface guard (opt-in .aikit/ui.json)
+│   ├── ui_proof.py                     <- UI proofs: inventory diff + style drift lint (pure)
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py              <- Uploads a project to its own GitHub repository
@@ -136,13 +137,15 @@ python aikit.py status my-app       # its task, changes, decision; --exit-code f
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
 python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts
 python aikit.py ui begin my-app --surface menu  # bound edits to one declared UI surface
-python aikit.py ui verify my-app       # scope, protected paths, budget, fast UI proof
+python aikit.py ui verify my-app       # scope, budget, fast + snapshot proofs, style drift
+python aikit.py ui allow my-app "Btn*" # record intended inventory removals
+python aikit.py ui finish my-app --reviewed  # close after a human looked at the running UI
 python aikit.py ui abort my-app        # restore only the surface; keep unrelated work
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command and file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline or a red proof.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command, an optional `snapshot` inventory command and optional `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost inventory entries (unless `ui allow` records them) and hardcoded color/font literals outside the theme; `finish` needs `--reviewed` (ADR-160).
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 

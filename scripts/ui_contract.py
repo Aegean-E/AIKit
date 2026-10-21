@@ -2,16 +2,17 @@
 Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).
 
 A UI task records its baseline commit and allowed surface before the first edit. `verify`
-refuses changes outside that surface or protected paths, enforces a diff budget and runs the
-project's fast proof command. `abort` restores only the surface, leaving unrelated work intact.
+refuses changes outside that surface or protected paths, enforces a diff budget and runs
+the project's fast proof command, the snapshot inventory proof and the style drift lint.
+`allow` records intended inventory removals; `finish` also requires a recorded human
+review; `abort` restores only the surface, leaving unrelated work intact.
 
 PRINCIPLE-006, PRINCIPLE-011, PRINCIPLE-013, PRINCIPLE-014 and PRINCIPLE-018.
 """
 
-import fnmatch
 import hashlib
 import json
-import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -23,6 +24,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from scripts.disruption_recovery import BOOKKEEPING_PATHS, atomic_write_json, file_lock
 from scripts.project_gates import run_shell
 from scripts.project_registry import ProjectError
+from scripts import ui_proof
 
 CONTRACT_REL = ".aikit/ui.json"
 TASK_REL = ".aikit/ui_task.json"
@@ -43,6 +45,9 @@ class UiContract:
     protected: Tuple[str, ...]
     fast: str
     fast_timeout: int
+    snapshot: str
+    snapshot_timeout: int
+    theme_paths: Tuple[str, ...]
     max_files: int
     max_lines: int
     digest: str
@@ -116,8 +121,25 @@ def load_contract(root: Path) -> UiContract:
     timeout = commands.get("fast_timeout", FAST_TIMEOUT_SECONDS)
     if not isinstance(timeout, int) or not 1 <= timeout <= 600:
         raise _error("The UI fast timeout is invalid.",
-                     "a proof command must be bounded between 1 and 600 seconds.",
-                     "set commands.fast_timeout to an integer in that range.", exit_code=2)
+                      "a proof command must be bounded between 1 and 600 seconds.",
+                      "set commands.fast_timeout to an integer in that range.", exit_code=2)
+    snapshot = commands.get("snapshot", "")
+    if not isinstance(snapshot, str):
+        raise _error("The UI snapshot command is malformed.",
+                      "the snapshot command prints the live UI's inventory for the proof.",
+                      'write "commands": {"snapshot": "python inventory.py"}.', exit_code=2)
+    snapshot_timeout = commands.get("snapshot_timeout", FAST_TIMEOUT_SECONDS)
+    if not isinstance(snapshot_timeout, int) or not 1 <= snapshot_timeout <= 600:
+        raise _error("The UI snapshot timeout is invalid.",
+                      "a snapshot command must be bounded between 1 and 600 seconds.",
+                      "set commands.snapshot_timeout to an integer in that range.", exit_code=2)
+    style = raw.get("style", {})
+    if not isinstance(style, dict):
+        raise _error("The UI style block is malformed.",
+                      "the style block declares where theme literals may live.",
+                      'write "style": {"theme_paths": ["src/theme.py"]}.', exit_code=2)
+    theme_paths = (_path_list(style.get("theme_paths"), "style.theme_paths")
+                   if style.get("theme_paths") else ())
     limits = raw.get("limits", {})
     if not isinstance(limits, dict):
         raise _error("The UI limits are malformed.", "limits bound the blast radius.",
@@ -131,24 +153,11 @@ def load_contract(root: Path) -> UiContract:
                      'set "limits": {"max_files": 6, "max_lines": 150}.', exit_code=2)
     digest = hashlib.sha256(json.dumps(raw, sort_keys=True, separators=(",", ":"))
                             .encode("utf-8")).hexdigest()
-    return UiContract(surfaces, protected, commands["fast"], timeout, max_files, max_lines, digest)
+    return UiContract(surfaces, protected, commands["fast"], timeout, snapshot,
+                      snapshot_timeout, theme_paths, max_files, max_lines, digest)
 
 
-def _matches(path: str, patterns: Sequence[str]) -> bool:
-    candidate = path.replace("\\", "/")
-    if os.name == "nt":
-        candidate = candidate.casefold()
-    for pattern in patterns:
-        normalized = pattern.replace("\\", "/")
-        if os.name == "nt":
-            normalized = normalized.casefold()
-        if normalized.endswith("/**"):
-            base = normalized[:-3]
-            if candidate == base or candidate.startswith(base + "/"):
-                return True
-        elif fnmatch.fnmatchcase(candidate, normalized):
-            return True
-    return False
+_matches = ui_proof.matches_pattern
 
 
 def _is_bookkeeping(path: str) -> bool:
@@ -216,6 +225,12 @@ def _run_fast(contract: UiContract, root: Path,
     return run(contract.fast, root, float(contract.fast_timeout))
 
 
+def _run_snapshot(contract: UiContract, root: Path,
+                  runner: Optional[ShellRunner]) -> Tuple[int, str]:
+    run = runner or run_shell
+    return run(contract.snapshot, root, float(contract.snapshot_timeout))
+
+
 def _task_path(root: Path) -> Path:
     return root / TASK_REL
 
@@ -278,6 +293,19 @@ def begin(root: Path, surface: str, git_io: Optional[GitIo] = None,
         if code != 0:
             raise _task_error(f"The fast UI proof failed before the task started (exit {code}).",
                               f"fix the baseline first; output:\n{_tail(output)}")
+        baseline_snapshot: List[str] = []
+        if contract.snapshot:
+            code, output = _run_snapshot(contract, root, shell_runner)
+            if code != 0:
+                raise _task_error(
+                    f"The UI snapshot proof failed before the task started (exit {code}).",
+                    f"fix the baseline UI first; output:\n{_tail(output)}")
+            baseline_snapshot = ui_proof.snapshot_lines(output)
+            if not baseline_snapshot:
+                raise _error("The UI snapshot proof printed no inventory entries.",
+                             "a task cannot baseline a UI it cannot enumerate.",
+                             "make the snapshot command print one entry per control or "
+                             "handler, then begin again.")
         task = {
             "schema": TASK_SCHEMA,
             "surface": surface,
@@ -285,6 +313,8 @@ def begin(root: Path, surface: str, git_io: Optional[GitIo] = None,
             "contract_hash": contract.digest,
             "started_at": time.time(),
             "strikes": 0,
+            "baseline_snapshot": baseline_snapshot,
+            "allowed_removals": [],
         }
         atomic_write_json(_task_path(root), task)
         return task
@@ -326,9 +356,39 @@ def _budget_findings(root: Path, changes: Sequence[Tuple[str, str]], contract: U
     return findings
 
 
+def _added_lines(root: Path, changes: Sequence[Tuple[str, str]], baseline: str,
+                 surface: Sequence[str], git_io: Optional[GitIo]) -> List[Tuple[str, int, str]]:
+    """(path, line number, text) for every line added inside the task's surface."""
+    tracked = [path for status, path in changes if status != "??" and _matches(path, surface)]
+    untracked = [path for status, path in changes if status == "??" and _matches(path, surface)]
+    added: List[Tuple[str, int, str]] = []
+    if tracked:
+        text = _git_ok(root, ["diff", baseline, "--", *tracked], git_io)
+        path, number = "", 0
+        for line in text.splitlines():
+            header = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+            if header is not None:
+                number = int(header.group(1)) - 1
+            elif line.startswith("+++ b/"):
+                path, number = line[6:], 0
+            elif line.startswith("+"):
+                number += 1
+                added.append((path, number, line[1:]))
+            elif line.startswith(" "):
+                number += 1
+    for path in untracked:
+        try:
+            content = (root / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for number, line in enumerate(content.splitlines(), start=1):
+            added.append((path, number, line))
+    return added
+
+
 def verify(root: Path, git_io: Optional[GitIo] = None,
            shell_runner: Optional[ShellRunner] = None) -> List[str]:
-    """Check the open task's scope, contract, baseline, budget and fast proof command."""
+    """Check the open task's scope, contract, baseline, budget and proof commands."""
     contract = load_contract(root)
     with file_lock(_task_path(root)) as acquired:
         if not acquired:
@@ -353,6 +413,22 @@ def verify(root: Path, git_io: Optional[GitIo] = None,
                 code, output = _run_fast(contract, root, shell_runner)
                 if code != 0:
                     findings.append(f"fast UI proof failed (exit {code}):\n{_tail(output)}")
+                if contract.snapshot and "baseline_snapshot" in task:
+                    code, output = _run_snapshot(contract, root, shell_runner)
+                    if code != 0:
+                        findings.append(f"UI snapshot proof failed (exit {code}):\n{_tail(output)}")
+                    else:
+                        current = ui_proof.snapshot_lines(output)
+                        if not current:
+                            findings.append("UI snapshot proof printed no inventory entries.")
+                        else:
+                            findings.extend(ui_proof.inventory_findings(
+                                list(task["baseline_snapshot"]), current,
+                                list(task.get("allowed_removals", []))))
+                if contract.theme_paths:
+                    added = _added_lines(root, changes, str(task["baseline_commit"]),
+                                         surface, git_io)
+                    findings.extend(ui_proof.style_findings(added, contract.theme_paths))
         task["strikes"] = int(task["strikes"]) + (1 if findings else 0)
         if not findings:
             task["verified_at"] = time.time()
@@ -360,12 +436,39 @@ def verify(root: Path, git_io: Optional[GitIo] = None,
         return findings
 
 
+def allow(root: Path, pattern: str) -> Dict[str, object]:
+    """Record one intended inventory removal pattern on the open task."""
+    if not isinstance(pattern, str) or not pattern.strip():
+        raise _error("The allowed removal pattern is empty.",
+                     "verify treats removed inventory entries as findings unless allowed.",
+                     "pass a glob such as `Button*` for the entries this task removes.",
+                     exit_code=2)
+    contract = load_contract(root)
+    with file_lock(_task_path(root)) as acquired:
+        if not acquired:
+            raise _task_error("Another UI operation holds the task lock.",
+                              "wait for it to finish, then retry.")
+        task = read_task(root)
+        if task["contract_hash"] != contract.digest:
+            raise _task_error("The UI contract changed after the task began.",
+                              "abort the task and begin again under the new contract.")
+        allowed = [str(item) for item in task.get("allowed_removals", [])]
+        if pattern not in allowed:
+            allowed.append(pattern)
+        task["allowed_removals"] = allowed
+        atomic_write_json(_task_path(root), task)
+        return task
+
+
 def finish(root: Path, git_io: Optional[GitIo] = None,
-           shell_runner: Optional[ShellRunner] = None) -> List[str]:
-    """Close a task only after a successful verify."""
+           shell_runner: Optional[ShellRunner] = None,
+           reviewed: bool = False) -> List[str]:
+    """Close a task only after a successful verify and a recorded human review."""
     findings = verify(root, git_io, shell_runner)
     if findings:
         return findings
+    if not reviewed:
+        return ["human review not recorded: no one confirmed the running UI looks right."]
     with file_lock(_task_path(root)) as acquired:
         if not acquired:
             raise _task_error("Another UI operation holds the task lock.",

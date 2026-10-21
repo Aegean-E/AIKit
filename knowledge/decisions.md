@@ -1802,3 +1802,19 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: README can describe the opt-in UI guard without dropping cold-start essentials; the limit remains a single checked number.
   - *Trade-offs*: The cold-start context budget grows by 2,500 characters; the canonical test command, prerequisites, tree and labels are still mandatory and checked.
 - Cross-principle check: PRINCIPLE-011, PRINCIPLE-016 and PRINCIPLE-017 were checked (the citing set for PRINCIPLE-005); no other principle changed and no test was weakened beyond the approved limit.
+
+
+### ADR-160: UI Proof Gate Verifies What the Surface Renders
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: ADR-158 bounds where a UI edit lands but not what it does: the fast proof is the project's test command, so a UI that still starts while losing a control, dropping a handler or drifting away from its theme passes every gate. The user reported exactly this failure mode: UI work goes rogue inside a green proof. Screenshot regression was rejected as a hard gate because pixel output is non-deterministic across fonts, DPI and animating UIs and needs per-framework render tooling, against the deterministic, stdlib-only gate ethos.
+- **Decision**:
+  1. Extend the opt-in contract additively (schema 1): `commands.snapshot` and `commands.snapshot_timeout` declare a project-owned inventory command that prints one entry per control or handler, and `style.theme_paths` declares where color and font literals may live.
+  2. `begin` baselines the sorted, deduplicated inventory in the task record, refusing a red or empty snapshot; `verify` re-runs it and reports removed entries as findings, and `aikit.py ui allow <project> <pattern>` records intended removals on the open task.
+  3. `verify` also lints added surface lines for hardcoded hex colors, `rgb()`/`rgba()` and `font`/`font_size` assignments outside the declared theme paths, reporting file:line.
+  4. `finish` requires `--reviewed`: a human confirms the running UI before the task closes; the gate forces the step, it does not judge beauty.
+  5. All proof layers report together; the mechanical parts live in `scripts/ui_proof.py` (pure, stdlib), wired by `scripts/ui_contract.py`. No browser, no new dependency, no principle change.
+- **Consequences**:
+  - *Positive*: A lost control or handler is a hard finding even when tests stay green; aesthetic drift must pass through the theme; no UI task closes without human eyes; contracts without the new fields keep working with the new layers off.
+  - *Trade-offs*: The inventory adapter is project-owned, so a lazy adapter can under-report; the style literal set (hex, rgb, font) is deliberately minimal and misses named colors and CSS keywords; `--reviewed` attests a look happened, not that it was competent. Supersedes ADR-158's "snapshots out of scope" note for inventory dumps; DOM parsing, browsers and screenshot blessing remain out of scope.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (stdlib only, deterministic reads), PRINCIPLE-006 (recovery), PRINCIPLE-010 (bounded snapshot command), PRINCIPLE-011 (opt-in, Why/Fix), PRINCIPLE-013 (atomic task record under lock), PRINCIPLE-014 (failing-first tests) and PRINCIPLE-018 (verified delivery).

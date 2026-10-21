@@ -160,6 +160,7 @@ from scripts.check_project_hygiene import (
 )
 from scripts.dogfood import repo_fingerprint
 from scripts import ui_contract
+from scripts import ui_proof
 from scripts.check_test_budgets import (
     TIER_BUDGETS_MS,
     budget_errors,
@@ -4592,6 +4593,58 @@ class TestUiContract(unittest.TestCase):
         with self.assertRaises(ProjectError):
             ui_contract.load_contract(self.root)
 
+    def test_contract_parses_snapshot_and_style_fields(self):
+        self.write_contract(commands={"fast": "exit 0", "snapshot": "python inventory.py",
+                                      "snapshot_timeout": 60},
+                            style={"theme_paths": ["src/theme.py", "src/styles/**"]})
+        loaded = ui_contract.load_contract(self.root)
+        self.assertEqual(loaded.snapshot, "python inventory.py")
+        self.assertEqual(loaded.snapshot_timeout, 60)
+        self.assertEqual(loaded.theme_paths, ("src/theme.py", "src/styles/**"))
+        self.write_contract()
+        loaded = ui_contract.load_contract(self.root)
+        self.assertEqual((loaded.snapshot, loaded.snapshot_timeout, loaded.theme_paths),
+                         ("", ui_contract.FAST_TIMEOUT_SECONDS, ()))
+
+    def test_contract_rejects_bad_snapshot_and_style_fields(self):
+        self.write_contract(commands={"fast": "exit 0", "snapshot": 7})
+        with self.assertRaises(ProjectError):
+            ui_contract.load_contract(self.root)
+        self.write_contract(commands={"fast": "exit 0", "snapshot_timeout": 0})
+        with self.assertRaises(ProjectError):
+            ui_contract.load_contract(self.root)
+        self.write_contract(style={"theme_paths": ["../escape"]})
+        with self.assertRaises(ProjectError):
+            ui_contract.load_contract(self.root)
+        self.write_contract(style={"theme_paths": "src/theme.py"})
+        with self.assertRaises(ProjectError):
+            ui_contract.load_contract(self.root)
+
+    def test_begin_records_the_baseline_snapshot(self):
+        self.write_contract(commands={"fast": "exit 0", "snapshot": "python inventory.py"})
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        runner = lambda command, cwd, timeout: (0, "Menu(file)\nButton(save)\nButton(save)\n")
+        task = ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=runner)
+        self.assertEqual(task["baseline_snapshot"], ["Button(save)", "Menu(file)"])
+        self.assertEqual(task["allowed_removals"], [])
+
+    def test_begin_refuses_a_failing_or_empty_snapshot(self):
+        self.write_contract(commands={"fast": "python -c pass", "snapshot": "python inventory.py"})
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+
+        def red(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (1, "traceback")
+
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=red)
+        self.assertIn("snapshot", str(caught.exception).lower())
+
+        def empty(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "  \n")
+
+        with self.assertRaises(ProjectError):
+            ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=empty)
+
     def test_begin_refuses_an_unknown_surface_before_touching_git(self):
         self.write_contract()
         with self.assertRaises(ProjectError) as caught:
@@ -4612,6 +4665,11 @@ class TestUiContract(unittest.TestCase):
         for action in ("verify", "finish", "abort", "status"):
             parsed = parser.parse_args(["ui", action, "app"])
             self.assertEqual(parsed.ui_action, action)
+        allowed = parser.parse_args(["ui", "allow", "app", "Button*"])
+        self.assertEqual((allowed.ui_action, allowed.name, allowed.pattern),
+                         ("allow", "app", "Button*"))
+        finished = parser.parse_args(["ui", "finish", "app", "--reviewed"])
+        self.assertTrue(finished.reviewed)
 
     def test_verify_flags_protected_paths_and_a_moved_baseline(self):
         self.write_contract()
@@ -4634,7 +4692,8 @@ class TestUiContract(unittest.TestCase):
         runner = lambda command, cwd, timeout: (0, "")
         ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=runner)
         fake.status = " M src/ui/menu.py\0"
-        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=runner), [])
+        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=runner,
+                                            reviewed=True), [])
         self.assertFalse((self.root / ".aikit" / "ui_task.json").exists())
 
     def test_a_red_fast_command_increments_strikes_and_blocks_finish(self):
@@ -4648,6 +4707,122 @@ class TestUiContract(unittest.TestCase):
         self.assertTrue(any("fast UI proof failed" in finding for finding in findings), findings)
         self.assertEqual(ui_contract.read_task(self.root)["strikes"], 1)
         self.assertTrue((self.root / ".aikit" / "ui_task.json").is_file())
+
+    def write_snapshot_contract(self):
+        self.write_contract(commands={"fast": "python -c pass", "snapshot": "python inventory.py"},
+                            style={"theme_paths": ["src/theme.py"]})
+
+    def test_verify_flags_a_lost_control_in_the_snapshot_proof(self):
+        self.write_snapshot_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+
+        def baseline(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Button(save)\nMenu(file)\n")
+
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=baseline)
+        fake.status = " M src/ui/menu.py\0"
+
+        def lost(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Menu(file)\n")
+
+        findings = ui_contract.verify(self.root, git_io=fake, shell_runner=lost)
+        self.assertTrue(any("Button(save)" in finding and "snapshot" in finding
+                            for finding in findings), findings)
+        self.assertEqual(ui_contract.read_task(self.root)["strikes"], 1)
+
+    def test_allow_records_intended_removals_and_verify_passes(self):
+        self.write_snapshot_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+
+        def baseline(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Button(save)\nMenu(file)\n")
+
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=baseline)
+        ui_contract.allow(self.root, "Button*")
+        self.assertEqual(ui_contract.read_task(self.root)["allowed_removals"], ["Button*"])
+
+        def lost(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Menu(file)\n")
+
+        fake.status = " M src/ui/menu.py\0"
+        self.assertEqual(ui_contract.verify(self.root, git_io=fake, shell_runner=lost), [])
+
+    def test_verify_flags_style_literals_outside_the_theme(self):
+        self.write_snapshot_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+
+        def green(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Menu(file)\n")
+
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=green)
+        fake.status = " M src/ui/menu.py\0"
+        fake.diff = ("diff --git a/src/ui/menu.py b/src/ui/menu.py\n"
+                     "+++ b/src/ui/menu.py\n"
+                     "@@ -1,2 +1,3 @@\n"
+                     "+save = Button(fg=\"#ff0000\")\n"
+                     "+value = width * 2\n")
+        findings = ui_contract.verify(self.root, git_io=fake, shell_runner=green)
+        self.assertTrue(any("style literal '#ff0000'" in finding for finding in findings),
+                        findings)
+        self.assertTrue(all("width * 2" not in finding for finding in findings), findings)
+
+    def test_finish_requires_a_recorded_human_review(self):
+        self.write_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        green = lambda command, cwd, timeout: (0, "")
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=green)
+        fake.status = " M src/ui/menu.py\0"
+        findings = ui_contract.finish(self.root, git_io=fake, shell_runner=green)
+        self.assertTrue(any("review" in finding for finding in findings), findings)
+        self.assertTrue((self.root / ".aikit" / "ui_task.json").is_file())
+        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=green,
+                                            reviewed=True), [])
+        self.assertFalse((self.root / ".aikit" / "ui_task.json").exists())
+
+
+class TestUiProof(unittest.TestCase):
+    """The UI guard's mechanical proofs: inventory diffs and style drift (ADR-159)."""
+
+    def test_snapshot_lines_sort_strip_and_deduplicate(self):
+        self.assertEqual(ui_proof.snapshot_lines("  Button(save)\nMenu(file)\nButton(save)\n\n"),
+                         ["Button(save)", "Menu(file)"])
+
+    def test_inventory_findings_flag_removed_entries_only(self):
+        baseline = ["Button(save)", "Label(title)", "Menu(file)"]
+        self.assertEqual(ui_proof.inventory_findings(baseline, baseline, []), [])
+        self.assertEqual(ui_proof.inventory_findings(
+            ["Menu(file)"], ["Menu(file)", "Button(new)"], []), [])
+        findings = ui_proof.inventory_findings(baseline, ["Menu(file)"], [])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("Button(save)", findings[0])
+        self.assertIn("Label(title)", findings[0])
+
+    def test_inventory_findings_honor_allowed_removal_patterns(self):
+        self.assertEqual(ui_proof.inventory_findings(
+            ["Button(save)", "Label(title)"], [], ["Button*", "Label(title)"]), [])
+        findings = ui_proof.inventory_findings(["Button(save)", "Label(title)"], [], ["Label*"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("Button(save)", findings[0])
+        self.assertNotIn("Label(title)", findings[0])
+
+    def test_style_findings_flag_hardcoded_literals_outside_theme_paths(self):
+        added = [("src/ui/menu.py", 12, 'save = Button(text="Save", fg="#ff0000")'),
+                 ("src/ui/menu.py", 13, "title.font_size = 14"),
+                 ("src/ui/menu.py", 14, "panel.configure(font=(\"Arial\", 10))"),
+                 ("web/app.css", 3, "color: rgb(10, 20, 30)"),
+                 ("src/theme.py", 7, 'ERROR = "#ff0000"'),
+                 ("src/ui/menu.py", 15, "value = width * 2")]
+        findings = ui_proof.style_findings(added, ("src/theme.py",))
+        self.assertEqual(findings, [
+            "style literal '#ff0000' outside theme paths: src/ui/menu.py:12",
+            "style literal 'font_size' outside theme paths: src/ui/menu.py:13",
+            "style literal 'font' outside theme paths: src/ui/menu.py:14",
+            "style literal 'rgb(' outside theme paths: web/app.css:3",
+        ])
+
+    def test_style_findings_are_off_without_declared_theme_paths(self):
+        added = [("src/ui/menu.py", 12, 'fg = "#ff0000"')]
+        self.assertEqual(ui_proof.style_findings(added, []), [])
 
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):

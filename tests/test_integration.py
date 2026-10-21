@@ -910,7 +910,7 @@ class TestProjectHygieneGate(unittest.TestCase):
 
 
 class TestUiContractGate(unittest.TestCase):
-    """The UI guard bounds real git changes to one committed surface (ADR-158)."""
+    """The UI guard bounds real git changes and proves what it renders (ADR-158, ADR-160)."""
 
     @classmethod
     def setUpClass(cls):
@@ -960,6 +960,36 @@ class TestUiContractGate(unittest.TestCase):
         self.assertIn("src/ui/menu.py", result["restored"])
         self.assertTrue(Path(result["backup"]).is_dir())
         self.assertFalse((root / ".aikit" / "ui_task.json").exists())
+
+
+    def test_snapshot_proof_and_style_lint_gate_a_real_edit(self):
+        root = self.root
+        inventory = ("type src\\ui\\menu.py" if sys.platform == "win32"
+                     else "cat src/ui/menu.py")
+        contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/ui/**"]}},
+                    "protected": ["tests/**"],
+                    "commands": {"fast": "exit 0", "snapshot": inventory},
+                    "style": {"theme_paths": ["src/theme.py"]},
+                    "limits": {"max_files": 3, "max_lines": 40}}
+        (root / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8")
+        (root / "src" / "theme.py").write_text("ERROR = '#ff0000'\n", encoding="utf-8")
+        (root / "src" / "ui" / "menu.py").write_text("Button(save)\nvalue = 1\n",
+                                                     encoding="utf-8")
+        for args in (("add", "-A"), ("commit", "-qm", "contract")):
+            subprocess.run(["git", *args], cwd=root, timeout=PROC_TIMEOUT, check=True)
+
+        ui_contract.begin(root, "menu")
+        (root / "src" / "ui" / "menu.py").write_text('value = 1\nfg = "#ff0000"\n',
+                                                      encoding="utf-8")
+        findings = ui_contract.verify(root)
+        self.assertTrue(any("Button(save)" in finding for finding in findings), findings)
+        self.assertIn("style literal '#ff0000' outside theme paths: src/ui/menu.py:2",
+                      findings)
+
+        ui_contract.allow(root, "Button*")
+        (root / "src" / "ui" / "menu.py").write_text("value = 1\nfg = theme.ERROR\n",
+                                                     encoding="utf-8")
+        self.assertEqual(ui_contract.verify(root), [])
 
 
 class TestProjectSecretScan(unittest.TestCase):

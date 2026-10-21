@@ -136,8 +136,9 @@ def build_parser() -> argparse.ArgumentParser:
     ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
     ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)
     for action, text in (("begin", "open a bounded task from a clean green baseline"),
-                         ("verify", "check scope, protected paths, budget and the fast UI proof"),
-                         ("finish", "verify, then close the task"),
+                         ("verify", "check scope, budget, the fast and snapshot proofs, style"),
+                         ("finish", "verify, then close the task (needs --reviewed)"),
+                         ("allow", "record an intended inventory removal pattern"),
                          ("abort", "restore only the surface to its baseline"),
                          ("status", "show the open task and its changed paths")):
         sub = ui_commands.add_parser(action, help=text)
@@ -145,6 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "begin":
             sub.add_argument("--surface", required=True,
                              help="surface name declared in .aikit/ui.json")
+        if action == "allow":
+            sub.add_argument("pattern",
+                             help="glob matching the inventory entries this task removes")
+        if action == "finish":
+            sub.add_argument("--reviewed", action="store_true",
+                             help="confirm a human looked at the running UI")
 
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
@@ -421,9 +428,14 @@ def cmd_ui(args: argparse.Namespace) -> int:
         print(f"[OK] UI task opened on '{args.surface}' from "
               f"{str(task['baseline_commit'])[:12]}; edit only the contract surface.")
         return 0
+    if args.ui_action == "allow":
+        ui_contract.allow(project.path, args.pattern)
+        print(f"[OK] Inventory removals matching '{args.pattern}' are intended; "
+              "verify will stop flagging them.")
+        return 0
     if args.ui_action in ("verify", "finish"):
         if args.ui_action == "finish":
-            findings = ui_contract.finish(project.path)
+            findings = ui_contract.finish(project.path, reviewed=args.reviewed)
         else:
             findings = ui_contract.verify(project.path)
         for finding in findings:
@@ -432,8 +444,13 @@ def cmd_ui(args: argparse.Namespace) -> int:
             print("Error: the UI change is outside its contract.", file=sys.stderr)
             print("Why: a UI task proves one reviewed surface, not an unbounded rewrite.",
                   file=sys.stderr)
-            print(f"Fix: revert the listed paths, or run `python aikit.py ui abort {project.name}` "
-                  "to restore the surface; then rerun.", file=sys.stderr)
+            print(f"Fix: revert the listed paths, record intended removals with "
+                  f"`python aikit.py ui allow {project.name} <pattern>`, or run "
+                  f"`python aikit.py ui abort {project.name}` to restore the surface; "
+                  "then rerun.", file=sys.stderr)
+            if args.ui_action == "finish":
+                print("Fix: `ui finish` also needs --reviewed after a human looked at "
+                      "the running UI.", file=sys.stderr)
             return 1
         print(f"[OK] UI surface verified for '{project.name}'." if args.ui_action == "verify"
               else f"[OK] UI task closed for '{project.name}'.")
