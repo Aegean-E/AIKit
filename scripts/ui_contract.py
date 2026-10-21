@@ -28,6 +28,7 @@ from scripts import ui_proof
 
 CONTRACT_REL = ".aikit/ui.json"
 TASK_REL = ".aikit/ui_task.json"
+HISTORY_REL = ".aikit/ui_history.json"
 TASK_SCHEMA = 1
 GIT_TIMEOUT_SECONDS = 30
 FAST_TIMEOUT_SECONDS = 120
@@ -419,6 +420,7 @@ def verify(root: Path, git_io: Optional[GitIo] = None,
                         findings.append(f"UI snapshot proof failed (exit {code}):\n{_tail(output)}")
                     else:
                         current = ui_proof.snapshot_lines(output)
+                        task["last_snapshot"] = current
                         if not current:
                             findings.append("UI snapshot proof printed no inventory entries.")
                         else:
@@ -460,10 +462,44 @@ def allow(root: Path, pattern: str) -> Dict[str, object]:
         return task
 
 
+def _append_history(root: Path, task: Dict[str, object], reviewer: str) -> None:
+    """Append the finished task's evidence to the project's UI history (ADR-161)."""
+    path = root / HISTORY_REL
+    history: List[Dict[str, object]] = []
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise _error(f"The UI history {HISTORY_REL} is unreadable: {exc}",
+                         "a finished task's history is evidence; finish refuses to overwrite it.",
+                         f"repair or move {HISTORY_REL} aside, then rerun finish.") from exc
+        if not isinstance(loaded, list):
+            raise _error(f"The UI history {HISTORY_REL} is malformed.",
+                         "a finished task's history is evidence; finish refuses to overwrite it.",
+                         f"repair or move {HISTORY_REL} aside, then rerun finish.")
+        history = loaded
+    final = [str(line) for line in task.get("last_snapshot", [])]
+    digest = hashlib.sha256("\n".join(final).encode("utf-8")).hexdigest() if final else ""
+    history.append({
+        "schema": TASK_SCHEMA,
+        "surface": task["surface"],
+        "baseline_commit": task["baseline_commit"],
+        "contract_hash": task["contract_hash"],
+        "started_at": task["started_at"],
+        "finished_at": time.time(),
+        "strikes": int(task["strikes"]),
+        "reviewer": reviewer,
+        "allowed_removals": [str(item) for item in task.get("allowed_removals", [])],
+        "final_snapshot_digest": digest,
+        "final_snapshot_entries": len(final),
+    })
+    atomic_write_json(path, history)
+
+
 def finish(root: Path, git_io: Optional[GitIo] = None,
            shell_runner: Optional[ShellRunner] = None,
-           reviewed: bool = False) -> List[str]:
-    """Close a task only after a successful verify and a recorded human review."""
+           reviewed: bool = False, reviewer: str = "") -> List[str]:
+    """Close a task only after a successful verify, a recorded review and its evidence."""
     findings = verify(root, git_io, shell_runner)
     if findings:
         return findings
@@ -473,6 +509,8 @@ def finish(root: Path, git_io: Optional[GitIo] = None,
         if not acquired:
             raise _task_error("Another UI operation holds the task lock.",
                               "wait for it to finish, then retry.")
+        task = read_task(root)
+        _append_history(root, task, reviewer)
         _task_path(root).unlink(missing_ok=True)
         _task_path(root).with_suffix(".json.bak").unlink(missing_ok=True)
     return []

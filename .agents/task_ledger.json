@@ -1,55 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-proof-gate-v1",
+    "task_id": "ui-lifecycle-delivery-v1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792606547.3944187,
+    "updated_at": 1792618342.6564467,
     "impact_assessment": {
-      "why": "UI tasks still go rogue inside the bounded surface: ADR-158 bounds where edits land but no gate verifies what the UI renders, so lost controls, dropped handlers and aesthetic drift pass every green proof",
-      "benefits": "ui verify mechanically fails on removed controls/handlers via a baseline snapshot diff; hardcoded colors/fonts outside theme paths become findings; ui finish refuses without --reviewed human eyes; deterministic, stdlib-only, framework-agnostic",
-      "risks": "contract: additive schema fields (commands.snapshot, commands.snapshot_timeout, style.theme_paths) change the contract digest and invalidate open tasks (none exist; verified no project commits ui.json); dependency: none, stdlib re/fnmatch only; concurrency: snapshot and lint run inside the existing task file_lock; state: task record gains baseline_snapshot and allowed_removals, written via atomic_write_json",
-      "mitigation": "old contracts without the new fields keep working with snapshot and lint off; AIKit sorts and dedups snapshot lines so adapter order does not matter; style lint is opt-in via declared theme_paths with file:line findings; snapshot_timeout bounds the proof run"
+      "why": "the implementation needs its decision record and user-visible docs in the same commit",
+      "benefits": "the new gate and history file are documented where users and agents read",
+      "risks": "contract: none, additive; dependency: none; concurrency: none; state: README size ceiling could be exceeded",
+      "mitigation": "keep README additions minimal and verify with update_knowledge_base --check"
     },
-    "completed_at": 1792608891.8055627
+    "completed_at": 1792619426.5469255
   },
   "checkpoints": [
-    {
-      "task_id": "license-agpl-metadata-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Switch AIKit from MIT to AGPL-3.0: replace LICENSE with the canonical AGPL text, update the README license line, record ADR-151, run the full delivery gates, commit and push non-destructively",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792511024.609779,
-      "timestamp_str": "2026-10-20 18:43:44",
-      "impact_assessment": {
-        "why": "The project portfolio now uses AGPL-3.0, but AIKit itself, NeuralBeat and VoidFarer still expose MIT, Apache-2.0 and no license respectively, so the public repositories are inconsistent and GitHub cannot advertise the intended license",
-        "benefits": "One license across the portfolio, correct GitHub license detection, an explicit legal contract in every repository, and README/ADR records that match the shipped LICENSE",
-        "risks": "contract: AIKit moves from permissive MIT to copyleft AGPL-3.0; dependency: none; concurrency: another session may touch the shared root; state: no runtime state changes",
-        "mitigation": "Use the canonical AGPL-3.0 text already staged in agpl_text.txt, keep the change to LICENSE/README/ADR, run the full AIKit gate set, stage explicitly, and push only after the commit is verified; abort on unrelated working-tree drift"
-      }
-    },
-    {
-      "task_id": "license-agpl-metadata-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] LICENSE replaced with canonical AGPL-3.0, README license line updated, ADR-151 recorded; tests 388/388 pass; sync, knowledge, secrets, reachability and dogfood gates pass; PRINCIPLE-010 test-budget gate reports integration 216.13ms/test against a 200ms ceiling on this host, pre-existing and unrelated to this license-only change; checklists: passed with that budget item deferred",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792511134.7508595,
-      "timestamp_str": "2026-10-20 18:45:34"
-    },
-    {
-      "task_id": "license-agpl-metadata-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'license-agpl-metadata-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792511268.5473049,
-      "timestamp_str": "2026-10-20 18:47:48"
-    },
     {
       "task_id": "robust-git-encoding-and-readme-reconcile-v1",
       "phase": "in_progress",
@@ -245,6 +210,47 @@
       "status": "completed",
       "timestamp": 1792608891.805564,
       "timestamp_str": "2026-10-21 21:54:51"
+    },
+    {
+      "task_id": "ui-lifecycle-delivery-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Failing-first tests and implementation: an open UI task blocks delivery, finish retains evidence",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792615725.866578,
+      "timestamp_str": "2026-10-21 23:48:45",
+      "impact_assessment": {
+        "why": "verified holes: check --strict passes while a UI task is open (two readiness surfaces disagree, the ADR-155 bug class), and finish deletes the entire task record so no evidence of a reviewed UI task survives",
+        "benefits": "delivery readiness refuses open UI tasks on both surfaces; every finished UI task leaves an append-only history record (reviewer, final snapshot digest, strikes) in .aikit/ui_history.json",
+        "risks": "contract: finish gains a reviewer parameter and writes a new bookkeeping file; dependency: none, stdlib json/hashlib only; concurrency: history append happens inside finish's existing file_lock; state: corrupt history must abort finish instead of being overwritten",
+        "mitigation": "additive schema within ui_task bookkeeping; ui_history.json joins BOOKKEEPING_PATHS so it never dirties the tree or flips the track; unreadable history raises a named error and deletes nothing"
+      }
+    },
+    {
+      "task_id": "ui-lifecycle-delivery-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] ADR-161, README and knowledge sync; Phase 4 delivery. checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792618342.6564467,
+      "timestamp_str": "2026-10-22 00:32:22",
+      "impact_assessment": {
+        "why": "the implementation needs its decision record and user-visible docs in the same commit",
+        "benefits": "the new gate and history file are documented where users and agents read",
+        "risks": "contract: none, additive; dependency: none; concurrency: none; state: README size ceiling could be exceeded",
+        "mitigation": "keep README additions minimal and verify with update_knowledge_base --check"
+      }
+    },
+    {
+      "task_id": "ui-lifecycle-delivery-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-lifecycle-delivery-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792619426.5469267,
+      "timestamp_str": "2026-10-22 00:50:26"
     }
   ]
 }

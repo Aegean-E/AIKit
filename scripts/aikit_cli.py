@@ -152,6 +152,8 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "finish":
             sub.add_argument("--reviewed", action="store_true",
                              help="confirm a human looked at the running UI")
+            sub.add_argument("--reviewer", metavar="NAME",
+                             help="who reviewed the running UI, recorded in the task history")
 
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
@@ -310,6 +312,8 @@ def project_baseline_errors(project: Project, audit: dict) -> List[str]:
         errors.append("the project has uncommitted non-bookkeeping changes")
     if audit.get("conflicted_files"):
         errors.append("the project has unresolved merge conflicts")
+    if (project.path / ui_contract.TASK_REL).is_file():
+        errors.append("a UI task is open; finish or abort it before delivery")
     if find_python_files(project.path) and not (project.path / ".aikit" / "codebase_map.md").is_file():
         errors.append("Python sources exist but .aikit/codebase_map.md is missing")
     return errors
@@ -353,18 +357,22 @@ def cmd_check(args: argparse.Namespace) -> int:
         print("Error: the project is not delivery-ready.", file=sys.stderr)
         print("Why: a passing gate run must describe the committed tree, not an unverified working copy.",
               file=sys.stderr)
-        print("Fix: commit the non-bookkeeping changes, resolve any merge conflicts, run "
-              "`python aikit.py fix <name>` for a missing map, or open the ledger with the AIKit "
-              "version that wrote it; then rerun with --strict.", file=sys.stderr)
+        print("Fix: commit the non-bookkeeping changes, resolve any merge conflicts, finish or "
+              "abort any open UI task, run `python aikit.py fix <name>` for a missing map, or "
+              "open the ledger with the AIKit version that wrote it; then rerun with --strict.",
+              file=sys.stderr)
         return 1
 
+    open_ui_task = (project.path / ui_contract.TASK_REL).is_file()
     dirty = bool(audit.get("modified_files") or audit.get("untracked_files")
-                 or audit.get("conflicted_files"))
+                 or audit.get("conflicted_files")) or open_ui_task
     if dirty:
-        print(f"[DELIVERY] NOT READY: {len(audit.get('modified_files', []))} modified, "
-              f"{len(audit.get('untracked_files', []))} untracked, "
-              f"{len(audit.get('conflicted_files', []))} conflicted; run `check --strict` before "
-              "pushing.")
+        detail = (f"{len(audit.get('modified_files', []))} modified, "
+                  f"{len(audit.get('untracked_files', []))} untracked, "
+                  f"{len(audit.get('conflicted_files', []))} conflicted")
+        if open_ui_task:
+            detail += ", 1 open UI task"
+        print(f"[DELIVERY] NOT READY: {detail}; run `check --strict` before pushing.")
     if not getattr(args, "no_push", False):
         if dirty:
             print("[WARN] Uncommitted changes or unresolved conflicts exist; skipping auto-push. "
@@ -435,7 +443,8 @@ def cmd_ui(args: argparse.Namespace) -> int:
         return 0
     if args.ui_action in ("verify", "finish"):
         if args.ui_action == "finish":
-            findings = ui_contract.finish(project.path, reviewed=args.reviewed)
+            findings = ui_contract.finish(project.path, reviewed=args.reviewed,
+                                          reviewer=getattr(args, "reviewer", ""))
         else:
             findings = ui_contract.verify(project.path)
         for finding in findings:

@@ -988,8 +988,20 @@ class TestUiContractGate(unittest.TestCase):
 
         ui_contract.allow(root, "Button*")
         (root / "src" / "ui" / "menu.py").write_text("value = 1\nfg = theme.ERROR\n",
-                                                     encoding="utf-8")
+                                                      encoding="utf-8")
         self.assertEqual(ui_contract.verify(root), [])
+        self.assertEqual(ui_contract.finish(root, reviewed=True, reviewer="yd"), [])
+        history = json.loads((root / ".aikit" / "ui_history.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["reviewer"], "yd")
+        self.assertFalse((root / ".aikit" / "ui_task.json").exists())
+        # The untracked history file is bookkeeping, not drift: a new task can begin.
+        subprocess.run(["git", "add", "src/ui/menu.py"], cwd=root, timeout=PROC_TIMEOUT,
+                       check=True)
+        subprocess.run(["git", "commit", "-qm", "ui change"], cwd=root, timeout=PROC_TIMEOUT,
+                       check=True)
+        ui_contract.begin(root, "menu")
+        self.assertTrue((root / ".aikit" / "ui_task.json").is_file())
 
 
 class TestProjectSecretScan(unittest.TestCase):

@@ -1818,3 +1818,18 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: A lost control or handler is a hard finding even when tests stay green; aesthetic drift must pass through the theme; no UI task closes without human eyes; contracts without the new fields keep working with the new layers off.
   - *Trade-offs*: The inventory adapter is project-owned, so a lazy adapter can under-report; the style literal set (hex, rgb, font) is deliberately minimal and misses named colors and CSS keywords; `--reviewed` attests a look happened, not that it was competent. Supersedes ADR-158's "snapshots out of scope" note for inventory dumps; DOM parsing, browsers and screenshot blessing remain out of scope.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (stdlib only, deterministic reads), PRINCIPLE-006 (recovery), PRINCIPLE-010 (bounded snapshot command), PRINCIPLE-011 (opt-in, Why/Fix), PRINCIPLE-013 (atomic task record under lock), PRINCIPLE-014 (failing-first tests) and PRINCIPLE-018 (verified delivery).
+
+
+### ADR-161: Open UI Tasks Block Delivery; Finished Tasks Leave Evidence
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: Two verified holes in the UI guard's lifecycle. First, `project_baseline_errors` and `cmd_check`'s dirty computation read only modified, untracked and conflicted files, and `.aikit/ui_task.json` is bookkeeping, so a clean tree with an open UI task passed `check --strict` and auto-push stayed enabled — the same two-readiness-surfaces-disagree bug class ADR-155 fixed for conflicts. Second, `finish` unlinked the task record and its backup, destroying the baseline snapshot, strike count, allowed removals and the review attestation: after any completed UI task, no evidence existed anywhere.
+- **Decision**:
+  1. `project_baseline_errors` fails when `.aikit/ui_task.json` exists ("a UI task is open; finish or abort it before delivery"); `cmd_check` counts it in `[DELIVERY] NOT READY` and skips auto-push. Plain `check` stays advisory and exits 0.
+  2. `verify` records the last successful snapshot inventory in the task record as `last_snapshot`.
+  3. `finish` appends one evidence record to `.aikit/ui_history.json` before deleting the task: schema, surface, baseline commit, contract hash, started and finished timestamps, strikes, reviewer, allowed removals, and the SHA-256 digest plus entry count of the final verified inventory. `finish --reviewer <name>` attributes the review; an unattributed review is recorded as an empty string.
+  4. An unreadable or malformed history file aborts `finish` with a named error and deletes nothing; history is evidence and is never overwritten. `.aikit/ui_history.json` joins `BOOKKEEPING_PATHS`, so it never dirties the tree, flips the change track or blocks `begin`.
+- **Consequences**:
+  - *Positive*: Delivery readiness refuses open UI tasks on both surfaces, closing the bypass where committed-but-unreviewed UI work could be pushed; every finished UI task leaves a tamper-evident audit trail; a new task can begin over an untracked history file.
+  - *Trade-offs*: The history grows by one small record per finished task; the reviewer string is free-form and unverified, like `--reviewed` itself — the record proves a finish happened, not that the review was competent.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-006 (disruption evidence), PRINCIPLE-013 (atomic history write under the task lock; corrupt history is never overwritten), PRINCIPLE-014 (failing-first tests) and PRINCIPLE-018 (verified delivery).

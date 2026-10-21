@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `284`
-- **Total Class Methods**: `502`
-- **Total Source Lines**: `14567`
+- **Total Top-Level Functions**: `285`
+- **Total Class Methods**: `505`
+- **Total Source Lines**: `14699`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `502` lines (`24515` bytes)
+**Size**: `511` lines (`25105` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -161,7 +161,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1509` lines (`67926` bytes)
+**Size**: `1510` lines (`67983` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -374,7 +374,7 @@
 ### [`scripts/ui_contract.py`](scripts/ui_contract.py)
 > *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
 
-**Size**: `536` lines (`25930` bytes)
+**Size**: `574` lines (`27820` bytes)
 
 **Classes:**
 - `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
@@ -404,7 +404,8 @@
 - `def _added_lines(root, changes, baseline, surface, git_io)` - *(path, line number, text) for every line added inside the task's surface.*
 - `def verify(root, git_io, shell_runner)` - *Check the open task's scope, contract, baseline, budget and proof commands.*
 - `def allow(root, pattern)` - *Record one intended inventory removal pattern on the open task.*
-- `def finish(root, git_io, shell_runner, reviewed)` - *Close a task only after a successful verify and a recorded human review.*
+- `def _append_history(root, task, reviewer)` - *Append the finished task's evidence to the project's UI history (ADR-161).*
+- `def finish(root, git_io, shell_runner, reviewed, reviewer)` - *Close a task only after a successful verify, a recorded review and its evidence.*
 - `def abort(root, git_io)` - *Restore only the surface to its baseline, preserving and reporting everything else.*
 - `def status(root, git_io)` - *The open task, its baseline and the paths changed under it right now.*
 
@@ -477,7 +478,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1075` lines (`52817` bytes)
+**Size**: `1087` lines (`53615` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -577,7 +578,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5561` lines (`307661` bytes)
+**Size**: `5633` lines (`312050` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -931,6 +932,7 @@
   - Method `._gate_result()`
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`
   - Method `.test_conflicted_check_skips_auto_push_and_strict_fails()`
+  - Method `.test_open_ui_task_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`
   - Method `.test_run_git_uses_utf8_encoding_with_replacement()`
@@ -982,6 +984,8 @@
   - Method `.test_allow_records_intended_removals_and_verify_passes()`
   - Method `.test_verify_flags_style_literals_outside_the_theme()`
   - Method `.test_finish_requires_a_recorded_human_review()`
+  - Method `.test_finish_appends_each_completed_task_to_history()`
+  - Method `.test_finish_refuses_to_destroy_an_unreadable_history_file()`
 - `class TestUiProof` - *The UI guard's mechanical proofs: inventory diffs and style drift (ADR-160).*
   - Method `.test_snapshot_lines_sort_strip_and_deduplicate()`
   - Method `.test_inventory_findings_flag_removed_entries_only()`

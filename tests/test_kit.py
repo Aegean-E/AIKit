@@ -4289,6 +4289,28 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertIn("unresolved merge conflicts", out)
             self.assertIn("not delivery-ready", err)
 
+    def test_open_ui_task_check_skips_auto_push_and_strict_fails(self):
+        folder = self.make_folder(("README.md", "# app\n"))
+        attach_project(folder, "uiopenapp", test_command="python -c exit(0)", workspace=self.kit)
+        (folder / ".aikit" / "ui_task.json").write_text("{}", encoding="utf-8")
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
+            code, out, err = self.run_cli("check", "uiopenapp")
+            self.assertEqual(code, 0)
+            self.assertIn("[DELIVERY] NOT READY", out)
+            self.assertIn("1 open UI task", out)
+            self.assertIn("skipping auto-push", err)
+            push.assert_not_called()
+
+            code, out, err = self.run_cli("check", "uiopenapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("a UI task is open", out)
+            self.assertIn("not delivery-ready", err)
+
     def test_strict_requires_a_codebase_map(self):
         folder = self.make_folder(("core.py", "value = 1\n"))
         attach_project(folder, "mapapp", test_command="python -c exit(0)", workspace=self.kit)
@@ -4576,6 +4598,7 @@ class TestUiContract(unittest.TestCase):
         self.assertEqual(changes, [("R ", "src/ui/new.ts"), ("R ", "src/ui/old.ts"),
                                    (" M", ".aikit/ui_task.json"), ("??", "notes.md")])
         self.assertTrue(ui_contract._is_bookkeeping(".aikit/ui_task.json"))
+        self.assertTrue(ui_contract._is_bookkeeping(".aikit/ui_history.json"))
 
     def test_contract_accepts_a_utf8_bom_from_windows_editors(self):
         contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/ui/**"]}},
@@ -4670,6 +4693,8 @@ class TestUiContract(unittest.TestCase):
                          ("allow", "app", "Button*"))
         finished = parser.parse_args(["ui", "finish", "app", "--reviewed"])
         self.assertTrue(finished.reviewed)
+        attributed = parser.parse_args(["ui", "finish", "app", "--reviewed", "--reviewer", "yd"])
+        self.assertEqual(attributed.reviewer, "yd")
 
     def test_verify_flags_protected_paths_and_a_moved_baseline(self):
         self.write_contract()
@@ -4778,6 +4803,53 @@ class TestUiContract(unittest.TestCase):
         self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=green,
                                             reviewed=True), [])
         self.assertFalse((self.root / ".aikit" / "ui_task.json").exists())
+
+    def test_finish_appends_each_completed_task_to_history(self):
+        self.write_snapshot_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+
+        def snapshot(command, cwd, timeout):
+            return (0, "") if command == "python -c pass" else (0, "Button(save)\nMenu(file)\n")
+
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=snapshot)
+        fake.status = " M src/ui/menu.py\0"
+        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=snapshot,
+                                            reviewed=True, reviewer="yd"), [])
+        history_path = self.root / ".aikit" / "ui_history.json"
+        self.assertTrue(history_path.is_file(), "a finished task leaves its evidence behind")
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        self.assertEqual(len(history), 1)
+        record = history[0]
+        self.assertEqual(record["surface"], "menu")
+        self.assertEqual(record["reviewer"], "yd")
+        self.assertEqual(record["final_snapshot_entries"], 2)
+        self.assertTrue(record["final_snapshot_digest"])
+        self.assertEqual(record["strikes"], 0)
+        self.assertFalse((self.root / ".aikit" / "ui_task.json").exists())
+
+        fake.status = ""
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=snapshot)
+        fake.status = " M src/ui/menu.py\0"
+        self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=snapshot,
+                                            reviewed=True), [])
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        self.assertEqual(len(history), 2, "each finished task appends one record")
+        self.assertEqual(history[1]["reviewer"], "", "an unattributed review is recorded as such")
+
+    def test_finish_refuses_to_destroy_an_unreadable_history_file(self):
+        self.write_contract()
+        fake = FakeGit(tracked=(".aikit/ui.json", "src/ui/menu.py"))
+        green = lambda command, cwd, timeout: (0, "")
+        ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=green)
+        fake.status = " M src/ui/menu.py\0"
+        (self.root / ".aikit" / "ui_history.json").write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.finish(self.root, git_io=fake, shell_runner=green, reviewed=True)
+        self.assertIn("history", str(caught.exception).lower())
+        self.assertTrue((self.root / ".aikit" / "ui_task.json").is_file(),
+                        "a failed finish leaves the open task untouched")
+        self.assertEqual((self.root / ".aikit" / "ui_history.json").read_text(encoding="utf-8"),
+                         "{", "the corrupt evidence file is not overwritten")
 
 
 class TestUiProof(unittest.TestCase):
