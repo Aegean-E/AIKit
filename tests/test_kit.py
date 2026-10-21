@@ -4781,7 +4781,7 @@ class TestUiContract(unittest.TestCase):
 
 
 class TestUiProof(unittest.TestCase):
-    """The UI guard's mechanical proofs: inventory diffs and style drift (ADR-159)."""
+    """The UI guard's mechanical proofs: inventory diffs and style drift (ADR-160)."""
 
     def test_snapshot_lines_sort_strip_and_deduplicate(self):
         self.assertEqual(ui_proof.snapshot_lines("  Button(save)\nMenu(file)\nButton(save)\n\n"),

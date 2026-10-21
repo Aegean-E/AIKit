@@ -1,5 +1,5 @@
 """
-Mechanical UI proofs for the opt-in UI guard (ADR-159).
+Mechanical UI proofs for the opt-in UI guard (ADR-160).
 
 The snapshot layer turns a project-declared inventory command's output into sorted,
 deduplicated lines, so a lost control or handler is a removed line; the style layer

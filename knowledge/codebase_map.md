@@ -411,7 +411,7 @@
 ---
 
 ### [`scripts/ui_proof.py`](scripts/ui_proof.py)
-> *Mechanical UI proofs for the opt-in UI guard (ADR-159).*
+> *Mechanical UI proofs for the opt-in UI guard (ADR-160).*
 
 **Size**: `82` lines (`3063` bytes)
 
@@ -982,7 +982,7 @@
   - Method `.test_allow_records_intended_removals_and_verify_passes()`
   - Method `.test_verify_flags_style_literals_outside_the_theme()`
   - Method `.test_finish_requires_a_recorded_human_review()`
-- `class TestUiProof` - *The UI guard's mechanical proofs: inventory diffs and style drift (ADR-159).*
+- `class TestUiProof` - *The UI guard's mechanical proofs: inventory diffs and style drift (ADR-160).*
   - Method `.test_snapshot_lines_sort_strip_and_deduplicate()`
   - Method `.test_inventory_findings_flag_removed_entries_only()`
   - Method `.test_inventory_findings_honor_allowed_removal_patterns()`
