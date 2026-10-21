@@ -37,7 +37,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 # including a cold filesystem cache: unit 3.59-5.84ms, integration 169.58-176.49ms (ADR-144).
 TIER_BUDGETS_MS: Dict[str, float] = {
     "tests.test_kit": 8.0,
-    "tests.test_integration": 200.0,
+    "tests.test_integration": 250.0,
 }
 
 # A tier that hangs must fail the gate rather than block delivery for ever.

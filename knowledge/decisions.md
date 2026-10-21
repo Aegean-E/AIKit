@@ -1703,3 +1703,74 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: Subprocess git calls across the entire suite are shielded against locale decode crashes on Windows. Projects experiencing root-level tracked file drift are automatically repaired by `python aikit.py fix <project>`. Chronos, Lattice, Pebble, and Tally all reach 4/4 passing Phase 4 gates.
   - *Trade-offs*: None. `_run_git` and `cmd_fix` interfaces remain backward-compatible; unit tests verify both decoding resilience and README tree auto-reconciliation.
 - Cross-principle check: none required; no principle section changed. Serves PRINCIPLE-003 (R4 platform parity), PRINCIPLE-005 (R5 living README tree synchronization), PRINCIPLE-011 (actionable repair ergonomics), PRINCIPLE-014 (failing-first unit tests).
+
+
+### ADR-153: Delivery Readiness Is Machine-Readable; Artifact Hygiene Is Decidable
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: A cross-project audit found that `projects/lacon` kept an untracked `test_features.py` at its root. The default `python -m unittest discover` command imports that module, so a test name probe had become executable test behaviour, while `aikit status` still exited 0 and the hygiene scan reported `[OK] No hygiene findings`. The scan only read source and assets, and the only delivery signal was a human-readable warning. Three gaps followed: (1) CI and scripts could not fail on a dirty tree without parsing prose; (2) root test modules, untracked root outputs/source and tracked caches were invisible; (3) plain `check` did not say why it skipped auto-push.
+- **Decision**:
+  1. `aikit status --exit-code` returns 1 when the project has modified, untracked or conflicted files, when `git` is missing, or when its ledger cannot be audited. Plain `status` keeps its advisory exit semantics.
+  2. `aikit check` prints `[DELIVERY] NOT READY` with modified/untracked counts whenever it skips auto-push. `check --strict` remains the hard delivery gate.
+  3. `check_project_hygiene.py --workspace <dir> --artifacts` classifies two read-only `git ls-files` lists with `classify_artifacts` and flags four decidable rules: `root-test-module`, `untracked-root-source`, `untracked-output`, and `tracked-artifact` (cache/build directories and suffixes, `.coverage`, tracked `.aikit` temporary buffers). `scan_tree` defaults `artifacts=False`, so every existing gate keeps its current scope; `--artifacts` is opt-in for delivery evidence.
+  4. The classifier is pure and unit-tested for each path shape; `scan_artifacts` owns the bounded `git` calls and is covered by a real temporary repository in the integration tier.
+- **Consequences**:
+  - *Positive*: CI can run `aikit status <project> --exit-code` without parsing output; a Lacon-shaped root test module, untracked output or source, and tracked cache now fail a named rule; the dirty-tree reason is visible in ordinary `check`.
+  - *Trade-offs*: `--artifacts` is intentionally narrow: it does not infer arbitrary layout, allowlist paths, or police large binaries yet. An untracked root `.txt` is flagged even when it may be a draft, so the fix is to track it deliberately or ignore the exact path. Existing project gates are unchanged until a pilot wires `--artifacts` in.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (R4 empirical grounding), PRINCIPLE-006 (disruption evidence), PRINCIPLE-010 (bounded subprocesses), PRINCIPLE-014 (failing-first tests and reachable paths), PRINCIPLE-018 (delivery readiness).
+
+
+### ADR-154: Dogfood Fingerprints Only Status-Named Paths; Integration Fixtures Reuse One Committed Project
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: On the Python 3.14 host used for ADR-153, `check_test_budgets.py` reported the integration tier at 204.44ms/test on unmodified HEAD, already over PRINCIPLE-010 R6's 200ms ceiling; the branch reached 209-232ms as load varied. Two avoidable costs dominated. `repo_fingerprint()` ran `git ls-files` and then read every tracked file twice per dogfood run (measured 154ms per call). Five integration tests independently ran `create_project` (git init, add, commit) just to obtain a committed project, and two CLI tests spawned the same checker three times to prove one CLI wiring.
+- **Decision**:
+  1. `repo_fingerprint()` reads `git status --porcelain=v1 -z --untracked-files=all` and hashes that status plus the content of every path it names. It no longer reads clean tracked files: their content cannot change without appearing in status. The dirty-content guarantee from ADR-043 is preserved; the measured cost fell from 154ms to 57ms per call. A unit test changes a dirty file while returning identical status and asserts the fingerprint changes.
+  2. `tests/test_integration.py` creates one committed project template in `setUpModule` and `copy_project()` copies it (including `.git`) into each test's kit. The project-creation test still calls the real `create_project`; copies are independent repositories. This replaces repeated git init/add/commit work in the publish, self-check and hygiene tests.
+  3. `TestAstGateCli` and `TestTrackCli` retain one real CLI spawn for their process contract and exercise the same production checker/collector in-process for the remaining near-identical cases.
+- **Consequences**:
+  - *Positive*: The integration tier measured 199.87ms and 195.46ms/test on two consecutive runs after the change, inside the 200ms ceiling; the dogfood run remains 5/5 and the blast-radius check still detects dirty-content changes.
+  - *Trade-offs*: A tracked file hidden by `git update-index --assume-unchanged` could change without appearing in status and would no longer enter the fingerprint; that is already how the status signal behaves, and no AIKit path sets that bit. The template copies `.git`, so tests that mutate repository configuration must continue to use their own fixture. The two optimized CLI tests keep one real spawn rather than three, so their repeated cases prove the same function rather than repeated interpreter startup.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-010 (R2/R6 measured speed), PRINCIPLE-014 (R3 tier budgets and R4 failing-first tests), PRINCIPLE-015 (R4 fingerprint still detects dirty content).
+
+
+### ADR-155: Unresolved Conflicts Block Delivery Readiness
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: `run_disruption_audit` classifies unmerged states only into `conflicted_files` (a real `UU README.md` produced empty `modified_files`/`untracked_files` and `has_conflicts=True`). `project_baseline_errors` and the `dirty` computation in `cmd_check` read only modified/untracked, so `check --strict` returned 0 and auto-push stayed enabled on a conflicted tree while the new `status --exit-code` returned 1. Two delivery signals disagreed about the same tree.
+- **Decision**:
+  1. `project_baseline_errors` adds `the project has unresolved merge conflicts` when `conflicted_files` is non-empty, so `check --strict` fails.
+  2. `cmd_check` includes `conflicted_files` in `dirty`, reports the count in `[DELIVERY] NOT READY`, and skips auto-push with a message that names conflicts.
+  3. `status --exit-code` keeps its existing conflict handling; plain `status` and plain `check` remain advisory and exit 0.
+- **Consequences**:
+  - *Positive*: A merge conflict in any file now blocks delivery even when the test gate passes, and the two readiness surfaces agree.
+  - *Trade-offs*: A project mid-merge must resolve or abort before `check --strict`; that is the intended delivery contract. The conflict list is reported from the audit, not re-derived by `check`.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-006 (disruption evidence), PRINCIPLE-014 (failing-first test for the conflict state), PRINCIPLE-018 (verified delivery).
+
+
+### ADR-156: Root Test Detection Follows test*.py and Includes Ignored Files
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: ADR-153 matched root test modules with `test_*.py`, `test.py` and `*_test.py`. `python -m unittest discover` uses `test*.py`, so it also imports root `tests.py` and `testfoo.py`; on Windows its fnmatch check is case-insensitive, so `TestFoo.py` is collected too. The artifact scan asked git with `--others --exclude-standard`, so an ignored root test module (for example under a broad `test_*.py` ignore) was never listed, even though discovery still imported it.
+- **Decision**:
+  1. `_is_root_test_module` lowercases the name and matches `name.startswith("test") or name.endswith("_test.py")`, covering unittest's `test*.py` and pytest's `*_test.py` on every host.
+  2. After the two git lists, `scan_artifacts` globs root `*.py` files and adds a `root-test-module` finding for any test module the lists missed, deduplicated by path. Ignored root test modules are therefore flagged without a third git call and without recursing into ignored trees.
+  3. `--artifacts` remains opt-in; `scan_tree`'s default scope and every project gate are unchanged.
+- **Consequences**:
+  - *Positive*: The motivating Lacon shape is covered for every name unittest or pytest can collect, even when `.gitignore` hides it.
+  - *Trade-offs*: The lowercased match flags a root `TestFoo.py` on POSIX too, where discovery would not collect it; the warning is conservative and only appears under `--artifacts`. The glob reads only the project root, not nested directories.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (empirical grounding), PRINCIPLE-010 (bounded I/O, no extra git call), PRINCIPLE-014 (failing-first tests and reachable paths).
+
+
+### ADR-157: Integration Tier Ceiling Raised to 250 ms With User Approval
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: On the Phase 4 host, the integration tier measured 186ms/test on an early run and 209-232ms/test on identical trees as ambient load varied; the unit tier moved from 4.15 to 5.89ms/test and the slowest `--help` from 112 to 171ms in the same period. ADR-154 had recorded 195-200ms, leaving effectively no margin under PRINCIPLE-010 R6's 200ms ceiling, so `check_test_budgets.py` failed on load while all 47 integration tests passed. The user explicitly approved raising the integration ceiling to 250ms on 2026-10-21.
+- **Decision**:
+  1. PRINCIPLE-010 R6 and PRINCIPLE-014 R3 set the integration ceiling to 250ms per test; the unit ceiling stays 8ms and the `--help` budget stays 200ms. `TIER_BUDGETS_MS`, the README suite row and the pinned capsule wording in `test_principle_014_regression_shield_capsule` carry the same number.
+  2. No test is deleted, skipped or weakened to fit the ceiling; both tiers still run once through `check_test_budgets.py`, and a breach above 250ms still fails Phase 4.
+  3. A future raise needs the same explicit user approval and a new ADR naming the ceiling and the affected pinned test, per PRINCIPLE-014 R2/R3.
+- **Consequences**:
+  - *Positive*: The gate keeps 8% headroom over the worst measured 232ms and no longer depends on a coincidentally idle host; the measured slowdown is attributed to load rather than code.
+  - *Trade-offs*: The tier may now legitimately take up to 250ms per test, so drift between 200 and 250ms no longer fails the gate; the gate and dogfood still report the measured number every run, and any breach is fixed before a commit.
+- Cross-principle check: PRINCIPLE-000, PRINCIPLE-002, PRINCIPLE-003, PRINCIPLE-007, PRINCIPLE-009, PRINCIPLE-010, PRINCIPLE-011, PRINCIPLE-013, PRINCIPLE-014 and PRINCIPLE-018 were checked; the ceiling is the only raised limit, tests were not weakened beyond the approved budget, and the pinning test is named above.

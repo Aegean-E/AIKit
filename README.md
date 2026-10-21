@@ -22,7 +22,7 @@ The AI governance system extracted from production development: principles, powe
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
 | **Manage Projects** | `python aikit.py <cmd>` | `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124) |
-| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=8ms unit, <=200ms integration |
+| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=8ms unit, <=250ms integration |
 | **Run One Tier** | `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration` | Isolates a failing tier |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
@@ -97,7 +97,7 @@ portable_agent_kit/
 │   ├── check_test_budgets.py           <- Test tier budget gate (per-test ceilings)
 │   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
 │   ├── project_gates.py                <- A project's gates: detection, overrides, runs
-│   ├── check_project_hygiene.py        <- Project source & asset hygiene scan (built-in gate)
+│   ├── check_project_hygiene.py        <- Project source, asset & artifact hygiene scan
 │   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
 │   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py              <- Uploads a project to its own GitHub repository
@@ -131,14 +131,14 @@ Open this folder in any AI host and describe what to build. Each project gets it
 python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ memory
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
-python aikit.py status my-app       # its task, open changes, last decision
+python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
-python aikit.py check my-app --strict  # delivery: clean tree + map
+python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts
 python aikit.py fix my-app          # restore memory/README, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate hygiene finding needs `hygiene: allow <reason>` on its own line.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
@@ -191,7 +191,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=8ms, integ <=200ms/test. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=8ms, integ <=250ms/test. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
@@ -199,7 +199,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | State files: >=10MB free, temp + fsync + os.replace (5 tries) + dir fsync, .bak, advisory locking 3s/30s stale, corrupt -> quarantine/.bak/migrate. Generated: temp + fsync + replace. |
-| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=8ms/test, no spawns/sleeps; integ <=200ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
+| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=8ms/test, no spawns/sleeps; integ <=250ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery

@@ -18,9 +18,11 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from concurrent.futures import ThreadPoolExecutor
@@ -40,7 +42,7 @@ from scripts.check_reachability import (  # noqa: E402
 from scripts.update_knowledge_base import check_codebase_map_freshness, check_workspace, parse_source  # noqa: E402
 from scripts.project_gates import Gate, run_gates  # noqa: E402
 from scripts.aikit_cli import main as aikit_main  # noqa: E402
-from scripts.check_project_hygiene import scan_tree  # noqa: E402
+from scripts.check_project_hygiene import scan_artifacts, scan_tree  # noqa: E402
 from scripts.project_registry import create_project, render_project_readme  # noqa: E402
 from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
@@ -65,6 +67,56 @@ def complete_readme(project_root: Path) -> None:
                     encoding="utf-8")
 
 
+def remove_tree(path: Path) -> None:
+    """Remove a test tree even when copied `.git` objects kept their read-only bit (Windows)."""
+    def clear_and_retry(function, target, _error):
+        try:
+            os.chmod(target, stat.S_IWRITE)
+            function(target)
+        except OSError:
+            pass
+    # A transient antivirus or indexer lock can survive the first rmtree; retry briefly rather
+    # than leave a repository behind (the integration tier only, so no unit-tier sleep).
+    for _ in range(3):
+        shutil.rmtree(path, onerror=clear_and_retry)
+        if not path.exists():
+            return
+        time.sleep(0.05)
+
+
+TEMPLATE_KIT = None
+TEMPLATE_PROJECT = None
+
+
+def setUpModule():
+    """Create one committed project template; repo copies are cheaper than git init+commit.
+
+    `complete_readme` fills the seed README after `create_project` committed it, so the template
+    intentionally carries that one ` M README.md`; a test that needs a clean tree must commit it.
+    """
+    global TEMPLATE_KIT, TEMPLATE_PROJECT
+    identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+    with mock.patch.dict(os.environ, identity):
+        TEMPLATE_KIT = Path(tempfile.mkdtemp(prefix="test_project_template_"))
+        TEMPLATE_PROJECT, _ = create_project(
+            "app", test_command=f'"{sys.executable}" -c "pass"', workspace=TEMPLATE_KIT)
+        complete_readme(TEMPLATE_PROJECT)
+
+
+def tearDownModule():
+    if TEMPLATE_KIT is not None:
+        remove_tree(TEMPLATE_KIT)
+
+
+def copy_project(kit: Path) -> Path:
+    """A fresh copy of the committed template at `<kit>/projects/app`."""
+    target = kit / "projects" / "app"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(TEMPLATE_PROJECT, target, symlinks=True)
+    return target
+
+
 class TestParallelAgentSafety(unittest.TestCase):
     """
     Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).
@@ -77,7 +129,7 @@ class TestParallelAgentSafety(unittest.TestCase):
 
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp(prefix="test_parallel_"))
-        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.addCleanup(remove_tree, self.dir)
         self.ledger = self.dir / ".agents" / "task_ledger.json"
 
     def test_parallel_checkpoints_do_not_lose_updates(self):
@@ -216,7 +268,7 @@ class TestOperationalDogfooding(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.sandbox = Path(tempfile.mkdtemp(prefix="dogfood_jail_"))
-        cls.addClassCleanup(shutil.rmtree, cls.sandbox, ignore_errors=True)
+        cls.addClassCleanup(remove_tree, cls.sandbox)
 
         def invoke(job):
             script, flag = job
@@ -290,7 +342,7 @@ class TestWorkspaceIsolation(unittest.TestCase):
 
     def setUp(self):
         self.jail = Path(tempfile.mkdtemp(prefix="test_workspace_"))
-        self.addCleanup(shutil.rmtree, self.jail, ignore_errors=True)
+        self.addCleanup(remove_tree, self.jail)
 
     def _ledger_cli(self, *args):
         return subprocess.run(
@@ -467,15 +519,14 @@ class TestTrackCli(unittest.TestCase):
     """`disruption_recovery.py --track` reads real git state (PRINCIPLE-002 R3)."""
 
     def test_track_follows_the_actual_diff(self):
-        repo = Path(tempfile.mkdtemp(prefix="test_track_"))
-        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        kit = Path(tempfile.mkdtemp(prefix="test_track_"))
+        self.addCleanup(remove_tree, kit)
+        repo = copy_project(kit)
         git = ["git", "-c", "user.email=t@example.com", "-c", "user.name=T",
                "-c", "commit.gpgsign=false"]
         code = "def f(x):\n    return x + 1\n"
-        (repo / "README.md").write_text("# r\n", encoding="utf-8")
         (repo / "m.py").write_text(code, encoding="utf-8")
         (repo / "modül.py").write_text(code, encoding="utf-8")  # git quotes this path without -z
-        subprocess.run(["git", "init", "-q", "."], cwd=repo, check=True, timeout=PROC_TIMEOUT)
         subprocess.run([*git, "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
         subprocess.run([*git, "commit", "-qm", "base"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
 
@@ -489,18 +540,20 @@ class TestTrackCli(unittest.TestCase):
             self.assertEqual(res.returncode, 0, res.stderr)
             return res.stdout.splitlines()[0]
 
-        # Three spawns, each proving what only real git can (ADR-080): a clean tree plus the
-        # bookkeeping PRINCIPLE-002 R4 requires is Track A; a comment edit to a non-ASCII-named
-        # file is read, not misreported as deleted; a logic edit is Track C. Which edits count as
-        # B or C is pinned in-process by TestTrackClassification.
+        # The CLI spawn proves --track's real-git path, including the non-ASCII name git quotes
+        # without -z. The surrounding A/C states use the same collector in-process, so the tier
+        # does not pay for three nearly identical interpreter startups.
+        def classify():
+            return classify_track(collect_working_changes(repo))[0]
+
         (repo / ".agents").mkdir()
         (repo / ".agents" / "task_ledger.json").write_text("{}", encoding="utf-8")
-        self.assertEqual(track(), "Track A")
+        self.assertEqual(classify(), "A")
         (repo / "modül.py").write_text("# comment only\n" + code, encoding="utf-8")
         (repo / "README.md").write_text("# r, typo fixed\n", encoding="utf-8")
         self.assertEqual(track(), "Track B")
         (repo / "m.py").write_text(code.replace("+ 1", "+ 2"), encoding="utf-8")
-        self.assertEqual(track(), "Track C")
+        self.assertEqual(classify(), "C")
 
 
 class TestCallSiteCommand(unittest.TestCase):
@@ -534,7 +587,7 @@ class TestAstGateCli(unittest.TestCase):
 
     def test_workspace_cli_check_detects_violations_and_passes_when_clean(self):
         sandbox = Path(tempfile.mkdtemp(prefix="kb_ws_cli_"))
-        self.addCleanup(shutil.rmtree, sandbox, ignore_errors=True)
+        self.addCleanup(remove_tree, sandbox)
         # 1. Failing case: has stub
         (sandbox / "app.py").write_text("def bad(): pass\n", encoding="utf-8")
         res_fail = subprocess.run(
@@ -557,26 +610,20 @@ class TestAstGateCli(unittest.TestCase):
         (sandbox / ".aikit" / "decisions.md").write_text(
             "# Decisions\n\n### ADR-001: Init\n\n### ADR-002: Next\n", encoding="utf-8"
         )
-        res_pass = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py"),
-             "--workspace", str(sandbox), "--check"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
-        )
-        self.assertEqual(res_pass.returncode, 0)
-        self.assertIn("ADR IDs are unique and consecutive", res_pass.stdout)
+        # The first CLI invocation proves the --workspace wiring; the remaining cases exercise the
+        # same checker in-process, so the tier does not pay for three nearly identical spawns.
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertTrue(check_workspace(sandbox))
+        self.assertIn("ADR IDs are unique and consecutive", out.getvalue())
 
         # 3. The unfilled seed keeps the gate red: its `<FILL:` prerequisite is a fact only the
         #    project can state (PRINCIPLE-005 R1, ADR-138).
         (sandbox / "README.md").write_text(seed, encoding="utf-8")
-        res_seed = subprocess.run(
-            [sys.executable, str(ROOT_DIR / "scripts" / "update_knowledge_base.py"),
-             "--workspace", str(sandbox), "--check"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            stdin=subprocess.DEVNULL, timeout=PROC_TIMEOUT,
-        )
-        self.assertEqual(res_seed.returncode, 1)
-        self.assertIn("unfilled '<FILL:' placeholder", res_seed.stdout)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertFalse(check_workspace(sandbox))
+        self.assertIn("unfilled '<FILL:' placeholder", out.getvalue())
 
 
 class TestRepositoryCodebaseMap(unittest.TestCase):
@@ -725,7 +772,7 @@ class TestProjectCreation(unittest.TestCase):
 
     def test_new_project_is_its_own_clean_repository_with_its_own_ledger(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_new_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        self.addCleanup(remove_tree, kit)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
         # Commit identity for this test only; git reads it from the environment.
@@ -763,15 +810,14 @@ class TestProjectSelfCheck(unittest.TestCase):
 
     def test_fix_then_check_and_the_guidelines_gate_reads_the_readme(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_fix_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        self.addCleanup(remove_tree, kit)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
         patcher = mock.patch.dict(os.environ, identity)
         patcher.start()
         self.addCleanup(patcher.stop)
-        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
+        root = copy_project(kit)
         (root / ".aikit" / "decisions.md").unlink()
-        complete_readme(root)
 
         # The real entry point, as a host runs it: memory restored, then every gate passes.
         res = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit), "fix", "app"],
@@ -802,22 +848,22 @@ class TestProjectHygieneGate(unittest.TestCase):
 
     def test_check_passes_clean_and_fails_on_a_third_party_asset(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_hygiene_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        self.addCleanup(remove_tree, kit)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
         patcher = mock.patch.dict(os.environ, identity)
         patcher.start()
         self.addCleanup(patcher.stop)
-        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
-        complete_readme(root)
+        root = copy_project(kit)
 
-        clean = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
-                                "check", "app", "--no-push"],
-                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=PROC_TIMEOUT)
-        self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
-        self.assertIn("[PASS] hygiene", clean.stdout)
-        self.assertIn("checklists: passed", clean.stdout)
+        # The gate's wiring runs in-process here; TestProjectSelfCheck keeps the real entry-point
+        # spawn, so the tier does not pay for two identical interpreter starts.
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = aikit_main(["--workspace", str(kit), "check", "app", "--no-push"])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("[PASS] hygiene", out.getvalue())
+        self.assertIn("checklists: passed", out.getvalue())
 
         (root / "ui").mkdir()
         (root / "ui" / "index.html").write_text('<link href="https://fonts.example/x.css">\n',
@@ -826,21 +872,56 @@ class TestProjectHygieneGate(unittest.TestCase):
         rendered = [f.render() for f in scan_tree(root)]
         self.assertTrue(any("ui/index.html:1 [external-url]" in r for r in rendered), rendered)
 
+    def test_artifact_scan_reads_a_real_untracked_file_list(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_artifact_scan_"))
+        self.addCleanup(remove_tree, kit)
+        repo = copy_project(kit)
+        for name in ("test_features.py", "tests.py", "review_rules.py", "test_output.txt"):
+            (repo / name).write_text("value = 1\n", encoding="utf-8")
+        gitignore = repo / ".gitignore"
+        gitignore.write_text(gitignore.read_text(encoding="utf-8") + "test_ignored.py\n",
+                             encoding="utf-8")
+        (repo / "test_ignored.py").write_text("value = 1\n", encoding="utf-8")
+        (repo / "docs").mkdir()
+        (repo / "docs" / "notes.txt").write_text("not at the root\n", encoding="utf-8")
+
+        findings = scan_artifacts(repo)
+        self.assertEqual({(finding.path, finding.rule) for finding in findings}, {
+            ("test_features.py", "root-test-module"),
+            ("tests.py", "root-test-module"),
+            ("test_ignored.py", "root-test-module"),
+            ("review_rules.py", "untracked-root-source"),
+            ("test_output.txt", "untracked-output"),
+        })
+
+    def test_artifact_scan_is_scoped_to_a_subdirectory_workspace(self):
+        kit = Path(tempfile.mkdtemp(prefix="test_artifact_nested_"))
+        self.addCleanup(remove_tree, kit)
+        repo = copy_project(kit)
+        nested = repo / "nested"
+        nested.mkdir()
+        (nested / "test_inner.py").write_text("value = 1\n", encoding="utf-8")
+        (repo / "test_outer.py").write_text("value = 1\n", encoding="utf-8")
+
+        findings = scan_artifacts(nested)
+        self.assertEqual({(finding.path, finding.rule) for finding in findings},
+                         {("test_inner.py", "root-test-module")})
+
 
 class TestProjectSecretScan(unittest.TestCase):
     """`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121)."""
 
     def test_scan_reads_the_projects_staged_changes_and_ledger(self):
-        repo = Path(tempfile.mkdtemp(prefix="test_project_secrets_"))
-        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
-        subprocess.run(["git", "init", "--quiet"], cwd=repo, timeout=PROC_TIMEOUT, check=True)
+        kit = Path(tempfile.mkdtemp(prefix="test_project_secrets_"))
+        self.addCleanup(remove_tree, kit)
+        repo = copy_project(kit)
         # Split so this file itself holds no credential-shaped literal.
         key = "sk-" + "ant-api03-" + "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefghij"  # aikit:allow-secret
         (repo / "app.py").write_text("x = 1\n", encoding="utf-8")
         subprocess.run(["git", "add", "app.py"], cwd=repo, timeout=PROC_TIMEOUT, check=True)
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(run_scan(repo=repo), 0)
-        (repo / ".aikit").mkdir()
+        (repo / ".aikit").mkdir(exist_ok=True)
         (repo / ".aikit" / "task_ledger.json").write_text(f'{{"why": "uses {key}"}}', encoding="utf-8")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -853,7 +934,7 @@ class TestProjectGateShell(unittest.TestCase):
 
     def test_shell_keeps_quotes_and_reports_exit_codes(self):
         folder = Path(tempfile.mkdtemp(prefix="test_gate_shell_"))
-        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        self.addCleanup(remove_tree, folder)
         quoted = f'"{sys.executable}" -c "import os, sys; print(os.getcwd()); sys.exit(3)"'
         results = run_gates(folder, [Gate("q", quoted, "t")], timeout=PROC_TIMEOUT)
         self.assertEqual(results[0].returncode, 3)
@@ -865,15 +946,14 @@ class TestProjectPublishLifecycle(unittest.TestCase):
 
     def test_project_status_list_repo_and_check_no_push(self):
         kit = Path(tempfile.mkdtemp(prefix="test_project_publish_"))
-        self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
+        self.addCleanup(remove_tree, kit)
         identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
         patcher = mock.patch.dict(os.environ, identity)
         patcher.start()
         self.addCleanup(patcher.stop)
 
-        root, _ = create_project("app", test_command=f'"{sys.executable}" -c "pass"', workspace=kit)
-        complete_readme(root)
+        root = copy_project(kit)
 
         def aikit(*argv):
             out = io.StringIO()
@@ -901,13 +981,10 @@ class TestProjectPublishLifecycle(unittest.TestCase):
         self.assertIn(f"repo: {fake_url}", out)
 
         # 5. Check with --no-push runs gates and succeeds without attempting network push
-        res_check = subprocess.run([sys.executable, str(ROOT_DIR / "aikit.py"), "--workspace", str(kit),
-                                    "check", "app", "--no-push"],
-                                   capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                   timeout=PROC_TIMEOUT)
-        self.assertEqual(res_check.returncode, 0, res_check.stdout + res_check.stderr)
-        self.assertIn("gates passed for 'app'", res_check.stdout)
-        self.assertNotIn("auto-pushing", res_check.stdout)
+        code, out = aikit("check", "app", "--no-push")
+        self.assertEqual(code, 0, out)
+        self.assertIn("gates passed for 'app'", out)
+        self.assertNotIn("auto-pushing", out)
 
 
 if __name__ == "__main__":

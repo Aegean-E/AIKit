@@ -19,9 +19,10 @@ Exit codes:
 
 import ast
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, List, Optional, Sequence, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +33,15 @@ SKIP_DIRS = frozenset({".git", ".aikit", "__pycache__", ".venv", "venv", "env", 
 
 PY_SUFFIX = ".py"
 ASSET_SUFFIXES = frozenset({".html", ".css", ".js"})
+
+# Artifacts are decided from git's own lists, never from a guessed file content. A directory or
+# suffix here is a cache/build output; if git tracks it, the repository should stop tracking it.
+ARTIFACT_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+                           "htmlcov", "dist", "build", ".eggs", "node_modules", ".venv",
+                           "venv"})
+ARTIFACT_SUFFIXES = (".pyc", ".pyo", ".log", ".tmp", ".bak", ".orig", ".rej")
+ROOT_OUTPUT_SUFFIXES = frozenset({".txt", ".log", ".tmp", ".bak", ".orig", ".rej", ".out"})
+GIT_TIMEOUT_SECONDS = 30
 
 ALLOW_MARKER = re.compile(r"hygiene:\s*allow\s+\S{3,}")
 SUBPROCESS_FUNCS = frozenset({"run", "call", "check_call", "check_output", "Popen"})
@@ -322,10 +332,118 @@ def _read_source(rel: str, path: Path) -> Tuple[Optional[str], List[Finding]]:
                               "the file could not be read as UTF-8 text; its hygiene is unproven")]
 
 
-def scan_tree(root: Path) -> List[Finding]:
+def _is_root_test_module(path: str) -> bool:
+    """
+    Whether `path` is a test module at the project root, where default runners import it.
+
+    `unittest discover` collects `test*.py`, and on Windows its fnmatch match is case-insensitive,
+    so the name is compared lowercased; pytest additionally collects `*_test.py`.
+    """
+    if "/" in path:
+        return False
+    name = PurePosixPath(path).name.lower()
+    return name.endswith(PY_SUFFIX) and (name.startswith("test") or name.endswith("_test.py"))
+
+
+def _artifact_rule(path: str) -> Optional[Tuple[str, str]]:
+    """The tracked-artifact rule and message for `path`, or None when it is ordinary source."""
+    parts = PurePosixPath(path).parts
+    name = parts[-1]
+    if any(part in ARTIFACT_DIRS or part.endswith(".egg-info") for part in parts[:-1]):
+        return ("tracked-artifact",
+                "tracked cache or build output; remove it from the index and ignore it")
+    if name == ".coverage" or name.startswith(".coverage."):
+        return ("tracked-artifact",
+                "tracked coverage output; remove it from the index and ignore it")
+    if name.endswith(ARTIFACT_SUFFIXES):
+        return ("tracked-artifact",
+                "tracked cache, log or temporary output; remove it from the index and ignore it")
+    if parts and parts[0] == ".aikit" and (name.startswith("corrupt_")
+                                           or ".tmp_" in name
+                                           or name.endswith((".bak", ".lock"))):
+        return ("tracked-artifact",
+                "tracked AIKit temporary buffer; run `aikit clean` or remove it from the index")
+    return None
+
+
+def classify_artifacts(tracked: Sequence[str], untracked: Sequence[str]) -> List[Finding]:
+    """
+    Artifact findings from git's tracked and untracked-non-ignored path lists.
+
+    The rule is decidable from the path alone: a root test module changes default test discovery,
+    an untracked root output/source is drift, and a tracked cache is a repository artifact. Pure
+    so the unit tier can cover every shape without spawning git (PRINCIPLE-014 R3).
+    """
+    findings: List[Finding] = []
+    for path in tracked:
+        rel = path.replace("\\", "/")
+        if _is_root_test_module(rel):
+            findings.append(Finding(rel, 1, "root-test-module",
+                                    "a root test module is imported or collected by the default "
+                                    "test runner; move it under tests/ (PRINCIPLE-014 R4)"))
+            continue
+        artifact = _artifact_rule(rel)
+        if artifact is not None:
+            findings.append(Finding(rel, 1, artifact[0],
+                                    f"{artifact[1]} (PRINCIPLE-014 R4)"))
+    for path in untracked:
+        rel = path.replace("\\", "/")
+        if _is_root_test_module(rel):
+            findings.append(Finding(rel, 1, "root-test-module",
+                                    "an untracked root test module is imported or collected by "
+                                    "the default test runner; move it under tests/ "
+                                    "(PRINCIPLE-014 R4)"))
+        elif "/" not in rel and PurePosixPath(rel).suffix == PY_SUFFIX:
+            findings.append(Finding(rel, 1, "untracked-root-source",
+                                    "untracked source at the project root; move it into the "
+                                    "package or scripts layout, or track it deliberately "
+                                    "(PRINCIPLE-014 R4)"))
+        elif "/" not in rel and PurePosixPath(rel).suffix in ROOT_OUTPUT_SUFFIXES:
+            findings.append(Finding(rel, 1, "untracked-output",
+                                    "untracked root output; delete it or add the exact path to "
+                                    ".gitignore (PRINCIPLE-014 R4)"))
+    return sorted(findings, key=lambda finding: (finding.path, finding.line, finding.rule))
+
+
+def _git_paths(root: Path, args: Sequence[str]) -> Tuple[Optional[List[str]], Optional[Finding]]:
+    """The NUL-separated path list from one bounded git call, or the finding that replaced it."""
+    try:
+        proc = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError) as error:
+        return None, Finding(".", 1, "git-unavailable",
+                             f"the artifact scan needs git on PATH: {error}")
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or f"git exit code {proc.returncode}"
+        return None, Finding(".", 1, "git-unavailable",
+                             f"the artifact scan needs a git work tree: {detail[:120]}")
+    return [path for path in proc.stdout.split("\0") if path], None
+
+
+def scan_artifacts(root: Path) -> List[Finding]:
+    """Artifact findings for one git work tree, read-only and sorted (PRINCIPLE-014 R4)."""
+    tracked, error = _git_paths(root, ["ls-files", "-z"])
+    if error is not None:
+        return [error]
+    untracked, error = _git_paths(root, ["ls-files", "--others", "--exclude-standard", "-z"])
+    if error is not None:
+        return [error]
+    findings = classify_artifacts(tracked or [], untracked or [])
+    seen = {finding.path for finding in findings}
+    # git's lists omit ignored paths, but discovery still imports an ignored root test module.
+    for path in sorted(root.glob("*.py")):
+        if path.is_file() and path.name not in seen and _is_root_test_module(path.name):
+            findings.append(Finding(path.name, 1, "root-test-module",
+                                    "a root test module is imported or collected by the default "
+                                    "test runner; move it under tests/ (PRINCIPLE-014 R4)"))
+    return sorted(findings, key=lambda finding: (finding.path, finding.line, finding.rule))
+
+
+def scan_tree(root: Path, artifacts: bool = False) -> List[Finding]:
     """
     Every hygiene finding under `root` in stable order. Generated and vendored directories are
-    skipped whole; each surviving file is read once, as UTF-8.
+    skipped whole; each surviving file is read once, as UTF-8. `artifacts=True` also asks git
+    about untracked outputs, root test modules and tracked caches.
     """
     findings: List[Finding] = []
     for path in sorted(root.rglob("*")):
@@ -342,24 +460,28 @@ def scan_tree(root: Path) -> List[Finding]:
                 findings.extend(check_python_source(rel, source))
             else:
                 findings.extend(check_asset_source(rel, source))
+    if artifacts:
+        findings.extend(scan_artifacts(root))
     return sorted(findings, key=lambda finding: (finding.path, finding.line, finding.rule))
 
 
 REPORT_LIMIT = 20
 
 
-def run_scan(root: Path) -> int:
+def run_scan(root: Path, artifacts: bool = False) -> int:
     """Scan `root` and print the report; the process exit code (PRINCIPLE-012 R4: terse)."""
     if not root.is_dir():
         print(f"[INVALID USAGE] Not a directory: {root}", file=sys.stderr)
         print("Why: the hygiene scan walks a project workspace.", file=sys.stderr)
         print("Fix: pass --workspace <dir> pointing at the project root.", file=sys.stderr)
         return 2
-    findings = scan_tree(root)
+    findings = scan_tree(root, artifacts=artifacts)
     print("=" * 58)
     print("PROJECT HYGIENE SCAN (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011)")
     print("=" * 58)
     print(f"Scope: {root.resolve()}")
+    if artifacts:
+        print("Artifacts: git worktree checked (untracked, root tests, tracked caches)")
     if not findings:
         print("[OK] No hygiene findings.")
         print("=" * 58)
@@ -377,12 +499,12 @@ def run_scan(root: Path) -> int:
     return 1
 
 
-KNOWN_FLAGS = {"--workspace", "--help", "-h"}
+KNOWN_FLAGS = {"--workspace", "--artifacts", "--help", "-h"}
 
 HELP_TEXT = """AIKit Project Hygiene Scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3)
 
 Usage:
-  python scripts/check_project_hygiene.py --workspace <project-dir>
+  python scripts/check_project_hygiene.py --workspace <project-dir> [--artifacts]
 
 Rules (Python):
   shell-true          a shell command line parses through the platform shell
@@ -400,6 +522,12 @@ Rules (Python):
 
 Rules (static assets .html, .css, .js):
   external-url        the asset loads code, fonts or data from a third party
+
+Rules (--artifacts, decided from git's tracked and untracked file lists):
+  root-test-module    a test module at the project root is imported or collected by the runner
+  untracked-root-source  source at the project root is not tracked or placed in the layout
+  untracked-output    an untracked root .txt/.log/.tmp/.bak/.orig/.rej/.out file is drift
+  tracked-artifact    a cache, coverage file or build output is tracked by git
 
 Exceptions:
   Mark a deliberate line with `hygiene: allow <reason>`; the reason is part of the record.
@@ -431,7 +559,7 @@ def main(argv: Sequence[str]) -> int:
             print("Fix: pass '--workspace <dir>'.", file=sys.stderr)
             return 2
         root = Path(argv[index + 1])
-    return run_scan(root)
+    return run_scan(root, artifacts="--artifacts" in argv)
 
 
 if __name__ == "__main__":

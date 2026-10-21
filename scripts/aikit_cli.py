@@ -101,7 +101,10 @@ def build_parser() -> argparse.ArgumentParser:
     attach.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
 
     commands.add_parser("list", help="show every project, its stacks and test command")
-    project_command("status", "a project's task, uncommitted work, latest decision and gates")
+    status = project_command("status",
+                             "a project's task, uncommitted work, latest decision and gates")
+    status.add_argument("--exit-code", action="store_true",
+                        help="exit 1 when the project is dirty, conflicted, or cannot be audited")
     project_command("resume", "the cold-start report for a project (PRINCIPLE-004 R2)")
 
     checkpoint = project_command("checkpoint", "record a checkpoint in the project's ledger")
@@ -222,6 +225,11 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
     gates = ", ".join(gate.name for gate in resolve_gates(project))
     print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
+    if getattr(args, "exit_code", False):
+        dirty = (audit.get("modified_files") or audit.get("untracked_files")
+                 or audit.get("conflicted_files"))
+        if audit.get("git_missing") or dirty:
+            return 1
     return 0
 
 
@@ -279,6 +287,8 @@ def project_baseline_errors(project: Project, audit: dict) -> List[str]:
         errors.append("the project is not a git repository, so a clean tree cannot be verified")
     if audit.get("modified_files") or audit.get("untracked_files"):
         errors.append("the project has uncommitted non-bookkeeping changes")
+    if audit.get("conflicted_files"):
+        errors.append("the project has unresolved merge conflicts")
     if find_python_files(project.path) and not (project.path / ".aikit" / "codebase_map.md").is_file():
         errors.append("Python sources exist but .aikit/codebase_map.md is missing")
     return errors
@@ -322,16 +332,22 @@ def cmd_check(args: argparse.Namespace) -> int:
         print("Error: the project is not delivery-ready.", file=sys.stderr)
         print("Why: a passing gate run must describe the committed tree, not an unverified working copy.",
               file=sys.stderr)
-        print("Fix: commit the non-bookkeeping changes, run `python aikit.py fix <name>` for a missing "
-              "map, or open the ledger with the AIKit version that wrote it; then rerun with --strict.",
-              file=sys.stderr)
+        print("Fix: commit the non-bookkeeping changes, resolve any merge conflicts, run "
+              "`python aikit.py fix <name>` for a missing map, or open the ledger with the AIKit "
+              "version that wrote it; then rerun with --strict.", file=sys.stderr)
         return 1
 
-    dirty = bool(audit.get("modified_files") or audit.get("untracked_files"))
+    dirty = bool(audit.get("modified_files") or audit.get("untracked_files")
+                 or audit.get("conflicted_files"))
+    if dirty:
+        print(f"[DELIVERY] NOT READY: {len(audit.get('modified_files', []))} modified, "
+              f"{len(audit.get('untracked_files', []))} untracked, "
+              f"{len(audit.get('conflicted_files', []))} conflicted; run `check --strict` before "
+              "pushing.")
     if not getattr(args, "no_push", False):
         if dirty:
-            print("[WARN] Uncommitted non-bookkeeping changes exist; skipping auto-push. "
-                  "Commit them and run `check --strict` before pushing.", file=sys.stderr)
+            print("[WARN] Uncommitted changes or unresolved conflicts exist; skipping auto-push. "
+                  "Commit or resolve them and run `check --strict` before pushing.", file=sys.stderr)
         else:
             push_code, push_report = auto_push_project(project.path, project.name)
             if push_code == 0:

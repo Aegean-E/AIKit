@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `17`
-- **Total Classes**: `77`
-- **Total Top-Level Functions**: `243`
-- **Total Class Methods**: `457`
-- **Total Source Lines**: `13076`
+- **Total Classes**: `78`
+- **Total Top-Level Functions**: `252`
+- **Total Class Methods**: `469`
+- **Total Source Lines**: `13486`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `411` lines (`19510` bytes)
+**Size**: `427` lines (`20448` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -58,7 +58,7 @@
 ### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
 > *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
 
-**Size**: `438` lines (`20028` bytes)
+**Size**: `566` lines (`27435` bytes)
 
 **Classes:**
 - `class Finding` - *One violation, addressed to the line a developer must change.*
@@ -84,8 +84,13 @@
 - `def _marked(lines, line)` - *Whether the finding's own line carries a deliberated `hygiene: allow <reason>` marker.*
 - `def check_python_source(rel, source)` - *Every Python finding in one source text; findings on `hygiene: allow` lines are dropped.*
 - `def _read_source(rel, path)` - *The file's UTF-8 text, or the finding that replaces it (PRINCIPLE-000 R5: no silent skip).*
-- `def scan_tree(root)` - *Every hygiene finding under `root` in stable order. Generated and vendored directories are*
-- `def run_scan(root)` - *Scan `root` and print the report; the process exit code (PRINCIPLE-012 R4: terse).*
+- `def _is_root_test_module(path)` - *Whether `path` is a test module at the project root, where default runners import it.*
+- `def _artifact_rule(path)` - *The tracked-artifact rule and message for `path`, or None when it is ordinary source.*
+- `def classify_artifacts(tracked, untracked)` - *Artifact findings from git's tracked and untracked-non-ignored path lists.*
+- `def _git_paths(root, args)` - *The NUL-separated path list from one bounded git call, or the finding that replaced it.*
+- `def scan_artifacts(root)` - *Artifact findings for one git work tree, read-only and sorted (PRINCIPLE-014 R4).*
+- `def scan_tree(root, artifacts)` - *Every hygiene finding under `root` in stable order. Generated and vendored directories are*
+- `def run_scan(root, artifacts)` - *Scan `root` and print the report; the process exit code (PRINCIPLE-012 R4: terse).*
 - `def main(argv)` - *Parse `--workspace` and run; argument misuse returns 2 with the Why/Fix triad.*
 
 ---
@@ -212,7 +217,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `487` lines (`21922` bytes)
+**Size**: `506` lines (`22944` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -419,7 +424,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `914` lines (`45950` bytes)
+**Size**: `991` lines (`48325` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -492,6 +497,8 @@
   - Method `.test_fix_then_check_and_the_guidelines_gate_reads_the_readme()`
 - `class TestProjectHygieneGate` - *The hygiene gate runs inside `aikit check` and fails the project on real findings (ADR-137).*
   - Method `.test_check_passes_clean_and_fails_on_a_third_party_asset()`
+  - Method `.test_artifact_scan_reads_a_real_untracked_file_list()`
+  - Method `.test_artifact_scan_is_scoped_to_a_subdirectory_workspace()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
   - Method `.test_scan_reads_the_projects_staged_changes_and_ledger()`
 - `class TestProjectGateShell` - *Gates run through the platform shell in the project folder (ADR-122).*
@@ -501,13 +508,17 @@
 
 **Functions:**
 - `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
+- `def remove_tree(path)` - *Remove a test tree even when copied `.git` objects kept their read-only bit (Windows).*
+- `def setUpModule()` - *Create one committed project template; repo copies are cheaper than git init+commit.*
+- `def tearDownModule()`
+- `def copy_project(kit)` - *A fresh copy of the committed template at `<kit>/projects/app`.*
 
 ---
 
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5091` lines (`282615` bytes)
+**Size**: `5261` lines (`291954` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -594,6 +605,11 @@
   - Method `.test_every_code_name_a_knowledge_document_cites_exists()`
 - `class TestChaosCoverage` - *PRINCIPLE-013 R7 (ADR-086, ADR-148): each named fault has a test that drives it. The map holds*
   - Method `.test_every_named_fault_has_a_test()`
+- `class TestDogfoodFingerprint` - *The blast-radius hash reads only paths git status names, but still sees dirty content.*
+  - Method `.test_verbose_trace_reconfigures_legacy_console_encoding()`
+  - Method `.test_dirty_content_changes_fingerprint_with_identical_status()`
+  - Method `.test_rename_entry_hashes_the_new_path_and_consumes_the_old()`
+  - Method `.test_fingerprint_reads_dirty_content_across_chunks()`
 - `class TestAdrRegister` - *PRINCIPLE-016 R3 / PRINCIPLE-000 R3: ADR IDs are unique and consecutive (ADR-069).*
   - Method `.register(*numbers)`
   - Method `.test_consecutive_ids_pass()`
@@ -851,9 +867,11 @@
   - Method `.test_workspace_is_explicit_never_the_working_directory()`
   - Method `.test_new_with_publish_flag_calls_publish_project()`
   - Method `.test_status_displays_repo_url()`
+  - Method `.test_status_exit_code_tracks_dirty_state_without_changing_plain_status()`
   - Method `.test_check_triggers_auto_push_unless_opted_out()`
   - Method `._gate_result()`
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`
+  - Method `.test_conflicted_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`
   - Method `.test_run_git_uses_utf8_encoding_with_replacement()`
@@ -876,6 +894,10 @@
   - Method `.test_inline_allow_marker_needs_a_reason()`
   - Method `.test_asset_urls_skip_loopback_namespaces_and_marked_lines()`
   - Method `.test_scan_tree_skips_vendored_dirs_and_reports_unreadable_files()`
+  - Method `.test_artifact_classifier_flags_root_tests_outputs_and_source()`
+  - Method `.test_artifact_scan_reports_missing_git_without_a_traceback()`
+  - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
+  - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`
   - Method `.test_git_ignores_projects()`

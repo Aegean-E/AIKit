@@ -34,6 +34,17 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Safe terminal encoding on Windows (cp1254/cp1252): the verbose trace replays child output
+# that may contain emoji, and the legacy console codec cannot encode it.
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):  # hygiene: allow console encoding is cosmetic
+        pass
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LEDGER_CLI = ROOT_DIR / "scripts" / "disruption_recovery.py"
 SYNC_CLI = ROOT_DIR / "scripts" / "sync_principles.py"
@@ -45,6 +56,7 @@ LOG_PATH = ROOT_DIR / ".agents" / "dogfood_last_run.log"
 
 PROC_TIMEOUT = 10  # PRINCIPLE-010 R3: no unbounded subprocess
 MAX_REPORT_LINES = 15  # PRINCIPLE-015 R7: terse dashboard
+FINGERPRINT_CHUNK = 1 << 20  # PRINCIPLE-010: stream dirty files instead of reading them whole
 
 
 # --------------------------------------------------------------------------------------
@@ -145,31 +157,38 @@ def repo_fingerprint() -> Optional[str]:
     Comparing `git status --porcelain` text is NOT sufficient: a file that was already dirty
     before the run prints the same " M path" line afterwards no matter how its contents
     changed. The first dogfood run passed its own blast-radius check while overwriting the
-    real task ledger for exactly that reason. Hashing tracked content closes the hole.
+    real task ledger for exactly that reason. Hashing only the paths status names closes the
+    hole without reading every tracked file on each of the run's two fingerprint calls.
     """
     try:
-        files = subprocess.run(
-            ["git", "ls-files"], cwd=str(ROOT_DIR),
-            capture_output=True, text=True, timeout=PROC_TIMEOUT,
-        )
         status = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=str(ROOT_DIR),
-            capture_output=True, text=True, timeout=PROC_TIMEOUT,
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            cwd=str(ROOT_DIR), capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=PROC_TIMEOUT,
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    if files.returncode != 0 or status.returncode != 0:
+    if status.returncode != 0:
         return None
 
     digest = hashlib.sha256()
-    digest.update(status.stdout.encode("utf-8"))
-    for rel in sorted(files.stdout.splitlines()):
-        if not rel.strip():
+    entries = status.stdout.split("\0")
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if not entry:
             continue
-        path = ROOT_DIR / rel.strip()
-        digest.update(rel.encode("utf-8"))
+        digest.update(entry.encode("utf-8"))
+        path = entry[3:]  # porcelain's two status columns and one separator precede the path
+        if any(column in "RC" for column in entry[:2]):
+            if index < len(entries):
+                digest.update(entries[index].encode("utf-8"))
+                index += 1
         try:
-            digest.update(path.read_bytes())
+            with (ROOT_DIR / path).open("rb") as handle:
+                while chunk := handle.read(FINGERPRINT_CHUNK):
+                    digest.update(chunk)
         except OSError:
             digest.update(b"<unreadable>")
     return digest.hexdigest()

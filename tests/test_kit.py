@@ -154,8 +154,11 @@ from scripts.check_secrets import (
 from scripts.check_project_hygiene import (
     check_asset_source,
     check_python_source,
+    classify_artifacts,
+    scan_artifacts,
     scan_tree,
 )
+from scripts.dogfood import repo_fingerprint
 from scripts.check_test_budgets import (
     TIER_BUDGETS_MS,
     budget_errors,
@@ -323,7 +326,7 @@ class TestPrincipleSync(unittest.TestCase):
         # exception: the user approved rewriting the principle text, and ADR-087 names this test).
         for mechanism in ("100% test pass gate", "behaviour change = failing-first test",
                           "weakening a test needs user approval + adr naming it",
-                          "unit <=8ms/test, no spawns/sleeps", "integ <=200ms/test",
+                          "unit <=8ms/test, no spawns/sleeps", "integ <=250ms/test",
                           "tempdir + addcleanup", "scripts/check_reachability.py"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p14["invariant"].lower())
@@ -1161,6 +1164,76 @@ class TestChaosCoverage(unittest.TestCase):
         for fault, test in self.FAULTS.items():
             with self.subTest(fault=fault):
                 self.assertIn(test, names, f"the test named for {fault} is gone; the fault is uncovered")
+
+
+class TestDogfoodFingerprint(unittest.TestCase):
+    """The blast-radius hash reads only paths git status names, but still sees dirty content."""
+
+    def test_verbose_trace_reconfigures_legacy_console_encoding(self):
+        # Verbose mode replays emoji-bearing child output; cp1254/cp1252 consoles raise
+        # UnicodeEncodeError unless stdout/stderr replace unsupported code points.
+        source = (ROOT_DIR / "scripts" / "dogfood.py").read_text(encoding="utf-8")
+        self.assertIn('sys.stdout.reconfigure(encoding="utf-8", errors="replace")', source)
+        self.assertIn('sys.stderr.reconfigure(encoding="utf-8", errors="replace")', source)
+
+    def test_dirty_content_changes_fingerprint_with_identical_status(self):
+        root = Path(tempfile.mkdtemp(prefix="test_fingerprint_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        dirty = root / "dirty.txt"
+        dirty.write_text("one\n", encoding="utf-8")
+
+        def status_only(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, " M dirty.txt\0", "")
+
+        with mock.patch("scripts.dogfood.ROOT_DIR", root), \
+             mock.patch("scripts.dogfood.subprocess.run", side_effect=status_only):
+            first = repo_fingerprint()
+            dirty.write_text("two\n", encoding="utf-8")
+            second = repo_fingerprint()
+        self.assertIsNotNone(first)
+        self.assertNotEqual(first, second)
+
+    def test_rename_entry_hashes_the_new_path_and_consumes_the_old(self):
+        root = Path(tempfile.mkdtemp(prefix="test_fingerprint_rename_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        renamed = root / "new.txt"
+        renamed.write_text("one\n", encoding="utf-8")
+        # A Y-column entry is the only shape where `entry[0]` alone misses the second path;
+        # `.txt` is the path the old parser would misread from "old.txt" if it did not consume it.
+        decoy = root / ".txt"
+        decoy.write_text("one\n", encoding="utf-8")
+
+        def rename_status(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, " R new.txt\0old.txt\0", "")
+
+        with mock.patch("scripts.dogfood.ROOT_DIR", root), \
+             mock.patch("scripts.dogfood.subprocess.run", side_effect=rename_status):
+            first = repo_fingerprint()
+            second = repo_fingerprint()
+            decoy.write_text("two\n", encoding="utf-8")
+            third = repo_fingerprint()
+            renamed.write_text("two\n", encoding="utf-8")
+            fourth = repo_fingerprint()
+        self.assertEqual(first, second)
+        self.assertEqual(first, third, "the old path must be consumed, not read as a path")
+        self.assertNotEqual(first, fourth, "the new path's content is still hashed")
+
+    def test_fingerprint_reads_dirty_content_across_chunks(self):
+        root = Path(tempfile.mkdtemp(prefix="test_fingerprint_chunks_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        dirty = root / "dirty.txt"
+        dirty.write_text("abcdefghij\n", encoding="utf-8")
+
+        def status_only(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, " M dirty.txt\0", "")
+
+        with mock.patch("scripts.dogfood.ROOT_DIR", root), \
+             mock.patch("scripts.dogfood.FINGERPRINT_CHUNK", 3), \
+             mock.patch("scripts.dogfood.subprocess.run", side_effect=status_only):
+            first = repo_fingerprint()
+            dirty.write_text("abcdXfghij\n", encoding="utf-8")
+            second = repo_fingerprint()
+        self.assertNotEqual(first, second, "a change after the first chunk must be hashed")
 
 
 class TestAdrRegister(unittest.TestCase):
@@ -2343,8 +2416,10 @@ class TestLifecycleToolSemantics(unittest.TestCase):
 
     def test_audit_ignores_the_ledger(self):
         # The ledger is bookkeeping; counting it made every checkpointed task look disrupted.
+        root = Path(tempfile.mkdtemp(prefix="test_bookkeeping_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         audit = run_disruption_audit(
-            Path(tempfile.mkdtemp(prefix="test_bookkeeping_")),
+            root,
             git_status=lambda ws: (0, " M .agents/task_ledger.json\n?? notes.md\n", ""),
         )
         self.assertEqual(audit["modified_files"], [])
@@ -4113,6 +4188,31 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Repo:      https://github.com/org/repoapp", out)
 
+    def test_status_exit_code_tracks_dirty_state_without_changing_plain_status(self):
+        folder = self.make_folder()
+        attach_project(folder, "codeapp", workspace=self.kit)
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        dirty = {"modified_files": ["core.py"], "untracked_files": ["test_features.py"],
+                 "conflicted_files": [], "ledger_error": None, "git_missing": False}
+        unauditable = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                       "ledger_error": None, "git_missing": True}
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean):
+            code, _, _ = self.run_cli("status", "codeapp")
+            self.assertEqual(code, 0)
+            code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
+            self.assertEqual(code, 0)
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty):
+            code, _, _ = self.run_cli("status", "codeapp")
+            self.assertEqual(code, 0, "plain status keeps its advisory exit semantics")
+            code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
+            self.assertEqual(code, 1)
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=unauditable):
+            code, _, _ = self.run_cli("status", "codeapp")
+            self.assertEqual(code, 0, "plain status remains advisory without git")
+            code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
+            self.assertEqual(code, 1, "a tree git cannot audit is not delivery-ready")
+
     def test_check_triggers_auto_push_unless_opted_out(self):
         folder = self.make_folder()
         attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
@@ -4157,12 +4257,34 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
             code, out, err = self.run_cli("check", "dirtyapp")
             self.assertEqual(code, 0)
+            self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("skipping auto-push", err)
             push.assert_not_called()
 
             code, out, err = self.run_cli("check", "dirtyapp", "--strict", "--no-push")
             self.assertEqual(code, 1)
             self.assertIn("uncommitted non-bookkeeping changes", out)
+            self.assertIn("not delivery-ready", err)
+
+    def test_conflicted_check_skips_auto_push_and_strict_fails(self):
+        folder = self.make_folder(("README.md", "# app\n"))
+        attach_project(folder, "conflictedapp", test_command="python -c exit(0)", workspace=self.kit)
+        conflicted = {"modified_files": [], "untracked_files": [], "conflicted_files": ["UU README.md"],
+                      "ledger_error": None, "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=conflicted), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
+            code, out, err = self.run_cli("check", "conflictedapp")
+            self.assertEqual(code, 0)
+            self.assertIn("[DELIVERY] NOT READY", out)
+            self.assertIn("1 conflicted", out)
+            self.assertIn("skipping auto-push", err)
+            push.assert_not_called()
+
+            code, out, err = self.run_cli("check", "conflictedapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("unresolved merge conflicts", out)
             self.assertIn("not delivery-ready", err)
 
     def test_strict_requires_a_codebase_map(self):
@@ -4354,6 +4476,54 @@ class TestProjectHygieneScan(unittest.TestCase):
         self.assertEqual([(finding.path, finding.rule) for finding in scan_tree(root)],
                          [("app.py", "os-system"), ("bin.py", "unreadable"),
                           ("broken.py", "unparseable")])
+
+    def test_artifact_classifier_flags_root_tests_outputs_and_source(self):
+        findings = classify_artifacts(
+            tracked=["app/core.py", "tests/test_core.py", "tests.py", "TestFoo.py"],
+            untracked=["test_features.py", "testfoo.py", "review_rules.py", "test_output.txt",
+                       "docs/notes.txt", "README.md"],
+        )
+        pairs = {(finding.path, finding.rule) for finding in findings}
+        self.assertEqual(pairs, {
+            ("tests.py", "root-test-module"),
+            ("TestFoo.py", "root-test-module"),
+            ("test_features.py", "root-test-module"),
+            ("testfoo.py", "root-test-module"),
+            ("review_rules.py", "untracked-root-source"),
+            ("test_output.txt", "untracked-output"),
+        })
+
+    def test_artifact_scan_reports_missing_git_without_a_traceback(self):
+        root = Path(tempfile.mkdtemp(prefix="test_hygiene_no_git_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        with mock.patch("scripts.check_project_hygiene.subprocess.run",
+                        side_effect=OSError("git vanished")):
+            findings = scan_artifacts(root)
+        self.assertEqual([(finding.path, finding.rule) for finding in findings],
+                         [(".", "git-unavailable")])
+
+    def test_artifact_classifier_flags_tracked_caches_and_temporary_state(self):
+        findings = classify_artifacts(
+            tracked=["__pycache__/core.pyc", "build/app.zip", "pkg.egg-info/PKG-INFO",
+                     ".coverage", ".aikit/state.json.tmp_1", ".aikit/task_ledger.json"],
+            untracked=[],
+        )
+        pairs = {(finding.path, finding.rule) for finding in findings}
+        self.assertEqual(pairs, {
+            ("__pycache__/core.pyc", "tracked-artifact"),
+            ("build/app.zip", "tracked-artifact"),
+            ("pkg.egg-info/PKG-INFO", "tracked-artifact"),
+            (".coverage", "tracked-artifact"),
+            (".aikit/state.json.tmp_1", "tracked-artifact"),
+        })
+
+    def test_artifact_classifier_keeps_bookkeeping_and_normal_source(self):
+        findings = classify_artifacts(
+            tracked=[".aikit/task_ledger.json", ".aikit/decisions.md", "app/core.py",
+                     "tests/test_core.py", "docs/guide.txt"],
+            untracked=["examples/demo.py", "tests/test_new.py"],
+        )
+        self.assertEqual(findings, [])
 
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""
