@@ -350,7 +350,11 @@ def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str 
         "",
         # Wording mirrors PRINCIPLE-001 R1 (precedence) and R3 (trigger names) exactly; a test
         # keeps the two in lock-step so every agent receives the same instruction.
-        f"> Generated from `{SSOT_MD.name}` by `scripts/sync_principles.py`; do not edit.",
+        # The generator is deliberately not named here: the PRINCIPLE-017 capsule below names
+        # `scripts/sync_principles.py`, and the next line names `sync_principles.py --involved`,
+        # so the 32 characters bought nothing and the Tier 1 budget had 3 left (ADR-175). The
+        # `Generated from ` prefix is a GENERATED_MARKERS entry and must stay.
+        f"> Generated from `{SSOT_MD.name}`; do not edit.",
         "> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or "
         "ambiguity, read the `### PRINCIPLE-NNN:` section of each principle "
         "`sync_principles.py --involved` lists; never the whole file unless asked.",

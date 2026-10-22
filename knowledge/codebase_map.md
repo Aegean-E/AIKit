@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `310`
-- **Total Class Methods**: `553`
-- **Total Source Lines**: `16244`
+- **Total Class Methods**: `554`
+- **Total Source Lines**: `16261`
 
 ---
 
@@ -358,7 +358,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `813` lines (`40418` bytes)
+**Size**: `817` lines (`40750` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -604,7 +604,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6404` lines (`358154` bytes)
+**Size**: `6417` lines (`359037` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -745,6 +745,7 @@
   - Method `.test_rules_use_normative_keywords()`
   - Method `.test_tier1_header_mirrors_r3_triggers_and_r1_precedence()`
   - Method `.test_every_agent_rule_reaches_tier1()`
+  - Method `.test_tier1_header_does_not_repeat_the_generator_name()`
   - Method `.test_precedence_never_contradicts_another_principle()`
   - Method `.test_open_terms_are_defined()`
   - Method `.test_involvement_is_deterministic()`

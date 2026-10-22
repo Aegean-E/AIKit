@@ -1,49 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "handoff-packet-v1",
+    "task_id": "tier1-header-slack-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792697757.6995187,
-    "completed_at": 1792697761.52593
+    "updated_at": 1792698122.4676995,
+    "completed_at": 1792698126.3169153
   },
   "checkpoints": [
-    {
-      "task_id": "ui-guard-enforcement-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-guard-enforcement-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792677106.749862,
-      "timestamp_str": "2026-10-22 16:51:46"
-    },
-    {
-      "task_id": "ui-guard-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] Bind each declared UI surface to a finished task: record a surface digest in history and make strict check/publish refuse a surface whose current committed content has no matching finished UI task. [2/4] Return a JSON error envelope for ui verify --json, validate any present UI contract even when ui_required is false, and include those errors in the plain auto-push block. [3/4] Harden the React/Vite ui init pilot for peerDependencies and __tests__ protection, validate the generated contract, and print a gate summary before publish. [4/4] Correct the published ADR-165 integration-ceiling citation, record ADR-169, and run the full Phase 4 gate set.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792684994.8401768,
-      "timestamp_str": "2026-10-22 19:03:14",
-      "impact_assessment": {
-        "why": "Probes confirmed that strict check passes a committed surface file with no UI task/history, ui verify --json emits human text on operational errors, and a malformed contract is ignored when ui_required is false; the pilot also has narrow detection and publish lacks a gate summary.",
-        "benefits": "A surface claim now requires matching evidence, CI receives JSON in all verify outcomes, malformed contracts fail even when the guard is not required, and the one-stack scaffold is safer.",
-        "risks": "contract: ui_history gains a surface_digest and strict/publish gain a surface-evidence refusal; dependency: none; concurrency: history writes remain under the task lock; state: history records without a digest cannot satisfy the new requirement until a new task finishes.",
-        "mitigation": "Keep the evidence check opt-in through ui_required, record the digest at finish, add tests for matching and missing evidence, and document the migration behavior."
-      }
-    },
-    {
-      "task_id": "ui-guard-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 4/4] Fixed the verified issues: surface digest evidence in ui_history with strict/publish enforcement, JSON ui.error envelopes, validation of any present contract, plain auto-push blocking, peerDependency and __tests__ support in ui init, generated-contract validation, publish gate summary, and the ADR-164/165 citation correction (ADR-169/170). 399 unit tests at 6.81ms/test, 49 integration at 220.45ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792686459.2841809,
-      "timestamp_str": "2026-10-22 19:27:39"
-    },
     {
       "task_id": "ui-guard-evidence-v1",
       "phase": "completed",
@@ -250,6 +215,47 @@
       "status": "completed",
       "timestamp": 1792697761.5259326,
       "timestamp_str": "2026-10-22 22:36:01"
+    },
+    {
+      "task_id": "tier1-header-slack-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Drop the redundant generator name from the Tier 1 header, with a failing-first test pinning why it is safe: the marker survives, P-017's capsule names scripts/sync_principles.py, and line 2 names sync_principles.py --involved. [2/2] Regenerate all 8 targets, record ADR-175 with the measured budget, run every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792698003.6882925,
+      "timestamp_str": "2026-10-22 22:40:03",
+      "impact_assessment": {
+        "why": "The Tier 1 token budget has 3 characters free of 6,403 at the worst target, which blocks the SKILL.md pointer item 3 needs and every future rule. The header spends 32 characters naming its own generator, which the P-017 capsule in the same file already names and which line 2 names again as sync_principles.py --involved.",
+        "benefits": "Frees 32 characters, taking the worst target from 6,400 to 6,368 of 6,403 and the budget margin from 3 to 35 characters, with no information removed from the file; a prerequisite for any further Tier 1 text and for raising or spending the budget deliberately rather than by accident.",
+        "risks": "contract: the 8 generated host instruction surfaces change one line of text; the GENERATED_MARKERS prefix 'Generated from `' is preserved, so sync still refuses to overwrite a file it did not generate. dependency: none. concurrency: none. state: no schema, ledger or persisted data changes; GUIDELINES.md and every principle section is untouched, so no cross-principle check set applies.",
+        "mitigation": "Pin the removal with a test asserting the marker still matches, the header still says 'Generated from' and 'do not edit', and the generator name still reaches Tier 1 through the P-017 capsule and the R3 trigger line; verify is_generated_target still accepts the rendered header; regenerate all 8 targets and run sync --check plus the full gate set."
+      }
+    },
+    {
+      "task_id": "tier1-header-slack-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/2] Both milestones done; ADR-175 records the measurement.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792698122.4676995,
+      "timestamp_str": "2026-10-22 22:42:02",
+      "handoff": {
+        "state": "Tier 1 budget margin raised from 3 to 35 chars at the worst target",
+        "next": "put the budget decision to the user, since 35 chars still cannot hold the SKILL.md pointer safely",
+        "failed": "all five pointer phrasings measured - backticked path overruns by 7, bare path by 4, and the two that fit leave only 1 and 4 chars on the gate that blocks every commit",
+        "evidence": "479 tests, six gates, all 8 targets regenerated, header marker preserved"
+      }
+    },
+    {
+      "task_id": "tier1-header-slack-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'tier1-header-slack-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792698126.3169181,
+      "timestamp_str": "2026-10-22 22:42:06"
     }
   ]
 }

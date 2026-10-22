@@ -1961,6 +1961,19 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
             with self.subTest(rule=rule):
                 self.assertIn(phrase, rendered, f"{rule} does not reach Tier 1")
 
+    def test_tier1_header_does_not_repeat_the_generator_name(self):
+        # The header spent 32 of the budget's last characters naming its own generator, which the
+        # same file already names twice. Removing it is safe only while all three hold (ADR-175).
+        rendered = render_tier1_target("# probe", parse_principles(SSOT_MD))
+        self.assertNotIn("by `scripts/sync_principles.py`", rendered)
+        self.assertIn("Generated from `GUIDELINES.md`", rendered)
+        self.assertIn("do not edit", rendered)
+        self.assertIn("scripts/sync_principles.py", rendered,
+                      "the PRINCIPLE-017 capsule must still name the generator")
+        self.assertIn("sync_principles.py --involved", rendered)
+        self.assertTrue(is_generated_target(rendered),
+                        "sync would stop recognizing its own output and refuse to rewrite it")
+
     def test_precedence_never_contradicts_another_principle(self):
         # Red-green pin: "an explicit user instruction overrides both" contradicted PRINCIPLE-002
         # R5 ("skip tests" must not bypass the gate), so models split on which rule to obey.
