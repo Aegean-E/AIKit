@@ -266,6 +266,23 @@ class TestPrincipleSync(unittest.TestCase):
                 f"Governance bloat in {target.name}: ~{len(content) // 4} tokens > {TARGET_TOKEN_BUDGET}",
             )
 
+    def test_agent_facing_role_texts_match_gate_limits(self):
+        # ADR-157/159 raised the gates; a hand-written role file or runbook must not keep the old
+        # number and make a sub-agent enforce a different contract.
+        integration = TIER_BUDGETS_MS["tests.test_integration"]
+        for rel in (".agents/skills/aikit/SKILL.md", ".claude/skills/aikit/SKILL.md"):
+            text = (ROOT_DIR / rel).read_text(encoding="utf-8")
+            self.assertIn(f"integration <={integration:g}ms", text, rel)
+            self.assertNotIn("integration <=200ms", text, rel)
+        for rel in (".opencode/agents/tester.md", ".claude/agents/tester.md"):
+            text = (ROOT_DIR / rel).read_text(encoding="utf-8")
+            self.assertIn(f"at most {integration:g}ms", text, rel)
+            self.assertNotIn("at most 200ms", text, rel)
+        for rel in (".opencode/agents/reviewer.md", ".claude/agents/reviewer.md"):
+            text = (ROOT_DIR / rel).read_text(encoding="utf-8")
+            self.assertIn(f"{README_MAX_CHARS:,} characters", text, rel)
+            self.assertNotIn("20,000 characters", text, rel)
+
     def test_principle_003_anti_hallucination_capsule(self):
         # Enforces PRINCIPLE-003: verified invariant capsule with slice freshness, call-sites, and platform parity
         principles = parse_principles(SSOT_MD)
@@ -313,9 +330,9 @@ class TestPrincipleSync(unittest.TestCase):
         p6 = next((p for p in principles if p["id"] == "PRINCIPLE-006"), None)
         self.assertIsNotNone(p6)
         # Mechanisms, not labels (ADR-078).
-        for mechanism in ("commit each `[milestone n/m]` once phase 4 passes",
-                          "failing work stays uncommitted, described by `--checkpoint`",
-                          "`--complete` or `--reset` before switching tasks", "`--clean` stale `.tmp_*`"):
+        for mechanism in ("commit `[milestone n/m]` once phase 4 passes under principle-018 r1",
+                          "failing work uncommitted via `--checkpoint`",
+                          "`--complete`/`--reset` before switching tasks", "`--clean` stale `.tmp_*`"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p6["invariant"].lower())
 
@@ -328,7 +345,7 @@ class TestPrincipleSync(unittest.TestCase):
         # exception: the user approved rewriting the principle text, and ADR-087 names this test).
         for mechanism in ("100% test pass gate", "behaviour change = failing-first test",
                           "weakening a test needs user approval + adr naming it",
-                          "unit <=8ms/test, no spawns/sleeps", "integ <=250ms/test",
+                          "unit <=10ms/test, no spawns/sleeps", "integ <=350ms/test",
                           "tempdir + addcleanup", "scripts/check_reachability.py"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p14["invariant"].lower())
@@ -373,11 +390,12 @@ class TestPrincipleSync(unittest.TestCase):
         principles = parse_principles(SSOT_MD)
         p18 = next((p for p in principles if p["id"] == "PRINCIPLE-018"), None)
         self.assertIsNotNone(p18)
-        self.assertIn("automatic conventional commits", p18["invariant"].lower())
+        self.assertIn("conventional commits", p18["invariant"].lower())
+        self.assertIn("only if authorized (r1)", p18["invariant"].lower())
         self.assertIn("adaptive push", p18["invariant"].lower())
         self.assertIn("explicit staging", p18["invariant"].lower())
-        self.assertIn("zero `git add .`", p18["invariant"].lower())
-        self.assertIn("pre-commit delivery triad", p18["invariant"].lower())
+        self.assertIn("no `git add .`", p18["invariant"].lower())
+        self.assertIn("pre-commit triad", p18["invariant"].lower())
         self.assertIn("non-destructive recoil", p18["invariant"].lower())
 
     def test_principle_000_meta_principle_capsule(self):
@@ -1469,8 +1487,10 @@ class TestPrinciple006Unambiguity(unittest.TestCase):
 
     def test_every_duty_is_defined(self):
         for definition in (
-            "the agent MUST commit once per milestone, as soon as that milestone's Phase 4 commands pass",
-            "A plan with one milestone is committed once, without a tag",
+            "commit once per milestone as soon as that milestone's Phase 4 commands pass",
+            "When commit delivery is not authorized, it MUST, once that milestone's Phase 4 commands pass, record the milestone as a `--checkpoint`",
+            "whose `--desc` opens with `[milestone N/M]`",
+            "A plan with one milestone is committed once, without a tag, under the same authorization test",
             "unless the informed override of PRINCIPLE-002 R5 applies",
             "the ledger holds the description, never the code",
             "--phase-num <1-5> --desc <text>",
@@ -1777,7 +1797,14 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
                 # ADR-149: the commit is verified on its own before it is pushed.
                 "the agent runs `python scripts/verify_commit.py`; the push follows only when it exits 0",
                 "the commit is a different tree whenever staging is a subset of it",
-                "unless the user said not to commit; then it stops after Phase 4",
+                # ADR-162: a host that forbids unrequested git operations makes delivery unauthorized.
+                "Commit delivery* is authorized when the user asked in this task for a commit or a pull request",
+                "Push delivery* is authorized when the user asked in this task for a push or a pull request",
+                "Commit delivery is not authorized when the user said not to commit",
+                "push delivery is not authorized when the user said not to push",
+                "The agent MUST check its host platform's standing instructions before deciding to commit or push",
+                "when it is not authorized, it stops after Phase 4 and reports the uncommitted files",
+                "when push delivery is authorized (R1); otherwise it reports the commit as local only",
                 "MUST pass before the commit",
                 "It MUST NOT run `git add .`, `git add -A`, `git add --all`, `git add -u` or `git commit -a`",
                 "except when the informed override of PRINCIPLE-002 R5 applies, the agent MUST NOT commit until all three hold",
@@ -2501,6 +2528,25 @@ class TestTrackClassification(unittest.TestCase):
     def test_highest_track_wins(self):
         self.assertEqual(classify_track([("README.md", "a", "b"), ("m.py", self.CODE, "x = 1\n")])[0], "C")
 
+    def test_rename_source_is_classified_with_the_new_path(self):
+        # ADR-163: a rename from code to docs deletes Python; classifying only the new path lost it.
+        from scripts.disruption_recovery import collect_working_changes
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("x = 1\n", encoding="utf-8")
+
+            def run(argv, **kwargs):
+                if argv[1] == "status":
+                    return subprocess.CompletedProcess(argv, 0, "R  README.md\0code.py\0", "")
+                if argv[1] == "show" and argv[-1] == "HEAD:code.py":
+                    return subprocess.CompletedProcess(argv, 0, "x = 1\n", "")
+                return subprocess.CompletedProcess(argv, 128, "", "not found")
+
+            with mock.patch("scripts.disruption_recovery.subprocess.run", side_effect=run):
+                changes = collect_working_changes(root)
+        self.assertEqual([change[0] for change in changes], ["README.md", "code.py"])
+        self.assertEqual(classify_track(changes)[0], "C")
+
 
 class TestSyncWriteSafety(unittest.TestCase):
     """
@@ -2720,7 +2766,7 @@ class TestTier1ContextBudget(unittest.TestCase):
     def test_capsules_retain_their_mechanisms_after_condensation(self):
         # PRINCIPLE-001 R2: compression targets narrative, never hard mechanical constraints.
         content = (ROOT_DIR / ".agents" / "rules" / "principles.md").read_text(encoding="utf-8")
-        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<=8ms",
+        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<=10ms",
                           "scripts/sync_principles.py", "task_ledger.json",
                           "advisory locking", "exit"):
             with self.subTest(mechanism=mechanism):
@@ -2837,13 +2883,28 @@ class TestSecretHygieneScanner(unittest.TestCase):
             with self.subTest(surface=surface):
                 self.assertIn(surface, ignore, f".gitignore does not exclude {surface}")
 
-    def test_skip_path_parts_includes_generated_rule_files(self):
-        # Tier 1 generated files and documentation containing principle examples must be skipped
-        from scripts.check_secrets import SKIP_PATH_PARTS, should_skip
-        for filename in (".windsurfrules", ".clinerules", "AGENTS.md", "GEMINI.md"):
+    def test_rule_and_doc_files_are_scanned_except_the_scanner_itself(self):
+        # ADR-163: a credential pasted into a rule or doc file is still a credential.
+        from scripts.check_secrets import should_skip
+        for filename in (".windsurfrules", ".clinerules", "AGENTS.md", "GEMINI.md",
+                         "GUIDELINES.md", "README.md", "knowledge/decisions.md"):
             with self.subTest(filename=filename):
-                self.assertIn(filename, SKIP_PATH_PARTS)
-                self.assertTrue(should_skip(filename))
+                self.assertFalse(should_skip(filename))
+        self.assertTrue(should_skip("scripts/check_secrets.py"))
+
+    def test_all_scan_includes_the_scanner_file(self):
+        # The file is skipped in commit-diff mode, but --all must still scan its own code; its two
+        # detector examples carry line pragmas.
+        from scripts.check_secrets import scan_all
+        root = Path(tempfile.mkdtemp(prefix="test_scanner_self_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "scripts").mkdir()
+        shutil.copyfile(ROOT_DIR / "scripts" / "check_secrets.py",
+                        root / "scripts" / "check_secrets.py")
+        with mock.patch("scripts.check_secrets.git_output",
+                        return_value="scripts/check_secrets.py\n"):
+            findings = scan_all(repo=root)
+        self.assertEqual(findings, [])
 
 
 
@@ -3251,6 +3312,23 @@ class TestDisruptionRecovery(unittest.TestCase):
                         ledger_file=self.ledger_file)
         self.assertEqual(self.ledger_file.read_bytes(), before_primary)
         self.assertEqual(backup.read_bytes(), before_backup)
+
+    def test_save_refuses_an_unreadable_ledger_instead_of_overwriting_it(self):
+        payload = {"version": 1, "active_task": {"task_id": "old"}, "checkpoints": []}
+        self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+        before = self.ledger_file.read_bytes()
+        real_open = open
+
+        def guarded(path, *args, **kwargs):
+            if Path(path) == self.ledger_file:
+                raise PermissionError("ledger is unreadable")
+            return real_open(path, *args, **kwargs)
+
+        with mock.patch("builtins.open", side_effect=guarded):
+            with self.assertRaises(PermissionError):
+                save_ledger({"version": 1, "active_task": {"task_id": "new"}, "checkpoints": []},
+                            ledger_file=self.ledger_file, _locked=True)
+        self.assertEqual(self.ledger_file.read_bytes(), before)
 
     def test_save_does_not_write_after_lock_timeout(self):
         with mock.patch("scripts.disruption_recovery.file_lock",
@@ -4033,6 +4111,18 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(aikit_main(["new", "Bad Name"]), 2)
         self.assertIn("Fix:", stderr.getvalue())
 
+    def test_a_filesystem_error_is_reported_with_a_remedy(self):
+        import scripts.aikit_cli as cli
+
+        def fail(args):
+            raise PermissionError("denied")
+
+        with mock.patch.dict(cli.HANDLERS, {"list": fail}):
+            code, _, err = self.run_cli("list")
+        self.assertEqual(code, 1)
+        self.assertIn("Why:", err)
+        self.assertIn("Fix:", err)
+
     def test_project_memory_holds_ledger_and_decisions(self):
         folder = self.make_folder()
         attach_project(folder, "svc", workspace=self.kit)
@@ -4135,6 +4225,36 @@ class TestProjectRegistry(unittest.TestCase):
         readme = (folder / "README.md").read_text(encoding="utf-8")
         self.assertIn("LICENSE", readme)
 
+    def test_fix_reconciles_a_name_that_is_a_substring_of_another_entry(self):
+        folder = self.make_folder(
+            ("README.md",
+             "# demo\n\n## ⚡ 30-Second Cold-Start Quick Reference\n"
+             "- **Runtime Prerequisites**: Python 3.10+\n"
+             "- **Canonical Regression Shield Gate**:\n  ```bash\n  python -m unittest discover\n  ```\n\n"
+             "## 📦 What's Inside\n\n```text\ndemo/\n"
+             "├── .gitignore\n"
+             "├── README.md\n"
+             "├── LICENSE.md\n"
+             "└── .aikit/\n```\n"),
+            ("LICENSE", "AGPL-3.0 text\n"),
+            ("LICENSE.md", "license notes\n"),
+            (".gitignore", ".aikit/*.lock\n"),
+        )
+        (folder / ".git").mkdir()
+        attach_project(folder, "substringapp", workspace=self.kit)
+        with mock.patch("scripts.update_knowledge_base.subprocess.run") as mock_run, \
+             mock.patch("scripts.aikit_cli.cmd_check", return_value=0):
+            mock_run.return_value = subprocess.CompletedProcess(
+                ["git", "ls-files", "-z"], 0,
+                ".gitignore\0README.md\0LICENSE\0LICENSE.md\0.aikit/project.json\0", ""
+            )
+            code, out, _ = self.run_cli("fix", "substringapp")
+        self.assertEqual(code, 0)
+        self.assertIn("added 'LICENSE' to README.md tree", out)
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn("├── LICENSE\n", readme)
+        self.assertIn("├── LICENSE.md\n", readme)
+
     def test_project_ledger_commands_keep_the_impact_gate(self):
         folder = self.make_folder()
         attach_project(folder, "demo", workspace=self.kit)
@@ -4204,6 +4324,15 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(code, 0)
             code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
             self.assertEqual(code, 0)
+        ui_task = folder / ".aikit" / "ui_task.json"
+        ui_task.write_text("{}", encoding="utf-8")
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean):
+            code, out, _ = self.run_cli("status", "codeapp")
+            self.assertEqual(code, 0)
+            self.assertIn("UI task:", out)
+            code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
+            self.assertEqual(code, 1, "an open UI task blocks machine-readable delivery")
+        ui_task.unlink()
         with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty):
             code, _, _ = self.run_cli("status", "codeapp")
             self.assertEqual(code, 0, "plain status keeps its advisory exit semantics")
@@ -4434,6 +4563,27 @@ class TestProjectHygieneScan(unittest.TestCase):
                          {"sys-executable"})
         self.assertEqual(self.rules("import subprocess, sys\nsubprocess.run([sys.executable, 'x.py'])\n"),
                          {"subprocess-timeout"})
+        # Popen has no timeout= parameter; it needs a bounded wait/communicate instead.
+        popen = "subprocess." + "Popen"
+        self.assertEqual(self.rules("import subprocess, sys\n" + popen + "([sys.executable, 'x.py'])\n"),
+                         {"popen-wait-timeout"})
+        self.assertEqual(self.rules("import subprocess\np = " + popen + "(['x'])\np.wait(timeout=5)\n"),
+                         set())
+        self.assertEqual(self.rules("import subprocess\np = " + popen + "(['x'])\np.wait()\n"),
+                         {"popen-wait-timeout"})
+        self.assertEqual(self.rules("import subprocess\nwith " + popen
+                                    + "(['x']) as p:\n    p.communicate(timeout=5)\n"), set())
+        self.assertEqual(self.rules("import subprocess\n" + popen
+                                    + "(['x']).wait(timeout=5)\n"), set())
+        self.assertEqual(self.rules(
+            "import subprocess\n"
+            "def spawn():\n"
+            "    p = " + popen + "(['x'])\n"
+            "    p.wait()\n"
+            "def unrelated():\n"
+            "    p.wait(timeout=1)\n"), {"popen-wait-timeout"})
+        self.assertEqual(self.rules("from subprocess import Popen as P\np = P(['python', 'x.py'])\n"
+                                    "p.wait(timeout=5)\n"), {"sys-executable"})
         self.assertEqual(self.rules("import os\nos.system('x')\n"), {"os-system"})
         self.assertEqual(self.rules("eval('1')\n"), {"eval-exec"})
 
@@ -4445,6 +4595,7 @@ class TestProjectHygieneScan(unittest.TestCase):
     def test_startup_and_file_rules(self):
         self.assertEqual(self.rules("import os\nos.environ['HOME']\n"), {"environ-index"})
         self.assertEqual(self.rules("open('x')\n"), {"open-encoding", "open-context"})
+        self.assertEqual(self.rules("import os\nos.open('x', os.O_RDONLY)\n"), set())
         self.assertEqual(self.rules("with open('x', 'rb') as handle:\n    handle.read()\n"), set())
         self.assertEqual(self.rules("try:\n    pass\nexcept Exception:\n    pass\n"),
                          {"silent-except"})
@@ -4505,7 +4656,7 @@ class TestProjectHygieneScan(unittest.TestCase):
         findings = classify_artifacts(
             tracked=["app/core.py", "tests/test_core.py", "tests.py", "TestFoo.py"],
             untracked=["test_features.py", "testfoo.py", "review_rules.py", "test_output.txt",
-                       "docs/notes.txt", "README.md"],
+                       "app.js", "site.css", "docs/notes.txt", "README.md"],
         )
         pairs = {(finding.path, finding.rule) for finding in findings}
         self.assertEqual(pairs, {
@@ -4514,6 +4665,8 @@ class TestProjectHygieneScan(unittest.TestCase):
             ("test_features.py", "root-test-module"),
             ("testfoo.py", "root-test-module"),
             ("review_rules.py", "untracked-root-source"),
+            ("app.js", "untracked-root-source"),
+            ("site.css", "untracked-root-source"),
             ("test_output.txt", "untracked-output"),
         })
 
@@ -4829,6 +4982,8 @@ class TestUiContract(unittest.TestCase):
 
         fake.status = ""
         ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=snapshot)
+        self.assertTrue((self.root / ".aikit" / "ui_task.json").is_file(),
+                        "a finished task's history does not block the next begin")
         fake.status = " M src/ui/menu.py\0"
         self.assertEqual(ui_contract.finish(self.root, git_io=fake, shell_runner=snapshot,
                                             reviewed=True), [])
@@ -4882,6 +5037,8 @@ class TestUiProof(unittest.TestCase):
                  ("src/ui/menu.py", 13, "title.font_size = 14"),
                  ("src/ui/menu.py", 14, "panel.configure(font=(\"Arial\", 10))"),
                  ("web/app.css", 3, "color: rgb(10, 20, 30)"),
+                 ("web/app.css", 4, "font-family: Arial"),
+                 ("web/app.css", 5, "color: #ffffffff"),
                  ("src/theme.py", 7, 'ERROR = "#ff0000"'),
                  ("src/ui/menu.py", 15, "value = width * 2")]
         findings = ui_proof.style_findings(added, ("src/theme.py",))
@@ -4890,6 +5047,8 @@ class TestUiProof(unittest.TestCase):
             "style literal 'font_size' outside theme paths: src/ui/menu.py:13",
             "style literal 'font' outside theme paths: src/ui/menu.py:14",
             "style literal 'rgb(' outside theme paths: web/app.css:3",
+            "style literal 'font-family:' outside theme paths: web/app.css:4",
+            "style literal '#ffffffff' outside theme paths: web/app.css:5",
         ])
 
     def test_style_findings_are_off_without_declared_theme_paths(self):
@@ -5173,6 +5332,27 @@ class TestFreeModelPolicy(unittest.TestCase):
                 f'+token = "AQ." + "{fake}"\n')
         findings = scan_diff(diff)
         self.assertEqual([f[0] for f in findings], ["cfg.py"], "added lines only, labelled by file")
+
+    def test_commit_scan_asks_for_merge_diffs(self):
+        # ADR-163: `git log -p` omits a merge commit's resolution diff; -m shows each parent.
+        from scripts.check_secrets import scan_commits
+        with mock.patch("scripts.check_secrets.git_output", return_value="") as git:
+            scan_commits("a..b")
+        self.assertIn("-m", git.call_args.args[0], "a merge resolution must be scanned")
+
+    def test_scan_commits_reads_a_merge_resolution_line(self):
+        from scripts.check_secrets import scan_diff
+        diff = ("diff --git a/merge.py b/merge.py\n--- a/merge.py\n+++ b/merge.py\n"
+                "@@ -0,0 +1 @@\n+token = 'sk_live_" + "A" * 24 + "'\n")
+        self.assertTrue(scan_diff(diff), "an added merge-resolution line is scanned")
+
+    def test_merge_scan_deduplicates_the_same_hunk(self):
+        from scripts.check_secrets import scan_commits
+        block = ("diff --git a/merge.py b/merge.py\n--- a/merge.py\n+++ b/merge.py\n"
+                 "@@ -0,0 +1 @@\n+token = 'sk_live_" + "A" * 24 + "'\n")
+        with mock.patch("scripts.check_secrets.git_output", return_value=block + block):
+            findings = scan_commits("a..b")
+        self.assertEqual(len(findings), 1, "-m reports one hunk per parent")
 
     def test_scanner_catches_a_bare_gemini_key(self):
         # A fabricated value: a real key, even split in two, is a committed credential (ADR-133).

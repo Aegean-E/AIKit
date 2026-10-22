@@ -22,7 +22,6 @@ from scripts.disruption_recovery import (
     run_disruption_audit,
     workspace_ledger_path,
 )
-from scripts.project_gates import failure_tail, resolve_gates, run_gates
 from scripts.project_publish import (
     auto_push_project,
     get_project_repo_url,
@@ -50,6 +49,21 @@ from scripts.update_knowledge_base import (
     generate_codebase_map,
     write_generated_file,
 )
+
+
+def failure_tail(output):
+    from scripts.project_gates import failure_tail as _failure_tail
+    return _failure_tail(output)
+
+
+def resolve_gates(project):
+    from scripts.project_gates import resolve_gates as _resolve_gates
+    return _resolve_gates(project)
+
+
+def run_gates(path, gates):
+    from scripts.project_gates import run_gates as _run_gates
+    return _run_gates(path, gates)
 
 
 def report_error(error: ProjectError) -> int:
@@ -105,7 +119,7 @@ def build_parser() -> argparse.ArgumentParser:
     status = project_command("status",
                              "a project's task, uncommitted work, latest decision and gates")
     status.add_argument("--exit-code", action="store_true",
-                        help="exit 1 when the project is dirty, conflicted, or cannot be audited")
+                        help="exit 1 when the project is dirty, conflicted, has an open UI task, or cannot be audited")
     project_command("resume", "the cold-start report for a project (PRINCIPLE-004 R2)")
 
     checkpoint = project_command("checkpoint", "record a checkpoint in the project's ledger")
@@ -244,6 +258,10 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(format_resume_report(audit))
     if audit.get("ledger_error"):
         return 1
+    open_ui_task = (project.path / ui_contract.TASK_REL).is_file()
+    if open_ui_task:
+        print(f"UI task:   open at {ui_contract.TASK_REL}; "
+              f"run `python aikit.py ui status {project.name}`")
     # PRINCIPLE-011 R8: for project work, the project is the workspace of every lifecycle command.
     print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
     gates = ", ".join(gate.name for gate in resolve_gates(project))
@@ -251,7 +269,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if getattr(args, "exit_code", False):
         dirty = (audit.get("modified_files") or audit.get("untracked_files")
                  or audit.get("conflicted_files"))
-        if audit.get("git_missing") or dirty:
+        if audit.get("git_missing") or dirty or open_ui_task:
             return 1
     return 0
 
@@ -509,3 +527,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     except UnsupportedLedgerVersion as error:
         print(f"[LEDGER VERSION REFUSED] {error}", file=sys.stderr)
         return 1
+    except OSError as error:
+        return report_error(ProjectError(
+            "a filesystem operation failed",
+            f"the operating system denied or interrupted it: {error}",
+            "check the path permissions and free space, then retry; never delete a state file "
+            "that cannot be read.",
+        ))

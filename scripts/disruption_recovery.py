@@ -439,7 +439,8 @@ def _refuse_newer_ledger_on_disk(path: Path) -> None:
         try:
             with open(candidate, "r", encoding="utf-8") as handle:
                 data = json.load(handle)
-        except (OSError, ValueError):
+        except ValueError:
+            # A corrupt file is recoverable: atomic_write_json keeps it as the .bak shadow.
             continue
         validate_ledger_version(data, candidate)
 
@@ -1169,8 +1170,11 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
         if len(raw) < 4:
             continue
         xy, path = raw[:2], raw[3:]
+        rename_source = None
         if "R" in xy or "C" in xy:
-            i += 1  # -z puts the rename/copy source in the next field; we classify the new path
+            if i < len(entries):
+                rename_source = entries[i]
+                i += 1  # -z puts the rename/copy source in the next field
         if path in BOOKKEEPING_PATHS:
             continue
         if xy == "??":
@@ -1181,6 +1185,10 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
         target = workspace / path
         new = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
         changes.append((path, old, new))
+        if rename_source and "R" in xy and rename_source not in BOOKKEEPING_PATHS:
+            source = git("show", f"HEAD:{rename_source}")
+            changes.append((rename_source,
+                            source.stdout if source.returncode == 0 else None, None))
     return changes
 
 

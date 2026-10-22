@@ -68,7 +68,7 @@ SECRET_PATTERNS: Tuple[Tuple[str, str], ...] = (
 
 # A value that is wholly an interpolation or a template placeholder is an indirection, not a
 # literal credential. This must be honoured by the pattern detectors too, not only the entropy
-# fallback: `password = "${DB_PASS}"` is correct code, and a scanner that blocks correct code
+# fallback: `password = "${DB_PASS}"` is correct code, and a scanner that blocks correct code  # aikit:allow-secret
 # gets bypassed, which protects nothing.
 INTERPOLATION_ONLY_RE = re.compile(
     r"""[:=]\s*["']?\s*(?:\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\{\{[^}]*\}\}|"""
@@ -85,7 +85,7 @@ HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 BARE_LITERAL_RE = re.compile(r"[\"']([A-Za-z0-9_\-]{40,})[\"']")
 
 # Allowlisting is risk-tiered, because a weak word must never veto a high-confidence match.
-# A red-check caught this: "AKIAIOSFODNN7EXAMPLE" was missed purely because the line contained
+# A red-check caught this: "AKIAIOSFODNN7EXAMPLE" was missed purely because the line contained  # aikit:allow-secret
 # the word "example", which would equally have hidden a live key on an "# example usage" line.
 #
 # STRONG markers are unambiguous placeholders and the explicit pragma: they suppress everything.
@@ -99,11 +99,9 @@ WEAK_ALLOWLIST = frozenset({"example", "sample", "dummy", "fake", "test-token"})
 # Retained for callers and tests that want the full token set.
 ALLOWLIST_SUBSTRINGS = STRONG_ALLOWLIST | WEAK_ALLOWLIST
 
-# Paths whose content is documentation *about* secrets rather than secrets.
-SKIP_PATH_PARTS = ("knowledge/decisions.md", "AGENTS.md", "GUIDELINES.md", "README.md",
-                   "CLAUDE.md", "GEMINI.md", ".cursorrules", "copilot-instructions.md",
-                   "principles.md", ".windsurfrules", ".clinerules", "check_secrets.py",
-                   "domain.md.template")
+# Only the scanner's own pattern table is exempt. Documentation and instruction files can carry a
+# pasted credential, so skipping them made `--all`'s "every tracked file" claim false (ADR-163).
+SKIP_PATH_PARTS = ("scripts/check_secrets.py",)
 
 TEXT_SUFFIXES = frozenset({
     ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".cfg", ".ini", ".env",
@@ -197,7 +195,7 @@ def redact(line: str, start: int, end: int) -> str:
 
 def should_skip(path_str: str) -> bool:
     normalized = path_str.replace("\\", "/")
-    return any(part in normalized for part in SKIP_PATH_PARTS)
+    return normalized in SKIP_PATH_PARTS
 
 
 def git_output(args: List[str], repo: Path = ROOT_DIR) -> Optional[str]:
@@ -249,16 +247,18 @@ def scan_commits(rev_range: str, gaps: Optional[List[str]] = None,
     Every line the commits in `rev_range` add: what a push uploads. The working tree is not, so a
     key committed and then deleted in an uncommitted edit passed a working-tree scan (ADR-145).
     """
-    log = git_output(["log", "-p", "--format=", "--unified=0", "--no-color", "--no-ext-diff",
-                      rev_range, "--"], repo)
+    log = git_output(["log", "-p", "-m", "--format=", "--unified=0", "--no-color",
+                      "--no-ext-diff", rev_range, "--"], repo)
     if log is None:
         if gaps is not None:
             gaps.append(f"git log {rev_range} failed, so those commits were not scanned")
         return []
-    return scan_diff(log, f"<{rev_range}>")
+    # -m shows a merge-resolution hunk once per parent; keep one finding per coordinate.
+    return list(dict.fromkeys(scan_diff(log, f"<{rev_range}>")))
 
 
-def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR) -> Iterable[Path]:
+def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR,
+                        include_self: bool = False) -> Iterable[Path]:
     listing = git_output(["ls-files"], repo)
     if listing is None:
         if gaps is not None:
@@ -266,7 +266,7 @@ def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR) 
         return []
     for rel in listing.splitlines():
         rel = rel.strip()
-        if not rel or should_skip(rel):
+        if not rel or (not include_self and should_skip(rel)):
             continue
         path = repo / rel
         if path.suffix.lower() in TEXT_SUFFIXES and path.is_file():
@@ -276,7 +276,8 @@ def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR) 
 def scan_all(gaps: Optional[List[str]] = None,
              repo: Path = ROOT_DIR) -> List[Tuple[str, int, str, str]]:
     findings = []
-    for path in iter_tracked_files(gaps, repo):
+    # The scanner's own file carries line pragmas on its detector examples, so --all can scan it.
+    for path in iter_tracked_files(gaps, repo, include_self=True):
         try:
             findings.extend(scan_text(str(path.relative_to(repo)),
                                       path.read_text(encoding="utf-8", errors="replace")))

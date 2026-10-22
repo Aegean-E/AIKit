@@ -16,10 +16,10 @@ from typing import List, Sequence, Tuple
 
 MAX_REPORTED_ENTRIES = 8
 STYLE_PATTERNS = (
-    re.compile(r"#[0-9a-fA-F]{6}\b"),
-    re.compile(r"#[0-9a-fA-F]{3}\b"),
+    re.compile(r"#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{4}\b|#[0-9a-fA-F]{3}\b"),
     re.compile(r"\brgba?\("),
     re.compile(r"\b(font(?:_size|_name|_family)?)\s*="),
+    re.compile(r"\bfont(?:-family|-size|-weight)?\s*:"),
 )
 
 

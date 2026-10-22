@@ -22,7 +22,7 @@ The AI governance system extracted from production development: principles, powe
 | Operational Role | Canonical Command | Verification Gate |
 |---|---|---|
 | **Manage Projects** | `python aikit.py <cmd>` | `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124) |
-| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=8ms unit, <=250ms integration |
+| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=10ms unit, <=350ms integration |
 | **Run One Tier** | `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration` | Isolates a failing tier |
 | **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
 | **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
@@ -107,7 +107,7 @@ portable_agent_kit/
 │   └── verify_commit.py                <- Verifies a commit alone in a throwaway worktree
 
 ├── tests/
-│   ├── test_kit.py                     <- Unit tier: in-process regression shield (<=8ms per test)
+│   ├── test_kit.py                     <- Unit tier: in-process regression shield (<=10ms per test)
 │   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
 └── knowledge/
     ├── INDEX.md                        <- Knowledge base table of contents & architecture map
@@ -133,7 +133,7 @@ Open this folder in any AI host and describe what to build. Each project gets it
 python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ memory
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
-python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty
+python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets
 python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts, no open UI task
 python aikit.py ui begin my-app --surface menu  # bound edits to one declared UI surface
@@ -145,7 +145,7 @@ python aikit.py fix my-app          # restore memory/README, refresh map, then c
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo, scanned first
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command, an optional `snapshot` inventory command and optional `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost inventory entries (unless `ui allow` records them) and hardcoded color/font literals outside the theme; `finish` needs `--reviewed` (optionally `--reviewer <name>`) and appends the task's evidence to `.aikit/ui_history.json`; an open UI task blocks `check --strict` and auto-push (ADR-160, ADR-161).
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command, an optional `snapshot` inventory command and optional `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost inventory entries (unless `ui allow` records them) and hardcoded color/font literals outside the theme; `finish` needs `--reviewed` (optionally `--reviewer <name>`) and appends the task's evidence to `.aikit/ui_history.json`; an open UI task blocks `status --exit-code`, `check --strict` and auto-push (ADR-160, ADR-161, ADR-163).
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
@@ -190,7 +190,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=22.5k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
-| **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit each `[milestone N/M]` once Phase 4 passes; failing work stays uncommitted, described by `--checkpoint`; `--complete` or `--reset` before switching tasks; `--clean` stale `.tmp_*`. |
+| **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit `[milestone N/M]` once Phase 4 passes under PRINCIPLE-018 R1; failing work uncommitted via `--checkpoint`; `--complete`/`--reset` before switching tasks; `--clean` stale `.tmp_*`. |
 | **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan. |
 | **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger. |
 
@@ -198,7 +198,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=8ms, integ <=250ms/test. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=10ms, integ <=350ms/test. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
@@ -206,7 +206,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | State files: >=10MB free, temp + fsync + os.replace (5 tries) + dir fsync, .bak, advisory locking 3s/30s stale, corrupt -> quarantine/.bak/migrate. Generated: temp + fsync + replace. |
-| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=8ms/test, no spawns/sleeps; integ <=250ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
+| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=10ms/test, no spawns/sleeps; integ <=350ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery
@@ -214,7 +214,7 @@ The principles are strictly organized across **5 chronological execution phases*
 |---|---|---|
 | **PRINCIPLE-016** | AI Knowledge Base & Continuous Synchronization | Canonical `knowledge/` sync; atomic code-and-doc pairing; monotonic append-only ADR register; strict AST syntax validation; link integrity shield; `scripts/update_knowledge_base.py`. |
 | **PRINCIPLE-017** | Living Principles System & Automated Synchronization | Rule sync (`scripts/sync_principles.py`); context budget check; schema compliance; freshness test gate; Tier 1B domain rules (<=1,200 chars). |
-| **PRINCIPLE-018** | Automatic Git Workflow | Automatic conventional commits (`--validate-commit`) + adaptive push, never forced; explicit staging (zero `git add .`); pre-commit delivery triad (tests, gates, diff); each commit verified alone pre-push (R7); non-destructive recoil. |
+| **PRINCIPLE-018** | Automatic Git Workflow | Conventional commits (`--validate-commit`) + adaptive push, never forced, only if authorized (R1); explicit staging (no `git add .`); pre-commit triad (tests/gates/diff); commit verified alone pre-push (R7); non-destructive recoil. |
 | **PRINCIPLE-019** | Secret & Sensitive Data Hygiene | Zero credentials in tracked files, logs or ledgers; secrets via env/secret store; `.gitignore` credential baseline; `scripts/check_secrets.py` scans staged diffs + ledger; redacted diagnostics; rotate, never revert. |
 <!-- principles:end -->
 ---

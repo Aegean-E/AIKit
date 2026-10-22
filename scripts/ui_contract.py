@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from scripts.disruption_recovery import BOOKKEEPING_PATHS, atomic_write_json, file_lock
-from scripts.project_gates import run_shell
 from scripts.project_registry import ProjectError
 from scripts import ui_proof
 
@@ -220,15 +219,20 @@ def _head(root: Path, git_io: Optional[GitIo] = None) -> str:
     return _git_ok(root, ["rev-parse", "--verify", "HEAD"], git_io).strip()
 
 
+def _default_shell_runner() -> "ShellRunner":
+    from scripts.project_gates import run_shell
+    return run_shell
+
+
 def _run_fast(contract: UiContract, root: Path,
               runner: Optional[ShellRunner]) -> Tuple[int, str]:
-    run = runner or run_shell
+    run = runner or _default_shell_runner()
     return run(contract.fast, root, float(contract.fast_timeout))
 
 
 def _run_snapshot(contract: UiContract, root: Path,
                   runner: Optional[ShellRunner]) -> Tuple[int, str]:
-    run = runner or run_shell
+    run = runner or _default_shell_runner()
     return run(contract.snapshot, root, float(contract.snapshot_timeout))
 
 

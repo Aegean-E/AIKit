@@ -24,6 +24,10 @@ What differs between hosts is only which instruction file each loads automatical
 | **Codeium Windsurf** | `.windsurfrules` (Tier 1 capsules) | Runbook in `.agents/skills/aikit/SKILL.md` | Terminal execution of `python aikit.py` |
 | **Cline / Roo Code** | `.clinerules` (Tier 1 capsules) | Runbook in `.agents/skills/aikit/SKILL.md` | Terminal execution of `python aikit.py` |
 
+### Git Delivery Policy Parity
+
+A host's standing instructions are part of its instruction surface, and hosts differ on git: some let the agent commit verified work, while a host such as Kilo forbids commits, pushes and pull requests the user did not explicitly request. Before a commit or push decision the agent reads that policy (PRINCIPLE-018 R1). A host with an explicit-request restriction makes commit delivery unauthorized: milestone work is recorded as a `[milestone N/M]` checkpoint and reported uncommitted (PRINCIPLE-006 R1), and a push needs its own request. A host without that restriction keeps automatic milestone commits and adaptive pushes. The difference is resolved by the principles, never by editing a generated Tier 1 file (PRINCIPLE-017 R2).
+
 ---
 
 ## 🔄 Cross-Client State & Disruption Parity

@@ -23,7 +23,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Callable, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,6 +45,9 @@ GIT_TIMEOUT_SECONDS = 30
 
 ALLOW_MARKER = re.compile(r"hygiene:\s*allow\s+\S{3,}")
 SUBPROCESS_FUNCS = frozenset({"run", "call", "check_call", "check_output", "Popen"})
+# Popen does not accept `timeout=`; its caller bounds the wait with communicate(timeout=...) or
+# wait(timeout=...). Requiring the keyword on the constructor made the rule unsatisfiable.
+TIMEOUT_FUNCS = frozenset({"run", "call", "check_call", "check_output"})
 BARE_PYTHONS = frozenset({"python", "python.exe", "python3", "python3.exe", "python2",
                           "python2.exe", "py", "py.exe"})
 EXTERNAL_URL = re.compile(r"https?://[^\s\"'<>)]+")
@@ -87,16 +90,27 @@ def _true_literal(node: Optional[ast.expr]) -> bool:
     return isinstance(node, ast.Constant) and node.value is True
 
 
-def _subprocess_aliases(tree: ast.Module) -> Set[str]:
-    """Names `subprocess` members were imported under, so `from subprocess import run` is seen."""
-    aliases: Set[str] = set()
+def _subprocess_aliases(tree: ast.Module) -> Dict[str, str]:
+    """Local name -> imported subprocess member, so aliases keep their original call name."""
+    aliases: Dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module == "subprocess":
-            aliases.update(alias.asname or alias.name for alias in node.names)
+            for alias in node.names:
+                aliases[alias.asname or alias.name] = alias.name
     return aliases
 
 
-def _subprocess_call(node: ast.AST, aliases: Set[str]) -> Optional[ast.Call]:
+def _subprocess_name(call: ast.Call, aliases: Dict[str, str]) -> Optional[str]:
+    """The subprocess member a call invokes, whether module-qualified or imported by name."""
+    func = call.func
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    if isinstance(func, ast.Name):
+        return aliases.get(func.id)
+    return None
+
+
+def _subprocess_call(node: ast.AST, aliases: Dict[str, str]) -> Optional[ast.Call]:
     """The node as a `subprocess` call (module-qualified or imported by name), else None."""
     if not isinstance(node, ast.Call):
         return None
@@ -129,9 +143,79 @@ def check_banned_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
                           f"{node.func.id}() executes data as code (PRINCIPLE-010)")
 
 
+SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def _scope_walk(scope: ast.AST) -> Iterable[ast.AST]:
+    """Walk one function (or the module) without descending into nested functions."""
+    def visit(node: ast.AST) -> Iterable[ast.AST]:
+        if node is not scope and isinstance(node, SCOPE_NODES):
+            return
+        yield node
+        for child in ast.iter_child_nodes(node):
+            yield from visit(child)
+
+    yield from visit(scope)
+
+
+def _parents(tree: ast.Module) -> Dict[ast.AST, ast.AST]:
+    parents: Dict[ast.AST, ast.AST] = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parents[child] = node
+    return parents
+
+
+def _enclosing_scope(node: ast.AST, parents: Dict[ast.AST, ast.AST]) -> Optional[ast.AST]:
+    current = node
+    while current in parents:
+        current = parents[current]
+        if isinstance(current, SCOPE_NODES):
+            return current
+    return None
+
+
+def _bounded_wait(scope: ast.AST) -> Tuple[Set[str], Set[int]]:
+    """Variable names and direct call nodes in one scope whose Popen wait carries a timeout."""
+    names: Set[str] = set()
+    calls: Set[int] = set()
+    for node in _scope_walk(scope):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, ast.Attribute) and func.attr in ("communicate", "wait")
+                and _keyword(node, "timeout") is not None):
+            continue
+        calls.add(id(func.value))
+        if isinstance(func.value, ast.Name):
+            names.add(func.value.id)
+    return names, calls
+
+
+def _popen_targets(scope: ast.AST, call: ast.Call) -> Set[str]:
+    """Names a Popen call is assigned to in one scope, including `with ... as name`."""
+    names: Set[str] = set()
+    for node in _scope_walk(scope):
+        if isinstance(node, ast.Assign) and node.value is call:
+            names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and node.value is call \
+                and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+        elif isinstance(node, ast.NamedExpr) and node.value is call \
+                and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+        elif isinstance(node, ast.With):
+            for item in node.items:
+                if item.context_expr is call and isinstance(item.optional_vars, ast.Name):
+                    names.add(item.optional_vars.id)
+    return names
+
+
 def check_subprocess_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
     """PRINCIPLE-003 R4 and PRINCIPLE-010: portable, bounded, list-passed subprocess calls."""
     aliases = _subprocess_aliases(tree)
+    parents = _parents(tree)
+    bounded_cache: Dict[int, Tuple[Set[str], Set[int]]] = {}
     for node in ast.walk(tree):
         call = _subprocess_call(node, aliases)
         if call is None:
@@ -147,7 +231,18 @@ def check_subprocess_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
                     and head.value.lower() in BARE_PYTHONS:
                 yield Finding(rel, call.lineno, "sys-executable",
                               "start Python with sys.executable, not a bare name (PRINCIPLE-003 R4)")
-        if _keyword(call, "timeout") is None:
+        name = _subprocess_name(call, aliases)
+        if name == "Popen":
+            scope = _enclosing_scope(call, parents) or tree
+            if id(scope) not in bounded_cache:
+                bounded_cache[id(scope)] = _bounded_wait(scope)
+            bounded_names, bounded_calls = bounded_cache[id(scope)]
+            targets = _popen_targets(scope, call)
+            if id(call) not in bounded_calls and not (targets & bounded_names):
+                yield Finding(rel, call.lineno, "popen-wait-timeout",
+                              "Popen needs communicate(timeout=...) or wait(timeout=...) "
+                              "(PRINCIPLE-010)")
+        elif name in TIMEOUT_FUNCS and _keyword(call, "timeout") is None:
             yield Finding(rel, call.lineno, "subprocess-timeout",
                           "subprocess call without timeout= can hang a gate (PRINCIPLE-010)")
 
@@ -178,13 +273,20 @@ def _open_mode(call: ast.Call) -> Optional[str]:
 
 
 def _is_open_call(node: ast.AST) -> bool:
-    """Whether the node is a builtin `open(...)` or an object's `.open(...)` method call."""
+    """
+    Whether the node is a builtin `open(...)` or an object's `.open(...)` method call.
+
+    `os.open()` returns a file descriptor and cannot be used as a `with` item; it is closed in a
+    `finally` block, so PRINCIPLE-010 R4's builtin/Path.open rule does not cover it.
+    """
     if not isinstance(node, ast.Call):
         return False
     func = node.func
     if isinstance(func, ast.Name) and func.id == "open":
         return True
-    return isinstance(func, ast.Attribute) and func.attr == "open"
+    if isinstance(func, ast.Attribute) and func.attr == "open":
+        return not (isinstance(func.value, ast.Name) and func.value.id == "os")
+    return False
 
 
 def check_open_calls(rel: str, tree: ast.Module) -> Iterable[Finding]:
@@ -393,7 +495,8 @@ def classify_artifacts(tracked: Sequence[str], untracked: Sequence[str]) -> List
                                     "an untracked root test module is imported or collected by "
                                     "the default test runner; move it under tests/ "
                                     "(PRINCIPLE-014 R4)"))
-        elif "/" not in rel and PurePosixPath(rel).suffix == PY_SUFFIX:
+        elif "/" not in rel and (PurePosixPath(rel).suffix == PY_SUFFIX
+                                  or PurePosixPath(rel).suffix in ASSET_SUFFIXES):
             findings.append(Finding(rel, 1, "untracked-root-source",
                                     "untracked source at the project root; move it into the "
                                     "package or scripts layout, or track it deliberately "

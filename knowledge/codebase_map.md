@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `285`
-- **Total Class Methods**: `505`
-- **Total Source Lines**: `14699`
+- **Total Top-Level Functions**: `296`
+- **Total Class Methods**: `515`
+- **Total Source Lines**: `15033`
 
 ---
 
@@ -26,13 +26,16 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `511` lines (`25105` bytes)
+**Size**: `536` lines (`26004` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
   - Method `.error(message)`
 
 **Functions:**
+- `def failure_tail(output)`
+- `def resolve_gates(project)`
+- `def run_gates(path, gates)`
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
@@ -59,7 +62,7 @@
 ### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
 > *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
 
-**Size**: `566` lines (`27435` bytes)
+**Size**: `669` lines (`31784` bytes)
 
 **Classes:**
 - `class Finding` - *One violation, addressed to the line a developer must change.*
@@ -68,9 +71,15 @@
 **Functions:**
 - `def _keyword(call, name)` - *The value of `call`'s keyword `name`, or None when the call omits it.*
 - `def _true_literal(node)` - *Whether the expression is the literal `True` (a name called `True` cannot exist).*
-- `def _subprocess_aliases(tree)` - *Names `subprocess` members were imported under, so `from subprocess import run` is seen.*
+- `def _subprocess_aliases(tree)` - *Local name -> imported subprocess member, so aliases keep their original call name.*
+- `def _subprocess_name(call, aliases)` - *The subprocess member a call invokes, whether module-qualified or imported by name.*
 - `def _subprocess_call(node, aliases)` - *The node as a `subprocess` call (module-qualified or imported by name), else None.*
 - `def check_banned_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: calls that lose quoting or execute data as code.*
+- `def _scope_walk(scope)` - *Walk one function (or the module) without descending into nested functions.*
+- `def _parents(tree)`
+- `def _enclosing_scope(node, parents)`
+- `def _bounded_wait(scope)` - *Variable names and direct call nodes in one scope whose Popen wait carries a timeout.*
+- `def _popen_targets(scope, call)` - *Names a Popen call is assigned to in one scope, including `with ... as name`.*
 - `def check_subprocess_calls(rel, tree)` - *PRINCIPLE-003 R4 and PRINCIPLE-010: portable, bounded, list-passed subprocess calls.*
 - `def check_environ_index(rel, tree)` - *PRINCIPLE-011 R3: a hard-indexed environment variable crashes where it is unset.*
 - `def _open_mode(call)` - *The literal mode of an open() call, or None when binary-ness is not decidable.*
@@ -117,7 +126,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `464` lines (`21021` bytes)
+**Size**: `465` lines (`21212` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -131,7 +140,7 @@
 - `def scan_staged(gaps, repo)` - *Scan staged content only - the surface about to become permanent history.*
 - `def scan_diff(diff, default_label)` - *Every added line of a unified diff, labelled by its file. Pure: removed lines are history*
 - `def scan_commits(rev_range, gaps, repo)` - *Every line the commits in `rev_range` add: what a push uploads. The working tree is not, so a*
-- `def iter_tracked_files(gaps, repo)`
+- `def iter_tracked_files(gaps, repo, include_self)`
 - `def scan_all(gaps, repo)`
 - `def scan_agent_memory(gaps, repo)` - *PRINCIPLE-019 Rule 3: agent working memory is tracked output. The ledger's free-text impact*
 - `def run_scan(mode, target, verbose, repo, commits)` - *Scan the requested surface plus agent memory, reporting tersely (PRINCIPLE-012 R4).*
@@ -141,7 +150,7 @@
 ### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
 > *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
 
-**Size**: `185` lines (`7102` bytes)
+**Size**: `186` lines (`7154` bytes)
 
 **Classes:**
 - `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
@@ -161,7 +170,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1510` lines (`67983` bytes)
+**Size**: `1518` lines (`68417` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -218,7 +227,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `506` lines (`22982` bytes)
+**Size**: `506` lines (`23059` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -280,7 +289,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `600` lines (`25747` bytes)
+**Size**: `608` lines (`26074` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -291,6 +300,7 @@
 **Functions:**
 - `def render_project_readme(name, test_command)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def seed_readme(project_root, name, test_command)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
 - `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
 - `def _python_test(root)`
 - `def node_scripts(root)` - *The `scripts` map of the project's `package.json`; empty when absent or unreadable.*
@@ -374,7 +384,7 @@
 ### [`scripts/ui_contract.py`](scripts/ui_contract.py)
 > *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
 
-**Size**: `574` lines (`27820` bytes)
+**Size**: `578` lines (`27921` bytes)
 
 **Classes:**
 - `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
@@ -392,6 +402,7 @@
 - `def _tracked(root, git_io)`
 - `def _changes(root, git_io)`
 - `def _head(root, git_io)`
+- `def _default_shell_runner()`
 - `def _run_fast(contract, root, runner)`
 - `def _run_snapshot(contract, root, runner)`
 - `def _task_path(root)`
@@ -414,7 +425,7 @@
 ### [`scripts/ui_proof.py`](scripts/ui_proof.py)
 > *Mechanical UI proofs for the opt-in UI guard (ADR-160).*
 
-**Size**: `82` lines (`3063` bytes)
+**Size**: `82` lines (`3136` bytes)
 
 **Functions:**
 - `def matches_pattern(path, patterns)` - *One relative path against contract patterns; `dir/**` covers the tree.*
@@ -478,7 +489,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1087` lines (`53615` bytes)
+**Size**: `1091` lines (`53997` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -557,6 +568,7 @@
   - Method `.setUpClass()`
   - Method `.tearDownClass()`
   - Method `.setUp()`
+  - Method `._canned_runner(command, cwd, timeout)` - *ADR-154 pattern: exercise the contract in-process; one real spawn is covered elsewhere.*
   - Method `.test_bounds_edits_and_abort_restores_only_the_surface()`
   - Method `.test_snapshot_proof_and_style_lint_gate_a_real_edit()`
 - `class TestProjectSecretScan` - *`check_secrets.py --workspace` scans a project's repository, not AIKit's (ADR-121).*
@@ -578,13 +590,14 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5633` lines (`312050` bytes)
+**Size**: `5813` lines (`322661` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
   - Method `.test_parse_all_principles()`
   - Method `.test_monotonic_lifecycle_phase_alignment()`
   - Method `.test_targets_in_sync_and_budgeted()`
+  - Method `.test_agent_facing_role_texts_match_gate_limits()`
   - Method `.test_principle_003_anti_hallucination_capsule()`
   - Method `.test_principle_004_compaction_resilience_capsule()`
   - Method `.test_principle_005_cold_start_capsule()`
@@ -781,6 +794,7 @@
   - Method `.test_config_tests_and_new_python_are_track_c()`
   - Method `.test_unplanned_files_criterion_is_gone()`
   - Method `.test_highest_track_wins()`
+  - Method `.test_rename_source_is_classified_with_the_new_path()`
 - `class TestSyncWriteSafety` - *ADR-048. Sync now writes AGENTS.md, which older layouts used as the hand-authored rule source,*
   - Method `.setUp()`
   - Method `._sync(check_only)`
@@ -813,7 +827,8 @@
   - Method `.test_entropy_separates_random_from_prose()`
   - Method `.test_agent_memory_free_text_is_scanned()`
   - Method `.test_gitignore_carries_the_credential_baseline()`
-  - Method `.test_skip_path_parts_includes_generated_rule_files()`
+  - Method `.test_rule_and_doc_files_are_scanned_except_the_scanner_itself()`
+  - Method `.test_all_scan_includes_the_scanner_file()`
 - `class TestInvariantReachabilityShield` - *PRINCIPLE-014 R7. A passing test proves a mechanism works, never that it is used. These*
   - Method `.setUp()`
   - Method `._write(name, source)`
@@ -850,6 +865,7 @@
   - Method `.test_resume_report_blocks_a_newer_ledger()`
   - Method `.test_save_refuses_a_newer_ledger_on_disk()`
   - Method `.test_save_refuses_a_newer_backup()`
+  - Method `.test_save_refuses_an_unreadable_ledger_instead_of_overwriting_it()`
   - Method `.test_save_does_not_write_after_lock_timeout()`
   - Method `.test_noop_completion_does_not_rewrite_the_ledger()`
   - Method `.test_an_io_error_is_reported_not_quarantined()`
@@ -916,6 +932,7 @@
   - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
   - Method `.test_failed_git_init_leaves_no_half_made_project()`
   - Method `.test_cli_reports_triad_and_exit_codes()`
+  - Method `.test_a_filesystem_error_is_reported_with_a_remedy()`
   - Method `.test_project_memory_holds_ledger_and_decisions()`
   - Method `.test_status_names_unknown_and_missing_projects()`
   - Method `.test_fix_cli_reports_triad_on_unknown_project()`
@@ -923,6 +940,7 @@
   - Method `.stale(path)`
   - Method `.test_fix_restores_memory_and_readme_and_removes_only_stale_buffers()`
   - Method `.test_fix_reconciles_omitted_tracked_files_in_readme_tree()`
+  - Method `.test_fix_reconciles_a_name_that_is_a_substring_of_another_entry()`
   - Method `.test_project_ledger_commands_keep_the_impact_gate()`
   - Method `.test_workspace_is_explicit_never_the_working_directory()`
   - Method `.test_new_with_publish_flag_calls_publish_project()`
@@ -1027,6 +1045,9 @@
   - Method `.test_text_report_keeps_only_the_answer()`
   - Method `.test_a_key_split_across_a_concatenation_is_still_caught()`
   - Method `.test_commit_diffs_are_scanned_line_by_line_with_their_file()`
+  - Method `.test_commit_scan_asks_for_merge_diffs()`
+  - Method `.test_scan_commits_reads_a_merge_resolution_line()`
+  - Method `.test_merge_scan_deduplicates_the_same_hunk()`
   - Method `.test_scanner_catches_a_bare_gemini_key()`
 - `class TestProjectPublish` - *`aikit publish`: a project in its own GitHub repository, private unless asked (ADR-134).*
   - Method `.runner(**replies)` - *A scripted stand-in for git, gh and the secret scan; records every call.*

@@ -107,7 +107,7 @@ def supervised(argv: Union[str, List[str]], cwd: Path):
     # non-ASCII status glyphs, so letting Python fall back to the locale codec (e.g. cp1254 on a
     # Turkish Windows install) kills the reader thread with UnicodeDecodeError and silently
     # hands back empty output (PRINCIPLE-003 R4, PRINCIPLE-011 R4 platform parity).
-    proc = subprocess.Popen(
+    proc = subprocess.Popen(  # hygiene: allow caller bounds communicate(timeout=PROC_TIMEOUT) in run_cli
         argv, cwd=str(cwd), stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace", **kwargs,

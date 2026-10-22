@@ -105,6 +105,14 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
     return True
 
 
+def _tree_entry_name(line: str) -> Optional[str]:
+    """The exact top-level name a README tree line lists, or None for a nested or prose line."""
+    match = re.match(r"^[├└]──\s+(.+?)(?:\s{2,}<-.*)?$", line)
+    if match is None:
+        return None
+    return match.group(1).rstrip().rstrip("/")
+
+
 def reconcile_readme_tree(project_root: Path, runner: Optional[Callable] = None) -> List[str]:
     """
     Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).
@@ -152,7 +160,7 @@ def reconcile_readme_tree(project_root: Path, runner: Optional[Callable] = None)
     reconciled = []
     new_lines = list(lines[:insert_idx])
     for item in top_omitted:
-        if any(item in line for line in lines):
+        if any(_tree_entry_name(line) == item for line in lines):
             continue
         suffix = "/" if (project_root / item).is_dir() else ""
         new_lines.append(f"├── {item}{suffix}")

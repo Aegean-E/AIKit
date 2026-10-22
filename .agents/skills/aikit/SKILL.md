@@ -149,7 +149,7 @@ Before committing any Track B or Track C changes, ALL gates must pass:
 
 ### 1. Test Suite Verification (100% Pass Required)
 ```bash
-# Both tiers plus their per-test budgets (unit <=8ms, integration <=200ms)
+# Both tiers plus their per-test budgets (unit <=10ms, integration <=350ms)
 python scripts/check_test_budgets.py
 
 # Either tier on its own, when a failure needs isolating
@@ -178,6 +178,8 @@ python scripts/dogfood.py
 ---
 
 ## 🚀 Phase 5: Delivery & Git Operations
+
+> **Authorization gate**: run Phase 5 only when PRINCIPLE-018 R1 authorizes the commit or push; when it does not, stop after Phase 4 and report the uncommitted files.
 
 ### 1. Mark Task Completed
 ```bash

@@ -1,248 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-lifecycle-delivery-v1",
+    "task_id": "adr-review-fixes-v1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792618342.6564467,
-    "impact_assessment": {
-      "why": "the implementation needs its decision record and user-visible docs in the same commit",
-      "benefits": "the new gate and history file are documented where users and agents read",
-      "risks": "contract: none, additive; dependency: none; concurrency: none; state: README size ceiling could be exceeded",
-      "mitigation": "keep README additions minimal and verify with update_knowledge_base --check"
-    },
-    "completed_at": 1792619426.5469255
+    "updated_at": 1792659494.4713209,
+    "completed_at": 1792659520.4516675
   },
   "checkpoints": [
-    {
-      "task_id": "robust-git-encoding-and-readme-reconcile-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Plan: [1/3] Subprocess UTF-8 encoding parity in project_registry._run_git and update_knowledge_base; unit test in test_kit; [2/3] README tree auto-reconciliation in aikit_cli cmd_fix; bring chronos, lattice, pebble, tally to 4/4 gates; [3/3] ADR-152, knowledge map refresh, full Phase 4 verification gates; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792514511.1125147,
-      "timestamp_str": "2026-10-20 19:41:51",
-      "impact_assessment": {
-        "why": "Fix _run_git UnicodeDecodeError crash on non-UTF-8 locales and resolve circular aikit fix failure on README tree drift",
-        "benefits": "Ensures Windows/non-UTF-8 platform parity across git operations and enables one-shot mechanical repair of README tree drift for child projects",
-        "risks": "contract: _run_git signature unchanged, cmd_fix gains tree repair; dependency: stdlib only; concurrency: file writes isolated to project folder; state: no schema change",
-        "mitigation": "Failing-first unit tests in tests.test_kit, run all gate checks, test dogfood and verify child project gates"
-      }
-    },
-    {
-      "task_id": "robust-git-encoding-and-readme-reconcile-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 1/3] Subprocess UTF-8 encoding parity: _run_git in project_registry and check_readme in update_knowledge_base pass encoding='utf-8', errors='replace'; 2 unit tests added in test_kit; test 345/345 green; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792514727.4757853,
-      "timestamp_str": "2026-10-20 19:45:27"
-    },
-    {
-      "task_id": "robust-git-encoding-and-readme-reconcile-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 2/3] README tree auto-reconciliation in aikit fix (reconcile_readme_tree); unit tests in test_kit; chronos, lattice, pebble, tally all verified 4/4 gates green; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792515192.9691544,
-      "timestamp_str": "2026-10-20 19:53:12"
-    },
-    {
-      "task_id": "robust-git-encoding-and-readme-reconcile-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 3/3] ADR-152 recorded, AST codebase map refreshed, Phase 4 verification gates passed (both test tiers, hygiene, reachability, dogfood 5/5, secrets); checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792515290.8119786,
-      "timestamp_str": "2026-10-20 19:54:50"
-    },
-    {
-      "task_id": "robust-git-encoding-and-readme-reconcile-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'robust-git-encoding-and-readme-reconcile-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792515295.9011378,
-      "timestamp_str": "2026-10-20 19:54:55"
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Artifact hygiene: status --exit-code and narrow untracked/tracked artifact scan",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792588150.2535734,
-      "timestamp_str": "2026-10-21 16:09:10",
-      "impact_assessment": {
-        "why": "Lacon's untracked root test module is imported by unittest discovery while status exits 0 and hygiene reports clean (PRINCIPLE-006, PRINCIPLE-014 R4).",
-        "benefits": "Makes delivery readiness machine-readable; catches root test modules, untracked outputs and tracked caches; no new dependency.",
-        "risks": "contract: new status flags and hygiene rules; dependency: git is already required for projects; concurrency: read-only git queries; state: no writes to the scanned tree",
-        "mitigation": "Keep the scan read-only and decidable; unit-test pure classifiers; integration-test a Lacon-shaped temp repo; wire no default behavior change before pilot"
-      }
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[2/3] Delivery conflicts fail strict check; root test detection follows test*.py incl. ignored and Windows case",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792600467.307669,
-      "timestamp_str": "2026-10-21 19:34:27",
-      "impact_assessment": {
-        "why": "A real merge conflict lands only in conflicted_files, yet check --strict and auto-push treat the tree as clean; unittest discover also imports root tests.py/testfoo.py and ignored root test modules (PRINCIPLE-006, PRINCIPLE-014).",
-        "benefits": "Status and check agree on delivery readiness; artifact hygiene covers every root test module unittest/pytest can import, without a third git call.",
-        "risks": "contract: check strict/auto-push behavior and two new ADRs; dependency: only stdlib and existing git; concurrency: read-only scans; state: no writes to scanned trees",
-        "mitigation": "Additive audit keys, mocked unit tests, real merge-conflict and ignored-file probes, and map/ADR sync in the same commit."
-      }
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Conflicts block strict check; root tests cover test*.py, ignored and Windows case; fingerprint streams; temp repos cleaned. checklists: passed except integration budget 209.94ms on loaded host; not committed (PRINCIPLE-006).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792601075.6971092,
-      "timestamp_str": "2026-10-21 19:44:35"
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Final: 355 unit + 47 integration tests pass; map/reachability/secrets/sync/dogfood green; temp leaks 0; integration budget 228.57ms/200 under host load (unit 4.93ms). Not committed; ceiling or idle re-run needed (PRINCIPLE-006, PRINCIPLE-010 R6).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792601161.216454,
-      "timestamp_str": "2026-10-21 19:46:01"
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[4/4] Dogfood verbose encoding hardening: Windows stdout/stderr reconfigure (UTF-8, errors=replace), unit regression test, principle sync + AST map refreshed; dogfood -v 5/5; integration tier still 274ms/test > 250ms ceiling under host load",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792601667.9475183,
-      "timestamp_str": "2026-10-21 19:54:27"
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Final delivery: conflicts block strict/auto-push; root tests cover test*.py, ignored and Windows case; fingerprint streams; temp cleanup retries; 250ms ceiling approved (ADR-157). checklists: passed; budgets 5.98ms/208.53ms within 8/250; all read-only gates green.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792601767.7189853,
-      "timestamp_str": "2026-10-21 19:56:07"
-    },
-    {
-      "task_id": "governance-evidence-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'governance-evidence-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792601772.111488,
-      "timestamp_str": "2026-10-21 19:56:12"
-    },
-    {
-      "task_id": "ui-surface-guard-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Opt-in UI surface guard in AIKit plus user-approved README ceiling 22,500",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792604400.2744925,
-      "timestamp_str": "2026-10-21 20:40:00",
-      "impact_assessment": {
-        "why": "AI UI edits can drift outside a reviewed surface and compound on a broken baseline; dogfooding only detects process failures after the fact.",
-        "benefits": "Any project can bound UI edits to one committed surface with protected paths, a diff budget, a green baseline, an atomic task record and a backup-preserving abort; no browser or framework enters AIKit.",
-        "risks": "contract: new opt-in CLI and ui.json schema; dependency: stdlib plus project-declared commands; concurrency: atomic task state under file_lock; state: .aikit/ui_task.json is bookkeeping",
-        "mitigation": "Unit tests with injected git, one real-git integration test, CLI smoke test, ADR-158/159, map and full gate shield; no default gate change."
-      }
-    },
-    {
-      "task_id": "ui-surface-guard-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] UI guard and README ceiling delivered. checklists: passed; budgets 5.64ms/236.90ms within 8/250; map, principles, reachability, secrets and dogfood green.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792604415.139823,
-      "timestamp_str": "2026-10-21 20:40:15"
-    },
-    {
-      "task_id": "ui-surface-guard-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-surface-guard-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792604415.321559,
-      "timestamp_str": "2026-10-21 20:40:15"
-    },
-    {
-      "task_id": "ui-proof-gate-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] UI proof gate: pure inventory-diff and style-lint helpers in scripts/ui_proof.py with failing-first unit tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792606547.3944187,
-      "timestamp_str": "2026-10-21 21:15:47",
-      "impact_assessment": {
-        "why": "UI tasks still go rogue inside the bounded surface: ADR-158 bounds where edits land but no gate verifies what the UI renders, so lost controls, dropped handlers and aesthetic drift pass every green proof",
-        "benefits": "ui verify mechanically fails on removed controls/handlers via a baseline snapshot diff; hardcoded colors/fonts outside theme paths become findings; ui finish refuses without --reviewed human eyes; deterministic, stdlib-only, framework-agnostic",
-        "risks": "contract: additive schema fields (commands.snapshot, commands.snapshot_timeout, style.theme_paths) change the contract digest and invalidate open tasks (none exist; verified no project commits ui.json); dependency: none, stdlib re/fnmatch only; concurrency: snapshot and lint run inside the existing task file_lock; state: task record gains baseline_snapshot and allowed_removals, written via atomic_write_json",
-        "mitigation": "old contracts without the new fields keep working with snapshot and lint off; AIKit sorts and dedups snapshot lines so adapter order does not matter; style lint is opt-in via declared theme_paths with file:line findings; snapshot_timeout bounds the proof run"
-      }
-    },
-    {
-      "task_id": "ui-proof-gate-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-proof-gate-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792608891.805564,
-      "timestamp_str": "2026-10-21 21:54:51"
-    },
-    {
-      "task_id": "ui-lifecycle-delivery-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Failing-first tests and implementation: an open UI task blocks delivery, finish retains evidence",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792615725.866578,
-      "timestamp_str": "2026-10-21 23:48:45",
-      "impact_assessment": {
-        "why": "verified holes: check --strict passes while a UI task is open (two readiness surfaces disagree, the ADR-155 bug class), and finish deletes the entire task record so no evidence of a reviewed UI task survives",
-        "benefits": "delivery readiness refuses open UI tasks on both surfaces; every finished UI task leaves an append-only history record (reviewer, final snapshot digest, strikes) in .aikit/ui_history.json",
-        "risks": "contract: finish gains a reviewer parameter and writes a new bookkeeping file; dependency: none, stdlib json/hashlib only; concurrency: history append happens inside finish's existing file_lock; state: corrupt history must abort finish instead of being overwritten",
-        "mitigation": "additive schema within ui_task bookkeeping; ui_history.json joins BOOKKEEPING_PATHS so it never dirties the tree or flips the track; unreadable history raises a named error and deletes nothing"
-      }
-    },
-    {
-      "task_id": "ui-lifecycle-delivery-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] ADR-161, README and knowledge sync; Phase 4 delivery. checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792618342.6564467,
-      "timestamp_str": "2026-10-22 00:32:22",
-      "impact_assessment": {
-        "why": "the implementation needs its decision record and user-visible docs in the same commit",
-        "benefits": "the new gate and history file are documented where users and agents read",
-        "risks": "contract: none, additive; dependency: none; concurrency: none; state: README size ceiling could be exceeded",
-        "mitigation": "keep README additions minimal and verify with update_knowledge_base --check"
-      }
-    },
     {
       "task_id": "ui-lifecycle-delivery-v1",
       "phase": "completed",
@@ -251,6 +17,212 @@
       "status": "completed",
       "timestamp": 1792619426.5469267,
       "timestamp_str": "2026-10-22 00:50:26"
+    },
+    {
+      "task_id": "git-delivery-authorization-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Add the git-delivery authorization gate to PRINCIPLE-006 and PRINCIPLE-018, record ADR-162 with its cross-principle check, and document host policy parity. [2/2] Update the pinned tests and run every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792621307.3918526,
+      "timestamp_str": "2026-10-22 01:21:47",
+      "impact_assessment": {
+        "why": "PRINCIPLE-006 R1 and PRINCIPLE-018 R1 require milestone commits unconditionally, while host platforms such as Kilo forbid commits the user did not explicitly request, so the Tier 1 capsule contradicts the host on every task.",
+        "benefits": "One decidable authorization test replaces ad-hoc conflict handling, and the crash-safe milestone workflow survives on hosts that permit it.",
+        "risks": "contract: PRINCIPLE-006 and PRINCIPLE-018 rule text and capsules gain a git-delivery authorization condition; dependency: none; concurrency: none; state: none, the ledger schema is unchanged.",
+        "mitigation": "Update both invariants and R1 branches, update every pinned test, record ADR-162, and run the full Phase 4 gate set."
+      }
+    },
+    {
+      "task_id": "git-delivery-authorization-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[milestone 1/2] Added the git-delivery authorization gate to PRINCIPLE-006 and PRINCIPLE-018, recorded ADR-162, and documented host policy parity; uncommitted because this host forbids unrequested commits.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792621654.8204014,
+      "timestamp_str": "2026-10-22 01:27:34"
+    },
+    {
+      "task_id": "git-delivery-authorization-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 2/2] Updates pinned tests and runs the full Phase 4 gate set; no commit is made because the host forbids unrequested commits (ADR-162).",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792621659.8064678,
+      "timestamp_str": "2026-10-22 01:27:39"
+    },
+    {
+      "task_id": "git-delivery-authorization-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "Review findings fixed: split commit delivery from push delivery in PRINCIPLE-018 R1/R4, required Phase 4 to pass before the unauthorized milestone checkpoint, and updated the ADR and tests. Unit tier 382/382 pass; integration 49/49 functionally pass but its budget is 253.20ms per test vs the 250ms ceiling (also red at HEAD: 278.12ms, so pre-existing on this host). Uncommitted by PRINCIPLE-018 R1.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792622080.131481,
+      "timestamp_str": "2026-10-22 01:34:40"
+    },
+    {
+      "task_id": "git-delivery-authorization-v1",
+      "phase": "abandoned",
+      "phase_num": 4,
+      "description": "Task 'git-delivery-authorization-v1' abandoned: Superseded by adr-review-fixes-v1; the ADR-162 changes remain uncommitted in the working tree.",
+      "status": "abandoned",
+      "timestamp": 1792624099.9068668,
+      "timestamp_str": "2026-10-22 02:08:19"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/6] Correct the hygiene scanner: exclude os.open from open-context and make Popen's bounded-wait rule satisfiable, with regression tests. [2/6] Replace stale agent-facing limits: tester/runbook 200ms -> 250ms, reviewer 20,000 -> 22,500 chars, sync comment, then re-sync. [3/6] Bring the integration tier back under 250ms by removing unnecessary UI shell spawns without weakening assertions. [4/6] Align delivery readiness and repair: status --exit-code blocks an open UI task, and reconcile_readme_tree matches exact tree entries. [5/6] Close secret-scan blind spots: scan merge-resolution diffs and drop over-broad whole-file skips where the scanner stays clean. [6/6] Harden rename track classification and the unreadable-ledger save path; add the low-risk UI style and artifact suffix coverage.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792624108.546718,
+      "timestamp_str": "2026-10-22 02:08:28",
+      "impact_assessment": {
+        "why": "The ADR review found a red Phase 4 budget, an unsatisfiable Popen rule, over-broad os.open flagging, stale agent-facing limits, a broken README tree repair, a delivery-readiness disagreement, secret-scan blind spots, and state/track edge cases.",
+        "benefits": "Phase 4 becomes green on this host, the hygiene and secret gates describe their actual contracts, agent-facing docs stop contradicting the rules, aikit fix repairs the README tree in one pass, and the ledger/push paths fail safely.",
+        "risks": "contract: status --exit-code gains an open-UI-task failure, the hygiene scanner changes which calls it flags, and scan_commits may add merge findings; dependency: none; concurrency: none; state: save_ledger now propagates an unreadable on-disk ledger instead of overwriting it.",
+        "mitigation": "Add failing-first unit and integration tests for each change, record ADR-163 with the scanner and status contract changes, update help and knowledge/services.md, and run every Phase 4 gate."
+      }
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[milestone 1/6] Implemented the scanner Popen/os.open correction, 250ms/22,500-character agent docs, UI test budget work, status/tree readiness fixes, secret-scan widening, rename/ledger hardening, and style/artifact coverage; uncommitted under PRINCIPLE-018 R1.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792625319.319893,
+      "timestamp_str": "2026-10-22 02:28:39"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 6/6] Phase 4 passed: 388 unit tests at 5.99ms/test and 49 integration tests at 240.67ms/test; sync, knowledge, secrets, reachability and dogfood green; ADR-163 recorded. checklists: passed. Uncommitted because the host forbids unrequested commits.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792625319.4534252,
+      "timestamp_str": "2026-10-22 02:28:39"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 6/6] Verification re-run: 388 unit tests passed; 49 integration tests passed functionally at 252.55ms/test, over the 250ms ceiling; sync, knowledge, secrets, reachability and dogfood passed. checklists: failed PRINCIPLE-010 R6 (integration budget). Uncommitted because the host forbids unrequested commits.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792647710.5553164,
+      "timestamp_str": "2026-10-22 08:41:50"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 6/6] Verification under current host load: 388 unit and 49 integration tests pass functionally, but budgets are unit 9.91ms>8.00, integration 301.73ms>250.00, and dogfood --help 212ms>200; sync, knowledge, secrets and reachability pass. The same tree measured 5.99ms, 240.67ms and 123-131ms earlier, so the failure tracks host load, not the diff. checklists: failed PRINCIPLE-010 R5/R6. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792647814.0945807,
+      "timestamp_str": "2026-10-22 08:43:34"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] Add a bounded-wait check for Popen so an unbounded wait is flagged, with regression tests. [2/5] Restrict commit delivery authorization to a commit or pull request, leaving a push-only request to authorize only the push; update GUIDELINES, ADR-162 and pins. [3/5] Trim the UI integration test to the real-git style/snapshot proof, move the remaining assertions to the unit tier, and record the begin assertion there. [4/5] Deduplicate merge-scan findings, explain an open UI task in status output, and give an unreadable-ledger save a Why/Fix CLI error. [5/5] Correct ADR-163's overclaims and re-run Phase 4.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792648785.459223,
+      "timestamp_str": "2026-10-22 08:59:45",
+      "impact_assessment": {
+        "why": "Verification of the first fix set exposed an unbounded-Popen blind spot, a push-implies-commit ambiguity, an unstable integration budget, a duplicate merge finding, a silent status failure and a raw ledger I/O error.",
+        "benefits": "The hygiene gate catches unbounded Popen again, a push request cannot silently authorize a commit on a restrictive host, the integration tier regains headroom, and delivery failures explain themselves.",
+        "risks": "contract: PRINCIPLE-018 R1 no longer treats a push-only request as commit authorization; the hygiene scanner gains a popen-wait-timeout rule and the integration test relies on unit coverage for allow/finish; dependency: none; concurrency: none; state: ledger I/O errors are wrapped for the CLI.",
+        "mitigation": "Add failing-first tests for each behavior, keep the real-git style/lost-control proof, update ADR-162/ADR-163, and run the full Phase 4 set."
+      }
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Follow-up fixes are implemented: bounded Popen waits, push-only requests no longer authorize commits, the UI test assertion moved to the unit tier, merge findings deduplicated, status explains an open UI task, and filesystem errors use Why/Fix. Functional tests pass (390 unit, 49 integration), sync/knowledge/secrets/reachability/dogfood pass; the integration budget is still 298.33ms/test under the current host load. checklists: failed PRINCIPLE-010 R6. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792649367.2720442,
+      "timestamp_str": "2026-10-22 09:09:27"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[milestone 1/5] Implemented the bounded-Popen rule, push-only authorization semantics, UI test assertion move, merge dedupe, status explanation, filesystem Why/Fix, and the user-approved 350ms ceiling in ADR-164; uncommitted under PRINCIPLE-018 R1.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792649739.0235956,
+      "timestamp_str": "2026-10-22 09:15:39"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Phase 4 passed: 390 unit tests at 6.27ms/test, 49 integration tests at 252.18ms/test against the approved 350ms ceiling; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted because the host forbids unrequested commits.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792649739.1718032,
+      "timestamp_str": "2026-10-22 09:15:39"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[milestone 1/5] Scoped the Popen bounded-wait check to the enclosing function, added the cross-function regression, made --all scan check_secrets.py with line pragmas, and corrected the ADR-163/164 wording. Uncommitted under PRINCIPLE-018 R1.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792650450.6399002,
+      "timestamp_str": "2026-10-22 09:27:30"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Phase 4 passed: 391 unit tests at 6.16ms/test, 49 integration tests at 262.51ms/test against the approved 350ms ceiling; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted because the host forbids unrequested commits.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792650450.7767272,
+      "timestamp_str": "2026-10-22 09:27:30"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Verification: 391 unit tests at 7.14ms/test, 49 integration at 229.04ms/test against 350ms; sync, knowledge, secrets, reachability, hygiene and dogfood clean on the rerun. One transient TestDogfoodRunner failure passed in isolation and on rerun; the dogfood integration test is flaky under load (PRINCIPLE-014 R3). checklists: failed PRINCIPLE-014 R3. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792658118.4347425,
+      "timestamp_str": "2026-10-22 11:35:18"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Final verification after startup lazy imports and the approved ADR-165 unit ceiling: 391 unit tests at 5.67ms/test (10ms), 49 integration tests at 209.45ms/test (350ms); dogfood 5/5 and sync/knowledge/secrets/reachability/hygiene clean. Ten direct dogfood runs and three full integration runs showed no recurrence of the earlier flake. checklists: passed. Ready for the user-authorized publish.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792659494.4713209,
+      "timestamp_str": "2026-10-22 11:58:14"
+    },
+    {
+      "task_id": "adr-review-fixes-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'adr-review-fixes-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792659520.4516695,
+      "timestamp_str": "2026-10-22 11:58:40"
     }
   ]
 }
