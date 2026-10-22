@@ -52,7 +52,7 @@ DECISIONS_TEMPLATE = (
     "Why this project is built the way it is, oldest first. One entry per decision that changes a\n"
     "contract, a dependency, a data format or the architecture; IDs are consecutive and never reused.\n\n"
     "<!-- Entry format:\n"
-    "### ADR-001: <decision in one line>\n"
+    "### ADR-NNN: <decision in one line>\n"
     "- **Date**: YYYY-MM-DD\n"
     "- **Status**: Accepted\n"
     "- **Context**: <what forced the decision>\n"
@@ -186,6 +186,9 @@ PROJECT_GITIGNORE_LINES = (
     ".aikit/*.bak",
     ".aikit/*.tmp_*",
     ".aikit/*.corrupt_*",
+    "__pycache__/",
+    "*.py[cod]",
+    "node_modules/",
 )
 
 
@@ -427,9 +430,9 @@ def _run_git(project_root: Path, *args: str) -> "subprocess.CompletedProcess[str
 
 def _git_start(project_root: Path) -> Optional[str]:
     """
-    `git init`, then commit the project's memory and instructions so a new project starts clean. Returns
-    a warning when the commit could not be made (typically no git identity): the project is
-    still usable, and AIKit never invents an author.
+    `git init`, then commit the project's memory and instructions so a new project starts clean.
+    Raises when the commit cannot be made (typically no git identity): a clean baseline is required
+    for delivery and the UI guard, and AIKit never invents an author.
     """
     result = _run_git(project_root, "init", "--quiet")
     if result.returncode != 0:
@@ -444,8 +447,12 @@ def _git_start(project_root: Path) -> Optional[str]:
     if result.returncode != 0:
         # git's last stderr line is the cause; the lines before it are generic advice.
         cause = (result.stderr.strip().splitlines() or ["git commit failed"])[-1]
-        return (f"initial commit not made ({cause}); "
-                "set `git config user.name` and `user.email`, then commit `.aikit/` and `.gitignore`.")
+        raise ProjectError(
+            f"initial commit failed: {cause}",
+            "a project needs a committed baseline for delivery, UI baselines and publish.",
+            "set `git config user.name` and `git config user.email` (or repo-local equivalents), "
+            "then run `aikit new` again.",
+        )
     return None
 
 

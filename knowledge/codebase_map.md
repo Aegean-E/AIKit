@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `302`
-- **Total Class Methods**: `526`
-- **Total Source Lines**: `15549`
+- **Total Top-Level Functions**: `304`
+- **Total Class Methods**: `533`
+- **Total Source Lines**: `15717`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `629` lines (`31299` bytes)
+**Size**: `647` lines (`32327` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -62,7 +62,7 @@
 ### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
 > *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
 
-**Size**: `669` lines (`31784` bytes)
+**Size**: `699` lines (`33359` bytes)
 
 **Classes:**
 - `class Finding` - *One violation, addressed to the line a developer must change.*
@@ -91,10 +91,11 @@
 - `def _direct_arguments(call)` - *Positional and keyword argument expressions of a call.*
 - `def check_absolute_paths(rel, tree)` - *PRINCIPLE-003 R4: a machine-specific path reaching file access breaks every other machine.*
 - `def check_asset_source(rel, source)` - *PRINCIPLE-003 R3: a static asset that loads from a third party is a hidden dependency.*
-- `def _marked(lines, line)` - *Whether the finding's own line carries a deliberated `hygiene: allow <reason>` marker.*
+- `def _marked(lines, line)` - *Whether a deliberated `hygiene: allow <reason>` marker covers the finding's line.*
 - `def check_python_source(rel, source)` - *Every Python finding in one source text; findings on `hygiene: allow` lines are dropped.*
 - `def _read_source(rel, path)` - *The file's UTF-8 text, or the finding that replaces it (PRINCIPLE-000 R5: no silent skip).*
 - `def _is_root_test_module(path)` - *Whether `path` is a test module at the project root, where default runners import it.*
+- `def _is_root_readme(path)` - *Whether `path` is the project's own README at the repository root.*
 - `def _artifact_rule(path)` - *The tracked-artifact rule and message for `path`, or None when it is ordinary source.*
 - `def classify_artifacts(tracked, untracked)` - *Artifact findings from git's tracked and untracked-non-ignored path lists.*
 - `def _git_paths(root, args)` - *The NUL-separated path list from one bounded git call, or the finding that replaced it.*
@@ -289,7 +290,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `610` lines (`26184` bytes)
+**Size**: `617` lines (`26419` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -319,7 +320,7 @@
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
 - `def _run_git(project_root, *args)`
-- `def _git_start(project_root)` - *`git init`, then commit the project's memory and instructions so a new project starts clean. Returns*
+- `def _git_start(project_root)` - *`git init`, then commit the project's memory and instructions so a new project starts clean.*
 - `def create_project(name, test_command, workspace, git_start)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
 - `def _build_project(name, path, attached)`
@@ -384,7 +385,7 @@
 ### [`scripts/ui_contract.py`](scripts/ui_contract.py)
 > *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
 
-**Size**: `756` lines (`37129` bytes)
+**Size**: `781` lines (`38421` bytes)
 
 **Classes:**
 - `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
@@ -418,7 +419,8 @@
 - `def _budget_findings(root, changes, contract, task, git_io)`
 - `def _added_lines(root, changes, baseline, surface, git_io)` - *(path, line number, text) for every line added inside the task's surface.*
 - `def verify(root, git_io, shell_runner)` - *Check the open task's scope, contract, baseline, budget and proof commands.*
-- `def allow(root, pattern)` - *Record one intended inventory removal pattern on the open task.*
+- `def allowed_removal_entries(task)` - *One task's allowed removals as `{"pattern": ..., "reason": ...}` records.*
+- `def allow(root, pattern, reason)` - *Record one intended inventory removal pattern and its reason on the open task.*
 - `def _read_history(root)` - *Read the append-only UI history; a missing file is empty, a malformed one is an error.*
 - `def surface_evidence_errors(root, git_io)` - *Surfaces whose current files do not match any finished task's recorded digest.*
 - `def _append_history(root, task, reviewer, git_io)` - *Append the finished task's evidence to the project's UI history (ADR-161, ADR-169).*
@@ -431,7 +433,7 @@
 ### [`scripts/ui_proof.py`](scripts/ui_proof.py)
 > *Mechanical UI proofs for the opt-in UI guard (ADR-160).*
 
-**Size**: `82` lines (`3136` bytes)
+**Size**: `92` lines (`3610` bytes)
 
 **Functions:**
 - `def matches_pattern(path, patterns)` - *One relative path against contract patterns; `dir/**` covers the tree.*
@@ -444,7 +446,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1006` lines (`46774` bytes)
+**Size**: `1008` lines (`46932` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -495,7 +497,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1091` lines (`53997` bytes)
+**Size**: `1091` lines (`54036` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -596,7 +598,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6055` lines (`336145` bytes)
+**Size**: `6131` lines (`340497` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -695,6 +697,7 @@
   - Method `.test_a_duplicate_fails()`
   - Method `.test_a_gap_fails()`
   - Method `.test_this_register_is_clean()`
+  - Method `.test_commented_template_is_not_an_entry()`
 - `class TestPrinciple005Unambiguity` - *PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes.*
   - Method `.setUpClass()`
   - Method `.test_rules_contain_no_hedge_words()`
@@ -937,6 +940,8 @@
   - Method `.test_projects_folder_is_discovered_without_the_attached_file()`
   - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
   - Method `.test_failed_git_init_leaves_no_half_made_project()`
+  - Method `.test_new_project_ignores_bytecode_and_has_a_clean_adr_template()`
+  - Method `.test_git_identity_failure_is_an_error_not_a_warning()`
   - Method `.test_cli_reports_triad_and_exit_codes()`
   - Method `.test_a_filesystem_error_is_reported_with_a_remedy()`
   - Method `.test_project_memory_holds_ledger_and_decisions()`
@@ -962,6 +967,7 @@
   - Method `.test_ui_verify_json_emits_stable_codes()`
   - Method `.test_ui_init_writes_the_react_vite_pilot_contract()`
   - Method `.test_ui_evidence_and_json_error_paths()`
+  - Method `.test_ui_finish_prints_every_allowed_removal_and_its_reason()`
   - Method `.test_ui_init_generic_override_from_cli()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`
   - Method `.test_run_git_uses_utf8_encoding_with_replacement()`
@@ -976,6 +982,7 @@
   - Method `.test_every_gate_runs_after_a_failure()`
 - `class TestProjectHygieneScan` - *The hygiene scan decides from the AST and from lines what the project gates could not (ADR-137).*
   - Method `.rules(source)`
+  - Method `.test_allow_marker_is_read_on_the_line_above_the_finding()`
   - Method `.test_subprocess_rules_are_decidable()`
   - Method `.test_only_imported_subprocess_names_count()`
   - Method `.test_startup_and_file_rules()`
@@ -987,6 +994,7 @@
   - Method `.test_artifact_classifier_flags_root_tests_outputs_and_source()`
   - Method `.test_artifact_scan_reports_missing_git_without_a_traceback()`
   - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
+  - Method `.test_artifact_classifier_flags_an_untracked_project_readme()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
 - `class FakeGit` - *A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned.*
   - Method `.__init__(status, head, tracked, diff)`
@@ -1026,6 +1034,7 @@
   - Method `.test_inventory_findings_flag_removed_entries_only()`
   - Method `.test_inventory_findings_honor_allowed_removal_patterns()`
   - Method `.test_style_findings_flag_hardcoded_literals_outside_theme_paths()`
+  - Method `.test_style_findings_skip_font_properties_whose_value_is_a_token()`
   - Method `.test_style_findings_are_off_without_declared_theme_paths()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
   - Method `.test_codebase_scan_and_sweeps_prune_projects()`

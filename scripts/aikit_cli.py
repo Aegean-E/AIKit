@@ -175,6 +175,8 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "allow":
             sub.add_argument("pattern",
                              help="glob matching the inventory entries this task removes")
+            sub.add_argument("--reason", required=True,
+                             help="why the removal is intended; recorded with the allow entry")
         if action == "finish":
             sub.add_argument("--reviewed", action="store_true",
                              help="confirm a human looked at the running UI")
@@ -532,12 +534,16 @@ def cmd_ui(args: argparse.Namespace) -> int:
               f"{str(task['baseline_commit'])[:12]}; edit only the contract surface.")
         return 0
     if args.ui_action == "allow":
-        ui_contract.allow(project.path, args.pattern)
-        print(f"[OK] Inventory removals matching '{args.pattern}' are intended; "
-              "verify will stop flagging them.")
+        ui_contract.allow(project.path, args.pattern, args.reason)
+        print(f"[OK] Inventory removals matching '{args.pattern}' are intended: {args.reason}")
         return 0
     if args.ui_action in ("verify", "finish"):
+        before = None
         if args.ui_action == "finish":
+            try:
+                before = ui_contract.read_task(project.path)
+            except ProjectError:
+                before = None
             findings = ui_contract.finish(project.path, reviewed=args.reviewed,
                                           reviewer=getattr(args, "reviewer", "") or "")
         else:
@@ -550,14 +556,22 @@ def cmd_ui(args: argparse.Namespace) -> int:
                                      indent=2))
                     return getattr(exc, "exit_code", 1)
                 raise
+        if args.ui_action == "verify":
+            contract = ui_contract.load_contract(project.path)
+            style_lint = "on" if contract.theme_paths else "off"
+        else:
+            style_lint = ""
         if args.ui_action == "verify" and getattr(args, "json", False):
-            payload = {"ok": not findings, "findings": ui_contract.findings_payload(findings)}
+            payload = {"ok": not findings, "findings": ui_contract.findings_payload(findings),
+                       "style_lint": style_lint}
             try:
                 payload["surface"] = ui_contract.read_task(project.path).get("surface")
             except ProjectError:
                 payload["surface"] = None
             print(json.dumps(payload, indent=2))
             return 0 if not findings else 1
+        if args.ui_action == "verify" and style_lint == "off":
+            print("[INFO] style lint: off (no style.theme_paths declared).")
         for finding in findings:
             print(f"[FAIL] {finding}")
         if findings:
@@ -565,7 +579,7 @@ def cmd_ui(args: argparse.Namespace) -> int:
             print("Why: a UI task proves one reviewed surface, not an unbounded rewrite.",
                   file=sys.stderr)
             print(f"Fix: revert the listed paths, record intended removals with "
-                  f"`python aikit.py ui allow {project.name} <pattern>`, or run "
+                  f"`python aikit.py ui allow {project.name} <pattern> --reason <why>`, or run "
                   f"`python aikit.py ui abort {project.name}` to restore the surface; "
                   "then rerun.", file=sys.stderr)
             if args.ui_action == "finish":
@@ -574,6 +588,10 @@ def cmd_ui(args: argparse.Namespace) -> int:
             return 1
         print(f"[OK] UI surface verified for '{project.name}'." if args.ui_action == "verify"
               else f"[OK] UI task closed for '{project.name}'.")
+        # The closing report names what the task was allowed to remove: an allow decision that is
+        # never read back is an unreviewed control loss (ADR-171).
+        for entry in ui_contract.allowed_removal_entries(before or {}):
+            print(f"[NOTE] allowed removal '{entry['pattern']}': {entry['reason']}")
         return 0
     if args.ui_action == "abort":
         result = ui_contract.abort(project.path)

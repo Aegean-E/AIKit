@@ -141,11 +141,13 @@ def scaffold_contract(root: Path, surface: str = "app", fast: str = "",
                                        "tailwind.config.cjs", "tailwind.config.mjs",
                                        "src/theme.css", "src/theme.ts", "src/styles/theme.css")
                        if (root / rel).is_file()]
+        protected = ["tests/**"]
+        if any(pattern.startswith("src/") for pattern in surface_paths):
+            protected.extend(["src/**/*.test.*", "src/**/*.spec.*", "src/**/__tests__/**"])
         contract: Dict[str, object] = {
             "schema": TASK_SCHEMA,
             "surfaces": {surface: {"paths": list(surface_paths)}},
-            "protected": ["tests/**", "src/**/*.test.*", "src/**/*.spec.*",
-                          "src/**/__tests__/**"],
+            "protected": protected,
             "commands": {"fast": fast, "snapshot": snapshot},
             "style": {"theme_paths": theme_paths},
             "limits": {"max_files": 12, "max_lines": 300},
@@ -584,7 +586,8 @@ def verify(root: Path, git_io: Optional[GitIo] = None,
                         else:
                             findings.extend(ui_proof.inventory_findings(
                                 list(task["baseline_snapshot"]), current,
-                                list(task.get("allowed_removals", []))))
+                                [entry["pattern"]
+                                 for entry in allowed_removal_entries(task)]))
                 if contract.theme_paths:
                     added = _added_lines(root, changes, str(task["baseline_commit"]),
                                          surface, git_io)
@@ -596,12 +599,34 @@ def verify(root: Path, git_io: Optional[GitIo] = None,
         return findings
 
 
-def allow(root: Path, pattern: str) -> Dict[str, object]:
-    """Record one intended inventory removal pattern on the open task."""
+def allowed_removal_entries(task: Dict[str, object]) -> List[Dict[str, str]]:
+    """
+    One task's allowed removals as `{"pattern": ..., "reason": ...}` records.
+
+    A task written before removals carried a reason holds bare pattern strings; those stay
+    readable and are reported as `legacy entry` rather than rewritten (ADR-171).
+    """
+    entries: List[Dict[str, str]] = []
+    for item in task.get("allowed_removals", []) or []:
+        if isinstance(item, dict):
+            entries.append({"pattern": str(item.get("pattern", "")),
+                            "reason": str(item.get("reason", ""))})
+        else:
+            entries.append({"pattern": str(item), "reason": "legacy entry"})
+    return entries
+
+
+def allow(root: Path, pattern: str, reason: str = "") -> Dict[str, object]:
+    """Record one intended inventory removal pattern and its reason on the open task."""
     if not isinstance(pattern, str) or not pattern.strip():
         raise _error("The allowed removal pattern is empty.",
                      "verify treats removed inventory entries as findings unless allowed.",
                      "pass a glob such as `Button*` for the entries this task removes.",
+                     exit_code=2)
+    if not isinstance(reason, str) or not reason.strip():
+        raise _error("An allowed removal needs a reason.",
+                     "an unexplained allow line turns a real control loss into a clean pass.",
+                     'rerun `ui allow <project> "<pattern>" --reason "<why the removal is intended>"`.',
                      exit_code=2)
     contract = load_contract(root)
     with file_lock(_task_path(root)) as acquired:
@@ -612,9 +637,9 @@ def allow(root: Path, pattern: str) -> Dict[str, object]:
         if task["contract_hash"] != contract.digest:
             raise _task_error("The UI contract changed after the task began.",
                               "abort the task and begin again under the new contract.")
-        allowed = [str(item) for item in task.get("allowed_removals", [])]
-        if pattern not in allowed:
-            allowed.append(pattern)
+        allowed = allowed_removal_entries(task)
+        if not any(entry["pattern"] == pattern for entry in allowed):
+            allowed.append({"pattern": pattern, "reason": reason.strip()})
         task["allowed_removals"] = allowed
         atomic_write_json(_task_path(root), task)
         return task
@@ -670,7 +695,7 @@ def _append_history(root: Path, task: Dict[str, object], reviewer: str,
         "finished_at": time.time(),
         "strikes": int(task["strikes"]),
         "reviewer": reviewer,
-        "allowed_removals": [str(item) for item in task.get("allowed_removals", [])],
+        "allowed_removals": allowed_removal_entries(task),
         "final_snapshot_digest": snapshot_digest,
         "final_snapshot_entries": len(final),
         "surface_digest": digest,

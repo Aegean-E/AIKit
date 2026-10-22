@@ -42,7 +42,7 @@ python aikit.py clean <name>         # clean dangling project buffers
 - Request names no single project: ask which one, or the name of a new one, before writing code.
 - Before writing code in a project, read its guidelines (`status` or `resume` prints them): its own rules, which add to the principles and never override one (PRINCIPLE-000 R6). When the user states a lasting rule for the project, record it with `aikit guideline`.
 - In the steps below, project work replaces the repository with the project: use the cockpit subcommands above, or add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.
-- The project check runs the built-in hygiene scan of its source and static assets: mark a deliberate finding's own line `hygiene: allow <reason>`. After the check passes, record the checklist outcome (`checklists: passed`, or the failed or skipped item IDs) in the task's latest checkpoint description before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8).
+- The project check runs the built-in hygiene scan of its source and static assets: mark a deliberate finding `hygiene: allow <reason>` on its own line or the line directly above it. After the check passes, record the checklist outcome (`checklists: passed`, or the failed or skipped item IDs) in the task's latest checkpoint description before the commit (PRINCIPLE-001 R8, PRINCIPLE-011 R8).
 
 ---
 

@@ -4,7 +4,8 @@ Mechanical UI proofs for the opt-in UI guard (ADR-160).
 The snapshot layer turns a project-declared inventory command's output into sorted,
 deduplicated lines, so a lost control or handler is a removed line; the style layer
 flags hardcoded color and font literals in added surface lines outside the theme
-paths the contract declares. Both are pure and deterministic: no I/O, no framework.
+paths the contract declares, except a font declaration whose value is a theme token.
+Both are pure and deterministic: no I/O, no framework.
 
 PRINCIPLE-003, PRINCIPLE-006, PRINCIPLE-014.
 """
@@ -15,12 +16,18 @@ import re
 from typing import List, Sequence, Tuple
 
 MAX_REPORTED_ENTRIES = 8
-STYLE_PATTERNS = (
+COLOR_PATTERNS = (
     re.compile(r"#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{4}\b|#[0-9a-fA-F]{3}\b"),
     re.compile(r"\brgba?\("),
+)
+FONT_PATTERNS = (
     re.compile(r"\b(font(?:_size|_name|_family)?)\s*="),
     re.compile(r"\bfont(?:-family|-size|-weight)?\s*:"),
 )
+STYLE_PATTERNS = COLOR_PATTERNS + FONT_PATTERNS
+# A font declaration whose value is a theme token (`font-family: var(--font-sans)`) uses the theme
+# rather than bypassing it, so only literal-valued font declarations are findings (ADR-171).
+THEME_TOKEN = re.compile(r"\bvar\(")
 
 
 def matches_pattern(path: str, patterns: Sequence[str]) -> bool:
@@ -74,9 +81,12 @@ def style_findings(added: Sequence[Tuple[str, int, str]],
             continue
         for pattern in STYLE_PATTERNS:
             match = pattern.search(text)
-            if match:
-                literal = match.group(1) if match.lastindex else match.group(0)
-                findings.append(f"style literal '{literal}' outside theme paths: "
-                                f"{path}:{number}")
-                break
+            if not match:
+                continue
+            if pattern in FONT_PATTERNS and THEME_TOKEN.search(text, match.end()):
+                continue
+            literal = match.group(1) if match.lastindex else match.group(0)
+            findings.append(f"style literal '{literal}' outside theme paths: "
+                            f"{path}:{number}")
+            break
     return findings

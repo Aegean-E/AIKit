@@ -1,50 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-guard-caveats-v1",
-    "last_phase": "in_progress",
+    "task_id": "aikit-scaffold-lint-fixes-v1",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792689047.0721886,
-    "completed_at": 1792689047.2031412
+    "updated_at": 1792694794.7019029,
+    "completed_at": 1792695109.794912
   },
   "checkpoints": [
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Add a bounded-wait check for Popen so an unbounded wait is flagged, with regression tests. [2/5] Restrict commit delivery authorization to a commit or pull request, leaving a push-only request to authorize only the push; update GUIDELINES, ADR-162 and pins. [3/5] Trim the UI integration test to the real-git style/snapshot proof, move the remaining assertions to the unit tier, and record the begin assertion there. [4/5] Deduplicate merge-scan findings, explain an open UI task in status output, and give an unreadable-ledger save a Why/Fix CLI error. [5/5] Correct ADR-163's overclaims and re-run Phase 4.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792648785.459223,
-      "timestamp_str": "2026-10-22 08:59:45",
-      "impact_assessment": {
-        "why": "Verification of the first fix set exposed an unbounded-Popen blind spot, a push-implies-commit ambiguity, an unstable integration budget, a duplicate merge finding, a silent status failure and a raw ledger I/O error.",
-        "benefits": "The hygiene gate catches unbounded Popen again, a push request cannot silently authorize a commit on a restrictive host, the integration tier regains headroom, and delivery failures explain themselves.",
-        "risks": "contract: PRINCIPLE-018 R1 no longer treats a push-only request as commit authorization; the hygiene scanner gains a popen-wait-timeout rule and the integration test relies on unit coverage for allow/finish; dependency: none; concurrency: none; state: ledger I/O errors are wrapped for the CLI.",
-        "mitigation": "Add failing-first tests for each behavior, keep the real-git style/lost-control proof, update ADR-162/ADR-163, and run the full Phase 4 set."
-      }
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Follow-up fixes are implemented: bounded Popen waits, push-only requests no longer authorize commits, the UI test assertion moved to the unit tier, merge findings deduplicated, status explains an open UI task, and filesystem errors use Why/Fix. Functional tests pass (390 unit, 49 integration), sync/knowledge/secrets/reachability/dogfood pass; the integration budget is still 298.33ms/test under the current host load. checklists: failed PRINCIPLE-010 R6. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792649367.2720442,
-      "timestamp_str": "2026-10-22 09:09:27"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 1/5] Implemented the bounded-Popen rule, push-only authorization semantics, UI test assertion move, merge dedupe, status explanation, filesystem Why/Fix, and the user-approved 350ms ceiling in ADR-164; uncommitted under PRINCIPLE-018 R1.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792649739.0235956,
-      "timestamp_str": "2026-10-22 09:15:39"
-    },
     {
       "task_id": "adr-review-fixes-v1",
       "phase": "in_progress",
@@ -228,6 +192,41 @@
       "status": "completed",
       "timestamp": 1792689047.2031434,
       "timestamp_str": "2026-10-22 20:10:47"
+    },
+    {
+      "task_id": "aikit-scaffold-lint-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/6] Scaffold P1: make the ADR template non-parsing, strip HTML comments in the ADR audit, add bytecode/transient ignore rules, and fail cleanly when git identity is missing. [2/6] UI init P2: report when style lint is off, and derive generic protected patterns from the supplied surface paths instead of emitting dead src patterns. [3/6] Require a reason on ui allow, preserve reasons in history, and print them at finish. [4/6] Style lint: skip font properties whose value uses var(). [5/6] Hygiene: accept hygiene: allow on the finding line or the line immediately above it; warn on untracked README sources. [6/6] Update ADRs/docs/tests and run every Phase 4 gate; leave PRINCIPLE-015 R1 for explicit approval.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792692305.2721107,
+      "timestamp_str": "2026-10-22 21:05:05",
+      "impact_assessment": {
+        "why": "The external report confirmed new-project blockers and UI guard accuracy defects: the commented ADR template poisons the register, Python bytecode dirties new projects, missing git identity is only a warning, style lint silently turns off, generic init emits dead patterns, allow has no reason, tokenized font declarations are flagged, and allow markers are too rigid.",
+        "benefits": "New projects can record their first ADR, run tests without dirtying the tree, and fail early on missing git identity; UI verification reports style coverage honestly; allow decisions are reviewable; and lint findings match the stated rules.",
+        "risks": "contract: allow gains a required --reason and task/history allowed_removals become objects; existing string entries remain readable; dependency: none; concurrency: task writes remain locked; state: ADR audit ignores HTML comments; git identity failure now rejects a half-made project.",
+        "mitigation": "Keep backward-compatible readers, add failing-first tests for each change, update ADR/docs, and run the full gate set."
+      }
+    },
+    {
+      "task_id": "aikit-scaffold-lint-fixes-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[6/6] All six milestones implemented and verified. Phase 4 green on this exact tree: 409 unit (5.19ms/test) + 49 integration (216ms/test), sync --check, map --check, reachability, secrets --all, test budgets, dogfood 5/5. ADR-171 records all nine decisions; GUIDELINES.md P-011 R8 descriptive clause updated with the full 18-principle cross-check (0 Tier-1 files changed). Milestone 5's 'untracked README sources' decided as a named untracked-readme finding under the opt-in --artifacts mode (user did not recall the intent; rationale in ADR-171). checklists: passed, except PRINCIPLE-018 skipped (commit and push await user authorization per R1) and PRINCIPLE-019 staged-diff variant skipped in favour of the --all superset (nothing staged yet).",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792694794.7019029,
+      "timestamp_str": "2026-10-22 21:46:34"
+    },
+    {
+      "task_id": "aikit-scaffold-lint-fixes-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'aikit-scaffold-lint-fixes-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792695109.7949142,
+      "timestamp_str": "2026-10-22 21:51:49"
     }
   ]
 }

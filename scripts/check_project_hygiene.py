@@ -10,8 +10,8 @@ a broad `except` whose whole body is `pass`, a machine-specific absolute path, a
 in a static asset (ADR-137).
 
 Every rule is decidable from the AST or from one line of regex, so a clean run is evidence rather
-than opinion, and every finding names the line to change. A deliberate exception is documented on
-the finding's own line as `hygiene: allow <reason>`.
+than opinion, and every finding names the line to change. A deliberate exception is documented as
+`hygiene: allow <reason>` on the finding's own line or the line directly above it.
 
 Exit codes:
   0 clean    1 findings    2 CLI argument misuse
@@ -313,7 +313,7 @@ def check_silent_except(rel: str, tree: ast.Module) -> Iterable[Finding]:
     Flagged: any `except ...: pass`, whatever it catches, and a broad handler (bare, `Exception`
     or `BaseException`) whose whole body is a lone `return`, `continue` or `break`. A typed
     handler that skips an item is a decision, not a silence, so it is left alone. A deliberate
-    discard carries `hygiene: allow <reason>` on the handler's own line (ADR-147).
+    discard carries `hygiene: allow <reason>` on the handler's line or the one above (ADR-147).
     """
     for node in ast.walk(tree):
         if not isinstance(node, ast.ExceptHandler) or len(node.body) != 1:
@@ -397,8 +397,19 @@ def check_asset_source(rel: str, source: str) -> List[Finding]:
 
 
 def _marked(lines: Sequence[str], line: int) -> bool:
-    """Whether the finding's own line carries a deliberated `hygiene: allow <reason>` marker."""
-    return 1 <= line <= len(lines) and bool(ALLOW_MARKER.search(lines[line - 1]))
+    """
+    Whether a deliberated `hygiene: allow <reason>` marker covers the finding's line.
+
+    The marker is read on the finding's own line or the line directly above it: a long call or a
+    line already at the width limit has no room for a trailing comment, and forcing one there was
+    the reason deliberate exceptions went unmarked (ADR-171). One line above only, never further,
+    so a marker cannot drift away from what it excuses.
+    """
+    if not 1 <= line <= len(lines):
+        return False
+    if ALLOW_MARKER.search(lines[line - 1]):
+        return True
+    return line >= 2 and bool(ALLOW_MARKER.search(lines[line - 2]))
 
 
 PYTHON_CHECKS: Tuple[Callable[[str, ast.Module], Iterable[Finding]], ...] = (
@@ -445,6 +456,16 @@ def _is_root_test_module(path: str) -> bool:
         return False
     name = PurePosixPath(path).name.lower()
     return name.endswith(PY_SUFFIX) and (name.startswith("test") or name.endswith("_test.py"))
+
+
+def _is_root_readme(path: str) -> bool:
+    """
+    Whether `path` is the project's own README at the repository root.
+
+    Only the root file counts: a `docs/README.md` is ordinary documentation, while the root README
+    is what PRINCIPLE-005 gates read and what `publish` uploads as the project's front page.
+    """
+    return "/" not in path and PurePosixPath(path).stem.casefold() == "readme"
 
 
 def _artifact_rule(path: str) -> Optional[Tuple[str, str]]:
@@ -495,6 +516,13 @@ def classify_artifacts(tracked: Sequence[str], untracked: Sequence[str]) -> List
                                     "an untracked root test module is imported or collected by "
                                     "the default test runner; move it under tests/ "
                                     "(PRINCIPLE-014 R4)"))
+        elif _is_root_readme(rel):
+            # Before the output-suffix rule below: an untracked `README.txt` was told to delete
+            # itself, which is the opposite of what a project README needs (ADR-171).
+            findings.append(Finding(rel, 1, "untracked-readme",
+                                    "the project README is not tracked; the gates read it and "
+                                    "publish will not ship it, so track it "
+                                    "(PRINCIPLE-005 R1)"))
         elif "/" not in rel and (PurePosixPath(rel).suffix == PY_SUFFIX
                                   or PurePosixPath(rel).suffix in ASSET_SUFFIXES):
             findings.append(Finding(rel, 1, "untracked-root-source",
@@ -597,7 +625,7 @@ def run_scan(root: Path, artifacts: bool = False) -> int:
     print("   Why: each finding breaks portability, resource discipline or offline integrity")
     print("     on a machine other than the author's (PRINCIPLE-003 R4, PRINCIPLE-010).")
     print("   Fix: change the line, or document a deliberate exception with")
-    print("     `hygiene: allow <reason>` on the finding's own line.")
+    print("     `hygiene: allow <reason>` on the finding's line or the line above it.")
     print("=" * 58)
     return 1
 
@@ -629,11 +657,13 @@ Rules (static assets .html, .css, .js):
 Rules (--artifacts, decided from git's tracked and untracked file lists):
   root-test-module    a test module at the project root is imported or collected by the runner
   untracked-root-source  source at the project root is not tracked or placed in the layout
+  untracked-readme    the root README is not tracked, so the gates and publish cannot see it
   untracked-output    an untracked root .txt/.log/.tmp/.bak/.orig/.rej/.out file is drift
   tracked-artifact    a cache, coverage file or build output is tracked by git
 
 Exceptions:
-  Mark a deliberate line with `hygiene: allow <reason>`; the reason is part of the record.
+  Mark a deliberate line with `hygiene: allow <reason>`, on that line or the one directly
+  above it; the reason is part of the record.
 
 Exit codes:
   0 clean, 1 findings, 2 argument misuse.

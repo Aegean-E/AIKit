@@ -994,7 +994,7 @@ class TestUiContractGate(unittest.TestCase):
         self.assertIn("style literal '#ff0000' outside theme paths: src/ui/menu.py:2",
                       findings)
 
-        ui_contract.allow(root, "Button*")
+        ui_contract.allow(root, "Button*", "the toolbar replaces the button row")
         (root / "src" / "ui" / "menu.py").write_text("value = 1\nfg = theme.ERROR\n",
                                                       encoding="utf-8")
         # The allow-passing and finish-verify assertions live in TestUiContract; this tier keeps

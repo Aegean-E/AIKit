@@ -364,7 +364,9 @@ def audit_adr_register(decisions: str) -> List[str]:
     """
     errors: List[str] = []
     previous = None
-    for number in (int(n) for n in re.findall(r"^### ADR-(\d+):", decisions, re.M)):
+    # Template examples live inside HTML comments; they are documentation, not register entries.
+    visible = re.sub(r"<!--.*?-->", "", decisions, flags=re.S)
+    for number in (int(n) for n in re.findall(r"^### ADR-(\d+):", visible, re.M)):
         if previous is not None and number != previous + 1:
             kind = "duplicates or precedes" if number <= previous else "skips after"
             errors.append(f"ADR-{number:03d} {kind} ADR-{previous:03d}; the next ID must be ADR-{previous + 1:03d}")

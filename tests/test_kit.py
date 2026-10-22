@@ -1278,6 +1278,11 @@ class TestAdrRegister(unittest.TestCase):
     def test_this_register_is_clean(self):
         self.assertEqual(audit_adr_register((KNOWLEDGE_DIR / "decisions.md").read_text(encoding="utf-8")), [])
 
+    def test_commented_template_is_not_an_entry(self):
+        text = ("<!-- Entry format:\n### ADR-001: template\n-->\n\n"
+                "### ADR-001: real decision\n")
+        self.assertEqual(audit_adr_register(text), [])
+
 
 class TestPrinciple005Unambiguity(unittest.TestCase):
     """PRINCIPLE-005 must say the same thing to every model: exact labels, triggers and homes."""
@@ -4100,6 +4105,26 @@ class TestProjectRegistry(unittest.TestCase):
             create_project("app", workspace=self.kit, git_start=refuse)
         self.assertFalse((self.kit / "projects" / "app").exists())
 
+    def test_new_project_ignores_bytecode_and_has_a_clean_adr_template(self):
+        folder, warning = create_project("pyapp", workspace=self.kit,
+                                        git_start=lambda project_root: None)
+        self.assertIsNone(warning)
+        ignored = (folder / ".gitignore").read_text(encoding="utf-8")
+        for line in ("__pycache__/", "*.py[cod]", "node_modules/"):
+            self.assertIn(line, ignored)
+        decisions = (folder / ".aikit" / "decisions.md").read_text(encoding="utf-8")
+        self.assertEqual(audit_adr_register(decisions), [])
+
+    def test_git_identity_failure_is_an_error_not_a_warning(self):
+        from scripts.project_registry import _git_start
+        results = [mock.Mock(returncode=0, stderr=""),
+                   mock.Mock(returncode=0, stderr=""),
+                   mock.Mock(returncode=128, stderr="fatal: identity unknown")]
+        with mock.patch("scripts.project_registry._run_git", side_effect=results):
+            with self.assertRaises(ProjectError) as caught:
+                _git_start(self.make_folder())
+        self.assertIn("initial commit failed", str(caught.exception))
+
     def test_cli_reports_triad_and_exit_codes(self):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as caught:
@@ -4541,14 +4566,18 @@ class TestProjectRegistry(unittest.TestCase):
         message = "style literal '#fff' outside theme paths: src/ui/menu.py:1"
         with mock.patch("scripts.aikit_cli.ui_contract.verify", return_value=[message]), \
              mock.patch("scripts.aikit_cli.ui_contract.read_task",
-                        return_value={"surface": "menu"}):
-            code, out, _ = self.run_cli("ui", "verify", "jsonapp", "--json")
+                        return_value={"surface": "menu"}), \
+             mock.patch("scripts.aikit_cli.ui_contract.load_contract",
+                        return_value=mock.Mock(theme_paths=())):
+            code, out, err = self.run_cli("ui", "verify", "jsonapp", "--json")
         self.assertEqual(code, 1)
         payload = json.loads(out)
         self.assertFalse(payload["ok"])
         self.assertEqual(payload["surface"], "menu")
+        self.assertEqual(payload["style_lint"], "off")
         self.assertEqual(payload["findings"],
                          [{"code": "ui.style-literal", "message": message}])
+        self.assertEqual(err, "")
 
     def test_ui_init_writes_the_react_vite_pilot_contract(self):
         folder = self.make_folder(
@@ -4611,6 +4640,18 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertEqual(payload["error"]["code"], "ui.error")
         self.assertIn("No UI contract", payload["error"]["message"])
+        self.assertEqual(err, "")
+
+    def test_ui_finish_prints_every_allowed_removal_and_its_reason(self):
+        folder = self.make_folder()
+        attach_project(folder, "reasonapp", workspace=self.kit)
+        task = {"surface": "menu",
+                "allowed_removals": [{"pattern": "Button*", "reason": "replaced by the toolbar"}]}
+        with mock.patch("scripts.aikit_cli.ui_contract.finish", return_value=[]), \
+             mock.patch("scripts.aikit_cli.ui_contract.read_task", return_value=task):
+            code, out, err = self.run_cli("ui", "finish", "reasonapp", "--reviewed")
+        self.assertEqual(code, 0)
+        self.assertIn("allowed removal 'Button*': replaced by the toolbar", out)
         self.assertEqual(err, "")
 
     def test_ui_init_generic_override_from_cli(self):
@@ -4722,6 +4763,16 @@ class TestProjectHygieneScan(unittest.TestCase):
 
     def rules(self, source):
         return {finding.rule for finding in check_python_source("app.py", source)}
+
+    def test_allow_marker_is_read_on_the_line_above_the_finding(self):
+        above = ("import os\n"
+                 "# hygiene: allow the launcher documents its required variable\n"
+                 "token = os.environ['TOKEN']\n")
+        self.assertEqual(self.rules(above), set())
+        stale = ("# hygiene: allow the launcher documents its required variable\n"
+                 "import os\n"
+                 "token = os.environ['TOKEN']\n")
+        self.assertEqual(self.rules(stale), {"environ-index"})
 
     def test_subprocess_rules_are_decidable(self):
         self.assertEqual(self.rules("import subprocess\nsubprocess.run('x', shell=True, timeout=1)\n"),
@@ -4835,6 +4886,7 @@ class TestProjectHygieneScan(unittest.TestCase):
             ("app.js", "untracked-root-source"),
             ("site.css", "untracked-root-source"),
             ("test_output.txt", "untracked-output"),
+            ("README.md", "untracked-readme"),
         })
 
     def test_artifact_scan_reports_missing_git_without_a_traceback(self):
@@ -4860,6 +4912,15 @@ class TestProjectHygieneScan(unittest.TestCase):
             (".coverage", "tracked-artifact"),
             (".aikit/state.json.tmp_1", "tracked-artifact"),
         })
+
+    def test_artifact_classifier_flags_an_untracked_project_readme(self):
+        findings = classify_artifacts(
+            tracked=[],
+            untracked=["README.md", "README.txt", "docs/README.md", "NOTES.md"],
+        )
+        self.assertEqual([(finding.path, finding.rule) for finding in findings],
+                         [("README.md", "untracked-readme"),
+                          ("README.txt", "untracked-readme")])
 
     def test_artifact_classifier_keeps_bookkeeping_and_normal_source(self):
         findings = classify_artifacts(
@@ -5083,9 +5144,12 @@ class TestUiContract(unittest.TestCase):
         for action in ("verify", "finish", "abort", "status"):
             parsed = parser.parse_args(["ui", action, "app"])
             self.assertEqual(parsed.ui_action, action)
-        allowed = parser.parse_args(["ui", "allow", "app", "Button*"])
-        self.assertEqual((allowed.ui_action, allowed.name, allowed.pattern),
-                         ("allow", "app", "Button*"))
+        allowed = parser.parse_args(["ui", "allow", "app", "Button*", "--reason", "replaced"])
+        self.assertEqual((allowed.ui_action, allowed.name, allowed.pattern, allowed.reason),
+                         ("allow", "app", "Button*", "replaced"))
+        with self.assertRaises(SystemExit) as caught:
+            parser.parse_args(["ui", "allow", "app", "Button*"])
+        self.assertEqual(caught.exception.code, 2)
         finished = parser.parse_args(["ui", "finish", "app", "--reviewed"])
         self.assertTrue(finished.reviewed)
         attributed = parser.parse_args(["ui", "finish", "app", "--reviewed", "--reviewer", "yd"])
@@ -5158,8 +5222,12 @@ class TestUiContract(unittest.TestCase):
             return (0, "") if command == "python -c pass" else (0, "Button(save)\nMenu(file)\n")
 
         ui_contract.begin(self.root, "menu", git_io=fake, shell_runner=baseline)
-        ui_contract.allow(self.root, "Button*")
-        self.assertEqual(ui_contract.read_task(self.root)["allowed_removals"], ["Button*"])
+        ui_contract.allow(self.root, "Button*", "replaced by the toolbar")
+        self.assertEqual(ui_contract.read_task(self.root)["allowed_removals"],
+                         [{"pattern": "Button*", "reason": "replaced by the toolbar"}])
+        with self.assertRaises(ProjectError) as caught:
+            ui_contract.allow(self.root, "Menu*", "  ")
+        self.assertEqual(caught.exception.exit_code, 2)
 
         def lost(command, cwd, timeout):
             return (0, "") if command == "python -c pass" else (0, "Menu(file)\n")
@@ -5292,6 +5360,14 @@ class TestUiProof(unittest.TestCase):
             "style literal 'font-family:' outside theme paths: web/app.css:4",
             "style literal '#ffffffff' outside theme paths: web/app.css:5",
         ])
+
+    def test_style_findings_skip_font_properties_whose_value_is_a_token(self):
+        added = [("web/app.css", 3, "font-family: var(--font-sans);"),
+                 ("web/app.css", 4, "font-size: var(--text-lg);"),
+                 ("src/ui/menu.py", 5, "title.font_size = var(SIZE)"),
+                 ("web/app.css", 6, "font-family: var(--font-sans); color: #fff;")]
+        self.assertEqual(ui_proof.style_findings(added, ("src/theme.py",)),
+                         ["style literal '#fff' outside theme paths: web/app.css:6"])
 
     def test_style_findings_are_off_without_declared_theme_paths(self):
         added = [("src/ui/menu.py", 12, 'fg = "#ff0000"')]
