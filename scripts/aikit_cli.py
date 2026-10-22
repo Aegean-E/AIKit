@@ -136,6 +136,9 @@ def build_parser() -> argparse.ArgumentParser:
     for field in ("why", "benefits", "risks", "mitigation"):
         checkpoint.add_argument(f"--{field}", default=None,
                                 help="impact assessment, required on a task's first plan (PRINCIPLE-007 R6)")
+    checkpoint.add_argument("--handoff", default="",
+                            help="cold-start packet: 'next: ...' plus optional state, failed, "
+                                 "open, evidence, separated by ';' (PRINCIPLE-004 R2)")
     checkpoint.add_argument("--redact", action="store_true",
                             help="record credential-shaped text as [REDACTED] instead of refusing it")
 
@@ -378,7 +381,8 @@ def cmd_checkpoint(args: argparse.Namespace) -> int:
     impact = {"why": args.why, "benefits": args.benefits, "risks": args.risks,
               "mitigation": args.mitigation}
     return checkpoint_command(args.task, f"phase {args.phase_num}", args.phase_num, args.desc, impact,
-                              workspace_ledger_path(project.path), redact=args.redact)
+                              workspace_ledger_path(project.path), redact=args.redact,
+                              handoff=args.handoff)
 
 
 def cmd_complete(args: argparse.Namespace) -> int:

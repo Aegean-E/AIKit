@@ -1,60 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "secret-redaction-v1",
+    "task_id": "handoff-packet-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792696380.7927241,
-    "completed_at": 1792696384.8693142
+    "updated_at": 1792697757.6995187,
+    "completed_at": 1792697761.52593
   },
   "checkpoints": [
-    {
-      "task_id": "ui-guard-enforcement-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Add ui_required to project config and enforce it in check --strict and publish, closing the publish bypass. [2/3] Add ui verify --json with stable finding codes. [3/3] Add a React/Vite ui init pilot that writes a conservative contract. Measure adoption and false positives before adding browser proof.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792672915.3715358,
-      "timestamp_str": "2026-10-22 15:41:55",
-      "impact_assessment": {
-        "why": "The manager review approved closing the opt-in bypass, adding machine-readable output, and piloting one stack before any rendered/visual/a11y platform work.",
-        "benefits": "UI projects that opt in cannot publish or pass strict delivery without a contract and a closed UI task; CI can consume findings without scraping prose; one real stack gets a low-friction contract.",
-        "risks": "contract: ui_required adds a project config key and publish now refuses non-delivery-ready trees; dependency: none; concurrency: no new shared state; state: no ledger schema change.",
-        "mitigation": "Keep ui_required opt-in, add migration-free defaults, test check/publish refusal, keep the JSON shape additive, and add no external dependency."
-      }
-    },
-    {
-      "task_id": "ui-guard-enforcement-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 1/3] Added ui_required enforcement: strict check and publish now refuse a missing .aikit/ui.json, and publish runs the delivery baseline before uploading. Added ADR-166, docs and tests. 392 unit tests at 7.47ms/test (10ms), 49 integration at 218.51ms/test (350ms); sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792673637.9087627,
-      "timestamp_str": "2026-10-22 15:53:57"
-    },
-    {
-      "task_id": "ui-guard-enforcement-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 1/3] Verification found and fixed two enforcement holes: ui_required now validates the contract instead of only checking file existence, and plain check skips auto-push when the required UI contract is unusable. README was restored after an accidental reformat. 392 unit tests at 5.30ms/test, 49 integration at 214.96ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted; next is ui verify --json and the React/Vite ui init pilot.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792674862.905617,
-      "timestamp_str": "2026-10-22 16:14:22"
-    },
-    {
-      "task_id": "ui-guard-enforcement-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 3/3] Added ui verify --json with stable codes (ADR-167), the React/Vite ui init pilot (ADR-168), publish gate/test enforcement, contract validation, and plain-check auto-push blocking. 397 unit tests at 5.79ms/test, 49 integration at 206.76ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Remaining gaps: surface-changed-without-task evidence binding and optional rendered/a11y proof. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792677106.614055,
-      "timestamp_str": "2026-10-22 16:51:46"
-    },
     {
       "task_id": "ui-guard-enforcement-v1",
       "phase": "completed",
@@ -238,6 +192,64 @@
       "status": "completed",
       "timestamp": 1792696384.8693156,
       "timestamp_str": "2026-10-22 22:13:04"
+    },
+    {
+      "task_id": "handoff-packet-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] parse_handoff(text): pure parser and validator for 'state: ...; next: ...; failed: ...; open: ...; evidence: ...', mirroring the RISK_DIMENSIONS convention; next is required, an unknown key exits 2, total bounded to 2000 chars. [2/5] Store it as an optional handoff object on the checkpoint through record_checkpoint, with no schema version bump, and route its text through the ADR-173 credential gate. [3/5] --handoff on both CLI surfaces through the one checkpoint_command path. [4/5] format_resume_report prints the active task's latest handoff and uses its next value in place of the hardcoded Next Action line, inside PRINCIPLE-004 R5's 100-line budget. [5/5] README, data_models, ADR-174, map and sync refresh, then every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792697344.6502142,
+      "timestamp_str": "2026-10-22 22:29:04",
+      "impact_assessment": {
+        "why": "Resuming this session's own interrupted task required reading a git diff to learn which of six milestones were done, because the ledger records the plan but nothing about progress against it, nothing tried and abandoned, and nothing awaiting the user. format_resume_report's Next Action line is a hardcoded generic string, so the cold-start report tells every task the same thing. A question put to the user this session would have been lost to compaction with nowhere to record it.",
+        "benefits": "A resumed agent reads what was done, what failed, what is still open and what to do next instead of re-deriving it from a diff; the cold-start Next Action becomes task-specific; an unanswered user question survives compaction. One flag, one parser, consistent with the --risks format the kit already validates.",
+        "risks": "contract: --checkpoint and aikit checkpoint gain an optional --handoff flag and checkpoints gain an optional handoff key; no existing field changes and no reader is required to understand it. dependency: none. concurrency: none, the write stays inside the existing lock. state: deliberately NO ledger schema version bump; validate_ledger_version refuses any version that is not exactly LEDGER_SCHEMA_VERSION, including older ones, so bumping to 2 would make AIKit's own ledger and all 20 projects' ledgers unreadable. The change is purely additive, so an older build ignores the new key harmlessly.",
+        "mitigation": "Keep the field optional and absent-by-default so every existing ledger stays valid and every reader uses .get(); bound the parsed text and refuse unknown keys so the packet cannot grow into a second description field; scrub it with the ADR-173 gate so it cannot become a new credential surface; add failing-first tests for the parser, the round-trip through a v1 ledger, and the resume rendering; report the validate_ledger_version asymmetry to the user rather than fixing it inside this task (PRINCIPLE-007 R4)."
+      }
+    },
+    {
+      "task_id": "handoff-packet-v1",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[4/5] resume rendering wired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792697570.8083298,
+      "timestamp_str": "2026-10-22 22:32:50",
+      "handoff": {
+        "state": "milestones 1-4 implemented, 429 unit tests green",
+        "next": "write README, data_models and ADR-174, then run every Phase 4 gate",
+        "failed": "a ledger schema version bump, because validate_ledger_version refuses any version that is not exactly current",
+        "evidence": "unit tier green at 429 tests"
+      }
+    },
+    {
+      "task_id": "handoff-packet-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[5/5] All five milestones done. ADR-174 and data_models record the packet.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792697757.6995187,
+      "timestamp_str": "2026-10-22 22:35:57",
+      "handoff": {
+        "state": "all 5 milestones complete, Phase 4 green on this tree",
+        "next": "commit, then report the two gate defects found to the user",
+        "failed": "a ledger schema version bump, because validate_ledger_version refuses any version that is not exactly current, which would have broken AIKit's ledger and all 20 projects'",
+        "open": "whether to fix validate_ledger_version's older-version refusal and check_reachability's dead all_literals fallback, both reported and left out of this task under PRINCIPLE-007 R4",
+        "evidence": "478 tests, six gates, CLI contract, README 22,304 of 22,500"
+      }
+    },
+    {
+      "task_id": "handoff-packet-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'handoff-packet-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792697761.5259326,
+      "timestamp_str": "2026-10-22 22:36:01"
     }
   ]
 }

@@ -621,11 +621,15 @@ def record_checkpoint(
     benefits: Optional[str] = None,
     risks: Optional[str] = None,
     mitigation: Optional[str] = None,
+    handoff: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """
     Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).
     Tracks active_phase to allow instant phase-accurate resumption after conversation compaction.
     Optionally persists pre-flight 4-quadrant impact assessment metadata (why, benefits, risks, mitigation).
+    An optional `handoff` packet carries what the plan cannot: progress, dead ends, open questions
+    and evidence (ADR-174). It is written only when given, so a ledger's shape is unchanged without
+    one and no schema version bump is needed.
     """
     resolved_phase = resolve_phase_num(phase, phase_num)
     checkpoint_entry = {
@@ -650,6 +654,19 @@ def record_checkpoint(
         if mitigation:
             impact["mitigation"] = mitigation
         checkpoint_entry["impact_assessment"] = impact
+
+    if handoff:
+        # Written key by key, not comprehended over HANDOFF_KEYS: `check_reachability.py` proves a
+        # persisted key has a producer by finding it in a dict literal, and a comprehension hides
+        # every one of them. The schema is also readable at the point it is written.
+        packet = {
+            "state": handoff.get("state", ""),
+            "next": handoff.get("next", ""),
+            "failed": handoff.get("failed", ""),
+            "open": handoff.get("open", ""),
+            "evidence": handoff.get("evidence", ""),
+        }
+        checkpoint_entry["handoff"] = {key: value for key, value in packet.items() if value}
 
     # Locked read-modify-write: parallel subagents must not interleave here (PRINCIPLE-013 R3)
     with locked_ledger(ledger_file) as ledger:
@@ -869,9 +886,15 @@ def run_disruption_audit(
         if checkpoints:
             audit["last_checkpoint"] = checkpoints[-1]
             if active and active.get("status") == "in_progress":
-                plan = task_plan_checkpoint([c for c in checkpoints if c.get("task_id") == active.get("task_id")])
+                own = [c for c in checkpoints if c.get("task_id") == active.get("task_id")]
+                plan = task_plan_checkpoint(own)
                 if plan:
                     audit["plan"] = plan.get("description")
+                # The latest packet wins: an older one describes a state already moved past.
+                for cp in reversed(own):
+                    if isinstance(cp.get("handoff"), dict) and cp["handoff"]:
+                        audit["handoff"] = cp["handoff"]
+                        break
 
     # 3. Check for Quarantined Corrupted Artifacts (.corrupt_ files)
     try:
@@ -1023,7 +1046,15 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
         lines.append(f"🗺️  Plan (Phase 2 checkpoint): {audit['plan']}")
     if audit.get("dangling_temp_files"):
         lines.append(f"🧹 Action Needed: Purge {len(audit['dangling_temp_files'])} dangling .tmp_* files (run 'python scripts/disruption_recovery.py --clean')")
-    lines.append(f"💡 Next Action: Inspect surviving files, run unit tests, and resume at Phase {next_phase_num}")
+    # The handoff packet (ADR-174): what the plan cannot say. Its `next` replaces the generic
+    # line below, which told every task to inspect files and run the unit tier.
+    handoff = audit.get("handoff") or {}
+    for key, label in (("state", "📊 State"), ("failed", "🚫 Tried and rejected"),
+                       ("open", "❓ Open question"), ("evidence", "🧾 Verified")):
+        if handoff.get(key):
+            lines.append(f"{label}: {handoff[key]}")
+    lines.append(f"💡 Next Action: {handoff['next']}" if handoff.get("next") else
+                 f"💡 Next Action: Inspect surviving files, run unit tests, and resume at Phase {next_phase_num}")
     lines.append("============================================================")
     return "\n".join(lines)
 
@@ -1207,7 +1238,7 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
 
 VALUE_FLAGS = {
     "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
-    "--why", "--benefits", "--benefit", "--risks", "--mitigation",
+    "--why", "--benefits", "--benefit", "--risks", "--mitigation", "--handoff",
     "--complete", "--reset", "--workspace",
 }
 # Standalone action flags.
@@ -1250,6 +1281,8 @@ Checkpoint options:
   --benefits <text>          Pre-flight impact: expected benefits
   --risks <text>             Pre-flight impact: blast-radius risks
   --mitigation <text>        Pre-flight impact: risk mitigations
+  --handoff <text>           Cold-start packet as `key: value` segments separated by ';':
+                             next (required), state, failed, open, evidence (PRINCIPLE-004 R2)
   --redact                   With --checkpoint: record credential-shaped free text as
                              [REDACTED] instead of refusing the write (PRINCIPLE-019 R3)
   -h, --help                 Show this help message and exit
@@ -1297,6 +1330,41 @@ def validate_argv(argv: List[str]) -> List[str]:
 
 RISK_DIMENSIONS = ("contract:", "dependency:", "concurrency:", "state:")
 
+# The handoff packet (PRINCIPLE-004 R2, ADR-174). `--resume` already prints the plan; these are
+# the things it could not know: progress against that plan, a dead end not worth retrying, a
+# question still owed to the user, and what has already been verified.
+HANDOFF_KEYS = ("state", "next", "failed", "open", "evidence")
+MAX_HANDOFF_CHARS = 2000
+
+
+def parse_handoff(text: str) -> Tuple[Dict[str, str], List[str]]:
+    """
+    One `--handoff` string as `{key: value}`, plus the reasons it is unusable.
+
+    The format is `--risks`' own: `key: value` segments separated by `;`, so an agent that can
+    write one can write the other. A value may contain `:` - only the first one in a segment
+    separates the key - and empty segments are ignored, so a trailing `;` is not an error.
+    """
+    if len(text) > MAX_HANDOFF_CHARS:
+        return {}, [f"--handoff is {len(text)} characters; the limit is {MAX_HANDOFF_CHARS} "
+                    f"so a packet stays readable after a compaction"]
+    packet: Dict[str, str] = {}
+    errors: List[str] = []
+    for segment in text.split(";"):
+        if not segment.strip():
+            continue
+        key, separator, value = segment.partition(":")
+        key = key.strip().lower()
+        if not separator or key not in HANDOFF_KEYS:
+            errors.append(f"--handoff does not know the key '{key or segment.strip()}'; "
+                          f"it accepts {', '.join(HANDOFF_KEYS)}")
+            continue
+        if value.strip():
+            packet[key] = value.strip()
+    if not errors and "next" not in packet:
+        errors.append("--handoff must give a 'next:' value: the one action that resumes this task")
+    return packet, errors
+
 
 def impact_errors(description: str, phase_num: Optional[int], fields: Dict[str, Optional[str]],
                   has_prior_impact: bool) -> List[str]:
@@ -1330,14 +1398,14 @@ def missing_impact_warning(task_id: str, phase_num: Optional[int], has_prior_imp
             f"a Track B task has none.")
 
 
-def scrub_checkpoint_text(desc: str, impact: Dict[str, Optional[str]],
-                                redact: bool) -> Tuple[str, Dict[str, Optional[str]], List[str]]:
+def scrub_checkpoint_text(desc: str, impact: Dict[str, Optional[str]], redact: bool,
+                          handoff: str = "") -> Tuple[str, Dict[str, Optional[str]], str, List[str]]:
     """
     The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.
 
     PRINCIPLE-019 R3 makes the ledger a secret-scanning surface because `--why`, `--benefits`,
-    `--risks` and `--mitigation` are written into a git-tracked file; R5 makes such a leak
-    unrecoverable. Checking here, in the one path both CLIs take (ADR-128), refuses the write
+    `--risks`, `--mitigation` and `--handoff` are written into a git-tracked file; R5 makes such a
+    leak unrecoverable. Checking here, in the one path both CLIs take (ADR-128), refuses the write
     instead of reporting it afterwards (ADR-173).
     """
     detectors: List[str] = []
@@ -1351,20 +1419,22 @@ def scrub_checkpoint_text(desc: str, impact: Dict[str, Optional[str]],
         scrubbed_value, hits = scrub_text(value)
         detectors.extend(f"{name} in --{field}" for name in hits)
         scrubbed_impact[field] = scrubbed_value
+    scrubbed_handoff, hits = scrub_text(handoff or "")
+    detectors.extend(f"{name} in --handoff" for name in hits)
     if not redact:
-        return desc, impact, detectors
-    return scrubbed_desc, scrubbed_impact, detectors
+        return desc, impact, handoff, detectors
+    return scrubbed_desc, scrubbed_impact, scrubbed_handoff, detectors
 
 
 def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc: str,
                        impact: Dict[str, Optional[str]], ledger_file: Optional[Path] = None,
-                       redact: bool = False) -> int:
+                       redact: bool = False, handoff: str = "") -> int:
     """
     Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one
     path for every CLI that records checkpoints (`--checkpoint` here, `aikit checkpoint`): a second
     copy recorded first plans with no impact assessment (ADR-128).
     """
-    desc, impact, leaked = scrub_checkpoint_text(desc, impact, redact)
+    desc, impact, handoff, leaked = scrub_checkpoint_text(desc, impact, redact, handoff)
     if leaked and not redact:
         print(f"[CREDENTIAL IN CHECKPOINT TEXT] {'; '.join(sorted(set(leaked)))}", file=sys.stderr)
         print("Why: checkpoint free text is written into a git-tracked ledger, and a committed "
@@ -1372,6 +1442,15 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
         print("Fix: remove the value from the text, or rerun with --redact to record it as "
               "[REDACTED]; rotate the credential either way.", file=sys.stderr)
         return 1
+    packet, handoff_errors = parse_handoff(handoff) if handoff.strip() else ({}, [])
+    if handoff_errors:
+        print(f"[UNUSABLE HANDOFF] {'; '.join(handoff_errors)}", file=sys.stderr)
+        print("Why: a handoff packet is read on the next cold start, so a malformed one is "
+              "silently lost exactly when it is needed (PRINCIPLE-004 R2).", file=sys.stderr)
+        print(f'Fix: pass --handoff "next: <the one action that resumes this task>", adding any '
+              f'of {", ".join(k for k in HANDOFF_KEYS if k != "next")} as `key: value` segments '
+              f'separated by ";".', file=sys.stderr)
+        return 2
     prior = any(c.get("task_id") == task_id and c.get("impact_assessment")
                 for c in load_ledger(ledger_file).get("checkpoints", []))
     resolved = resolve_phase_num(phase, phase_num)
@@ -1389,7 +1468,7 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
     cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
                            why=impact.get("why"), benefits=impact.get("benefits"),
                            risks=impact.get("risks"), mitigation=impact.get("mitigation"),
-                           ledger_file=ledger_file)
+                           ledger_file=ledger_file, handoff=packet)
     print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
     return 0
 
@@ -1513,10 +1592,16 @@ if __name__ == "__main__":
             if len(sys.argv) > midx + 1 and not sys.argv[midx + 1].startswith("--"):
                 mitigation = sys.argv[midx + 1]
 
+        handoff = ""
+        if "--handoff" in sys.argv:
+            hidx = sys.argv.index("--handoff")
+            if len(sys.argv) > hidx + 1 and not sys.argv[hidx + 1].startswith("--"):
+                handoff = sys.argv[hidx + 1]
+
         sys.exit(checkpoint_command(task_id, phase, phase_num, desc,
                                     {"why": why, "benefits": benefits, "risks": risks,
                                      "mitigation": mitigation}, _ledger,
-                                    redact="--redact" in sys.argv))
+                                    redact="--redact" in sys.argv, handoff=handoff))
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1]

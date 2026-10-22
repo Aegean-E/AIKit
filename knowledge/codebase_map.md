@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `309`
-- **Total Class Methods**: `544`
-- **Total Source Lines**: `16047`
+- **Total Top-Level Functions**: `310`
+- **Total Class Methods**: `553`
+- **Total Source Lines**: `16244`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `713` lines (`35576` bytes)
+**Size**: `717` lines (`35865` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -175,7 +175,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1571` lines (`71419` bytes)
+**Size**: `1656` lines (`76268` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -203,7 +203,7 @@
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
 - `def resolve_active_phase(active_task, default)` - *Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).*
 - `def repo_relative(path)` - *A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators*
-- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
+- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation, handoff)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
 - `def mark_task_completed(task_id, ledger_file)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
 - `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006).*
 - `def _reraise(error)`
@@ -222,10 +222,11 @@
 - `def collect_working_changes(workspace)` - *Read every changed, staged or untracked file versus HEAD (git adapter for --track).*
 - `def report_operational_error(exc_type, exc, tb)` - *`sys.excepthook` for the CLI (PRINCIPLE-011 R6, PRINCIPLE-013 R2/R5): an operational failure*
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
+- `def parse_handoff(text)` - *One `--handoff` string as `{key: value}`, plus the reasons it is unusable.*
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
 - `def missing_impact_warning(task_id, phase_num, has_prior_impact, has_impact_now)` - *PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task*
-- `def scrub_checkpoint_text(desc, impact, redact)` - *The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.*
-- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file, redact)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
+- `def scrub_checkpoint_text(desc, impact, redact, handoff)` - *The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.*
+- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file, redact, handoff)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
 
 ---
@@ -603,7 +604,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6296` lines (`351166` bytes)
+**Size**: `6404` lines (`358154` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -788,6 +789,15 @@
   - Method `.test_report_file_lists_are_bounded()`
   - Method `.test_schemas_are_not_sent_to_adrs()`
   - Method `.test_active_task_is_bounded_and_keeps_its_plan()`
+  - Method `.test_parse_handoff_reads_the_declared_keys()`
+  - Method `.test_parse_handoff_requires_next_and_refuses_an_unknown_key()`
+  - Method `.test_parse_handoff_is_bounded_and_ignores_empty_segments()`
+  - Method `.test_checkpoint_command_rejects_a_malformed_handoff_before_writing()`
+  - Method `.test_checkpoint_command_scrubs_the_handoff_like_other_free_text()`
+  - Method `.test_resume_prints_the_handoff_and_its_next_action()`
+  - Method `.test_resume_keeps_the_generic_next_action_without_a_handoff()`
+  - Method `.test_handoff_round_trips_through_a_version_1_ledger()`
+  - Method `.test_parse_handoff_keeps_colons_inside_a_value()`
   - Method `.test_checkpoint_refuses_a_credential_in_free_text_unless_redacting()`
   - Method `.test_checkpoint_scrubs_the_description_too()`
   - Method `.test_resume_prints_the_plan()`

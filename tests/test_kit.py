@@ -104,6 +104,7 @@ from scripts.disruption_recovery import (
     validate_conventional_commit,
     checkpoint_command,
     classify_track,
+    parse_handoff,
     resolve_phase_num,
     task_plan_checkpoint,
     validate_argv,
@@ -2380,6 +2381,113 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
         self.assertLessEqual(len(checkpoints), 20)
         self.assertTrue(any(c["phase_num"] == 2 for c in checkpoints), "pruning dropped the plan")
         self.assertEqual(checkpoints[-1]["description"], "step 39", "pruning dropped the newest work")
+
+    def test_parse_handoff_reads_the_declared_keys(self):
+        packet, errors = parse_handoff(
+            "state: milestones 1-3 landed; next: wire the CLI flag; "
+            "failed: a schema bump breaks v1 ledgers; open: should --handoff be required?; "
+            "evidence: 420 unit tests green")
+        self.assertEqual(errors, [])
+        self.assertEqual(packet["state"], "milestones 1-3 landed")
+        self.assertEqual(packet["next"], "wire the CLI flag")
+        self.assertEqual(packet["failed"], "a schema bump breaks v1 ledgers")
+        self.assertEqual(packet["open"], "should --handoff be required?")
+        self.assertEqual(packet["evidence"], "420 unit tests green")
+
+    def test_parse_handoff_requires_next_and_refuses_an_unknown_key(self):
+        _, errors = parse_handoff("state: halfway")
+        self.assertEqual(errors, ["--handoff must give a 'next:' value: the one action that "
+                                  "resumes this task"])
+        _, errors = parse_handoff("next: go on; blockers: none")
+        self.assertEqual(errors, ["--handoff does not know the key 'blockers'; it accepts "
+                                  "state, next, failed, open, evidence"])
+
+    def test_parse_handoff_is_bounded_and_ignores_empty_segments(self):
+        _, errors = parse_handoff("next: " + "x" * 2100)
+        self.assertEqual(errors, ["--handoff is 2106 characters; the limit is 2000 so a packet "
+                                  "stays readable after a compaction"])
+        packet, errors = parse_handoff("next: ship it;  ; ")
+        self.assertEqual((packet, errors), ({"next": "ship it"}, []))
+
+    def test_checkpoint_command_rejects_a_malformed_handoff_before_writing(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_hoff_cli_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = checkpoint_command("t", "implementation", 3, "work", {}, ledger_file=ledger,
+                                      handoff="state: halfway")
+        self.assertEqual(code, 2, "a malformed --handoff is a usage error")
+        self.assertIn("must give a 'next:' value", err.getvalue())
+        self.assertFalse(ledger.exists(), "nothing is written when the packet is rejected")
+
+    def test_checkpoint_command_scrubs_the_handoff_like_other_free_text(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_hoff_sec_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        leak = "next: rotate glpat\x2daB3dE5gH7jK9mN1pQ3rS"  # aikit:allow-secret
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = checkpoint_command("t", "implementation", 3, "w", {}, ledger_file=ledger,
+                                      handoff=leak)
+        self.assertEqual(code, 1, "the handoff is a credential surface like every other field")
+        self.assertIn("GitLab personal access token", err.getvalue())
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = checkpoint_command("t", "implementation", 3, "w", {}, ledger_file=ledger,
+                                      handoff=leak, redact=True)
+        self.assertEqual(code, 0)
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(written["checkpoints"][-1]["handoff"]["next"], "rotate [REDACTED]")
+
+    def test_resume_prints_the_handoff_and_its_next_action(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_hoff_res_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        record_checkpoint("t", "planning", "[1/2] model; [2/2] cli", phase_num=2,
+                          ledger_file=ledger)
+        record_checkpoint("t", "implementation", "milestone 1 done", phase_num=3,
+                          ledger_file=ledger,
+                          handoff={"state": "model landed", "next": "wire the CLI flag",
+                                   "failed": "a schema bump breaks v1 ledgers",
+                                   "open": "should the flag be required?"})
+        report = format_resume_report(run_disruption_audit(workspace, git_status=not_a_git_repo))
+        self.assertIn("State: model landed", report)
+        self.assertIn("Tried and rejected: a schema bump breaks v1 ledgers", report)
+        self.assertIn("Open question: should the flag be required?", report)
+        self.assertIn("Next Action: wire the CLI flag", report)
+        self.assertNotIn("Inspect surviving files", report,
+                         "a recorded next action replaces the generic line")
+        self.assertLessEqual(len(report.splitlines()), 100, "PRINCIPLE-004 R5 output budget")
+
+    def test_resume_keeps_the_generic_next_action_without_a_handoff(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_hoff_gen_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        record_checkpoint("t", "implementation", "work", phase_num=3, ledger_file=ledger)
+        report = format_resume_report(run_disruption_audit(workspace, git_status=not_a_git_repo))
+        self.assertIn("Inspect surviving files", report)
+
+    def test_handoff_round_trips_through_a_version_1_ledger(self):
+        # Additive by design: no schema bump, because validate_ledger_version refuses any version
+        # that is not exactly current, so a bump would make every existing v1 ledger unreadable.
+        workspace = Path(tempfile.mkdtemp(prefix="test_handoff_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        record_checkpoint("t", "implementation", "milestone 2", phase_num=3, ledger_file=ledger,
+                          handoff={"next": "wire the CLI", "failed": "a schema bump"})
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(written["version"], 1, "the handoff needs no schema version bump")
+        self.assertEqual(written["checkpoints"][-1]["handoff"],
+                         {"next": "wire the CLI", "failed": "a schema bump"})
+        # A checkpoint without one carries no key at all, so old readers see an unchanged shape.
+        record_checkpoint("t", "implementation", "milestone 3", phase_num=3, ledger_file=ledger)
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertNotIn("handoff", written["checkpoints"][-1])
+
+    def test_parse_handoff_keeps_colons_inside_a_value(self):
+        packet, errors = parse_handoff("next: run `aikit check app`: it gates the commit")
+        self.assertEqual(errors, [])
+        self.assertEqual(packet["next"], "run `aikit check app`: it gates the commit")
 
     def test_checkpoint_refuses_a_credential_in_free_text_unless_redacting(self):
         workspace = Path(tempfile.mkdtemp(prefix="test_cpsecret_"))

@@ -10,7 +10,8 @@ Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013)
 |---|---|---|
 | `version` | int | Schema version, `1`; `migrate_ledger_schema` fills missing keys. A newer version is refused in place; a missing version is treated as legacy `1` in memory only. |
 | `active_task` | object or null | `task_id`, `last_phase` (label), `active_phase` (1-5), `status`, `updated_at` (epoch s), optional `impact_assessment` {`why`, `benefits`, `risks`, `mitigation`}. |
-| `checkpoints` | list | At most 20 entries (the active task's plan checkpoint is always kept). Each: `task_id`, `phase`, `phase_num` (1-5), `description`, `files_affected`, `status`, `timestamp`, `timestamp_str`, optional `impact_assessment`. |
+| `checkpoints` | list | At most 20 entries (the active task's plan checkpoint is always kept). Each: `task_id`, `phase`, `phase_num` (1-5), `description`, `files_affected`, `status`, `timestamp`, `timestamp_str`, optional `impact_assessment`, optional `handoff`. |
+| `checkpoints[].handoff` | object | Written only when `--handoff` is given, so a checkpoint without one carries no key and the ledger's shape is unchanged. Keys, all optional but `next`: `next` (the one action that resumes the task), `state`, `failed`, `open`, `evidence`. Bounded to 2,000 characters of input. The latest packet of the active task is what `--resume` prints, and its `next` replaces the generic Next Action line (ADR-174). |
 
 `description` and the four `impact_assessment` fields are free text written into a git-tracked file, so a credential shape in any of them makes `--checkpoint` exit 1 before the ledger is read or written; `--redact` records the span as `[REDACTED]` instead (PRINCIPLE-019 R3, ADR-173).
 
