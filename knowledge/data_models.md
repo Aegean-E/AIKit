@@ -52,6 +52,26 @@ Returned by `delegate_subagent` in `scripts/aikit_cli.py` (`python aikit.py dele
 | `output` | string | Subagent execution findings, suggested diffs, or structured JSON. |
 | `ledger_shield` | string | `"unmutated"` confirming task ledgers were shielded against unauthorized modification. |
 
+### Project Report Payload
+Printed by `cmd_status` and `cmd_resume` in `scripts/aikit_cli.py` (`python aikit.py status <name> --json`, `python aikit.py resume <name> --json`) so CI and wrappers read a contract instead of parsing the human report (**PRINCIPLE-004 R2/R4**, **PRINCIPLE-011 R5**, ADR-172).
+
+| Key | Type | Meaning |
+|---|---|---|
+| `ok` | bool | `true` when a report was produced; `false` only in the error envelope. |
+| `clean` | bool | Delivery readiness, from `project_is_clean`: the same verdict `status --exit-code` returns. `status` only. |
+| `project.name` | string | The project as the registry names it. |
+| `project.path` | string | Absolute path to the project folder. |
+| `project.repo_url` | string or null | Its `origin` remote, or `null` when it is local only. |
+| `project.stacks` | list of string | Detected stack names, empty when none was detected. |
+| `project.test_command` | string or null | Its test command, or `null` when none is set or detected. |
+| `project.latest_decision` | string or null | The newest ADR line in its `.aikit/decisions.md`, or `null`. |
+| `project.guidelines` | list of string | Its own rules, verbatim: the rules themselves, never a count, so a JSON cold start cannot lose them. |
+| `disruption` | object | The `run_disruption_audit` record for the project, verbatim (see Task Ledger). |
+| `ui_task_open` | bool | Whether `.aikit/ui_task.json` exists. `status` only. |
+| `gates` | list of string | The Phase 4 gate names `check` would run. `status` only. |
+| `error.code` | string | `"project.error"` on an operational or usage failure; `ok` is then `false` and no other key is present. |
+| `error.message` | string | The failure's message line; its `Why:`/`Fix:` triad still goes to stderr in text mode. |
+
 ## 🛡️ Model Invariants
 1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
 2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).

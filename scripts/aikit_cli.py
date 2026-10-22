@@ -122,7 +122,11 @@ def build_parser() -> argparse.ArgumentParser:
                              "a project's task, uncommitted work, latest decision and gates")
     status.add_argument("--exit-code", action="store_true",
                         help="exit 1 when the project is dirty, conflicted, has an open UI task, or cannot be audited")
-    project_command("resume", "the cold-start report for a project (PRINCIPLE-004 R2)")
+    status.add_argument("--json", action="store_true",
+                        help="print the report as JSON instead of text; `clean` is the --exit-code verdict")
+    resume = project_command("resume", "the cold-start report for a project (PRINCIPLE-004 R2)")
+    resume.add_argument("--json", action="store_true",
+                        help="print the cold-start report as JSON instead of text")
 
     checkpoint = project_command("checkpoint", "record a checkpoint in the project's ledger")
     checkpoint.add_argument("--task", required=True, help="task ID")
@@ -210,6 +214,40 @@ def present_project(name: str, workspace: Path) -> Project:
     return project
 
 
+def project_is_clean(audit: Dict[str, object], open_ui_task: bool) -> bool:
+    """
+    Whether the project's tree is delivery-ready, decided once for every surface that reports it.
+
+    `status --exit-code` and `status --json` both read this. Computing the same verdict twice is
+    the defect class ADR-155 and ADR-161 each had to repair, where two readiness surfaces
+    disagreed about one tree and auto-push followed the laxer one (ADR-172).
+    """
+    dirty = (audit.get("modified_files") or audit.get("untracked_files")
+             or audit.get("conflicted_files"))
+    return not (audit.get("git_missing") or dirty or open_ui_task)
+
+
+def project_payload(project: Project) -> Dict[str, object]:
+    """The project half of a `--json` report: what `status` prints as its header lines."""
+    return {
+        "name": project.name,
+        "path": str(project.path),
+        "repo_url": get_project_repo_url(project.path),
+        "stacks": [stack.name for stack in project.stacks],
+        "test_command": project.test_command or None,
+        "latest_decision": latest_decision(project.path) or None,
+        # The rules themselves, not a count: PRINCIPLE-004 R2 requires them in every cold-start
+        # report, and a JSON reader that got only a number would silently lose them (ADR-172).
+        "guidelines": project_guidelines(project.path),
+    }
+
+
+def error_envelope(error: ProjectError) -> str:
+    """The stable `--json` failure shape shared by every project command (ADR-167, ADR-172)."""
+    return json.dumps({"ok": False,
+                       "error": {"code": "project.error", "message": str(error)}}, indent=2)
+
+
 def print_guidelines(project: Project) -> None:
     """The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2)."""
     rules = project_guidelines(project.path)
@@ -262,6 +300,25 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    if getattr(args, "json", False):
+        try:
+            project = present_project(args.name, args.workspace)
+        except ProjectError as exc:
+            print(error_envelope(exc))
+            return exc.exit_code
+        audit = run_disruption_audit(workspace_dir=project.path)
+        open_ui_task = (project.path / ui_contract.TASK_REL).is_file()
+        print(json.dumps({
+            "ok": True,
+            "clean": project_is_clean(audit, open_ui_task),
+            "project": project_payload(project),
+            "disruption": audit,
+            "ui_task_open": open_ui_task,
+            "gates": [gate.name for gate in resolve_gates(project)],
+        }, indent=2, default=str))
+        if audit.get("ledger_error"):
+            return 1
+        return 0
     project = present_project(args.name, args.workspace)
     stacks = ",".join(s.name for s in project.stacks) or "none detected"
     repo_url = get_project_repo_url(project.path)
@@ -283,16 +340,23 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f'Ledger:    python aikit.py checkpoint {project.name} --task <id> --phase-num <1-5> --desc "..."')
     gates = ", ".join(gate.name for gate in resolve_gates(project))
     print(f"Phase 4 gates ({gates}): python aikit.py check {project.name}")
-    if getattr(args, "exit_code", False):
-        dirty = (audit.get("modified_files") or audit.get("untracked_files")
-                 or audit.get("conflicted_files"))
-        if audit.get("git_missing") or dirty or open_ui_task:
-            return 1
+    if getattr(args, "exit_code", False) and not project_is_clean(audit, open_ui_task):
+        return 1
     return 0
 
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
+    if getattr(args, "json", False):
+        try:
+            project = present_project(args.name, args.workspace)
+        except ProjectError as exc:
+            print(error_envelope(exc))
+            return exc.exit_code
+        audit = run_disruption_audit(workspace_dir=project.path)
+        print(json.dumps({"ok": True, "project": project_payload(project),
+                          "disruption": audit}, indent=2, default=str))
+        return 1 if audit.get("ledger_error") else 0
     project = present_project(args.name, args.workspace)
     print_guidelines(project)
     audit = run_disruption_audit(workspace_dir=project.path)

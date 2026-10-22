@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `304`
-- **Total Class Methods**: `533`
-- **Total Source Lines**: `15717`
+- **Total Top-Level Functions**: `307`
+- **Total Class Methods**: `536`
+- **Total Source Lines**: `15836`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `647` lines (`32327` bytes)
+**Size**: `711` lines (`35392` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -39,6 +39,9 @@
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
+- `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree is delivery-ready, decided once for every surface that reports it.*
+- `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
+- `def error_envelope(error)` - *The stable `--json` failure shape shared by every project command (ADR-167, ADR-172).*
 - `def print_guidelines(project)` - *The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2).*
 - `def cmd_new(args)`
 - `def cmd_attach(args)`
@@ -598,7 +601,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6131` lines (`340497` bytes)
+**Size**: `6186` lines (`343922` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -957,6 +960,9 @@
   - Method `.test_new_with_publish_flag_calls_publish_project()`
   - Method `.test_status_displays_repo_url()`
   - Method `.test_status_exit_code_tracks_dirty_state_without_changing_plain_status()`
+  - Method `.test_status_json_reports_the_same_readiness_as_the_exit_code()`
+  - Method `.test_status_json_returns_the_error_envelope_for_an_unknown_project()`
+  - Method `.test_resume_json_carries_the_audit_and_the_guidelines_count()`
   - Method `.test_check_triggers_auto_push_unless_opted_out()`
   - Method `._gate_result()`
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`

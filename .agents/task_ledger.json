@@ -1,44 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "aikit-scaffold-lint-fixes-v1",
+    "task_id": "status-resume-json-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792694794.7019029,
-    "completed_at": 1792695109.794912
+    "updated_at": 1792695490.7678177,
+    "completed_at": 1792695494.4620647
   },
   "checkpoints": [
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Phase 4 passed: 390 unit tests at 6.27ms/test, 49 integration tests at 252.18ms/test against the approved 350ms ceiling; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted because the host forbids unrequested commits.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792649739.1718032,
-      "timestamp_str": "2026-10-22 09:15:39"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 1/5] Scoped the Popen bounded-wait check to the enclosing function, added the cross-function regression, made --all scan check_secrets.py with line pragmas, and corrected the ADR-163/164 wording. Uncommitted under PRINCIPLE-018 R1.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792650450.6399002,
-      "timestamp_str": "2026-10-22 09:27:30"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Phase 4 passed: 391 unit tests at 6.16ms/test, 49 integration tests at 262.51ms/test against the approved 350ms ceiling; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted because the host forbids unrequested commits.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792650450.7767272,
-      "timestamp_str": "2026-10-22 09:27:30"
-    },
     {
       "task_id": "adr-review-fixes-v1",
       "phase": "in_progress",
@@ -227,6 +197,41 @@
       "status": "completed",
       "timestamp": 1792695109.7949142,
       "timestamp_str": "2026-10-22 21:51:49"
+    },
+    {
+      "task_id": "status-resume-json-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] Extract one readiness predicate so `status --exit-code` and the new JSON cannot disagree. [2/4] `status --json`: project metadata, the disruption audit, ui_task_open, gates, clean; ProjectError returns the stable error envelope. [3/4] `resume --json` over the same audit projection. [4/4] README, ADR, map and sync refresh, then every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792695216.3003876,
+      "timestamp_str": "2026-10-22 21:53:36",
+      "impact_assessment": {
+        "why": "CI and wrappers can read `aikit status <name>` only by parsing 15 lines of human prose; `--exit-code` already exists for the pass/fail bit, which proves the machine-readable need, and `ui verify --json` already establishes the envelope to copy. Nothing structured exists for `resume`, whose plan and next action are exactly what a cold-start wrapper needs.",
+        "benefits": "A documented JSON contract for the two orientation commands, built from the audit dict that already carries the data; one readiness predicate shared by the exit code and the payload, so the two delivery signals cannot drift apart the way ADR-155 and ADR-161 both had to repair.",
+        "risks": "contract: adds a second output surface for status and resume, and every JSON field becomes public under PRINCIPLE-004 R4; text output stays byte-identical so no existing reader breaks. dependency: none, json is stdlib and already imported. concurrency: read-only commands, no ledger or task writes. state: no schema or persisted file changes; the payload is computed per call from run_disruption_audit.",
+        "mitigation": "Reuse the ui verify envelope shape and its ProjectError handling rather than inventing one; compute the readiness bit once and feed both the exit code and the payload; add failing-first tests asserting the payload keys, the error envelope and that text mode is unchanged; document the fields in README within the 313-char headroom and record the contract in an ADR."
+      }
+    },
+    {
+      "task_id": "status-resume-json-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[4/4] All four milestones done. project_is_clean is the single readiness predicate behind --exit-code and the payload's clean key; status --json and resume --json print the Project Report Payload now documented in data_models.md; guidelines are carried as rules, not a count, so a JSON cold start cannot lose them (PRINCIPLE-004 R2); failures use one project.error envelope and keep 0/1/2. ADR-172 recorded. Phase 4 green: 461 tests, sync, map, reachability, secrets, budgets, dogfood 5/5. README at 22,390 of 22,500 chars (110 left). checklists: passed, except PRINCIPLE-018 push skipped (not authorized).",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792695490.7678177,
+      "timestamp_str": "2026-10-22 21:58:10"
+    },
+    {
+      "task_id": "status-resume-json-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'status-resume-json-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792695494.4620671,
+      "timestamp_str": "2026-10-22 21:58:14"
     }
   ]
 }

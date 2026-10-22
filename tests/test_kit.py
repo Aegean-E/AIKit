@@ -4369,6 +4369,61 @@ class TestProjectRegistry(unittest.TestCase):
             code, _, _ = self.run_cli("status", "codeapp", "--exit-code")
             self.assertEqual(code, 1, "a tree git cannot audit is not delivery-ready")
 
+    def test_status_json_reports_the_same_readiness_as_the_exit_code(self):
+        folder = self.make_folder()
+        attach_project(folder, "jsonstatus", workspace=self.kit)
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        dirty = {"modified_files": ["core.py"], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        for audit, expected_clean in ((clean, True), (dirty, False)):
+            with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=audit):
+                code, out, err = self.run_cli("status", "jsonstatus", "--json")
+                payload = json.loads(out)
+                self.assertTrue(payload["ok"])
+                self.assertEqual(payload["clean"], expected_clean)
+                self.assertEqual(payload["project"]["name"], "jsonstatus")
+                self.assertEqual(payload["disruption"]["modified_files"],
+                                 audit["modified_files"])
+                self.assertFalse(payload["ui_task_open"])
+                self.assertIsInstance(payload["gates"], list)
+                self.assertEqual(err, "")
+                self.assertEqual(code, 0, "--json alone stays advisory like plain status")
+                exit_code, _, _ = self.run_cli("status", "jsonstatus", "--exit-code")
+                self.assertEqual(payload["clean"], exit_code == 0,
+                                 "the payload and the exit code must not disagree")
+
+    def test_status_json_returns_the_error_envelope_for_an_unknown_project(self):
+        code, out, err = self.run_cli("status", "nosuchproject", "--json")
+        self.assertEqual(code, 2, "an unknown project name is a usage error (PRINCIPLE-011 R5)")
+        payload = json.loads(out)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"]["code"], "project.error")
+        self.assertIn("nosuchproject", payload["error"]["message"])
+        self.assertEqual(err, "")
+
+    def test_resume_json_carries_the_audit_and_the_guidelines_count(self):
+        folder = self.make_folder()
+        attach_project(folder, "jsonresume", workspace=self.kit)
+        audit = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False,
+                 "interrupted_task": {"task_id": "t1", "last_phase": "in_progress"}}
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=audit):
+            code, out, err = self.run_cli("resume", "jsonresume", "--json")
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["project"]["name"], "jsonresume")
+        self.assertEqual(payload["project"]["guidelines"], [])
+        add_guideline(folder, "Dates are ISO-8601 strings.", "user")
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=audit):
+            _, out, _ = self.run_cli("resume", "jsonresume", "--json")
+        rules = json.loads(out)["project"]["guidelines"]
+        self.assertEqual(len(rules), 1, "the cold-start payload carries the rules themselves")
+        self.assertIn("ISO-8601", rules[0])
+        self.assertEqual(payload["disruption"]["interrupted_task"]["task_id"], "t1")
+        self.assertEqual(err, "")
+
     def test_check_triggers_auto_push_unless_opted_out(self):
         folder = self.make_folder()
         attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
