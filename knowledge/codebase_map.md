@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `296`
-- **Total Class Methods**: `515`
-- **Total Source Lines**: `15033`
+- **Total Top-Level Functions**: `302`
+- **Total Class Methods**: `526`
+- **Total Source Lines**: `15549`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `536` lines (`26004` bytes)
+**Size**: `629` lines (`31299` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -108,7 +108,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `345` lines (`14073` bytes)
+**Size**: `346` lines (`14131` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -289,7 +289,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `608` lines (`26074` bytes)
+**Size**: `610` lines (`26184` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -384,16 +384,19 @@
 ### [`scripts/ui_contract.py`](scripts/ui_contract.py)
 > *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
 
-**Size**: `578` lines (`27921` bytes)
+**Size**: `756` lines (`37129` bytes)
 
 **Classes:**
 - `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
 
 **Functions:**
+- `def finding_code(message)` - *The stable code for one verify/finish finding; unknown prose is `ui.other`.*
+- `def findings_payload(findings)` - *JSON-safe findings with stable codes and the original human message.*
 - `def _error(message, why, fix, exit_code)`
 - `def _tail(output)`
 - `def _valid_pattern(pattern)`
 - `def _path_list(raw, field)`
+- `def scaffold_contract(root, surface, fast, paths, snapshot)` - *Write a conservative contract for one surface (ADR-168, `aikit ui init`).*
 - `def load_contract(root)` - *Load and validate the project's committed UI contract.*
 - `def _is_bookkeeping(path)`
 - `def parse_status(text)` - *(XY, path) pairs from `git status --porcelain=v1 -z`, renames expanded to both paths.*
@@ -401,6 +404,7 @@
 - `def _git_ok(root, args, git_io)`
 - `def _tracked(root, git_io)`
 - `def _changes(root, git_io)`
+- `def surface_digest(root, patterns, git_io)` - *A SHA-256 over every current file in a surface, path and content, for evidence binding.*
 - `def _head(root, git_io)`
 - `def _default_shell_runner()`
 - `def _run_fast(contract, root, runner)`
@@ -415,7 +419,9 @@
 - `def _added_lines(root, changes, baseline, surface, git_io)` - *(path, line number, text) for every line added inside the task's surface.*
 - `def verify(root, git_io, shell_runner)` - *Check the open task's scope, contract, baseline, budget and proof commands.*
 - `def allow(root, pattern)` - *Record one intended inventory removal pattern on the open task.*
-- `def _append_history(root, task, reviewer)` - *Append the finished task's evidence to the project's UI history (ADR-161).*
+- `def _read_history(root)` - *Read the append-only UI history; a missing file is empty, a malformed one is an error.*
+- `def surface_evidence_errors(root, git_io)` - *Surfaces whose current files do not match any finished task's recorded digest.*
+- `def _append_history(root, task, reviewer, git_io)` - *Append the finished task's evidence to the project's UI history (ADR-161, ADR-169).*
 - `def finish(root, git_io, shell_runner, reviewed, reviewer)` - *Close a task only after a successful verify, a recorded review and its evidence.*
 - `def abort(root, git_io)` - *Restore only the surface to its baseline, preserving and reporting everything else.*
 - `def status(root, git_io)` - *The open task, its baseline and the paths changed under it right now.*
@@ -590,7 +596,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `5813` lines (`322661` bytes)
+**Size**: `6055` lines (`336145` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -952,6 +958,11 @@
   - Method `.test_conflicted_check_skips_auto_push_and_strict_fails()`
   - Method `.test_open_ui_task_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
+  - Method `.test_ui_required_blocks_strict_and_publish_without_a_contract()`
+  - Method `.test_ui_verify_json_emits_stable_codes()`
+  - Method `.test_ui_init_writes_the_react_vite_pilot_contract()`
+  - Method `.test_ui_evidence_and_json_error_paths()`
+  - Method `.test_ui_init_generic_override_from_cli()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`
   - Method `.test_run_git_uses_utf8_encoding_with_replacement()`
 - `class TestProjectGates` - *A project's Phase 4 is the gates its own config declares, plus the secret scan (ADR-122).*
@@ -984,6 +995,12 @@
   - Method `.setUp()`
   - Method `.write_contract(**overrides)`
   - Method `.test_patterns_scope_surfaces_and_protected_paths()`
+  - Method `.test_finding_codes_are_stable()`
+  - Method `.test_scaffold_generic_override_skips_stack_detection()`
+  - Method `.test_scaffold_writes_a_valid_react_vite_contract()`
+  - Method `.test_empty_surface_still_requires_evidence()`
+  - Method `.test_surface_evidence_requires_a_matching_finished_task()`
+  - Method `.test_scaffold_refuses_a_non_react_stack()`
   - Method `.test_porcelain_renames_expand_and_bookkeeping_is_ignored()`
   - Method `.test_contract_accepts_a_utf8_bom_from_windows_editors()`
   - Method `.test_contract_rejects_escaping_paths_and_bad_schema()`

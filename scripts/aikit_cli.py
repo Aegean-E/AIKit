@@ -7,6 +7,7 @@ could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import List, NoReturn, Optional
@@ -37,6 +38,7 @@ from scripts.project_registry import (
     find_project,
     latest_decision,
     list_projects,
+    load_config,
     project_guidelines,
     reconcile_readme_tree,
     seed_readme,
@@ -149,7 +151,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
     ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)
-    for action, text in (("begin", "open a bounded task from a clean green baseline"),
+    for action, text in (("init", "write a UI contract (React/Vite auto, or --fast/--paths)"),
+                         ("begin", "open a bounded task from a clean green baseline"),
                          ("verify", "check scope, budget, the fast and snapshot proofs, style"),
                          ("finish", "verify, then close the task (needs --reviewed)"),
                          ("allow", "record an intended inventory removal pattern"),
@@ -160,6 +163,15 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "begin":
             sub.add_argument("--surface", required=True,
                              help="surface name declared in .aikit/ui.json")
+        if action == "init":
+            sub.add_argument("--surface", default="app",
+                             help="surface name for the generated contract")
+            sub.add_argument("--fast", default="",
+                             help="manual proof command for a non-React/Vite stack")
+            sub.add_argument("--paths", action="append", default=None,
+                             help="surface path pattern for a manual contract; repeatable")
+            sub.add_argument("--snapshot", default="",
+                             help="optional inventory command for a manual contract")
         if action == "allow":
             sub.add_argument("pattern",
                              help="glob matching the inventory entries this task removes")
@@ -168,6 +180,9 @@ def build_parser() -> argparse.ArgumentParser:
                              help="confirm a human looked at the running UI")
             sub.add_argument("--reviewer", metavar="NAME",
                              help="who reviewed the running UI, recorded in the task history")
+        if action == "verify":
+            sub.add_argument("--json", action="store_true",
+                             help="emit stable finding codes as JSON for CI")
 
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
@@ -332,6 +347,22 @@ def project_baseline_errors(project: Project, audit: dict) -> List[str]:
         errors.append("the project has unresolved merge conflicts")
     if (project.path / ui_contract.TASK_REL).is_file():
         errors.append("a UI task is open; finish or abort it before delivery")
+    config = load_config(project.path)
+    required = config.get("ui_required") is True
+    contract_path = project.path / ui_contract.CONTRACT_REL
+    if required or contract_path.is_file():
+        try:
+            ui_contract.load_contract(project.path)
+        except ProjectError as exc:
+            prefix = ("ui_required is true but the UI contract is unusable" if required
+                      else "the UI contract is unusable")
+            errors.append(f"{prefix}: {exc}")
+        else:
+            if required and not audit.get("git_missing"):
+                try:
+                    errors.extend(ui_contract.surface_evidence_errors(project.path))
+                except ProjectError as exc:
+                    errors.append(f"the UI evidence is unusable: {exc}")
     if find_python_files(project.path) and not (project.path / ".aikit" / "codebase_map.md").is_file():
         errors.append("Python sources exist but .aikit/codebase_map.md is missing")
     return errors
@@ -382,14 +413,19 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 1
 
     open_ui_task = (project.path / ui_contract.TASK_REL).is_file()
+    ui_unready = any(error.startswith(("ui_required is true", "the UI contract is unusable",
+                                       "UI surface", "the UI evidence is unusable"))
+                     for error in baseline_errors)
     dirty = bool(audit.get("modified_files") or audit.get("untracked_files")
-                 or audit.get("conflicted_files")) or open_ui_task
+                 or audit.get("conflicted_files")) or open_ui_task or ui_unready
     if dirty:
         detail = (f"{len(audit.get('modified_files', []))} modified, "
                   f"{len(audit.get('untracked_files', []))} untracked, "
                   f"{len(audit.get('conflicted_files', []))} conflicted")
         if open_ui_task:
             detail += ", 1 open UI task"
+        if ui_unready:
+            detail += ", UI contract not delivery-ready"
         print(f"[DELIVERY] NOT READY: {detail}; run `check --strict` before pushing.")
     if not getattr(args, "no_push", False):
         if dirty:
@@ -433,6 +469,39 @@ def cmd_fix(args: argparse.Namespace) -> int:
 
 def cmd_publish(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
+    audit = run_disruption_audit(workspace_dir=project.path)
+    errors = project_baseline_errors(project, audit)
+    if errors:
+        print("[FAIL] the project is not delivery-ready:", file=sys.stderr)
+        for error in errors:
+            print(f"       {error}", file=sys.stderr)
+        print("Why: publish uploads the committed tree; a tree that fails the delivery baseline "
+              "must not be published.", file=sys.stderr)
+        print("Fix: commit the work, finish or abort any open UI task, add the missing map or "
+              "UI contract, then retry the publish.", file=sys.stderr)
+        return 1
+    results = run_gates(project.path, resolve_gates(project))
+    print(f"{sum(1 for result in results if result.passed)}/{len(results)} gates passed before publish.")
+    if any(not result.passed for result in results):
+        for result in results:
+            if not result.passed:
+                print(f"[FAIL] {result.gate.name}: {result.gate.command}", file=sys.stderr)
+                for line in failure_tail(result.output):
+                    print(f"       {line}", file=sys.stderr)
+        print("Error: the project's gates failed; publish refuses an unverified tree.",
+              file=sys.stderr)
+        print("Why: a published commit must carry the same verified tree that check requires.",
+              file=sys.stderr)
+        print(f"Fix: run `python aikit.py check {project.name}` and repair the failed gates, "
+              "then retry the publish.", file=sys.stderr)
+        return 1
+    if not any(result.gate.name == "test" for result in results):
+        print("Error: the project has no test gate.", file=sys.stderr)
+        print("Why: publish must not upload a tree without a behavioural test gate.",
+              file=sys.stderr)
+        print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not "
+              "detected.", file=sys.stderr)
+        return 1
     code, report = publish_project(project.path, project.name, public=args.public)
     print(report, file=sys.stdout if code == 0 else sys.stderr)
     return code
@@ -449,6 +518,14 @@ def cmd_delegate(args: argparse.Namespace) -> int:
 def cmd_ui(args: argparse.Namespace) -> int:
     """Bound a UI task to one declared surface and keep it inside that contract."""
     project = present_project(args.name, args.workspace)
+    if args.ui_action == "init":
+        contract = ui_contract.scaffold_contract(project.path, args.surface,
+                                                 fast=args.fast, paths=args.paths,
+                                                 snapshot=args.snapshot)
+        command = contract["commands"]["fast"]
+        print(f"[OK] Wrote {ui_contract.CONTRACT_REL} for surface '{args.surface}' "
+              f"with fast proof '{command}'. Review and commit it, then run `ui begin`.")
+        return 0
     if args.ui_action == "begin":
         task = ui_contract.begin(project.path, args.surface)
         print(f"[OK] UI task opened on '{args.surface}' from "
@@ -462,9 +539,25 @@ def cmd_ui(args: argparse.Namespace) -> int:
     if args.ui_action in ("verify", "finish"):
         if args.ui_action == "finish":
             findings = ui_contract.finish(project.path, reviewed=args.reviewed,
-                                          reviewer=getattr(args, "reviewer", ""))
+                                          reviewer=getattr(args, "reviewer", "") or "")
         else:
-            findings = ui_contract.verify(project.path)
+            try:
+                findings = ui_contract.verify(project.path)
+            except ProjectError as exc:
+                if getattr(args, "json", False):
+                    print(json.dumps({"ok": False, "surface": None,
+                                      "error": {"code": "ui.error", "message": str(exc)}},
+                                     indent=2))
+                    return getattr(exc, "exit_code", 1)
+                raise
+        if args.ui_action == "verify" and getattr(args, "json", False):
+            payload = {"ok": not findings, "findings": ui_contract.findings_payload(findings)}
+            try:
+                payload["surface"] = ui_contract.read_task(project.path).get("surface")
+            except ProjectError:
+                payload["surface"] = None
+            print(json.dumps(payload, indent=2))
+            return 0 if not findings else 1
         for finding in findings:
             print(f"[FAIL] {finding}")
         if findings:

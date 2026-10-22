@@ -43,3 +43,8 @@ secrets.*
 
 # The projects AIKit builds: each is its own git repository with its own .aikit/ memory (ADR-119)
 projects/
+
+# Project databases belong inside their project folder, never at the AIKit root.
+/lattice.db
+/lattice.db-wal
+/lattice.db-shm

@@ -33,6 +33,36 @@ GIT_TIMEOUT_SECONDS = 30
 FAST_TIMEOUT_SECONDS = 120
 OUTPUT_TAIL_LINES = 8
 
+# Stable machine-readable finding codes for `aikit ui verify --json` (ADR-167). The human
+# messages stay descriptive; consumers match on the code, never on prose.
+FINDING_CODES = (
+    ("the UI contract changed", "ui.contract-changed"),
+    ("the baseline moved", "ui.baseline-moved"),
+    ("protected path changed:", "ui.protected-path"),
+    ("path outside surface", "ui.outside-surface"),
+    ("diff budget:", "ui.budget"),
+    ("fast UI proof failed", "ui.fast-proof"),
+    ("UI snapshot proof failed", "ui.snapshot-proof"),
+    ("UI snapshot proof printed no inventory", "ui.snapshot-empty"),
+    ("UI snapshot proof lost", "ui.snapshot-lost"),
+    ("style literal", "ui.style-literal"),
+    ("human review not recorded", "ui.review-missing"),
+)
+
+
+def finding_code(message: str) -> str:
+    """The stable code for one verify/finish finding; unknown prose is `ui.other`."""
+    text = str(message)
+    for prefix, code in FINDING_CODES:
+        if text.startswith(prefix):
+            return code
+    return "ui.other"
+
+
+def findings_payload(findings: Sequence[str]) -> List[Dict[str, str]]:
+    """JSON-safe findings with stable codes and the original human message."""
+    return [{"code": finding_code(finding), "message": str(finding)} for finding in findings]
+
 GitIo = Callable[[Path, Sequence[str]], Tuple[int, str, str]]
 ShellRunner = Callable[[str, Path, float], Tuple[int, str]]
 
@@ -78,6 +108,106 @@ def _path_list(raw: object, field: str) -> Tuple[str, ...]:
                      "write relative patterns such as `src/ui/**`; paths may not escape the project.",
                      exit_code=2)
     return tuple(str(item).replace("\\", "/") for item in raw)
+
+
+def scaffold_contract(root: Path, surface: str = "app", fast: str = "",
+                      paths: Optional[Sequence[str]] = None,
+                      snapshot: str = "") -> Dict[str, object]:
+    """
+    Write a conservative contract for one surface (ADR-168, `aikit ui init`).
+
+    React/Vite is auto-detected. Any other stack can pass `--fast` and `--paths` for a manual
+    zero-dependency contract. The scaffold never runs Node and never guesses a snapshot command.
+    The user reviews and commits the contract before `ui begin`.
+    """
+    path = root / CONTRACT_REL
+    if path.exists():
+        raise _error("A UI contract already exists.",
+                     "ui init never overwrites a committed surface contract.",
+                     f"edit or remove {CONTRACT_REL} deliberately, then retry.", exit_code=2)
+    surface = surface.strip()
+    if not surface:
+        raise _error("A UI surface name is required.",
+                     "the generated contract needs one named surface.",
+                     "pass --surface <name>, for example --surface menu.", exit_code=2)
+    if bool(fast) != bool(paths):
+        raise _error("ui init needs --fast and --paths together.",
+                     "a manual contract needs both a proof command and at least one surface path.",
+                     'run `ui init <project> --fast "npm run test" --paths "src/**"`, or omit both '
+                     "for the React/Vite scaffold.", exit_code=2)
+    if fast:
+        surface_paths = _path_list(list(paths or ()), f"surfaces.{surface}.paths")
+        theme_paths = [rel for rel in ("tailwind.config.js", "tailwind.config.ts",
+                                       "tailwind.config.cjs", "tailwind.config.mjs",
+                                       "src/theme.css", "src/theme.ts", "src/styles/theme.css")
+                       if (root / rel).is_file()]
+        contract: Dict[str, object] = {
+            "schema": TASK_SCHEMA,
+            "surfaces": {surface: {"paths": list(surface_paths)}},
+            "protected": ["tests/**", "src/**/*.test.*", "src/**/*.spec.*",
+                          "src/**/__tests__/**"],
+            "commands": {"fast": fast, "snapshot": snapshot},
+            "style": {"theme_paths": theme_paths},
+            "limits": {"max_files": 12, "max_lines": 300},
+        }
+        atomic_write_json(path, contract)
+        load_contract(root)
+        return contract
+    manifest_path = root / "package.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise _error("ui init currently supports React/Vite projects with a package.json.",
+                     f"the project manifest could not be read: {exc}",
+                     "create package.json with React and Vite, or write .aikit/ui.json by hand.",
+                     exit_code=2) from exc
+    if not isinstance(manifest, dict):
+        raise _error("package.json must be a JSON object.",
+                     "the UI scaffold reads dependencies and scripts from it.",
+                     "repair package.json, then retry.", exit_code=2)
+    dependencies: Dict[str, object] = {}
+    for field in ("dependencies", "devDependencies", "peerDependencies"):
+        value = manifest.get(field)
+        if isinstance(value, dict):
+            dependencies.update(value)
+    if "react" not in dependencies or "vite" not in dependencies:
+        raise _error("ui init currently supports React/Vite projects only.",
+                     "the scaffold needs a React+Vite dependency set to choose a proof command.",
+                     "write .aikit/ui.json by hand for this stack, or add React and Vite.",
+                     exit_code=2)
+    scripts = manifest.get("scripts")
+    scripts = scripts if isinstance(scripts, dict) else {}
+    if "vitest" in dependencies and isinstance(scripts.get("test"), str):
+        fast = "npm run test -- --run"
+    elif isinstance(scripts.get("build"), str):
+        fast = "npm run build"
+    elif isinstance(scripts.get("test"), str):
+        fast = "npm run test"
+    else:
+        raise _error("The React/Vite project has no usable fast proof script.",
+                     "the contract needs a deterministic command that exits after proving the app.",
+                     'add a "build" or "test" script to package.json, then retry.', exit_code=2)
+    if not (root / "src").is_dir():
+        raise _error("The React/Vite project has no src/ folder.",
+                     "the scaffold needs a surface root to bound edits.",
+                     "create src/, or write .aikit/ui.json by hand for this layout.", exit_code=2)
+    theme_paths = [rel for rel in ("tailwind.config.js", "tailwind.config.ts",
+                                   "tailwind.config.cjs", "tailwind.config.mjs",
+                                   "src/theme.css", "src/theme.ts", "src/styles/theme.css")
+                   if (root / rel).is_file()]
+    snapshot = "npm run ui:snapshot" if isinstance(scripts.get("ui:snapshot"), str) else ""
+    contract: Dict[str, object] = {
+        "schema": TASK_SCHEMA,
+        "surfaces": {surface: {"paths": ["src/**"]}},
+        "protected": ["tests/**", "src/**/*.test.*", "src/**/*.spec.*",
+                      "src/**/__tests__/**"],
+        "commands": {"fast": fast, "snapshot": snapshot},
+        "style": {"theme_paths": theme_paths},
+        "limits": {"max_files": 12, "max_lines": 300},
+    }
+    atomic_write_json(path, contract)
+    load_contract(root)  # validate the generated file through the same reader as every verify
+    return contract
 
 
 def load_contract(root: Path) -> UiContract:
@@ -213,6 +343,30 @@ def _tracked(root: Path, git_io: Optional[GitIo] = None) -> set:
 def _changes(root: Path, git_io: Optional[GitIo] = None) -> List[Tuple[str, str]]:
     text = _git_ok(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"], git_io)
     return [(status, path) for status, path in parse_status(text) if not _is_bookkeeping(path)]
+
+
+def surface_digest(root: Path, patterns: Sequence[str],
+                   git_io: Optional[GitIo] = None) -> str:
+    """A SHA-256 over every current file in a surface, path and content, for evidence binding."""
+    names = _tracked(root, git_io) | {path for status, path in _changes(root, git_io)
+                                      if status == "??"}
+    entries: List[str] = []
+    for rel in sorted(name for name in names if _matches(name, patterns)):
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            mode = path.stat().st_mode & 0o777
+            content = path.read_bytes()
+        except OSError as exc:
+            raise _error(f"Cannot read surface file {rel}: {exc}",
+                         "the finished UI task must bind to every file in its surface.",
+                         "repair the file's permissions or remove it from the surface, then retry.")
+        entries.append(rel.replace("\\", "/") + "\0" + f"{mode:o}" + "\0"
+                       + hashlib.sha256(content).hexdigest())
+    if not entries:
+        return ""
+    return hashlib.sha256("\n".join(entries).encode("utf-8")).hexdigest()
 
 
 def _head(root: Path, git_io: Optional[GitIo] = None) -> str:
@@ -466,24 +620,47 @@ def allow(root: Path, pattern: str) -> Dict[str, object]:
         return task
 
 
-def _append_history(root: Path, task: Dict[str, object], reviewer: str) -> None:
-    """Append the finished task's evidence to the project's UI history (ADR-161)."""
+def _read_history(root: Path) -> List[Dict[str, object]]:
+    """Read the append-only UI history; a missing file is empty, a malformed one is an error."""
     path = root / HISTORY_REL
-    history: List[Dict[str, object]] = []
-    if path.is_file():
-        try:
-            loaded = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise _error(f"The UI history {HISTORY_REL} is unreadable: {exc}",
-                         "a finished task's history is evidence; finish refuses to overwrite it.",
-                         f"repair or move {HISTORY_REL} aside, then rerun finish.") from exc
-        if not isinstance(loaded, list):
-            raise _error(f"The UI history {HISTORY_REL} is malformed.",
-                         "a finished task's history is evidence; finish refuses to overwrite it.",
-                         f"repair or move {HISTORY_REL} aside, then rerun finish.")
-        history = loaded
+    if not path.is_file():
+        return []
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise _error(f"The UI history {HISTORY_REL} is unreadable: {exc}",
+                     "a finished task's history is evidence; the guard refuses to guess.",
+                     f"repair or move {HISTORY_REL} aside, then retry.") from exc
+    if not isinstance(loaded, list) or not all(isinstance(record, dict) for record in loaded):
+        raise _error(f"The UI history {HISTORY_REL} is malformed.",
+                     "a finished task's history is evidence; the guard refuses to guess.",
+                     f"repair or move {HISTORY_REL} aside, then retry.")
+    return loaded
+
+
+def surface_evidence_errors(root: Path, git_io: Optional[GitIo] = None) -> List[str]:
+    """Surfaces whose current files do not match any finished task's recorded digest."""
+    contract = load_contract(root)
+    history = _read_history(root)
+    errors: List[str] = []
+    for name, patterns in contract.surfaces.items():
+        digest = surface_digest(root, patterns, git_io)
+        if not any(record.get("surface") == name and record.get("surface_digest") == digest
+                   for record in history):
+            errors.append(f"UI surface '{name}' has no finished UI task matching its current files; "
+                          "finish a new UI task (records before ADR-169 have no digest)")
+    return errors
+
+
+def _append_history(root: Path, task: Dict[str, object], reviewer: str,
+                    git_io: Optional[GitIo] = None) -> None:
+    """Append the finished task's evidence to the project's UI history (ADR-161, ADR-169)."""
+    path = root / HISTORY_REL
+    history = _read_history(root)
+    contract = load_contract(root)
+    digest = surface_digest(root, contract.surfaces[str(task["surface"])], git_io)
     final = [str(line) for line in task.get("last_snapshot", [])]
-    digest = hashlib.sha256("\n".join(final).encode("utf-8")).hexdigest() if final else ""
+    snapshot_digest = hashlib.sha256("\n".join(final).encode("utf-8")).hexdigest() if final else ""
     history.append({
         "schema": TASK_SCHEMA,
         "surface": task["surface"],
@@ -494,8 +671,9 @@ def _append_history(root: Path, task: Dict[str, object], reviewer: str) -> None:
         "strikes": int(task["strikes"]),
         "reviewer": reviewer,
         "allowed_removals": [str(item) for item in task.get("allowed_removals", [])],
-        "final_snapshot_digest": digest,
+        "final_snapshot_digest": snapshot_digest,
         "final_snapshot_entries": len(final),
+        "surface_digest": digest,
     })
     atomic_write_json(path, history)
 
@@ -514,7 +692,7 @@ def finish(root: Path, git_io: Optional[GitIo] = None,
             raise _task_error("Another UI operation holds the task lock.",
                               "wait for it to finish, then retry.")
         task = read_task(root)
-        _append_history(root, task, reviewer)
+        _append_history(root, task, reviewer, git_io)
         _task_path(root).unlink(missing_ok=True)
         _task_path(root).with_suffix(".json.bak").unlink(missing_ok=True)
     return []

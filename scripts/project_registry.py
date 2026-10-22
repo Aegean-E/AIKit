@@ -367,6 +367,8 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
         "test_command": test_command,
         # Gate name -> command, or null to disable a detected gate (project_gates, ADR-122).
         "gates": {},
+        # Opt-in: strict delivery and publish require .aikit/ui.json (ADR-166).
+        "ui_required": False,
         "created": time.strftime("%Y-%m-%d"),
     })
     return True

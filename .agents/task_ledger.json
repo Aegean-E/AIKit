@@ -1,134 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "adr-review-fixes-v1",
+    "task_id": "ui-guard-caveats-v1",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792659494.4713209,
-    "completed_at": 1792659520.4516675
+    "updated_at": 1792689047.0721886,
+    "completed_at": 1792689047.2031412
   },
   "checkpoints": [
-    {
-      "task_id": "ui-lifecycle-delivery-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-lifecycle-delivery-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792619426.5469267,
-      "timestamp_str": "2026-10-22 00:50:26"
-    },
-    {
-      "task_id": "git-delivery-authorization-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Add the git-delivery authorization gate to PRINCIPLE-006 and PRINCIPLE-018, record ADR-162 with its cross-principle check, and document host policy parity. [2/2] Update the pinned tests and run every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792621307.3918526,
-      "timestamp_str": "2026-10-22 01:21:47",
-      "impact_assessment": {
-        "why": "PRINCIPLE-006 R1 and PRINCIPLE-018 R1 require milestone commits unconditionally, while host platforms such as Kilo forbid commits the user did not explicitly request, so the Tier 1 capsule contradicts the host on every task.",
-        "benefits": "One decidable authorization test replaces ad-hoc conflict handling, and the crash-safe milestone workflow survives on hosts that permit it.",
-        "risks": "contract: PRINCIPLE-006 and PRINCIPLE-018 rule text and capsules gain a git-delivery authorization condition; dependency: none; concurrency: none; state: none, the ledger schema is unchanged.",
-        "mitigation": "Update both invariants and R1 branches, update every pinned test, record ADR-162, and run the full Phase 4 gate set."
-      }
-    },
-    {
-      "task_id": "git-delivery-authorization-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 1/2] Added the git-delivery authorization gate to PRINCIPLE-006 and PRINCIPLE-018, recorded ADR-162, and documented host policy parity; uncommitted because this host forbids unrequested commits.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792621654.8204014,
-      "timestamp_str": "2026-10-22 01:27:34"
-    },
-    {
-      "task_id": "git-delivery-authorization-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 2/2] Updates pinned tests and runs the full Phase 4 gate set; no commit is made because the host forbids unrequested commits (ADR-162).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792621659.8064678,
-      "timestamp_str": "2026-10-22 01:27:39"
-    },
-    {
-      "task_id": "git-delivery-authorization-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "Review findings fixed: split commit delivery from push delivery in PRINCIPLE-018 R1/R4, required Phase 4 to pass before the unauthorized milestone checkpoint, and updated the ADR and tests. Unit tier 382/382 pass; integration 49/49 functionally pass but its budget is 253.20ms per test vs the 250ms ceiling (also red at HEAD: 278.12ms, so pre-existing on this host). Uncommitted by PRINCIPLE-018 R1.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792622080.131481,
-      "timestamp_str": "2026-10-22 01:34:40"
-    },
-    {
-      "task_id": "git-delivery-authorization-v1",
-      "phase": "abandoned",
-      "phase_num": 4,
-      "description": "Task 'git-delivery-authorization-v1' abandoned: Superseded by adr-review-fixes-v1; the ADR-162 changes remain uncommitted in the working tree.",
-      "status": "abandoned",
-      "timestamp": 1792624099.9068668,
-      "timestamp_str": "2026-10-22 02:08:19"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/6] Correct the hygiene scanner: exclude os.open from open-context and make Popen's bounded-wait rule satisfiable, with regression tests. [2/6] Replace stale agent-facing limits: tester/runbook 200ms -> 250ms, reviewer 20,000 -> 22,500 chars, sync comment, then re-sync. [3/6] Bring the integration tier back under 250ms by removing unnecessary UI shell spawns without weakening assertions. [4/6] Align delivery readiness and repair: status --exit-code blocks an open UI task, and reconcile_readme_tree matches exact tree entries. [5/6] Close secret-scan blind spots: scan merge-resolution diffs and drop over-broad whole-file skips where the scanner stays clean. [6/6] Harden rename track classification and the unreadable-ledger save path; add the low-risk UI style and artifact suffix coverage.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792624108.546718,
-      "timestamp_str": "2026-10-22 02:08:28",
-      "impact_assessment": {
-        "why": "The ADR review found a red Phase 4 budget, an unsatisfiable Popen rule, over-broad os.open flagging, stale agent-facing limits, a broken README tree repair, a delivery-readiness disagreement, secret-scan blind spots, and state/track edge cases.",
-        "benefits": "Phase 4 becomes green on this host, the hygiene and secret gates describe their actual contracts, agent-facing docs stop contradicting the rules, aikit fix repairs the README tree in one pass, and the ledger/push paths fail safely.",
-        "risks": "contract: status --exit-code gains an open-UI-task failure, the hygiene scanner changes which calls it flags, and scan_commits may add merge findings; dependency: none; concurrency: none; state: save_ledger now propagates an unreadable on-disk ledger instead of overwriting it.",
-        "mitigation": "Add failing-first unit and integration tests for each change, record ADR-163 with the scanner and status contract changes, update help and knowledge/services.md, and run every Phase 4 gate."
-      }
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[milestone 1/6] Implemented the scanner Popen/os.open correction, 250ms/22,500-character agent docs, UI test budget work, status/tree readiness fixes, secret-scan widening, rename/ledger hardening, and style/artifact coverage; uncommitted under PRINCIPLE-018 R1.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792625319.319893,
-      "timestamp_str": "2026-10-22 02:28:39"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 6/6] Phase 4 passed: 388 unit tests at 5.99ms/test and 49 integration tests at 240.67ms/test; sync, knowledge, secrets, reachability and dogfood green; ADR-163 recorded. checklists: passed. Uncommitted because the host forbids unrequested commits.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792625319.4534252,
-      "timestamp_str": "2026-10-22 02:28:39"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 6/6] Verification re-run: 388 unit tests passed; 49 integration tests passed functionally at 252.55ms/test, over the 250ms ceiling; sync, knowledge, secrets, reachability and dogfood passed. checklists: failed PRINCIPLE-010 R6 (integration budget). Uncommitted because the host forbids unrequested commits.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792647710.5553164,
-      "timestamp_str": "2026-10-22 08:41:50"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 6/6] Verification under current host load: 388 unit and 49 integration tests pass functionally, but budgets are unit 9.91ms>8.00, integration 301.73ms>250.00, and dogfood --help 212ms>200; sync, knowledge, secrets and reachability pass. The same tree measured 5.99ms, 240.67ms and 123-131ms earlier, so the failure tracks host load, not the diff. checklists: failed PRINCIPLE-010 R5/R6. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792647814.0945807,
-      "timestamp_str": "2026-10-22 08:43:34"
-    },
     {
       "task_id": "adr-review-fixes-v1",
       "phase": "in_progress",
@@ -223,6 +103,131 @@
       "status": "completed",
       "timestamp": 1792659520.4516695,
       "timestamp_str": "2026-10-22 11:58:40"
+    },
+    {
+      "task_id": "ui-guard-enforcement-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Add ui_required to project config and enforce it in check --strict and publish, closing the publish bypass. [2/3] Add ui verify --json with stable finding codes. [3/3] Add a React/Vite ui init pilot that writes a conservative contract. Measure adoption and false positives before adding browser proof.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792672915.3715358,
+      "timestamp_str": "2026-10-22 15:41:55",
+      "impact_assessment": {
+        "why": "The manager review approved closing the opt-in bypass, adding machine-readable output, and piloting one stack before any rendered/visual/a11y platform work.",
+        "benefits": "UI projects that opt in cannot publish or pass strict delivery without a contract and a closed UI task; CI can consume findings without scraping prose; one real stack gets a low-friction contract.",
+        "risks": "contract: ui_required adds a project config key and publish now refuses non-delivery-ready trees; dependency: none; concurrency: no new shared state; state: no ledger schema change.",
+        "mitigation": "Keep ui_required opt-in, add migration-free defaults, test check/publish refusal, keep the JSON shape additive, and add no external dependency."
+      }
+    },
+    {
+      "task_id": "ui-guard-enforcement-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 1/3] Added ui_required enforcement: strict check and publish now refuse a missing .aikit/ui.json, and publish runs the delivery baseline before uploading. Added ADR-166, docs and tests. 392 unit tests at 7.47ms/test (10ms), 49 integration at 218.51ms/test (350ms); sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792673637.9087627,
+      "timestamp_str": "2026-10-22 15:53:57"
+    },
+    {
+      "task_id": "ui-guard-enforcement-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 1/3] Verification found and fixed two enforcement holes: ui_required now validates the contract instead of only checking file existence, and plain check skips auto-push when the required UI contract is unusable. README was restored after an accidental reformat. 392 unit tests at 5.30ms/test, 49 integration at 214.96ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted; next is ui verify --json and the React/Vite ui init pilot.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792674862.905617,
+      "timestamp_str": "2026-10-22 16:14:22"
+    },
+    {
+      "task_id": "ui-guard-enforcement-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 3/3] Added ui verify --json with stable codes (ADR-167), the React/Vite ui init pilot (ADR-168), publish gate/test enforcement, contract validation, and plain-check auto-push blocking. 397 unit tests at 5.79ms/test, 49 integration at 206.76ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Remaining gaps: surface-changed-without-task evidence binding and optional rendered/a11y proof. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792677106.614055,
+      "timestamp_str": "2026-10-22 16:51:46"
+    },
+    {
+      "task_id": "ui-guard-enforcement-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-enforcement-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792677106.749862,
+      "timestamp_str": "2026-10-22 16:51:46"
+    },
+    {
+      "task_id": "ui-guard-evidence-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] Bind each declared UI surface to a finished task: record a surface digest in history and make strict check/publish refuse a surface whose current committed content has no matching finished UI task. [2/4] Return a JSON error envelope for ui verify --json, validate any present UI contract even when ui_required is false, and include those errors in the plain auto-push block. [3/4] Harden the React/Vite ui init pilot for peerDependencies and __tests__ protection, validate the generated contract, and print a gate summary before publish. [4/4] Correct the published ADR-165 integration-ceiling citation, record ADR-169, and run the full Phase 4 gate set.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792684994.8401768,
+      "timestamp_str": "2026-10-22 19:03:14",
+      "impact_assessment": {
+        "why": "Probes confirmed that strict check passes a committed surface file with no UI task/history, ui verify --json emits human text on operational errors, and a malformed contract is ignored when ui_required is false; the pilot also has narrow detection and publish lacks a gate summary.",
+        "benefits": "A surface claim now requires matching evidence, CI receives JSON in all verify outcomes, malformed contracts fail even when the guard is not required, and the one-stack scaffold is safer.",
+        "risks": "contract: ui_history gains a surface_digest and strict/publish gain a surface-evidence refusal; dependency: none; concurrency: history writes remain under the task lock; state: history records without a digest cannot satisfy the new requirement until a new task finishes.",
+        "mitigation": "Keep the evidence check opt-in through ui_required, record the digest at finish, add tests for matching and missing evidence, and document the migration behavior."
+      }
+    },
+    {
+      "task_id": "ui-guard-evidence-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[milestone 4/4] Fixed the verified issues: surface digest evidence in ui_history with strict/publish enforcement, JSON ui.error envelopes, validation of any present contract, plain auto-push blocking, peerDependency and __tests__ support in ui init, generated-contract validation, publish gate summary, and the ADR-164/165 citation correction (ADR-169/170). 399 unit tests at 6.81ms/test, 49 integration at 220.45ms/test; sync, knowledge, secrets, reachability, hygiene and dogfood clean. checklists: passed. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792686459.2841809,
+      "timestamp_str": "2026-10-22 19:27:39"
+    },
+    {
+      "task_id": "ui-guard-evidence-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-evidence-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792686459.454094,
+      "timestamp_str": "2026-10-22 19:27:39"
+    },
+    {
+      "task_id": "ui-guard-caveats-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Remove the evidence caveats: empty surfaces now require a finished-task digest, the digest includes permission bits, non-React/Vite projects can use ui init --fast/--paths, and legacy records get an explicit remedy. Verify the full gate set.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792688993.3014438,
+      "timestamp_str": "2026-10-22 20:09:53",
+      "impact_assessment": {
+        "why": "The final review identified three security/coverage caveats in the UI evidence tranche: empty surfaces bypassed the gate, permission changes were invisible, and the scaffold was limited to React/Vite.",
+        "benefits": "A declared empty surface cannot bypass evidence, executable-bit changes alter the digest, and other stacks can create a manual zero-dependency contract without guessing a framework.",
+        "risks": "contract: ui_history records must now include a surface_digest for every surface, including empty ones; existing records without it require a new task; dependency: none; concurrency: unchanged; state: history schema gains a digest field.",
+        "mitigation": "Keep the legacy remedy explicit, add tests for empty surfaces and the generic init override, include modes in the digest, and re-run every gate."
+      }
+    },
+    {
+      "task_id": "ui-guard-caveats-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/1] Caveat fixes verified: 402 unit tests at 5.62ms/test, 49 integration at 208.22ms/test; sync, knowledge, secrets, reachability and dogfood clean. Empty surfaces now need evidence, permission bits are in the digest, and generic ui init uses --fast/--paths. checklists: passed for AIKit; projects/tempo has an unrelated external hygiene finding. Uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792689047.0721886,
+      "timestamp_str": "2026-10-22 20:10:47"
+    },
+    {
+      "task_id": "ui-guard-caveats-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-caveats-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792689047.2031434,
+      "timestamp_str": "2026-10-22 20:10:47"
     }
   ]
 }

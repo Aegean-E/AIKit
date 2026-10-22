@@ -4456,6 +4456,173 @@ class TestProjectRegistry(unittest.TestCase):
             code, _, _ = self.run_cli("check", "mapapp", "--strict", "--no-push")
             self.assertEqual(code, 0)
 
+    def test_ui_required_blocks_strict_and_publish_without_a_contract(self):
+        folder = self.make_folder()
+        attach_project(folder, "uiapp", workspace=self.kit)
+        config_path = folder / ".aikit" / "project.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["ui_required"] = True
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        clean = {"modified_files": [], "untracked_files": [], "ledger_error": None,
+                 "git_missing": False, "conflicted_files": []}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.ui_contract.surface_digest", return_value=""):
+            code, out, _ = self.run_cli("check", "uiapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("ui_required is true but the UI contract is unusable", out)
+            self.assertIn("No UI contract", out)
+
+            (folder / ".aikit" / "ui.json").write_text("{}", encoding="utf-8")
+            code, out, _ = self.run_cli("check", "uiapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("ui_required is true but the UI contract is unusable", out)
+            self.assertIn("schema is not supported", out)
+
+            contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/**"]}},
+                        "commands": {"fast": "exit 0"}}
+            (folder / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8")
+            (folder / ".aikit" / "ui_history.json").write_text(json.dumps([
+                {"surface": "menu", "surface_digest": ""},
+            ]), encoding="utf-8")
+            code, _, _ = self.run_cli("check", "uiapp", "--strict", "--no-push")
+            self.assertEqual(code, 0)
+
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.ui_contract.surface_digest", return_value=""), \
+             mock.patch("scripts.aikit_cli.publish_project",
+                        return_value=(0, "[OK] Published")) as publish:
+            code, _, _ = self.run_cli("publish", "uiapp")
+        self.assertEqual(code, 0)
+        publish.assert_called_once()
+
+        failed = self._gate_result()
+        failed.passed = False
+        failed.output = "boom"
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[failed]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.ui_contract.surface_digest", return_value=""), \
+             mock.patch("scripts.aikit_cli.publish_project",
+                        return_value=(0, "[OK] Published")) as publish:
+            code, _, err = self.run_cli("publish", "uiapp")
+        self.assertEqual(code, 1)
+        self.assertIn("gates failed", err)
+        publish.assert_not_called()
+
+        (folder / ".aikit" / "ui.json").unlink()
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
+            code, out, _ = self.run_cli("check", "uiapp")
+            self.assertEqual(code, 0)
+            self.assertIn("UI contract not delivery-ready", out)
+            push.assert_not_called()
+
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.publish_project",
+                        return_value=(0, "[OK] Published")) as publish:
+            code, _, err = self.run_cli("publish", "uiapp")
+        self.assertEqual(code, 1)
+        self.assertIn("ui_required is true but the UI contract is unusable", err)
+        publish.assert_not_called()
+
+    def test_ui_verify_json_emits_stable_codes(self):
+        folder = self.make_folder()
+        attach_project(folder, "jsonapp", workspace=self.kit)
+        message = "style literal '#fff' outside theme paths: src/ui/menu.py:1"
+        with mock.patch("scripts.aikit_cli.ui_contract.verify", return_value=[message]), \
+             mock.patch("scripts.aikit_cli.ui_contract.read_task",
+                        return_value={"surface": "menu"}):
+            code, out, _ = self.run_cli("ui", "verify", "jsonapp", "--json")
+        self.assertEqual(code, 1)
+        payload = json.loads(out)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["surface"], "menu")
+        self.assertEqual(payload["findings"],
+                         [{"code": "ui.style-literal", "message": message}])
+
+    def test_ui_init_writes_the_react_vite_pilot_contract(self):
+        folder = self.make_folder(
+            ("package.json", json.dumps({
+                "dependencies": {"react": "^18", "vite": "^5"},
+                "scripts": {"build": "vite build"},
+            })),
+        )
+        (folder / "src").mkdir()
+        (folder / "src" / "main.tsx").write_text("export {};\n", encoding="utf-8")
+        attach_project(folder, "initapp", workspace=self.kit)
+        code, out, _ = self.run_cli("ui", "init", "initapp", "--surface", "menu")
+        self.assertEqual(code, 0)
+        self.assertIn("Wrote .aikit/ui.json", out)
+        contract = json.loads((folder / ".aikit" / "ui.json").read_text(encoding="utf-8"))
+        self.assertEqual(contract["surfaces"]["menu"]["paths"], ["src/**"])
+        self.assertEqual(contract["commands"]["fast"], "npm run build")
+
+    def test_ui_evidence_and_json_error_paths(self):
+        folder = self.make_folder()
+        attach_project(folder, "evidenceapp", workspace=self.kit)
+        config_path = folder / ".aikit" / "project.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["ui_required"] = True
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        contract = {"schema": 1, "surfaces": {"menu": {"paths": ["src/**"]}},
+                    "commands": {"fast": "exit 0"}}
+        (folder / ".aikit" / "ui.json").write_text(json.dumps(contract), encoding="utf-8")
+        clean = {"modified_files": [], "untracked_files": [], "ledger_error": None,
+                 "git_missing": False, "conflicted_files": []}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.ui_contract.surface_digest", return_value="digest"):
+            code, out, _ = self.run_cli("check", "evidenceapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("UI surface 'menu' has no finished UI task", out)
+            (folder / ".aikit" / "ui_history.json").write_text(json.dumps([
+                {"surface": "menu", "surface_digest": "digest"},
+            ]), encoding="utf-8")
+            code, _, _ = self.run_cli("check", "evidenceapp", "--strict", "--no-push")
+            self.assertEqual(code, 0)
+
+        config["ui_required"] = False
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        (folder / ".aikit" / "ui.json").write_text("{}", encoding="utf-8")
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean):
+            code, out, _ = self.run_cli("check", "evidenceapp", "--strict", "--no-push")
+            self.assertEqual(code, 1)
+            self.assertIn("the UI contract is unusable", out)
+
+        (folder / ".aikit" / "ui.json").unlink()
+        code, out, err = self.run_cli("ui", "verify", "evidenceapp", "--json")
+        self.assertEqual(code, 2)
+        payload = json.loads(out)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"]["code"], "ui.error")
+        self.assertIn("No UI contract", payload["error"]["message"])
+        self.assertEqual(err, "")
+
+    def test_ui_init_generic_override_from_cli(self):
+        folder = self.make_folder()
+        attach_project(folder, "genericapp", workspace=self.kit)
+        code, _, _ = self.run_cli("ui", "init", "genericapp", "--fast", "exit 0",
+                                  "--paths", "app/**")
+        self.assertEqual(code, 0)
+        contract = json.loads((folder / ".aikit" / "ui.json").read_text(encoding="utf-8"))
+        self.assertEqual(contract["surfaces"]["app"]["paths"], ["app/**"])
+        self.assertEqual(contract["commands"]["fast"], "exit 0")
+
     def test_rendered_readme_uses_a_project_test_command(self):
         self.assertIn("<FILL: the command that runs the whole test suite",
                       render_project_readme("app"))
@@ -4744,6 +4911,81 @@ class TestUiContract(unittest.TestCase):
         self.assertFalse(ui_contract._matches("src/ui2/Menu.ts", ("src/ui/**",)))
         self.assertTrue(ui_contract._matches("tests/ui/menu.test.ts", ("tests/**",)))
         self.assertFalse(ui_contract._matches("src/App.ts", ("src/ui/**",)))
+
+    def test_finding_codes_are_stable(self):
+        message = "style literal '#fff' outside theme paths: src/ui/menu.py:1"
+        self.assertEqual(ui_contract.finding_code(message), "ui.style-literal")
+        self.assertEqual(ui_contract.finding_code("path outside surface 'menu': src/x"),
+                         "ui.outside-surface")
+        self.assertEqual(ui_contract.finding_code("unexpected prose"), "ui.other")
+        self.assertEqual(ui_contract.findings_payload([message]),
+                         [{"code": "ui.style-literal", "message": message}])
+
+    def test_scaffold_generic_override_skips_stack_detection(self):
+        contract = ui_contract.scaffold_contract(self.root, "app", fast="exit 0",
+                                                 paths=["app/**"])
+        self.assertEqual(contract["surfaces"]["app"], {"paths": ["app/**"]})
+        self.assertEqual(contract["commands"]["fast"], "exit 0")
+        self.assertEqual(ui_contract.load_contract(self.root).surfaces["app"], ("app/**",))
+
+    def test_scaffold_writes_a_valid_react_vite_contract(self):
+        (self.root / "src").mkdir()
+        (self.root / "package.json").write_text(json.dumps({
+            "peerDependencies": {"react": "^18", "vite": "^5", "vitest": "^1"},
+            "scripts": {"test": "vitest", "build": "vite build"},
+        }), encoding="utf-8")
+        contract = ui_contract.scaffold_contract(self.root, "menu")
+        self.assertEqual(contract["surfaces"]["menu"], {"paths": ["src/**"]})
+        self.assertEqual(contract["commands"]["fast"], "npm run test -- --run")
+        self.assertIn("src/**/__tests__/**", contract["protected"])
+        self.assertEqual(ui_contract.load_contract(self.root).surfaces["menu"], ("src/**",))
+        with self.assertRaises(ProjectError):
+            ui_contract.scaffold_contract(self.root, "menu")
+
+    def test_empty_surface_still_requires_evidence(self):
+        self.write_contract()
+
+        def fake_git(root, args):
+            return 0, "", ""
+
+        self.assertTrue(ui_contract.surface_evidence_errors(self.root, fake_git))
+        (self.root / ".aikit" / "ui_history.json").write_text(json.dumps([
+            {"surface": "menu", "surface_digest": ""},
+        ]), encoding="utf-8")
+        self.assertEqual(ui_contract.surface_evidence_errors(self.root, fake_git), [])
+
+    def test_surface_evidence_requires_a_matching_finished_task(self):
+        self.write_contract()
+        (self.root / "src" / "ui").mkdir(parents=True)
+        target = self.root / "src" / "ui" / "menu.py"
+        target.write_text("value = 1\n", encoding="utf-8")
+
+        def fake_git(root, args):
+            if args[0] == "ls-files":
+                return 0, "src/ui/menu.py\0", ""
+            if args[0] == "status":
+                return 0, "", ""
+            return 0, "", ""
+
+        digest = ui_contract.surface_digest(self.root, ("src/ui/**",), fake_git)
+        self.assertTrue(digest)
+        errors = ui_contract.surface_evidence_errors(self.root, fake_git)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("no finished UI task", errors[0])
+        (self.root / ".aikit" / "ui_history.json").write_text(json.dumps([
+            {"surface": "menu", "surface_digest": digest},
+        ]), encoding="utf-8")
+        self.assertEqual(ui_contract.surface_evidence_errors(self.root, fake_git), [])
+        target.write_text("value = 2\n", encoding="utf-8")
+        self.assertTrue(ui_contract.surface_evidence_errors(self.root, fake_git))
+
+    def test_scaffold_refuses_a_non_react_stack(self):
+        (self.root / "src").mkdir()
+        (self.root / "package.json").write_text(json.dumps({
+            "dependencies": {"vue": "^3"}, "scripts": {"build": "vite build"},
+        }), encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            ui_contract.scaffold_contract(self.root)
 
     def test_porcelain_renames_expand_and_bookkeeping_is_ignored(self):
         changes = ui_contract.parse_status(

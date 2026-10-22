@@ -1894,3 +1894,77 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Positive*: The unit tier tolerates the host's observed load envelope without weakening the no-spawn rule or dropping a test; the full 391-test suite stays in the unit tier.
   - *Trade-offs*: A slower unit test can hide inside the average; a genuine 8-10 ms regression would pass; and a severely loaded host can exceed even 10 ms.
 - Cross-principle check: PRINCIPLE-000 (the approval and ADR satisfy the governance gate; no conflict), PRINCIPLE-002 (Phase 4 still measures the tiers; no conflict), PRINCIPLE-003 (no platform change; no conflict), PRINCIPLE-007 (the impact assessment records the trade-off; no conflict), PRINCIPLE-009 (no module boundary change; no conflict), PRINCIPLE-010 (its own R6 is the changed rule; the gate mechanics are unchanged), PRINCIPLE-011 (no onboarding change; no conflict), PRINCIPLE-013 (no state change; no conflict), PRINCIPLE-014 (R3 is the other changed rule; assertions and test placement are unchanged), PRINCIPLE-018 (the delivery gate still runs the same tests; no conflict).
+
+
+### ADR-166: UI Proof Is Enforced in Strict Delivery and Publish
+- **Date**: 2026-10-22
+- **Status**: Accepted
+- **Context**: The UI guard is opt-in, but a project that opted in could bypass it: `check --strict` blocked only an *open* UI task, while `publish` ran no delivery baseline at all. The manager review approved closing that bypass before adding JSON, `ui init`, or any rendered proof.
+- **Decision**:
+  1. `.aikit/project.json` gains an additive `ui_required` boolean (default `false`; existing files without it keep the old behavior).
+  2. Any present `.aikit/ui.json` is validated. When `ui_required` is true, `check --strict` and `publish` additionally require a tracked contract and matching finished-task surface evidence; a missing, invalid or unevidenced contract is a delivery error.
+  3. `publish` runs the project's gates, including the test gate, and the same delivery baseline as strict delivery: clean non-bookkeeping tree, no unresolved conflicts, no open UI task, a readable ledger, a codebase map when Python sources exist, and the required UI contract.
+  4. The enforcement adds no dependency, no new state file, and no ledger schema change.
+- **Consequences**:
+  - *Positive*: A project that claims UI proof cannot publish or pass strict delivery without the contract and without closing its UI task; the bypass is closed.
+  - *Trade-offs*: `publish` now refuses dirty or unverified trees, which is a behavior change; opting in requires committing `.aikit/ui.json`; the guard still does not prove rendered quality or that a surface changed without a task.
+- Cross-principle check: no principle section changed. The mechanism serves PRINCIPLE-011 R8 (project Phase 4), PRINCIPLE-014 R1 (delivery only from verified state), PRINCIPLE-018 R1 (authorized delivery) and PRINCIPLE-019 (secret scan remains in publish).
+
+
+### ADR-167: UI Verification Has a Stable JSON Contract
+- **Date**: 2026-10-22
+- **Status**: Accepted
+- **Context**: `aikit ui verify` returned human prose, so CI and other tools had to scrape messages. The manager review approved a machine-readable shape and stable finding codes before adding more UI proof layers.
+- **Decision**:
+  1. `aikit ui verify <project> --json` prints a JSON object with `ok`, `surface`, and `findings`; each finding carries a stable `code` and the original `message`. Operational failures print `{"ok": false, "surface": null, "error": {"code": "ui.error", "message": ...}}` and preserve the command's exit code.
+  2. Codes are centralized in `ui_contract.FINDING_CODES`: `ui.contract-changed`, `ui.baseline-moved`, `ui.protected-path`, `ui.outside-surface`, `ui.budget`, `ui.fast-proof`, `ui.snapshot-proof`, `ui.snapshot-empty`, `ui.snapshot-lost` and `ui.style-literal`; unknown prose maps to `ui.other`.
+  3. The flag is additive: the human output and exit codes are unchanged when `--json` is absent; a finding still exits 1.
+  4. No dependency or state-file change is introduced.
+- **Consequences**:
+  - *Positive*: CI can consume findings without scraping prose; codes can be allowlisted or tracked as stable diagnostics; the shape leaves room for new codes.
+  - *Trade-offs*: Renaming a human message can drop a finding into `ui.other` if its prefix and code table are not updated; the JSON shape is a new public contract to keep compatible.
+- Cross-principle check: no principle section changed. The mechanism serves PRINCIPLE-011 R7 (CLI contract), PRINCIPLE-012 (terse machine-readable output), PRINCIPLE-014 R1 (verification) and PRINCIPLE-018 (delivery evidence).
+
+
+### ADR-168: React/Vite UI Contract Scaffold Pilot
+- **Date**: 2026-10-22
+- **Status**: Accepted
+- **Context**: The UI guard required a hand-written `.aikit/ui.json`, which was the main adoption barrier. The manager approved one stack pilot before broad framework templates or rendered proof.
+- **Decision**:
+  1. `aikit ui init <project> [--surface <name>]` writes a conservative contract for a React/Vite project. It requires `react` and `vite` in `package.json` direct or peer dependencies, a `src/` folder, and a deterministic `test`/`build` script. A non-React/Vite project supplies `--fast <command>` and one or more `--paths <pattern>` values instead, which skips stack detection.
+  2. The scaffold chooses `npm run test -- --run` for Vitest, otherwise `npm run build`, otherwise `npm run test`; it uses `npm run ui:snapshot` only when that script exists and otherwise leaves `snapshot` empty.
+  3. It records detected theme files, protects `tests/**`, colocated test/spec files and `src/**/__tests__/**`, bounds `src/**`, and sets 12 files/300 lines as starter limits. The generated file is loaded through the normal contract validator before `ui init` reports success.
+  4. It never runs Node, never overwrites an existing contract, and never invents a snapshot command. The user reviews and commits the contract before `ui begin`.
+- **Consequences**:
+  - *Positive*: One real stack gets a low-friction, zero-dependency contract; the generated file is validated by the existing loader and explicitly asks for review.
+  - *Trade-offs*: Auto-detection is heuristic and limited to React/Vite; `--fast`/`--paths` is a manual override, not a framework adapter. `src/**` is coarse; the starter limits may not fit large surfaces; a project without a suitable script must write the contract by hand.
+- Cross-principle check: no principle section changed. The mechanism serves PRINCIPLE-011 (onboarding), PRINCIPLE-014 (testable proof commands), PRINCIPLE-015 (dogfoodable entrypoint) and PRINCIPLE-017 (documented host behavior).
+
+
+### ADR-169: UI Surface Evidence Binding
+- **Date**: 2026-10-22
+- **Status**: Accepted
+- **Context**: Probes proved that `ui_required` still passed a committed `src/menu.ts` change with no UI task or history because strict check validated only the contract and open task. `ui verify --json` also emitted human text for operational errors, malformed contracts were ignored when `ui_required` was false, and the React/Vite scaffold missed peer dependencies and `__tests__`.
+- **Decision**:
+  1. `ui_history` records a `surface_digest` over every current surface file (path, permission bits and SHA-256 content) at `finish`.
+  2. With `ui_required`, strict check and publish compute the current surface digest and require a matching finished-task record for every declared surface, including an empty one; a committed surface change without one fails.
+  3. Any present `.aikit/ui.json` is validated, even when `ui_required` is false; `ui_required` only adds the contract and evidence requirements.
+  4. `ui verify --json` emits an error envelope (`{"ok": false, "surface": null, "error": {"code": "ui.error", "message": ...}}`) for operational errors.
+  5. The React/Vite scaffold also reads `peerDependencies`, protects `src/**/__tests__/**`, and validates the generated contract; publish prints a gate-count summary.
+- **Consequences**:
+  - *Positive*: A surface claim now has commit-independent evidence; JSON is usable for CI even on configuration errors; malformed contracts fail early; the pilot is less brittle.
+  - *Trade-offs*: Existing `ui_history` records lack `surface_digest` and cannot satisfy the new requirement until a new task finishes; the error names that remedy. Empty surfaces still need a finished task with an empty digest, so a new contract with an unused surface must either finish that surface or remove it. The digest covers content, paths and permission bits, not ownership or timestamps.
+- Cross-principle check: no principle section changed. The mechanism serves PRINCIPLE-011 R8 (project Phase 4), PRINCIPLE-013 (history reads/writes), PRINCIPLE-014 R1 (verified delivery) and PRINCIPLE-018 R1 (authorized delivery).
+
+
+### ADR-170: Correct the Integration-Ceiling Citation
+- **Date**: 2026-10-22
+- **Status**: Accepted
+- **Context**: The published ADR-165 commit attributed the 350 ms integration ceiling to ADR-165 in PRINCIPLE-010 R6. ADR-164 approved the 350 ms integration raise; ADR-165 approved the 10 ms unit raise.
+- **Decision**:
+  1. Correct PRINCIPLE-010 R6 so the 10 ms unit ceiling cites ADR-165 and the 350 ms integration ceiling cites ADR-164.
+  2. Do not change any ceiling value or gate behavior.
+- **Consequences**:
+  - *Positive*: The rule points at the decision that actually approved each limit; future ceiling changes have an unambiguous precedent.
+  - *Trade-offs*: A published commit required a follow-up documentation commit; the historical ADR text remains as recorded.
+- Cross-principle check: PRINCIPLE-007 (no conflict), PRINCIPLE-009 (no conflict), PRINCIPLE-011 (no conflict), PRINCIPLE-013 (no conflict), PRINCIPLE-014 (no conflict), PRINCIPLE-018 (no conflict).
