@@ -4,7 +4,6 @@
 
 The AI governance system extracted from production development: principles, power-cut recovery, documentation and regression-shielded workflows.
 
-
 ---
 
 ## ⚡ 30-Second Cold-Start Quick Reference
@@ -19,30 +18,30 @@ The AI governance system extracted from production development: principles, powe
   *(100% test pass required before staging or committing).*
 
 ### 🛠️ Core Operational Command Matrix
-| Operational Role | Canonical Command | Verification Gate |
+| Operational Role| Canonical Command| Verification Gate|
 |---|---|---|
-| **Manage Projects** | `python aikit.py <cmd>` | `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124) |
-| **Run Regression Suite** | `python scripts/check_test_budgets.py` | Both tiers pass; per-test average <=10ms unit, <=350ms integration |
-| **Run One Tier** | `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration` | Isolates a failing tier |
-| **Synchronize IDE Rules** | `python scripts/sync_principles.py` | <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B |
-| **Verify Rule Freshness** | `python scripts/sync_principles.py --check` | Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3) |
-| **Find Principles to Read** | `python scripts/sync_principles.py --involved <paths/commands/output>` | Same answer for every agent (PRINCIPLE-001 R3) |
-| **Cross-Principle Check Set** | `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>` | Principles a rule change must be checked against (PRINCIPLE-000 R3) |
-| **Update AST & Knowledge** | `python scripts/update_knowledge_base.py` | Rewrites the codebase map, then runs every audit of `--check` below; exits 1 on a syntax error (Python 3.10 grammar) or any audit failure |
-| **Verify AST Map Freshness** | `python scripts/update_knowledge_base.py --check` | Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011) |
-| **Classify Lifecycle Track** | `python scripts/disruption_recovery.py --track` | Prints Track A/B/C of current changes (PRINCIPLE-002 R3) |
-| **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit` | Clean status check; detects surviving uncommitted files |
-| **Resume Interrupted Task** | `python scripts/disruption_recovery.py --resume` | Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase |
-| **Record Task Checkpoint**   | `python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num <1-5> --desc <text>` | Appends a checkpoint (PRINCIPLE-002 R4); exits 2 when a task's first plan lacks `--why --benefits --risks --mitigation`, and warns when a task reaches Phase 3 with none (PRINCIPLE-007 R1, R6); exits 1 on credential-shaped text, or records `[REDACTED]` with `--redact` (PRINCIPLE-019 R3) |
-| **Complete Task Ledger**     | `python scripts/disruption_recovery.py --complete <task_id>` | Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task |
-| **Reset Active Task**        | `python scripts/disruption_recovery.py --reset [reason]` | Abandons/clears in-progress task in ledger |
-| **Purge Temp Buffers**       | `python scripts/disruption_recovery.py --clean` | Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress |
-| **Secret Scan Gate** | `python scripts/check_secrets.py --staged\|--commits <range> [--workspace <project>]` | Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019) |
-| **Verify the Commit Itself** | `python scripts/verify_commit.py` | Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7) |
-| **Reachability Shield** | `python scripts/check_reachability.py` | No unwired capability or phantom state key (PRINCIPLE-014 R7) |
-| **Operational Dogfood Gate** | `python scripts/dogfood.py` | 5/5 tracks pass; zero host mutation (PRINCIPLE-015) |
-| **Discover Any CLI** | `python scripts/<script>.py --help` | Prints usage and exits `0` in <200ms as a fresh process, writing nothing |
-| **Sandbox the Ledger CLI** | `python scripts/disruption_recovery.py --workspace <dir> --audit` | Operates on `<dir>/.agents/`, never the repo ledger |
+| **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
+| **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=10ms unit, <=350ms integration|
+| **Run One Tier**| `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration`| Isolates a failing tier|
+| **Synchronize IDE Rules**| `python scripts/sync_principles.py`| <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B|
+| **Verify Rule Freshness**| `python scripts/sync_principles.py --check`| Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3)|
+| **Find Principles to Read**| `python scripts/sync_principles.py --involved <paths/commands/output>`| Same answer for every agent (PRINCIPLE-001 R3)|
+| **Cross-Principle Check Set**| `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>`| Principles a rule change must be checked against (PRINCIPLE-000 R3)|
+| **Update AST & Knowledge**| `python scripts/update_knowledge_base.py`| Rewrites the codebase map, then runs every audit of `--check` below; exits 1 on a syntax error (Python 3.10 grammar) or any audit failure|
+| **Verify AST Map Freshness**| `python scripts/update_knowledge_base.py --check`| Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011)|
+| **Classify Lifecycle Track**| `python scripts/disruption_recovery.py --track`| Prints Track A/B/C of current changes (PRINCIPLE-002 R3)|
+| **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit`| Clean status check; detects surviving uncommitted files|
+| **Resume Interrupted Task**| `python scripts/disruption_recovery.py --resume`| Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase|
+| **Record Task Checkpoint**| `python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num <1-5> --desc <text>`| Appends a checkpoint (PRINCIPLE-002 R4); exits 2 when a task's first plan lacks `--why --benefits --risks --mitigation`, and warns when a task reaches Phase 3 with none (PRINCIPLE-007 R1, R6); exits 1 on credential-shaped text, or records `[REDACTED]` with `--redact` (PRINCIPLE-019 R3)|
+| **Complete Task Ledger**| `python scripts/disruption_recovery.py --complete <task_id>`| Marks the active task completed in `.agents/task_ledger.json`; exits 1, changing nothing, if `<task_id>` is not the active task|
+| **Reset Active Task**| `python scripts/disruption_recovery.py --reset [reason]`| Abandons/clears in-progress task in ledger|
+| **Purge Temp Buffers**| `python scripts/disruption_recovery.py --clean`| Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress|
+| **Secret Scan Gate**| `python scripts/check_secrets.py --staged\|--commits <range> [--workspace <project>]`| Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019)|
+| **Verify the Commit Itself**| `python scripts/verify_commit.py`| Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7)|
+| **Reachability Shield**| `python scripts/check_reachability.py`| No unwired capability or phantom state key (PRINCIPLE-014 R7)|
+| **Operational Dogfood Gate**| `python scripts/dogfood.py`| 5/5 tracks pass; zero host mutation (PRINCIPLE-015)|
+| **Discover Any CLI**| `python scripts/<script>.py --help`| Prints usage and exits `0` in <200ms as a fresh process, writing nothing|
+| **Sandbox the Ledger CLI**| `python scripts/disruption_recovery.py --workspace <dir> --audit`| Operates on `<dir>/.agents/`, never the repo ledger|
 
 **Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help`/`-h` prints usage, writes nothing, exits `0`; exit `0` success, `1` operational failure, `2` misuse (an unknown flag is refused, never the default); failures print What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
 
@@ -52,76 +51,74 @@ The AI governance system extracted from production development: principles, powe
 
 ```text
 portable_agent_kit/
-├── README.md                           <- This Integration & Setup Guide
-├── LICENSE                             <- GNU AGPL-3.0 License
-├── aikit.py                            <- Project CLI
-├── .gitignore                          <- Credential & local-state baseline (PRINCIPLE-019 R3)
-├── AGENTS.md                           <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
-├── GUIDELINES.md                       <- Single source of truth: every principle, rule & checklist (Tier 2)
-├── GEMINI.md                           <- Google Gemini & Antigravity IDE rules
-├── CLAUDE.md                           <- Anthropic Claude Code configuration
-├── .cursorrules                        <- Cursor IDE instructions
-├── .windsurfrules                      <- Codeium Windsurf IDE instructions
-├── .clinerules                         <- Cline / Roo Code IDE instructions
+├── README.md                       <- This Integration & Setup Guide
+├── LICENSE                         <- GNU AGPL-3.0 License
+├── aikit.py                        <- Project CLI
+├── .gitignore                      <- Credential & local-state baseline (PRINCIPLE-019 R3)
+├── AGENTS.md                       <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
+├── GUIDELINES.md                   <- Single source of truth: every principle, rule & checklist (Tier 2)
+├── GEMINI.md                       <- Google Gemini & Antigravity IDE rules
+├── CLAUDE.md                       <- Anthropic Claude Code configuration
+├── .cursorrules                    <- Cursor IDE instructions
+├── .windsurfrules                  <- Codeium Windsurf IDE instructions
+├── .clinerules                     <- Cline / Roo Code IDE instructions
 ├── .github/
-│   ├── copilot-instructions.md         <- GitHub Copilot instructions
+│   ├── copilot-instructions.md     <- GitHub Copilot instructions
 │   └── workflows/
-│       └── ci.yml                      <- Continuous verification gate (both tiers + freshness)
+│       └── ci.yml                  <- Continuous verification gate (both tiers + freshness)
 ├── .claude/
-│   ├── agents/                         <- Claude sub-agents (generated)
-│   ├── settings.json                   <- no agent may edit a task ledger
+│   ├── agents/                     <- Claude sub-agents (generated)
+│   ├── settings.json               <- no agent may edit a task ledger
 │   └── skills/
 │       └── aikit/
-│           └── SKILL.md                <- Claude Code operational runbook (native skill)
+│           └── SKILL.md            <- Claude Code operational runbook (native skill)
 ├── .agents/
 │   ├── rules/
-│   │   ├── principles.md               <- Antigravity / Agent IDE workspace rules
-│   │   ├── domain.md.template          <- Template for project domain rules (Tier 1B)
-│   │   ├── persistence.md.template     <- Versioned state contract
+│   │   ├── principles.md           <- Antigravity / Agent IDE workspace rules
+│   │   ├── domain.md.template      <- Template for project domain rules (Tier 1B)
+│   │   ├── persistence.md.template <- Versioned state contract
 │   │   └── readme_quickref.md.template <- Adopter README Quick Reference & tree (PRINCIPLE-005 R6)
 │   ├── skills/
 │   │   └── aikit/
-│   │       └── SKILL.md                <- Antigravity operational runbook & command matrix
+│   │       └── SKILL.md            <- Antigravity operational runbook & command matrix
 │   ├── agents/
-│   │   └── opencode_worker.md          <- OpenCode subagent spec for free models
-│   └── task_ledger.json                <- Disruption ledger for power-loss resilience (WAL)
+│   │   └── opencode_worker.md      <- OpenCode subagent spec for free models
+│   └── task_ledger.json            <- Disruption ledger for power-loss resilience (WAL)
 ├── .opencode/
-│   └── agents/                         <- OpenCode subagent profiles (architect, coder, ...)
-├── opencode.jsonc                      <- OpenCode provider, model & permission config
+│   └── agents/                     <- OpenCode subagent profiles (architect, coder, ...)
+├── opencode.jsonc                  <- OpenCode provider, model & permission config
 ├── scripts/
-│   ├── sync_principles.py              <- Generates 8 Tier 1 files from GUIDELINES.md
-│   ├── disruption_recovery.py          <- Power-loss audit, atomic checkpointing & ledger CLI
-│   ├── update_knowledge_base.py        <- Codebase AST symbol extractor & validator
-│   ├── dogfood.py                      <- Operational dogfood runner (sandbox jail + chaos tracks)
-│   ├── check_reachability.py           <- Invariant reachability shield (anti-dead-capability)
-│   ├── check_test_budgets.py           <- Test tier budget gate (per-test ceilings)
-│   ├── project_registry.py             <- Project discovery, stack detection, .aikit/ memory
-│   ├── project_gates.py                <- A project's gates: detection, overrides, runs
-│   ├── check_project_hygiene.py        <- Project source, asset & artifact hygiene scan
-│   ├── ui_contract.py                  <- Bounded UI-surface guard (opt-in .aikit/ui.json)
-│   ├── ui_proof.py                     <- UI proofs: inventory diff + style drift lint (pure)
-│   ├── aikit_cli.py                    <- `aikit.py` commands and error triads
-│   ├── subagent_delegate.py            <- `aikit delegate`: bounded OpenCode sub-agent runs
-│   ├── project_publish.py              <- Uploads a project to its own GitHub repository
-│   ├── check_secrets.py                <- Secret & sensitive data scanner (pre-commit gate)
-│   └── verify_commit.py                <- Verifies a commit alone in a throwaway worktree
-
+│   ├── sync_principles.py          <- Generates 8 Tier 1 files from GUIDELINES.md
+│   ├── disruption_recovery.py      <- Power-loss audit, atomic checkpointing & ledger CLI
+│   ├── update_knowledge_base.py    <- Codebase AST symbol extractor & validator
+│   ├── dogfood.py                  <- Operational dogfood runner (sandbox jail + chaos tracks)
+│   ├── check_reachability.py       <- Invariant reachability shield (anti-dead-capability)
+│   ├── check_test_budgets.py       <- Test tier budget gate (per-test ceilings)
+│   ├── project_registry.py         <- Project discovery, stack detection, .aikit/ memory
+│   ├── project_gates.py            <- A project's gates: detection, overrides, runs
+│   ├── check_project_hygiene.py    <- Project source, asset & artifact hygiene scan
+│   ├── ui_contract.py              <- Bounded UI-surface guard (opt-in .aikit/ui.json)
+│   ├── ui_proof.py                 <- UI proofs: inventory diff + style drift lint (pure)
+│   ├── aikit_cli.py                <- `aikit.py` commands and error triads
+│   ├── subagent_delegate.py        <- `aikit delegate`: bounded OpenCode sub-agent runs
+│   ├── project_publish.py          <- Uploads a project to its own GitHub repository
+│   ├── check_secrets.py            <- Secret & sensitive data scanner (pre-commit gate)
+│   └── verify_commit.py            <- Verifies a commit alone in a throwaway worktree
 ├── tests/
-│   ├── test_kit.py                     <- Unit tier: in-process regression shield (<=10ms per test)
-│   └── test_integration.py             <- Integration tier: concurrency, CLI contracts & dogfooding
+│   ├── test_kit.py                 <- Unit tier: in-process regression shield (<=10ms per test)
+│   └── test_integration.py         <- Integration tier: concurrency, CLI contracts & dogfooding
 └── knowledge/
-    ├── INDEX.md                        <- Knowledge base table of contents & architecture map
-    ├── architecture.md                 <- High-level system architecture and component boundaries
-    ├── services.md                     <- Core services, API contracts, and business logic
-    ├── data_models.md                  <- Data structures, schemas, and persistence models
-    ├── state_and_ui.md                 <- Presentation layer, UI state, and event loops
-    ├── decisions.md                    <- Architectural Decision Records (ADRs)
-    ├── codebase_map.md                 <- Auto-generated AST catalog of classes and functions
-    ├── model_benchmarks.md             <- Subagent model benchmark database & selection tree
-    ├── host_clients.md                 <- Host client portability & cross-environment parity
-    └── principles_audit_ledger.md      <- Snapshot audit at ADR-107 (not kept current)
+    ├── INDEX.md                    <- Knowledge base table of contents & architecture map
+    ├── architecture.md             <- High-level system architecture and component boundaries
+    ├── services.md                 <- Core services, API contracts, and business logic
+    ├── data_models.md              <- Data structures, schemas, and persistence models
+    ├── state_and_ui.md             <- Presentation layer, UI state, and event loops
+    ├── decisions.md                <- Architectural Decision Records (ADRs)
+    ├── codebase_map.md             <- Auto-generated AST catalog of classes and functions
+    ├── model_benchmarks.md         <- Subagent model benchmark database & selection tree
+    ├── host_clients.md             <- Host client portability & cross-environment parity
+    └── principles_audit_ledger.md  <- Snapshot audit at ADR-107 (not kept current)
 ```
-
 
 ---
 
