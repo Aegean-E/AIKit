@@ -1,43 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "status-resume-json-v1",
+    "task_id": "secret-redaction-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792695490.7678177,
-    "completed_at": 1792695494.4620647
+    "updated_at": 1792696380.7927241,
+    "completed_at": 1792696384.8693142
   },
   "checkpoints": [
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Verification: 391 unit tests at 7.14ms/test, 49 integration at 229.04ms/test against 350ms; sync, knowledge, secrets, reachability, hygiene and dogfood clean on the rerun. One transient TestDogfoodRunner failure passed in isolation and on rerun; the dogfood integration test is flaky under load (PRINCIPLE-014 R3). checklists: failed PRINCIPLE-014 R3. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792658118.4347425,
-      "timestamp_str": "2026-10-22 11:35:18"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Final verification after startup lazy imports and the approved ADR-165 unit ceiling: 391 unit tests at 5.67ms/test (10ms), 49 integration tests at 209.45ms/test (350ms); dogfood 5/5 and sync/knowledge/secrets/reachability/hygiene clean. Ten direct dogfood runs and three full integration runs showed no recurrence of the earlier flake. checklists: passed. Ready for the user-authorized publish.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792659494.4713209,
-      "timestamp_str": "2026-10-22 11:58:14"
-    },
-    {
-      "task_id": "adr-review-fixes-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'adr-review-fixes-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792659520.4516695,
-      "timestamp_str": "2026-10-22 11:58:40"
-    },
     {
       "task_id": "ui-guard-enforcement-v1",
       "phase": "in_progress",
@@ -232,6 +203,41 @@
       "status": "completed",
       "timestamp": 1792695494.4620671,
       "timestamp_str": "2026-10-22 21:58:14"
+    },
+    {
+      "task_id": "secret-redaction-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Widen SECRET_PATTERNS with prefixed high-confidence credential shapes and extend the private-key block to ENCRYPTED and SSH2 headers. [2/5] Add scrub_text(text) -> (scrubbed, detectors) using pattern detection only, never the entropy fallback, so prose keeps its hashes and digests. [3/5] disruption_recovery --checkpoint refuses credential-shaped free text and names --redact as the fix; --redact scrubs and writes. [4/5] subagent_delegate always scrubs the sub-agent's returned text and its JSON output. [5/5] README, data_models, ADR, map and sync refresh, then every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792695841.3202243,
+      "timestamp_str": "2026-10-22 22:04:01",
+      "impact_assessment": {
+        "why": "PRINCIPLE-019 R5 makes a leaked credential unrecoverable: it must be rotated, never reverted. The scanner already catches 15 shapes and already reads both ledgers and the dogfood log, but it only reports after the text is on disk, and the ledger's --why/--benefits/--risks/--mitigation fields are written straight into a git-tracked file. Blocking the write is worth more than reporting it afterwards, and the pattern table misses common prefixed formats (GitLab, npm, PyPI, SendGrid, HuggingFace, Telegram, Notion, Azure AccountKey and others).",
+        "benefits": "A credential quoted in an impact note is refused before it reaches a tracked file rather than found after; sub-agent output cannot carry a key into the lead agent's context or any downstream log; the pattern table roughly doubles while keeping the near-zero false-positive property the file's own design depends on.",
+        "risks": "contract: --checkpoint gains a refusal path and a --redact flag, so a script writing credential-shaped free text now exits non-zero; existing checkpoint text is unaffected. dependency: none, re and the scanner are already imported where needed. concurrency: the refusal happens before the file lock is taken, so no partial write is possible. state: no schema change; scrubbing alters only the free-text field values that --redact is explicitly asked to rewrite.",
+        "mitigation": "Add only prefixed shapes with literal anchors, never bare-length or PII patterns, and never apply the entropy fallback to prose, so legitimate commit hashes and digests in a risk note still pass; add a failing-first test per new pattern and per wiring point; make the refusal name --redact in its Fix line; scrub with a placeholder the STRONG_ALLOWLIST already recognizes so a scrubbed ledger stays clean on rescan."
+      }
+    },
+    {
+      "task_id": "secret-redaction-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[5/5] All five milestones done. SECRET_PATTERNS 15 -> 28 shapes, all vendor-prefixed; private-key block covers ENCRYPTED and SSH2. scrub_text runs patterns only, never the entropy fallback, so prose keeps hashes and digests (regression test). checkpoint_command refuses credential-shaped free text with exit 1 before reading or writing the ledger, --redact scrubs instead, on both CLI surfaces through the one ADR-128 path. answer_text scrubs sub-agent output unconditionally. ADR-173 recorded, data_models noted. Phase 4 green: 469 tests, all six gates, CLI contract, slowest --help 145ms of 200ms. README at 22,485 of 22,500 (15 left). checklists: passed, except PRINCIPLE-018 push skipped (not authorized).",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792696380.7927241,
+      "timestamp_str": "2026-10-22 22:13:00"
+    },
+    {
+      "task_id": "secret-redaction-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'secret-redaction-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792696384.8693156,
+      "timestamp_str": "2026-10-22 22:13:04"
     }
   ]
 }

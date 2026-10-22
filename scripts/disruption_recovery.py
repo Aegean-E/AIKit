@@ -18,6 +18,19 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, Any, Optional, List, Tuple
 
+# The ledger's write boundary needs the hygiene rules PRINCIPLE-019 R3 already points at it.
+# check_secrets imports nothing from this module, so the edge adds no cycle (ADR-173).
+#
+# Two import forms, because this module is both imported as `scripts.disruption_recovery` and run
+# as `python scripts/disruption_recovery.py`, where only `scripts/` is on sys.path. Every other
+# directly-runnable script in this repository is a standalone leaf for exactly that reason; this
+# one keeps that property rather than requiring a sys.path bootstrap (PRINCIPLE-011 R1). If both
+# forms fail the ImportError propagates, so a missing module is still a loud failure.
+try:
+    from scripts.check_secrets import scrub_text
+except ImportError:  # pragma: no cover - exercised by the standalone CLI contract, not the tier
+    from check_secrets import scrub_text
+
 # Safe terminal encoding on Windows (cp1254/cp1252)
 if sys.platform == "win32":
     try:
@@ -1199,7 +1212,9 @@ VALUE_FLAGS = {
 }
 # Standalone action flags.
 ACTION_FLAGS = {"--clean", "--resume", "--audit", "--track", "--help", "-h"}
-KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS
+# Valueless flags that modify an action rather than being one.
+MODIFIER_FLAGS = {"--redact"}
+KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS | MODIFIER_FLAGS
 
 HELP_TEXT = """AIKit Disruption Recovery & Task Ledger (PRINCIPLE-006, PRINCIPLE-013)
 
@@ -1235,6 +1250,8 @@ Checkpoint options:
   --benefits <text>          Pre-flight impact: expected benefits
   --risks <text>             Pre-flight impact: blast-radius risks
   --mitigation <text>        Pre-flight impact: risk mitigations
+  --redact                   With --checkpoint: record credential-shaped free text as
+                             [REDACTED] instead of refusing the write (PRINCIPLE-019 R3)
   -h, --help                 Show this help message and exit
 
 Exit codes:
@@ -1313,13 +1330,48 @@ def missing_impact_warning(task_id: str, phase_num: Optional[int], has_prior_imp
             f"a Track B task has none.")
 
 
+def scrub_checkpoint_text(desc: str, impact: Dict[str, Optional[str]],
+                                redact: bool) -> Tuple[str, Dict[str, Optional[str]], List[str]]:
+    """
+    The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.
+
+    PRINCIPLE-019 R3 makes the ledger a secret-scanning surface because `--why`, `--benefits`,
+    `--risks` and `--mitigation` are written into a git-tracked file; R5 makes such a leak
+    unrecoverable. Checking here, in the one path both CLIs take (ADR-128), refuses the write
+    instead of reporting it afterwards (ADR-173).
+    """
+    detectors: List[str] = []
+    scrubbed_desc, hits = scrub_text(desc or "")
+    detectors.extend(hits)
+    scrubbed_impact: Dict[str, Optional[str]] = {}
+    for field, value in impact.items():
+        if not value:
+            scrubbed_impact[field] = value
+            continue
+        scrubbed_value, hits = scrub_text(value)
+        detectors.extend(f"{name} in --{field}" for name in hits)
+        scrubbed_impact[field] = scrubbed_value
+    if not redact:
+        return desc, impact, detectors
+    return scrubbed_desc, scrubbed_impact, detectors
+
+
 def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc: str,
-                       impact: Dict[str, Optional[str]], ledger_file: Optional[Path] = None) -> int:
+                       impact: Dict[str, Optional[str]], ledger_file: Optional[Path] = None,
+                       redact: bool = False) -> int:
     """
     Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one
     path for every CLI that records checkpoints (`--checkpoint` here, `aikit checkpoint`): a second
     copy recorded first plans with no impact assessment (ADR-128).
     """
+    desc, impact, leaked = scrub_checkpoint_text(desc, impact, redact)
+    if leaked and not redact:
+        print(f"[CREDENTIAL IN CHECKPOINT TEXT] {'; '.join(sorted(set(leaked)))}", file=sys.stderr)
+        print("Why: checkpoint free text is written into a git-tracked ledger, and a committed "
+              "credential must be rotated, not reverted (PRINCIPLE-019 R3, R5).", file=sys.stderr)
+        print("Fix: remove the value from the text, or rerun with --redact to record it as "
+              "[REDACTED]; rotate the credential either way.", file=sys.stderr)
+        return 1
     prior = any(c.get("task_id") == task_id and c.get("impact_assessment")
                 for c in load_ledger(ledger_file).get("checkpoints", []))
     resolved = resolve_phase_num(phase, phase_num)
@@ -1463,7 +1515,8 @@ if __name__ == "__main__":
 
         sys.exit(checkpoint_command(task_id, phase, phase_num, desc,
                                     {"why": why, "benefits": benefits, "risks": risks,
-                                     "mitigation": mitigation}, _ledger))
+                                     "mitigation": mitigation}, _ledger,
+                                    redact="--redact" in sys.argv))
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1]

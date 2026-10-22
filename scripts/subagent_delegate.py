@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from scripts.check_secrets import scrub_text
 from scripts.disruption_recovery import ROOT_DIR, workspace_ledger_path
 from scripts.project_registry import ProjectError, find_project
 
@@ -168,14 +169,18 @@ def answer_text(stdout: str) -> str:
     The sub-agent's own words from OpenCode's `--format json` event stream: the `text` parts in
     order. The raw stream also holds every tool call and its full output, which cost the lead agent
     tokens for nothing (PRINCIPLE-012). Output that is not that stream is returned unchanged.
+
+    Credential-shaped spans are scrubbed, with no opt-in: the answer reaches the lead agent's
+    context and whatever logs it, and a leaked key there is as unrecoverable as one in a commit
+    (PRINCIPLE-019 R4, R5; ADR-173).
     """
     texts = []
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
         except ValueError:
-            return stdout.strip()
+            return scrub_text(stdout.strip())[0]
         part = event.get("part") if isinstance(event, dict) else None
         if isinstance(event, dict) and event.get("type") == "text" and isinstance(part, dict):
             texts.append(str(part.get("text", "")))
-    return "\n".join(texts).strip() or stdout.strip()
+    return scrub_text("\n".join(texts).strip() or stdout.strip())[0]

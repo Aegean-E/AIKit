@@ -12,6 +12,8 @@ Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013)
 | `active_task` | object or null | `task_id`, `last_phase` (label), `active_phase` (1-5), `status`, `updated_at` (epoch s), optional `impact_assessment` {`why`, `benefits`, `risks`, `mitigation`}. |
 | `checkpoints` | list | At most 20 entries (the active task's plan checkpoint is always kept). Each: `task_id`, `phase`, `phase_num` (1-5), `description`, `files_affected`, `status`, `timestamp`, `timestamp_str`, optional `impact_assessment`. |
 
+`description` and the four `impact_assessment` fields are free text written into a git-tracked file, so a credential shape in any of them makes `--checkpoint` exit 1 before the ledger is read or written; `--redact` records the span as `[REDACTED]` instead (PRINCIPLE-019 R3, ADR-173).
+
 `status` values: `in_progress` (recorded by `--checkpoint`), `completed` (`--complete`), `abandoned` (`--reset`), `superseded` (written for the previous task when `--checkpoint` names a different task while it was still `in_progress`; ADR-077). The plan is the latest `phase_num` 2 checkpoint whose `description` starts with `[1/` (PRINCIPLE-004 R1).
 
 ### Project Record (`<project>/.aikit/project.json`)

@@ -136,6 +136,8 @@ def build_parser() -> argparse.ArgumentParser:
     for field in ("why", "benefits", "risks", "mitigation"):
         checkpoint.add_argument(f"--{field}", default=None,
                                 help="impact assessment, required on a task's first plan (PRINCIPLE-007 R6)")
+    checkpoint.add_argument("--redact", action="store_true",
+                            help="record credential-shaped text as [REDACTED] instead of refusing it")
 
     complete = project_command("complete", "mark the project's active task completed")
     complete.add_argument("--task", required=True, help="the active task's ID")
@@ -376,7 +378,7 @@ def cmd_checkpoint(args: argparse.Namespace) -> int:
     impact = {"why": args.why, "benefits": args.benefits, "risks": args.risks,
               "mitigation": args.mitigation}
     return checkpoint_command(args.task, f"phase {args.phase_num}", args.phase_num, args.desc, impact,
-                              workspace_ledger_path(project.path))
+                              workspace_ledger_path(project.path), redact=args.redact)
 
 
 def cmd_complete(args: argparse.Namespace) -> int:

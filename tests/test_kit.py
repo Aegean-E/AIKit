@@ -102,6 +102,7 @@ from scripts.disruption_recovery import (
     check_disk_headroom,
     migrate_ledger_schema,
     validate_conventional_commit,
+    checkpoint_command,
     classify_track,
     resolve_phase_num,
     task_plan_checkpoint,
@@ -146,6 +147,7 @@ from scripts.project_registry import (
 from scripts.check_secrets import (
     scan_diff,
     scan_text,
+    scrub_text,
     shannon_entropy,
     run_scan,
     STRONG_ALLOWLIST,
@@ -2379,6 +2381,45 @@ class TestPrinciple004Unambiguity(unittest.TestCase):
         self.assertTrue(any(c["phase_num"] == 2 for c in checkpoints), "pruning dropped the plan")
         self.assertEqual(checkpoints[-1]["description"], "step 39", "pruning dropped the newest work")
 
+    def test_checkpoint_refuses_a_credential_in_free_text_unless_redacting(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_cpsecret_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        leak = "rotated glpat\x2daB3dE5gH7jK9mN1pQ3rS today"  # aikit:allow-secret
+        impact = {"why": leak, "benefits": None, "risks": None, "mitigation": None}
+
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = checkpoint_command("t", "implementation", 3, "work", impact,
+                                      ledger_file=ledger)
+        self.assertEqual(code, 1, "a credential in free text is an operational failure")
+        self.assertIn("GitLab personal access token", err.getvalue())
+        self.assertIn("--redact", err.getvalue())
+        self.assertFalse(ledger.exists(), "the refusal happens before any write")
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = checkpoint_command("t", "implementation", 3, "work", impact,
+                                      ledger_file=ledger, redact=True)
+        self.assertEqual(code, 0)
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        recorded = written["checkpoints"][-1]["impact_assessment"]["why"]
+        self.assertNotIn("glpat\x2daB3dE5gH7jK9mN1pQ3rS", recorded)  # aikit:allow-secret
+        self.assertIn("[REDACTED]", recorded)
+        self.assertIn("rotated", recorded, "the surrounding prose survives")
+
+    def test_checkpoint_scrubs_the_description_too(self):
+        workspace = Path(tempfile.mkdtemp(prefix="test_cpdesc_"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        ledger = workspace / ".agents" / "task_ledger.json"
+        desc = "hit npm\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5 in the log"  # aikit:allow-secret
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = checkpoint_command("t", "implementation", 3, desc, {}, ledger_file=ledger,
+                                      redact=True)
+        self.assertEqual(code, 0)
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertIn("[REDACTED]", written["checkpoints"][-1]["description"])
+
     def test_resume_prints_the_plan(self):
         workspace = Path(tempfile.mkdtemp(prefix="test_plan_"))
         self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
@@ -2799,6 +2840,75 @@ class TestSecretHygieneScanner(unittest.TestCase):
                 self.assertEqual(len(findings), 1)
                 self.assertNotIn(secret, findings[0][3])
                 self.assertIn(secret[:4] + "***", findings[0][3])
+
+    def test_detects_the_widened_prefixed_credential_shapes(self):
+        cases = {
+            "GitLab personal access token": 'k = "glpat\x2daB3dE5gH7jK9mN1pQ3rS"',  # aikit:allow-secret
+            "npm access token": 'k = "npm\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5"',  # aikit:allow-secret
+            "PyPI upload token": 'k = "pypi\x2dAgEIcHlwaS5vcmcaB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5dF7gJ9kL1mP3qR"',  # aikit:allow-secret
+            "SendGrid API key": 'k = "SG\x2eaB3dE5gH7jK9mN1pQ3rS5t.aB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5dF7gJ9k"',  # aikit:allow-secret
+            "Hugging Face token": 'k = "hf\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3b"',  # aikit:allow-secret
+            "Google OAuth client secret": 'k = "GOCSPX\x2daB3dE5gH7jK9mN1pQ3rS5tU7vW9x"',  # aikit:allow-secret
+            "Mailgun API key": 'k = "key\x2da1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4"',  # aikit:allow-secret
+            "Telegram bot token": 'k = "123456789\x3aAAaB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3"',  # aikit:allow-secret
+            "Docker Hub access token": 'k = "dckr_pat\x5faB3dE5gH7jK9mN1pQ3rS5t"',  # aikit:allow-secret
+            "Notion integration token": 'k = "secret\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5dF7gJ9k"',  # aikit:allow-secret
+            "Linear API key": 'k = "lin_api\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5dF7g"',  # aikit:allow-secret
+            "Slack incoming webhook": 'u = "https\x3a//hooks.slack.com/services/T00000000/B00000000/aB3dE5gH7jK9mN1pQ3rS5tU7"',  # aikit:allow-secret
+            "Azure storage account key": 'c = "AccountKey\x3daB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5dF7gJ9kL1mP3qR5sT7uV9wX1=="',  # aikit:allow-secret
+            "Private key block": "-----BEGIN ENCRYPTED PRIVATE KEY\x2d----",  # aikit:allow-secret
+        }
+        for detector, line in cases.items():
+            with self.subTest(detector=detector):
+                findings = scan_text("fixture.py", line)
+                self.assertEqual([f[2] for f in findings], [detector])
+
+    def test_scrub_text_replaces_every_credential_and_names_the_detectors(self):
+        text = ('note: deploy used glpat\x2daB3dE5gH7jK9mN1pQ3rS\n'  # aikit:allow-secret
+                'and npm\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3bC5 for the registry\n'  # aikit:allow-secret
+                'commit e6e708b1e499c95f33a033f3f9c4e54f01a68231 is unaffected\n')
+        scrubbed, detectors = scrub_text(text)
+        self.assertEqual(sorted(detectors),
+                         ["GitLab personal access token", "npm access token"])
+        self.assertNotIn("glpat\x2daB3dE5gH7jK9mN1pQ3rS", scrubbed)  # aikit:allow-secret
+        self.assertNotIn("npm\x5faB3dE5gH7jK9mN1pQ3rS", scrubbed)  # aikit:allow-secret
+        self.assertIn("e6e708b1e499c95f33a033f3f9c4e54f01a68231", scrubbed,
+                      "a commit hash in prose is not a credential")
+        self.assertIn("note: deploy used", scrubbed)
+        # A scrubbed field must be clean on rescan, or the gate would fail on its own output.
+        self.assertEqual(scan_text("scrubbed", scrubbed), [])
+
+    def test_subagent_answer_text_scrubs_credentials_from_the_stream(self):
+        # A sub-agent's answer reaches the lead agent's context and any log downstream of it;
+        # there is no reason to want a leaked key verbatim, so this needs no opt-in.
+        leak = "use hf\x5faB3dE5gH7jK9mN1pQ3rS5tU7vW9xY1zA3b for the model"  # aikit:allow-secret
+        stream = "\n".join(json.dumps({"type": "text", "part": {"text": chunk}})
+                           for chunk in ("checked the config, ", leak))
+        answer = answer_text(stream)
+        self.assertNotIn("hf\x5faB3dE5gH7jK9mN1pQ3rS", answer)  # aikit:allow-secret
+        self.assertIn("[REDACTED]", answer)
+        self.assertIn("checked the config", answer)
+
+    def test_subagent_answer_text_leaves_clean_output_unchanged(self):
+        stream = json.dumps({"type": "text", "part": {"text": "all three gates pass"}})
+        self.assertEqual(answer_text(stream), "all three gates pass")
+
+    def test_scrub_text_leaves_clean_prose_byte_identical(self):
+        prose = "Risks: contract: --checkpoint gains a refusal path; state: no schema change."
+        self.assertEqual(scrub_text(prose), (prose, []))
+
+    def test_prose_keeps_its_digests_and_identifiers(self):
+        # The widened table must not cost the near-zero false-positive property the gate's
+        # trust rests on: a risk note citing a commit or a digest has to stay clean.
+        prose = [
+            "Risks: state: the fingerprint changed from e6e708b1e499c95f33a033f3f9c4e54f01a68231.",
+            "The surface digest is sha256:9f2b7c4e1a8d3f6b5c0e7a2d4f8b1c3e5a7d9f0b2c4e6a8d.",
+            "Benefits: ADR-171 records all nine decisions; see knowledge/decisions.md.",
+            "secret_key_rotation is scheduled; no value is quoted here.",
+        ]
+        for line in prose:
+            with self.subTest(line=line[:40]):
+                self.assertEqual(scan_text("note.md", line), [])
 
     def test_a_scan_that_skipped_a_surface_never_reports_clean(self):
         # Red-green pin (PRINCIPLE-000 R5): with git failing, --staged and --all printed [OK] and

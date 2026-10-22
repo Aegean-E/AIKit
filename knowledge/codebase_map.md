@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `307`
-- **Total Class Methods**: `536`
-- **Total Source Lines**: `15836`
+- **Total Top-Level Functions**: `309`
+- **Total Class Methods**: `544`
+- **Total Source Lines**: `16047`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `711` lines (`35392` bytes)
+**Size**: `713` lines (`35576` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -130,7 +130,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `465` lines (`21212` bytes)
+**Size**: `506` lines (`23365` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -139,6 +139,7 @@
 - `def scan_text(label, text)` - *Return (label, line_no, detector, excerpt) for every finding in a blob of text.*
 - `def looks_random(value)` - *A token shaped like a generated key: mixed case and digits, and high entropy. Hex digests*
 - `def redact(line, start, end)` - *The line with the secret span cut to its first 4 characters plus `***` (PRINCIPLE-019 R4).*
+- `def scrub_text(text)` - *`text` with every credential-shaped span replaced by `[REDACTED]`, and the detectors hit.*
 - `def should_skip(path_str)`
 - `def git_output(args, repo)`
 - `def scan_staged(gaps, repo)` - *Scan staged content only - the surface about to become permanent history.*
@@ -174,7 +175,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1518` lines (`68417` bytes)
+**Size**: `1571` lines (`71419` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -223,7 +224,8 @@
 - `def validate_argv(argv)` - *Return unrecognized options, skipping values of known value-taking flags (PRINCIPLE-011).*
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
 - `def missing_impact_warning(task_id, phase_num, has_prior_impact, has_impact_now)` - *PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task*
-- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
+- `def scrub_checkpoint_text(desc, impact, redact)` - *The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.*
+- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file, redact)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
 
 ---
@@ -338,7 +340,7 @@
 ### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
 > *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
 
-**Size**: `181` lines (`8800` bytes)
+**Size**: `186` lines (`9103` bytes)
 
 **Functions:**
 - `def load_opencode_config(path)` - *The OpenCode configuration; its `providers` declare which Gemini models are free-tier.*
@@ -601,7 +603,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6186` lines (`343922` bytes)
+**Size**: `6296` lines (`351166` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -786,6 +788,8 @@
   - Method `.test_report_file_lists_are_bounded()`
   - Method `.test_schemas_are_not_sent_to_adrs()`
   - Method `.test_active_task_is_bounded_and_keeps_its_plan()`
+  - Method `.test_checkpoint_refuses_a_credential_in_free_text_unless_redacting()`
+  - Method `.test_checkpoint_scrubs_the_description_too()`
   - Method `.test_resume_prints_the_plan()`
   - Method `.test_revised_plan_replaces_the_old_one_and_answers_do_not()`
   - Method `.test_cli_never_replaces_a_missing_value_with_a_default()`
@@ -830,6 +834,12 @@
   - Method `.test_capsules_retain_their_mechanisms_after_condensation()`
 - `class TestSecretHygieneScanner` - *PRINCIPLE-019. Secret leakage is the one defect class with no clean rollback, so the scanner*
   - Method `.test_findings_never_echo_the_secret()`
+  - Method `.test_detects_the_widened_prefixed_credential_shapes()`
+  - Method `.test_scrub_text_replaces_every_credential_and_names_the_detectors()`
+  - Method `.test_subagent_answer_text_scrubs_credentials_from_the_stream()`
+  - Method `.test_subagent_answer_text_leaves_clean_output_unchanged()`
+  - Method `.test_scrub_text_leaves_clean_prose_byte_identical()`
+  - Method `.test_prose_keeps_its_digests_and_identifiers()`
   - Method `.test_a_scan_that_skipped_a_surface_never_reports_clean()`
   - Method `.test_detects_known_credential_shapes()`
   - Method `.test_does_not_flag_indirection_or_placeholders()`

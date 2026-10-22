@@ -59,8 +59,26 @@ SECRET_PATTERNS: Tuple[Tuple[str, str], ...] = (
     ("Stripe secret key", r"\b(?:sk|rk)_(?:live|test)_[0-9A-Za-z]{20,}\b"),
     ("OpenAI-style API key", r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{32,}\b"),
     ("Anthropic-style API key", r"\bsk-ant-[A-Za-z0-9_\-]{32,}\b"),
+    # Widened in ADR-173. Every shape below is anchored on a literal vendor prefix, so it keeps
+    # the near-zero false-positive property the gate's trust depends on; a bare-length or PII
+    # pattern would not, and is deliberately absent.
+    ("GitLab personal access token", r"\bglpat-[A-Za-z0-9_\-]{20,}"),
+    ("npm access token", r"\bnpm_[A-Za-z0-9]{36}\b"),
+    ("PyPI upload token", r"\bpypi-AgEIcHlwaS5vcmc[A-Za-z0-9_\-]{50,}"),
+    ("SendGrid API key", r"\bSG\.[A-Za-z0-9_\-]{22}\.[A-Za-z0-9_\-]{43}\b"),
+    ("Hugging Face token", r"\bhf_[A-Za-z0-9]{34,}\b"),
+    ("Google OAuth client secret", r"\bGOCSPX-[A-Za-z0-9_\-]{28}\b"),
+    ("Mailgun API key", r"\bkey-[0-9a-f]{32}\b"),
+    ("Telegram bot token", r"\b\d{8,10}:AA[A-Za-z0-9_\-]{30,}"),
+    ("Docker Hub access token", r"\bdckr_pat_[A-Za-z0-9_\-]{20,}"),
+    ("Notion integration token", r"\bsecret_[A-Za-z0-9]{43}\b"),
+    ("Linear API key", r"\blin_api_[A-Za-z0-9]{40}\b"),
+    ("Slack incoming webhook",
+     r"https://hooks\.slack\.com/services/T[A-Za-z0-9]+/B[A-Za-z0-9]+/[A-Za-z0-9]{20,}"),
+    ("Azure storage account key", r"\bAccountKey=[A-Za-z0-9+/=]{60,}"),
     ("JSON Web Token", r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b"),
-    ("Private key block", r"-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----"),
+    ("Private key block",
+     r"-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA |ENCRYPTED |SSH2 ENCRYPTED )?PRIVATE KEY-----"),
     ("Password in URL", r"\b[a-zA-Z][a-zA-Z0-9+.\-]*://[^/\s:@]+:[^/\s:@]+@"),
     ("Authorization header value", r"\bAuthorization\s*[:=]\s*[\"']?(?:Bearer|Basic)\s+[A-Za-z0-9._\-=/+]{16,}"),
     ("Hardcoded password assignment", r"\b(?:password|passwd|secret|api_key|apikey|access_token|auth_token|private_key)\s*[:=]\s*[\"'][^\"'\s]{8,}[\"']"),
@@ -191,6 +209,29 @@ def redact(line: str, start: int, end: int) -> str:
     into the terminal, the transcript and the dogfood log.
     """
     return (line[:start] + line[start:end][:4] + "***" + line[end:]).strip()[:88]
+
+
+SCRUB_PLACEHOLDER = "[REDACTED]"
+
+
+def scrub_text(text: str) -> Tuple[str, List[str]]:
+    """
+    `text` with every credential-shaped span replaced by `[REDACTED]`, and the detectors hit.
+
+    Used at the boundaries that write free text into tracked state, because PRINCIPLE-019 R5
+    makes a leaked credential unrecoverable: refusing or scrubbing the write is worth more than
+    reporting it afterwards. Only `SECRET_PATTERNS` run here, never the entropy fallback -
+    prose legitimately carries commit hashes and digests, and a scrubber that ate them would be
+    worked around rather than fixed (ADR-173). The placeholder is in `STRONG_ALLOWLIST`, so
+    scrubbed text is clean when the scanner reads it back.
+    """
+    detectors: List[str] = []
+    scrubbed = text
+    for detector, pattern in SECRET_PATTERNS:
+        scrubbed, hits = re.subn(pattern, SCRUB_PLACEHOLDER, scrubbed)
+        if hits:
+            detectors.append(detector)
+    return scrubbed, detectors
 
 
 def should_skip(path_str: str) -> bool:
