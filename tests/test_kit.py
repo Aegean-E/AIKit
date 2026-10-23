@@ -3245,6 +3245,27 @@ def read(d):
         phantom = [key for key, _ in find_phantom_keys(files)]
         self.assertNotIn("active_phase", phantom, "shield flagged a key that round-trips")
 
+    def test_a_producer_hidden_in_a_comprehension_is_flagged(self):
+        # Pins the strict behaviour. A deleted fallback's comment promised to excuse any key that
+        # appears more than once as a string literal; that would pass this module, whose only
+        # producer hides every key inside a comprehension - the exact defect this shield caught in
+        # the ADR-174 handoff work. The fix is to write the keys literally, never to relax this.
+        files = self._write("mod_d.py", '''"""Hidden producer."""
+KEYS = ("state", "next")
+
+def write(h):
+    return {key: h[key] for key in KEYS if h.get(key)}
+
+def read(packet):
+    if "next" not in packet:
+        return None
+    return packet.get("next")
+''')
+        phantom = [key for key, _ in find_phantom_keys(files)]
+        self.assertIn("next", phantom,
+                      "a key that is only ever written through a comprehension has no visible "
+                      "producer; counting its literal mentions must not excuse it")
+
 class TestContinuousVerificationGate(unittest.TestCase):
     """
     The CI workflow must enforce the same gates the principles declare, using the same

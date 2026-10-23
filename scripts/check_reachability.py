@@ -249,23 +249,19 @@ def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:
 
 def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
     """State keys read by production code that no production code ever writes."""
+    # Strict by design: a read key needs a producer the AST can see - a dict-literal key or a
+    # subscript assignment - or an entry in EXTERNAL_SCHEMA_KEYS for data another program writes.
+    # A key written only through a comprehension or a loop over a tuple of names is flagged even
+    # if its name appears as a literal elsewhere; write such keys literally instead.
+    #
+    # A fallback here once meant to excuse any key appearing more than once as a literal. It
+    # collected those literals into a set, so its count never exceeded 1 and it never excused
+    # anything. It was removed rather than repaired: repaired, it would have passed the hidden
+    # producer this shield caught in the ADR-174 handoff work (`test_a_producer_hidden_in_a_
+    # comprehension_is_flagged` pins this).
     reads, writes = collect_state_keys(files)
-    # Keys referenced inside a membership test or tuple of fallbacks are legitimate reads of
-    # legacy data, so only flag a key with no writer anywhere at all.
-    all_literals: Set[str] = set()
-    for path in files:
-        for node in module_nodes(path):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                all_literals.add(node.value)
-    phantom = []
-    for key, module in sorted(reads.items()):
-        if key in writes or key in EXTERNAL_SCHEMA_KEYS:
-            continue
-        # A key appearing only once in the whole codebase (its single read) has no producer.
-        occurrences = sum(1 for lit in all_literals if lit == key)
-        if occurrences <= 1:
-            phantom.append((key, module))
-    return phantom
+    return [(key, module) for key, module in sorted(reads.items())
+            if key not in writes and key not in EXTERNAL_SCHEMA_KEYS]
 
 
 def run_check(verbose: bool = False) -> int:

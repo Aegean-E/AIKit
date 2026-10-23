@@ -5,25 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792778347.7727706
+    "updated_at": 1792778662.5226912
   },
   "checkpoints": [
-    {
-      "task_id": "secret-redaction-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Widen SECRET_PATTERNS with prefixed high-confidence credential shapes and extend the private-key block to ENCRYPTED and SSH2 headers. [2/5] Add scrub_text(text) -> (scrubbed, detectors) using pattern detection only, never the entropy fallback, so prose keeps its hashes and digests. [3/5] disruption_recovery --checkpoint refuses credential-shaped free text and names --redact as the fix; --redact scrubs and writes. [4/5] subagent_delegate always scrubs the sub-agent's returned text and its JSON output. [5/5] README, data_models, ADR, map and sync refresh, then every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792695841.3202243,
-      "timestamp_str": "2026-10-22 22:04:01",
-      "impact_assessment": {
-        "why": "PRINCIPLE-019 R5 makes a leaked credential unrecoverable: it must be rotated, never reverted. The scanner already catches 15 shapes and already reads both ledgers and the dogfood log, but it only reports after the text is on disk, and the ledger's --why/--benefits/--risks/--mitigation fields are written straight into a git-tracked file. Blocking the write is worth more than reporting it afterwards, and the pattern table misses common prefixed formats (GitLab, npm, PyPI, SendGrid, HuggingFace, Telegram, Notion, Azure AccountKey and others).",
-        "benefits": "A credential quoted in an impact note is refused before it reaches a tracked file rather than found after; sub-agent output cannot carry a key into the lead agent's context or any downstream log; the pattern table roughly doubles while keeping the near-zero false-positive property the file's own design depends on.",
-        "risks": "contract: --checkpoint gains a refusal path and a --redact flag, so a script writing credential-shaped free text now exits non-zero; existing checkpoint text is unaffected. dependency: none, re and the scanner are already imported where needed. concurrency: the refusal happens before the file lock is taken, so no partial write is possible. state: no schema change; scrubbing alters only the free-text field values that --redact is explicitly asked to rewrite.",
-        "mitigation": "Add only prefixed shapes with literal anchors, never bare-length or PII patterns, and never apply the entropy fallback to prose, so legitimate commit hashes and digests in a risk note still pass; add a failing-first test per new pattern and per wiring point; make the refusal name --redact in its Fix line; scrub with a placeholder the STRONG_ALLOWLIST already recognizes so a scrubbed ledger stays clean on rescan."
-      }
-    },
     {
       "task_id": "secret-redaction-v1",
       "phase": "verification",
@@ -282,6 +266,23 @@
         "failed": "blaming the dogfood flake on worktrees or a cold bytecode cache - both disproved",
         "open": "whether dogfood should measure --help as best-of-3, since aikit.py has a ~160ms floor under a 200ms single-sample budget",
         "evidence": "real sandbox repro before and after, 485 tests, all six gates (check_test_budgets passed on re-run, tree unchanged)"
+      }
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/3] done: reachability dead fallback removed, strict behaviour pinned.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792778662.5226912,
+      "timestamp_str": "2026-10-23 21:04:22",
+      "handoff": {
+        "state": "milestones 1-2 of 3 committed or committing",
+        "next": "milestone 3, accept 1 <= version <= current on read and write via one shared predicate, data_models, ADR-178",
+        "failed": "nothing new",
+        "open": "dogfood --help flake now measured hitting 2 of 4 full Phase 4 sequences, needs the user's decision on best-of-N measurement",
+        "evidence": "pin passes on the strict shield and fails on the repaired one, reachability track clean in 15/15 dogfood runs"
       }
     }
   ]

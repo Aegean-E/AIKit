@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `310`
-- **Total Class Methods**: `560`
-- **Total Source Lines**: `16394`
+- **Total Class Methods**: `561`
+- **Total Source Lines**: `16411`
 
 ---
 
@@ -112,7 +112,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `346` lines (`14131` bytes)
+**Size**: `342` lines (`14291` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -604,7 +604,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6521` lines (`365777` bytes)
+**Size**: `6542` lines (`366780` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -870,6 +870,7 @@
   - Method `.test_detects_self_recursive_function_with_no_external_callers()`
   - Method `.test_detects_state_key_read_with_no_producer()`
   - Method `.test_key_with_a_producer_is_not_flagged()`
+  - Method `.test_a_producer_hidden_in_a_comprehension_is_flagged()`
 - `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*
   - Method `.setUpClass()`
   - Method `.test_workflow_exists()`
