@@ -351,7 +351,11 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     Track 4: every entrypoint must answer --help safely and inside the PRINCIPLE-010 R5
     startup budget, measured as a real process rather than asserted.
     """
-    budget_ms = 200  # PRINCIPLE-010 R5, measured as a fresh process; medians were 47-71ms (ADR-083)
+    # PRINCIPLE-010 R5, one fresh process per entrypoint. Raised from 200 by user decision (ADR-179):
+    # aikit.py --help has a ~160ms floor on the development machine because it imports nearly every
+    # module to print help, so a single 200ms sample failed on ordinary process-start jitter. The
+    # 47-71ms medians ADR-083 recorded predate aikit.py joining this loop (ADR-119).
+    budget_ms = 250
     failures = []
     slowest = 0.0
     for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI, AIKIT_CLI):

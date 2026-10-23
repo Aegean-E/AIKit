@@ -1636,14 +1636,14 @@ class TestRewrittenPrincipleWording(unittest.TestCase):
         "PRINCIPLE-010": {
             "rules": 7,
             "present": [
-                "timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms",
+                "timeout= on subprocess, with on open(); one fsync per file; `--help` <250ms",
                 "A membership test inside a loop MUST use a `set` or `dict`",
                 "Input whose size the program does not control",
                 "only when that step, measured single-threaded, takes 200ms or more",
                 "a pool of at most `os.cpu_count()` workers",
                 "fails on a blocking subprocess call without `timeout=` and on `open()` outside a `with`",
                 "one fsync per file written is PRINCIPLE-013 R1, not a violation",
-                "in under 200ms as a fresh process, interpreter start included",
+                "in under 250ms as a fresh process, interpreter start included",
                 "MUST state its before and after measurement",
                 "`open()` and `Path.open()` run only as a `with` item",
                 "measured on the machine that runs Phase 4, and a breach there is fixed before the commit",

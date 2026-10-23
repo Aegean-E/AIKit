@@ -40,7 +40,7 @@ The AI governance system extracted from production development: principles, powe
 | **Verify the Commit Itself**| `python scripts/verify_commit.py`| Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7)|
 | **Reachability Shield**| `python scripts/check_reachability.py`| No unwired capability or phantom state key (PRINCIPLE-014 R7)|
 | **Operational Dogfood Gate**| `python scripts/dogfood.py`| 5/5 tracks pass; zero host mutation (PRINCIPLE-015)|
-| **Discover Any CLI**| `python scripts/<script>.py --help`| Prints usage and exits `0` in <200ms as a fresh process, writing nothing|
+| **Discover Any CLI**| `python scripts/<script>.py --help`| Prints usage and exits `0` in <250ms as a fresh process, writing nothing|
 | **Sandbox the Ledger CLI**| `python scripts/disruption_recovery.py --workspace <dir> --audit`| Operates on `<dir>/.agents/`, never the repo ledger|
 
 **Universal CLI contract (PRINCIPLE-011, PRINCIPLE-015).** Every CLI: `--help`/`-h` prints usage, writes nothing, exits `0`; exit `0` success, `1` operational failure, `2` misuse (an unknown flag is refused, never the default); failures print What → Why → Fix on stderr, never a traceback. `--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`.
@@ -198,7 +198,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <200ms; unit <=10ms, integ <=350ms/test. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <250ms; unit <=10ms, integ <=350ms/test. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 

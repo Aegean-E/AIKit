@@ -10,7 +10,7 @@
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `311`
 - **Total Class Methods**: `564`
-- **Total Source Lines**: `16464`
+- **Total Source Lines**: `16468`
 
 ---
 
@@ -235,7 +235,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `506` lines (`23059` bytes)
+**Size**: `510` lines (`23363` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*

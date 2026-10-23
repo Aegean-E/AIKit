@@ -1,56 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "three-findings-fix-v1",
+    "task_id": "help-budget-250-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792778895.3736603,
-    "completed_at": 1792778895.563825
+    "updated_at": 1792781038.8032715,
+    "completed_at": 1792781038.9952986
   },
   "checkpoints": [
-    {
-      "task_id": "handoff-packet-v1",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[4/5] resume rendering wired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792697570.8083298,
-      "timestamp_str": "2026-10-22 22:32:50",
-      "handoff": {
-        "state": "milestones 1-4 implemented, 429 unit tests green",
-        "next": "write README, data_models and ADR-174, then run every Phase 4 gate",
-        "failed": "a ledger schema version bump, because validate_ledger_version refuses any version that is not exactly current",
-        "evidence": "unit tier green at 429 tests"
-      }
-    },
-    {
-      "task_id": "handoff-packet-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[5/5] All five milestones done. ADR-174 and data_models record the packet.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792697757.6995187,
-      "timestamp_str": "2026-10-22 22:35:57",
-      "handoff": {
-        "state": "all 5 milestones complete, Phase 4 green on this tree",
-        "next": "commit, then report the two gate defects found to the user",
-        "failed": "a ledger schema version bump, because validate_ledger_version refuses any version that is not exactly current, which would have broken AIKit's ledger and all 20 projects'",
-        "open": "whether to fix validate_ledger_version's older-version refusal and check_reachability's dead all_literals fallback, both reported and left out of this task under PRINCIPLE-007 R4",
-        "evidence": "478 tests, six gates, CLI contract, README 22,304 of 22,500"
-      }
-    },
-    {
-      "task_id": "handoff-packet-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'handoff-packet-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792697761.5259326,
-      "timestamp_str": "2026-10-22 22:36:01"
-    },
     {
       "task_id": "tier1-header-slack-v1",
       "phase": "planning",
@@ -284,6 +242,47 @@
       "status": "completed",
       "timestamp": 1792778895.563826,
       "timestamp_str": "2026-10-23 21:08:15"
+    },
+    {
+      "task_id": "help-budget-250-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] Raise the --help cold-start budget from 200ms to 250ms by user decision: dogfood.py budget_ms and its stale ADR-083 comment, PRINCIPLE-010's capsule and R5 text, the README matrix row, the P-010 rule-text pin test; leave R2's unrelated 200ms concurrency threshold untouched; regenerate all 8 targets; ADR-179 with P-010's cross-principle check; measure the residual flake rate at 250ms; run every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792780441.684334,
+      "timestamp_str": "2026-10-23 21:34:01",
+      "impact_assessment": {
+        "why": "The user decided to raise the limit. dogfood times aikit.py --help once against 200ms, and on this machine aikit.py has a ~160ms floor because it imports nearly every module to print help, so ordinary Windows process-start jitter exceeded 200ms in about 16 percent of samples and failed 2 of 4 full Phase 4 sequences plus one isolated verify_commit run.",
+        "benefits": "Phase 4 and verify_commit stop failing on startup-time jitter that no code change caused, so a red gate again means a real defect rather than an unlucky sample.",
+        "risks": "contract: PRINCIPLE-010's stated --help budget and every document that repeats it change from 200ms to 250ms; R2's separate 200ms threading threshold must not change. dependency: none. concurrency: none. state: no persisted data; the capsule changes length by zero characters, so the Tier 1 budget is unaffected.",
+        "mitigation": "Change only the --help occurrences, verified by grep; keep TestRuleNumberParity tying dogfood's constant to the rule text; name the edited pin test in ADR-179 so the change is visible; record in ADR-179 that the user chose this over best-of-N measurement and lazy imports, and that the underlying ~160ms floor is unchanged; measure and state the residual failure rate at 250ms."
+      }
+    },
+    {
+      "task_id": "help-budget-250-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] done: --help budget 250ms, ADR-179.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792781038.8032715,
+      "timestamp_str": "2026-10-23 21:43:58",
+      "handoff": {
+        "state": "milestone done and verified",
+        "next": "commit, verify alone, report to the user",
+        "failed": "the first load test ran before ADR-179 existed, so sync --check correctly failed every sequence and those six runs were discarded",
+        "evidence": "6 of 6 full Phase 4 sequences green under load with slowest --help 160-183ms, idle 0 of 80 over 250ms"
+      }
+    },
+    {
+      "task_id": "help-budget-250-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'help-budget-250-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792781038.995301,
+      "timestamp_str": "2026-10-23 21:43:58"
     }
   ]
 }
