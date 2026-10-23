@@ -99,7 +99,8 @@ portable_agent_kit/
 │   ├── check_project_hygiene.py    <- Project source, asset & artifact hygiene scan
 │   ├── ui_contract.py              <- Bounded UI-surface guard (opt-in .aikit/ui.json)
 │   ├── ui_proof.py                 <- UI proofs: inventory diff + style drift lint (pure)
-│   ├── aikit_cli.py                <- `aikit.py` commands and error triads
+│   ├── aikit_cli.py                <- `aikit.py` commands
+│   ├── aikit_parser.py             <- `aikit.py` grammar, alone for --help
 │   ├── subagent_delegate.py        <- `aikit delegate`: bounded OpenCode sub-agent runs
 │   ├── project_publish.py          <- Uploads a project to its own GitHub repository
 │   ├── check_secrets.py            <- Secret & sensitive data scanner (pre-commit gate)

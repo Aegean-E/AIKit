@@ -5388,6 +5388,35 @@ class TestProjectHygieneScan(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+class TestAikitHelpFastPath(unittest.TestCase):
+    """
+    `python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light
+    and agree with the modules it mirrors instead of importing them (ADR-180).
+    """
+
+    def test_parser_constants_match_the_modules_they_mirror(self):
+        import scripts.aikit_parser as grammar
+        import scripts.disruption_recovery as ledger
+        self.assertEqual(grammar.ROOT_DIR, ledger.ROOT_DIR)
+        self.assertEqual(grammar.TEMP_STALE_SECONDS, ledger.TEMP_STALE_SECONDS)
+
+    def test_parser_module_imports_only_the_standard_library_at_top_level(self):
+        # One AIKit import here would make every `--help` load the whole graph again, silently.
+        tree = ast.parse((ROOT_DIR / "scripts" / "aikit_parser.py").read_text(encoding="utf-8"))
+        top = [node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))]
+        names = [alias.name for node in top if isinstance(node, ast.Import) for alias in node.names]
+        names += [node.module for node in top if isinstance(node, ast.ImportFrom)]
+        self.assertTrue(names, "expected the parser module to import argparse at least")
+        self.assertEqual([name for name in names if name.split(".")[0] == "scripts"], [])
+
+    def test_cli_reexports_the_parser_so_existing_callers_keep_working(self):
+        import scripts.aikit_cli as cli
+        import scripts.aikit_parser as grammar
+        self.assertIs(cli.build_parser, grammar.build_parser)
+        self.assertIs(cli.report_error, grammar.report_error)
+        self.assertIs(cli.TriadArgumentParser, grammar.TriadArgumentParser)
+
+
 class FakeGit:
     """A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned."""
 

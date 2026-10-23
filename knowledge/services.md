@@ -1,7 +1,7 @@
 # Core Services & API Abstractions
 
 ## 🛠️ Service Registry
-AIKit's services are its gate and utility CLIs in `scripts/` plus the project CLI `aikit.py`. The gate CLIs import nothing from each other; `aikit_cli.py` imports `project_registry.py`, and the opt-in `ui_contract.py` imports `project_gates.py` and `project_registry.py`. Those layers run in one direction with no cycle (PRINCIPLE-009 R5). The command table in `README.md` lists their flags and exit codes, and `codebase_map.md` lists their functions.
+AIKit's services are its gate and utility CLIs in `scripts/` plus the project CLI `aikit.py`. The gate CLIs import nothing from each other; `aikit_cli.py` imports `project_registry.py` and `aikit_parser.py`, whose grammar `aikit.py --help` loads alone because it imports no AIKit module at top level (ADR-180), and the opt-in `ui_contract.py` imports `project_gates.py` and `project_registry.py`. Those layers run in one direction with no cycle (PRINCIPLE-009 R5). The command table in `README.md` lists their flags and exit codes, and `codebase_map.md` lists their functions.
 
 | Service | Responsibility | Gate it provides |
 |---|---|---|

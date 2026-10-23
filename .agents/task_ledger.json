@@ -3,37 +3,12 @@
   "active_task": {
     "task_id": "review-fixes-2-v1",
     "last_phase": "verification",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792782036.5395947
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792782531.8463964,
+    "completed_at": 1792782532.0758154
   },
   "checkpoints": [
-    {
-      "task_id": "review-findings-remediation-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] Scrub sub-agent stdout/stderr at the delegate output boundary so JSON and failure reports cannot leak credentials; tests for JSON success/failure, text failure and stderr-only. [2/4] Include ledger_error in project_is_clean and honor --exit-code in status --json; tests for the flag matrix and a corrupt ledger. [3/4] Check only a font declaration's value for a theme token in style_findings; tests for a literal font with a token color in both orders. [4/4] Remove the dead create_project warning channel, update every call site and knowledge/architecture.md, record ADR-177, refresh the map and run every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792755952.961944,
-      "timestamp_str": "2026-10-23 14:45:52",
-      "impact_assessment": {
-        "why": "Five review findings are confirmed: the delegate leaks credentials in its JSON and failure paths, status --json ignores --exit-code, clean ignores ledger_error, the style lint skips a literal font when any var() follows on the line, and the create_project warning channel is dead while the architecture doc still describes it.",
-        "benefits": "Every sub-agent output path is scrubbed, the JSON exit code and clean key agree with the text verdict, mixed-line font literals are caught, and the create_project contract and architecture doc match its raising behavior.",
-        "risks": "contract: status --json --exit-code becomes stricter, clean now includes ledger_error, and create_project returns only the folder; dependency: none; concurrency: none; state: no ledger schema change.",
-        "mitigation": "Add failing-first tests for each behavior, update every create_project call site including the CLI mock, update the architecture doc and data model note, record ADR-177, and rerun every Phase 4 gate."
-      }
-    },
-    {
-      "task_id": "review-findings-remediation-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[4/4] Implementation complete: delegate scrubs stdout/stderr before every report, project_is_clean includes ledger_error and status --json honors --exit-code, style_findings checks only the declaration value, create_project returns only the folder with the warning channel removed, and the architecture/data-model/service docs plus ADR-177 are updated. Both test tiers pass; Phase 4 next.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792769394.0537758,
-      "timestamp_str": "2026-10-23 18:29:54"
-    },
     {
       "task_id": "review-findings-remediation-v1",
       "phase": "in_progress",
@@ -265,6 +240,32 @@
       "status": "in_progress",
       "timestamp": 1792782036.5395947,
       "timestamp_str": "2026-10-23 22:00:36"
+    },
+    {
+      "task_id": "review-fixes-2-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/3] done: --help fast path via scripts/aikit_parser.py, ADR-180.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792782531.8463964,
+      "timestamp_str": "2026-10-23 22:08:51",
+      "handoff": {
+        "state": "all 3 milestones done",
+        "next": "fix the missing Dict import in aikit_cli.py, which breaks every command on Python 3.10-3.13, as its own task with a guard test",
+        "failed": "the projected ~80ms floor, real result 123ms because argparse on 3.14 and parser construction cost ~80ms",
+        "open": "GitHub Actions has not run a step since at least 10-19 because the account is locked for billing, which only the user can resolve",
+        "evidence": "50 of 50 help and usage-error forms byte-identical, Phase 4 green with outputs kept"
+      }
+    },
+    {
+      "task_id": "review-fixes-2-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-fixes-2-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792782532.075817,
+      "timestamp_str": "2026-10-23 22:08:52"
     }
   ]
 }

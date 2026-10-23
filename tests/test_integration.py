@@ -768,6 +768,30 @@ class TestTierBudgetDiscipline(unittest.TestCase):
         )
 
 
+class TestAikitHelpFastPath(unittest.TestCase):
+    """`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180)."""
+
+    def test_help_parses_with_the_grammar_alone(self):
+        # -X importtime lists every module the process imported on stderr; usage goes to stdout.
+        res = subprocess.run([sys.executable, "-X", "importtime", str(ROOT_DIR / "aikit.py"), "--help"],
+                             capture_output=True, text=True, timeout=PROC_TIMEOUT,
+                             stdin=subprocess.DEVNULL)
+        self.assertEqual(res.returncode, 0, res.stderr[-400:])
+        self.assertIn("usage: python aikit.py", res.stdout)
+        imported = {line.rsplit("|", 1)[-1].strip() for line in res.stderr.splitlines()
+                    if line.startswith("import time:")}
+        self.assertIn("scripts.aikit_parser", imported)
+        self.assertNotIn("scripts.aikit_cli", imported,
+                         "--help loaded the command layer, which imports every AIKit module")
+
+    def test_a_real_command_still_loads_the_command_layer(self):
+        res = subprocess.run([sys.executable, "-X", "importtime", str(ROOT_DIR / "aikit.py"), "list"],
+                             capture_output=True, text=True, timeout=PROC_TIMEOUT,
+                             stdin=subprocess.DEVNULL)
+        self.assertEqual(res.returncode, 0, res.stderr[-400:])
+        self.assertIn("scripts.aikit_cli", res.stderr)
+
+
 class TestProjectCreation(unittest.TestCase):
     """`aikit new` makes a separate git repository with its memory (ADR-119)."""
 

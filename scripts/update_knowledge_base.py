@@ -753,7 +753,9 @@ def audit_readme(
             continue
         errors += [f"README.md passes {flag} to {script}, which does not declare it (R3)"
                    for flag in _FLAG.findall(match.group(2)) if f'"{flag}"' not in source]
-    cli_source = script_source("scripts/aikit_cli.py")
+    # The `aikit.py` grammar lives in aikit_parser.py, apart from the commands, so `--help` can
+    # load it alone (ADR-180); the subcommands are read where they are declared.
+    cli_source = script_source("scripts/aikit_parser.py")
     if cli_source:
         known = set(_AIKIT_SUBCOMMAND.findall(cli_source))
         errors += [f"README.md runs 'python aikit.py {cmd}', which the CLI does not declare (R3)"

@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `19`
-- **Total Classes**: `83`
+- **Total Python Modules**: `20`
+- **Total Classes**: `85`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `567`
-- **Total Source Lines**: `16526`
+- **Total Class Methods**: `572`
+- **Total Source Lines**: `16609`
 
 ---
 
@@ -19,25 +19,19 @@
 ### [`aikit.py`](aikit.py)
 > *AIKit entry point: `python aikit.py --help`. The commands live in scripts/aikit_cli.py.*
 
-**Size**: `9` lines (`214` bytes)
+**Size**: `15` lines (`745` bytes)
 
 ---
 
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `732` lines (`36998` bytes)
-
-**Classes:**
-- `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
-  - Method `.error(message)`
+**Size**: `592` lines (`28150` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
 - `def resolve_gates(project)`
 - `def run_gates(path, gates)`
-- `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
-- `def build_parser()`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree and ledger are delivery-ready, decided once for every surface.*
 - `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
@@ -59,6 +53,21 @@
 - `def cmd_delegate(args)`
 - `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
+
+---
+
+### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
+> *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
+
+**Size**: `162` lines (`9925` bytes)
+
+**Classes:**
+- `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
+  - Method `.error(message)`
+
+**Functions:**
+- `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
+- `def build_parser()`
 
 ---
 
@@ -453,7 +462,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1008` lines (`46932` bytes)
+**Size**: `1010` lines (`47112` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -504,7 +513,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1090` lines (`53989` bytes)
+**Size**: `1114` lines (`55429` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -571,6 +580,9 @@
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
+- `class TestAikitHelpFastPath` - *`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180).*
+  - Method `.test_help_parses_with_the_grammar_alone()`
+  - Method `.test_a_real_command_still_loads_the_command_layer()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
 - `class TestProjectSelfCheck` - *`aikit fix` repairs what it can, `aikit check` applies AIKit's guidelines (ADR-124, ADR-128).*
@@ -605,7 +617,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6615` lines (`371420` bytes)
+**Size**: `6644` lines (`373064` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1036,6 +1048,10 @@
   - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
   - Method `.test_artifact_classifier_flags_an_untracked_project_readme()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
+- `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*
+  - Method `.test_parser_constants_match_the_modules_they_mirror()`
+  - Method `.test_parser_module_imports_only_the_standard_library_at_top_level()`
+  - Method `.test_cli_reexports_the_parser_so_existing_callers_keep_working()`
 - `class FakeGit` - *A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned.*
   - Method `.__init__(status, head, tracked, diff)`
   - Method `.__call__(root, args)`
