@@ -361,9 +361,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         if ui_unready:
             detail += ", UI contract not delivery-ready"
         print(f"[DELIVERY] NOT READY: {detail}; run `check --strict` before pushing.")
-    if not getattr(args, "no_push", False):
+    # Pushing is opt-in. check is the documented Phase 4, and it used to publish unpushed commits
+    # whenever its gates passed, so an agent whose host allows a push only on request pushed
+    # without one (PRINCIPLE-018 R4, ADR-185).
+    if getattr(args, "push", False):
         if dirty:
-            print("[WARN] Uncommitted changes or unresolved conflicts exist; skipping auto-push. "
+            print("[WARN] Uncommitted changes or unresolved conflicts exist; skipping the push. "
                   "Commit or resolve them and run `check --strict` before pushing.", file=sys.stderr)
         else:
             push_code, push_report = auto_push_project(project.path, project.name)

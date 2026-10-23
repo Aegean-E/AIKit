@@ -106,7 +106,13 @@ def build_parser() -> argparse.ArgumentParser:
     guideline.add_argument("--source", required=True, help="where it comes from: user, ADR-NNN or a person")
 
     check = project_command("check", "run every gate of a project (its Phase 4)")
-    check.add_argument("--no-push", action="store_true", help="skip pushing commits to remote origin after gates pass")
+    # A verification never publishes on its own: push only on request, when push delivery is
+    # authorized (PRINCIPLE-018 R4, ADR-185). --no-push is now the default, kept for old scripts.
+    delivery = check.add_mutually_exclusive_group()
+    delivery.add_argument("--push", action="store_true",
+                          help="after every gate passes, push unpushed commits to origin (never forced)")
+    delivery.add_argument("--no-push", action="store_true",
+                          help="the default; kept so existing scripts still run")
     check.add_argument("--strict", action="store_true",
                        help="require a clean non-bookkeeping tree and a codebase map before passing")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")

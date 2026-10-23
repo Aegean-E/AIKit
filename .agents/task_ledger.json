@@ -3,36 +3,12 @@
   "active_task": {
     "task_id": "review-fixes-3-v1",
     "last_phase": "verification",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792783740.1335657
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792783912.362171,
+    "completed_at": 1792783912.555996
   },
   "checkpoints": [
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'three-findings-fix-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792778895.563826,
-      "timestamp_str": "2026-10-23 21:08:15"
-    },
-    {
-      "task_id": "help-budget-250-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] Raise the --help cold-start budget from 200ms to 250ms by user decision: dogfood.py budget_ms and its stale ADR-083 comment, PRINCIPLE-010's capsule and R5 text, the README matrix row, the P-010 rule-text pin test; leave R2's unrelated 200ms concurrency threshold untouched; regenerate all 8 targets; ADR-179 with P-010's cross-principle check; measure the residual flake rate at 250ms; run every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792780441.684334,
-      "timestamp_str": "2026-10-23 21:34:01",
-      "impact_assessment": {
-        "why": "The user decided to raise the limit. dogfood times aikit.py --help once against 200ms, and on this machine aikit.py has a ~160ms floor because it imports nearly every module to print help, so ordinary Windows process-start jitter exceeded 200ms in about 16 percent of samples and failed 2 of 4 full Phase 4 sequences plus one isolated verify_commit run.",
-        "benefits": "Phase 4 and verify_commit stop failing on startup-time jitter that no code change caused, so a red gate again means a real defect rather than an unlucky sample.",
-        "risks": "contract: PRINCIPLE-010's stated --help budget and every document that repeats it change from 200ms to 250ms; R2's separate 200ms threading threshold must not change. dependency: none. concurrency: none. state: no persisted data; the capsule changes length by zero characters, so the Tier 1 budget is unaffected.",
-        "mitigation": "Change only the --help occurrences, verified by grep; keep TestRuleNumberParity tying dogfood's constant to the rule text; name the edited pin test in ADR-179 so the change is visible; record in ADR-179 that the user chose this over best-of-N measurement and lazy imports, and that the underlying ~160ms floor is unchanged; measure and state the residual failure rate at 250ms."
-      }
-    },
     {
       "task_id": "help-budget-250-v1",
       "phase": "verification",
@@ -245,6 +221,25 @@
       "status": "in_progress",
       "timestamp": 1792783740.1335657,
       "timestamp_str": "2026-10-23 22:29:00"
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[4/4] done: check pushes only on --push, ADR-185.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792783912.362171,
+      "timestamp_str": "2026-10-23 22:31:52"
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-fixes-3-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792783912.5559974,
+      "timestamp_str": "2026-10-23 22:31:52"
     }
   ]
 }

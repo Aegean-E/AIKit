@@ -30,7 +30,7 @@ python aikit.py list                 # which projects exist
 python aikit.py new <name>           # projects/<name>/, seeds multi-IDE instruction guidelines
 python aikit.py attach <path>        # an existing folder
 python aikit.py status <name>        # its task, changes, latest decision and its gates
-python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit
+python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit; never pushes, add --push only when push delivery is authorized (PRINCIPLE-018 R4)
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
 python aikit.py publish <name> [--public]   # its own GitHub repo; only when the user asks
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map

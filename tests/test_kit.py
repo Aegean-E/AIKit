@@ -4811,7 +4811,7 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(payload["disruption"]["interrupted_task"]["task_id"], "t1")
         self.assertEqual(err, "")
 
-    def test_check_triggers_auto_push_unless_opted_out(self):
+    def test_check_pushes_only_when_asked(self):
         folder = self.make_folder()
         attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
         gate_res = mock.MagicMock()
@@ -4823,17 +4823,30 @@ class TestProjectRegistry(unittest.TestCase):
         with mock.patch("scripts.aikit_cli.run_gates", return_value=[gate_res]), \
              mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "[OK] Pushed 'pushapp' commits")) as mock_push:
-            # 1. Without --no-push -> auto-push is called
+            # 1. Plain check is a verification: it never publishes (ADR-185). It used to push,
+            #    so an agent running the documented Phase 4 pushed without authorization.
             code, out, _ = self.run_cli("check", "pushapp")
+            self.assertEqual(code, 0)
+            mock_push.assert_not_called()
+
+            # 2. --push asks for it, for an agent whose push delivery is authorized.
+            code, out, _ = self.run_cli("check", "pushapp", "--push")
             self.assertEqual(code, 0)
             mock_push.assert_called_once()
             self.assertIn("[OK] Pushed 'pushapp' commits", out)
 
-            # 2. With --no-push -> auto-push is skipped
+            # 3. --no-push is still accepted, so existing scripts keep running.
             mock_push.reset_mock()
             code, out, _ = self.run_cli("check", "pushapp", "--no-push")
             self.assertEqual(code, 0)
             mock_push.assert_not_called()
+
+        # 4. Asking for both is a usage error, not a silent choice.
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as caught:
+            aikit_main(["--workspace", str(self.kit), "check", "pushapp", "--push", "--no-push"])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn("not allowed with", err.getvalue())
 
     def _gate_result(self):
         gate_res = mock.MagicMock()
@@ -4853,10 +4866,10 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty_audit), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
-            code, out, err = self.run_cli("check", "dirtyapp")
+            code, out, err = self.run_cli("check", "dirtyapp", "--push")
             self.assertEqual(code, 0)
             self.assertIn("[DELIVERY] NOT READY", out)
-            self.assertIn("skipping auto-push", err)
+            self.assertIn("skipping the push", err)
             push.assert_not_called()
 
             code, out, err = self.run_cli("check", "dirtyapp", "--strict", "--no-push")
@@ -4873,11 +4886,11 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=conflicted), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
-            code, out, err = self.run_cli("check", "conflictedapp")
+            code, out, err = self.run_cli("check", "conflictedapp", "--push")
             self.assertEqual(code, 0)
             self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("1 conflicted", out)
-            self.assertIn("skipping auto-push", err)
+            self.assertIn("skipping the push", err)
             push.assert_not_called()
 
             code, out, err = self.run_cli("check", "conflictedapp", "--strict", "--no-push")
@@ -4895,11 +4908,11 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]), \
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
-            code, out, err = self.run_cli("check", "uiopenapp")
+            code, out, err = self.run_cli("check", "uiopenapp", "--push")
             self.assertEqual(code, 0)
             self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("1 open UI task", out)
-            self.assertIn("skipping auto-push", err)
+            self.assertIn("skipping the push", err)
             push.assert_not_called()
 
             code, out, err = self.run_cli("check", "uiopenapp", "--strict", "--no-push")
