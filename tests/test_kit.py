@@ -5388,6 +5388,23 @@ class TestProjectHygieneScan(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+class TestGateCommandsHaveOneLine(unittest.TestCase):
+    """
+    Windows `cmd /c` runs only the first line of a command, so `exit 0\\nexit 7` reported success
+    there while /bin/sh returned 7. A command with a line break inside is refused on every
+    platform, before any process starts (ADR-183).
+    """
+
+    def test_a_line_break_inside_a_command_is_refused_without_running_it(self):
+        from scripts.project_gates import run_shell
+        for command in ("exit 0\nexit 7", "pytest\r\nflake8", "echo a\recho b"):
+            with self.subTest(command=command):
+                code, output = run_shell(command, ROOT_DIR, 5)
+                self.assertEqual(code, -1, "a refused command is a failed gate, never a pass")
+                self.assertIn("line break", output)
+                self.assertIn("&&", output, "the refusal says how to join the steps")
+
+
 class TestAnnotationsResolveOnEverySupportedPython(unittest.TestCase):
     """
     Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,

@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `87`
+- **Total Classes**: `89`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `577`
-- **Total Source Lines**: `16700`
+- **Total Class Methods**: `579`
+- **Total Source Lines**: `16734`
 
 ---
 
@@ -264,7 +264,7 @@
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
-**Size**: `192` lines (`8038` bytes)
+**Size**: `200` lines (`8742` bytes)
 
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
@@ -513,7 +513,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1159` lines (`57802` bytes)
+**Size**: `1168` lines (`58161` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -580,6 +580,8 @@
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
+- `class TestGateCommandLineBreaks` - *A trailing newline is not a second step, so it still runs (ADR-183).*
+  - Method `.test_a_trailing_newline_still_runs_the_command()`
 - `class TestSecretScanSeesNonAsciiPaths` - *git quotes a non-ASCII path ("\305\237ifre.txt") unless told otherwise, so `--all` read a*
   - Method `.make_repo()`
   - Method `.scan(repo, mode)`
@@ -622,7 +624,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6676` lines (`374732` bytes)
+**Size**: `6693` lines (`375602` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1053,6 +1055,8 @@
   - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
   - Method `.test_artifact_classifier_flags_an_untracked_project_readme()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
+- `class TestGateCommandsHaveOneLine` - *Windows `cmd /c` runs only the first line of a command, so `exit 0\nexit 7` reported success*
+  - Method `.test_a_line_break_inside_a_command_is_refused_without_running_it()`
 - `class TestAnnotationsResolveOnEverySupportedPython` - *Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,*
   - Method `.test_every_annotation_in_scripts_names_something_defined()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*

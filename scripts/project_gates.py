@@ -159,6 +159,14 @@ def run_shell(command: str, cwd: Path, timeout: float) -> Tuple[int, str]:
     tree is killed (PRINCIPLE-015 R2). Returns (exit code, combined output); -1 when it could
     not start or timed out.
     """
+    # `cmd /c` runs only the first line of a command and reports that line's exit code, so
+    # "exit 0\nexit 7" passed on Windows while /bin/sh returned 7: a gate that skipped its own
+    # steps. Refused on every platform, before anything starts, so a project behaves the same on
+    # all of them; a trailing newline is not a second step and still runs (ADR-183).
+    if "\n" in command.strip() or "\r" in command.strip():
+        return -1, ("refused: the command contains a line break, and Windows cmd runs only its "
+                    "first line while reporting success for the rest. Join the steps with && (or "
+                    "put them in a script) so every platform runs all of them.")
     # Windows gets one command line: `list2cmdline` would backslash-escape the command's own
     # quotes, which cmd does not understand; `/s` makes cmd strip only the outer pair.
     shell: Union[str, List[str]] = (f'cmd /d /s /c "{command}"' if sys.platform == "win32"

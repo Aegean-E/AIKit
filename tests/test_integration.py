@@ -768,6 +768,15 @@ class TestTierBudgetDiscipline(unittest.TestCase):
         )
 
 
+class TestGateCommandLineBreaks(unittest.TestCase):
+    """A trailing newline is not a second step, so it still runs (ADR-183)."""
+
+    def test_a_trailing_newline_still_runs_the_command(self):
+        from scripts.project_gates import run_shell
+        code, output = run_shell("exit 3\n", ROOT_DIR, PROC_TIMEOUT)
+        self.assertEqual(code, 3, output)
+
+
 class TestSecretScanSeesNonAsciiPaths(unittest.TestCase):
     """
     git quotes a non-ASCII path ("\\305\\237ifre.txt") unless told otherwise, so `--all` read a

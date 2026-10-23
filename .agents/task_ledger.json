@@ -5,18 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792783510.8400617
+    "updated_at": 1792783625.4729838
   },
   "checkpoints": [
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'three-findings-fix-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792778869.4480355,
-      "timestamp_str": "2026-10-23 21:07:49"
-    },
     {
       "task_id": "three-findings-fix-v1",
       "phase": "verification",
@@ -250,6 +241,16 @@
       "status": "in_progress",
       "timestamp": 1792783510.8400617,
       "timestamp_str": "2026-10-23 22:25:10"
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/4] done: run_shell refuses multi-line commands, ADR-183.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792783625.4729838,
+      "timestamp_str": "2026-10-23 22:27:05"
     }
   ]
 }

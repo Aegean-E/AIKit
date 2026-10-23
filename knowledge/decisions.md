@@ -2164,3 +2164,18 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Trade-offs*: Finding labels for non-ASCII paths change from `<staged>` to the real name, which is the point but is a visible output change. A path containing a newline or a tab is still quoted by git even with `quotePath=false`; `-z` handles it for `--all`, but a diff header for such a path would still fall back to the default label.
   - *Not changed*: `dogfood.py`'s comment remains broader than the code; four other CLIs still print in the console code page. They print AIKit's own text, not user paths, so they were left alone.
 - Cross-principle check: no principle section changed. The change restores PRINCIPLE-019 R5's sweep over every tracked file, keeps the scanner's rule that a skipped surface never reports clean (PRINCIPLE-000 R5), serves PRINCIPLE-003 R4 and PRINCIPLE-011 R4 (behaviour independent of the platform's code page and the user's file names), and carries failing-first tests (PRINCIPLE-014 R1).
+
+
+### ADR-183: A Gate Command With a Line Break Is Refused
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: `run_shell` in `scripts/project_gates.py` runs every project-declared command: a project's test command and gate overrides from `.aikit/project.json`, and since the UI guard (ADR-160) the fast and snapshot proofs from `.aikit/ui.json`. On Windows it runs `cmd /d /s /c "<command>"`, and `cmd` executes only the first line of a command containing a line break, returning that line's exit code. Reproduced on Windows: `"exit 0\nexit 7"` returned 0 and `"echo FIRST\necho SECOND"` printed only `FIRST`, while `/bin/sh -c` on POSIX runs both lines and returns 7. A multi-line gate command therefore passed on Windows while skipping its later steps, a gate reporting success for checks it never ran. Neither config loader rejected a line break; both only checked for a string. The behaviour dates from `run_shell`'s first commit (8519ef4, 2026-10-17). None of the 32 project configs in this workspace contains one.
+- **Decision**:
+  1. `run_shell` refuses a command whose stripped text contains `\n` or `\r`, on every platform and before any process starts, returning `-1` and a message that says to join the steps with `&&` or move them into a script. A refused command is a failed gate, never a pass.
+  2. A trailing newline is not a second step: the check strips the command first, so `"pytest\n"` still runs.
+  3. Refusing on POSIX too, where multi-line commands work, is deliberate: a project that passes its gates on Linux must not silently run fewer steps on a Windows machine.
+- **Consequences**:
+  - *Positive*: No project-declared command can report success after running only part of itself, on any platform. One check at the one function every caller uses covers project gates, UI proofs and any future caller.
+  - *Trade-offs*: A multi-line command that worked on POSIX now fails everywhere until it is joined or scripted. Translating line breaks to `&&` was rejected because it changes meaning: `sh` runs every line regardless of earlier failures, while `&&` stops at the first.
+  - *Limitation*: The refusal happens when the command runs, not when the config is loaded, so `aikit check` reports it as a failed gate with exit 1 rather than as a configuration error with exit 2.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-003 R4 and PRINCIPLE-011 R4 (one behaviour on every platform), PRINCIPLE-000 R5 (no gate passes without running its checks) and PRINCIPLE-014 R1 (a failing-first unit test that also proves no process starts, and an integration test that a trailing newline still runs).
