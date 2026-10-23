@@ -3245,6 +3245,19 @@ def read(d):
         phantom = [key for key, _ in find_phantom_keys(files)]
         self.assertNotIn("active_phase", phantom, "shield flagged a key that round-trips")
 
+    def test_a_key_produced_only_by_setdefault_is_not_flagged(self):
+        # `setdefault("k", v)` creates "k" when it is missing, so it is a producer as well as a
+        # read; counting it only as a read flagged a key whose sole writer is setdefault.
+        files = self._write("mod_e.py", '''"""Setdefault producer."""
+def record(ledger, entry):
+    ledger.setdefault("history", []).append(entry)
+
+def report(ledger):
+    return ledger.get("history", [])
+''')
+        phantom = [key for key, _ in find_phantom_keys(files)]
+        self.assertNotIn("history", phantom, "setdefault produced this key")
+
     def test_a_producer_hidden_in_a_comprehension_is_flagged(self):
         # Pins the strict behaviour. A deleted fallback's comment promised to excuse any key that
         # appears more than once as a string literal; that would pass this module, whose only

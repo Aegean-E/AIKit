@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `565`
-- **Total Source Lines**: `16486`
+- **Total Class Methods**: `566`
+- **Total Source Lines**: `16504`
 
 ---
 
@@ -112,7 +112,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `342` lines (`14287` bytes)
+**Size**: `347` lines (`14540` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -121,7 +121,7 @@
 - `def collect_definitions(files)` - *Map every top-level function name to the module that defines it.*
 - `def collect_references(files)` - *Every name referenced in production code, however it is reached.*
 - `def find_unreachable(files)` - *Functions defined in production code with no production reference outside themselves and no allowlist entry.*
-- `def collect_state_keys(files)` - *Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals or*
+- `def collect_state_keys(files)` - *Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals,*
 - `def find_phantom_keys(files)` - *State keys read by production code that no production code ever writes.*
 - `def run_check(verbose)` - *Audit reachability and key round-trips, reporting tersely (PRINCIPLE-012 Rule 4).*
 
@@ -605,7 +605,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6588` lines (`369909` bytes)
+**Size**: `6601` lines (`370516` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -871,6 +871,7 @@
   - Method `.test_detects_self_recursive_function_with_no_external_callers()`
   - Method `.test_detects_state_key_read_with_no_producer()`
   - Method `.test_key_with_a_producer_is_not_flagged()`
+  - Method `.test_a_key_produced_only_by_setdefault_is_not_flagged()`
   - Method `.test_a_producer_hidden_in_a_comprehension_is_flagged()`
 - `class TestContinuousVerificationGate` - *The CI workflow must enforce the same gates the principles declare, using the same*
   - Method `.setUpClass()`

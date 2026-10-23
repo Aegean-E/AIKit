@@ -219,8 +219,10 @@ def find_unreachable(files: List[Path]) -> List[Tuple[str, str]]:
 
 def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:
     """
-    Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals or
-    subscript assignments. Used to catch readers keyed to fields nothing produces.
+    Literal string keys read via `.get("k")` or `["k"]`, and keys written as dict literals,
+    subscript assignments or `.setdefault("k", v)`, which creates the key when it is missing and
+    is therefore a read and a producer at once. Used to catch readers keyed to fields nothing
+    produces.
     """
     reads: Dict[str, str] = {}
     writes: Set[str] = set()
@@ -244,13 +246,16 @@ def collect_state_keys(files: List[Path]) -> Tuple[Dict[str, str], Set[str]]:
                   and isinstance(node.args[0], ast.Constant)
                   and isinstance(node.args[0].value, str)):
                 reads.setdefault(node.args[0].value, path.name)
+                if node.func.attr == "setdefault":
+                    writes.add(node.args[0].value)
     return reads, writes
 
 
 def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
     """State keys read by production code that no production code ever writes."""
-    # Strict by design: a read key needs a producer the AST can see - a dict-literal key or a
-    # subscript assignment - or an entry in EXTERNAL_SCHEMA_KEYS for data another program writes.
+    # Strict by design: a read key needs a producer the AST can see - a dict-literal key, a
+    # subscript assignment or `.setdefault("k", ...)` - or an entry in EXTERNAL_SCHEMA_KEYS for
+    # data another program writes.
     # A key written only through a comprehension or a loop over a tuple of names is flagged even
     # if its name appears as a literal elsewhere; write such keys literally instead.
     #
