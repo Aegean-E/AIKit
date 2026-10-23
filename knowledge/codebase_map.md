@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `564`
-- **Total Source Lines**: `16468`
+- **Total Class Methods**: `565`
+- **Total Source Lines**: `16486`
 
 ---
 
@@ -175,7 +175,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1678` lines (`77652` bytes)
+**Size**: `1681` lines (`77883` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -605,7 +605,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6573` lines (`368920` bytes)
+**Size**: `6588` lines (`369909` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -901,6 +901,7 @@
   - Method `.test_a_later_build_reads_and_upgrades_an_older_valid_ledger()`
   - Method `.test_a_later_build_writes_an_older_valid_ledger_as_current()`
   - Method `.test_a_later_build_still_refuses_invalid_and_newer_versions()`
+  - Method `.test_refusal_names_the_versions_this_build_reads()`
   - Method `.test_resume_report_blocks_a_newer_ledger()`
   - Method `.test_save_refuses_a_newer_ledger_on_disk()`
   - Method `.test_save_refuses_a_newer_backup()`

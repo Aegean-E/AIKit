@@ -3582,6 +3582,21 @@ class TestDisruptionRecovery(unittest.TestCase):
                     with self.assertRaises(UnsupportedLedgerVersion):
                         save_ledger(dict(payload), self.ledger_file.with_name("w.json"))
 
+    def test_refusal_names_the_versions_this_build_reads(self):
+        # ADR-178 made a build read every version from 1 to its own, so a message naming only the
+        # current version would tell a user their valid older ledger cannot be used.
+        today = str(UnsupportedLedgerVersion(self.ledger_file, 7, 1))
+        self.assertIn("this AIKit reads version 1\n", today, "text is unchanged while only 1 exists")
+        self.assertIn("schema version 1;", today)
+        with mock.patch("scripts.disruption_recovery.LEDGER_SCHEMA_VERSION", 2):
+            payload = {"version": 3, "active_task": None, "checkpoints": []}
+            self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaises(UnsupportedLedgerVersion) as caught:
+                load_ledger(self.ledger_file)
+        message = str(caught.exception)
+        self.assertIn("this AIKit reads versions 1 to 2", message)
+        self.assertIn("schema versions 1 to 2", message)
+
     def test_resume_report_blocks_a_newer_ledger(self):
         workspace = self.test_dir / "workspace"
         (workspace / ".agents").mkdir(parents=True)

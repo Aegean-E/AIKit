@@ -3,36 +3,12 @@
   "active_task": {
     "task_id": "review-followups-v1",
     "last_phase": "verification",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792781322.4862015
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792781405.3538678,
+    "completed_at": 1792781405.569543
   },
   "checkpoints": [
-    {
-      "task_id": "tier1-header-slack-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'tier1-header-slack-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792698126.3169181,
-      "timestamp_str": "2026-10-22 22:42:06"
-    },
-    {
-      "task_id": "budget-1750-pointer-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] Raise TARGET_TOKEN_BUDGET 1600 -> 1750 and update every stated number: GUIDELINES P-001 R6 (two limits and the 90% advisory warning 1,440 -> 1,575), README twice, SKILL.md once; the existing TestRuleNumberParity case is the failing-first test. [2/3] Add the runbook pointer line to the Tier 1 header so every host's instruction surface names .agents/skills/aikit/SKILL.md, with a test asserting all 8 targets carry it. [3/3] Regenerate all 8 targets, record ADR-176 with the PRINCIPLE-001 cross-principle check, refresh map and README, run every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792698355.9957318,
-      "timestamp_str": "2026-10-22 22:45:55",
-      "impact_assessment": {
-        "why": "The user decided to raise the per-target Tier 1 budget to 1,750 tokens. The purpose is to afford the runbook pointer: the operational runbook in .agents/skills/aikit/SKILL.md is auto-discovered by only 2 of the 8 supported hosts and no Tier 1 file references it, so every rule placed there is invisible to the other 6, and ADR-175 measured that the pointer did not fit in the 3 characters the old budget left.",
-        "benefits": "The runbook becomes reachable from all 8 host instruction surfaces, which makes SKILL.md a usable home for rules the capsule budget cannot afford; the measured margin goes from 35 characters to roughly 600, so the next rule change is a decision rather than a squeeze.",
-        "risks": "contract: the numeric limit in PRINCIPLE-001 R6 changes, which TestRuleNumberParity pins against the code constant, and all 8 generated host surfaces grow by one line and about 150 tokens of allowance. dependency: none. concurrency: none. state: no schema or persisted data changes; the Tier 1B 1,200-character adopter allowance is untouched, so no adopter loses room.",
-        "mitigation": "Update the code constant and every document that states the number in the same commit so the parity test stays green; recompute and state the 90% advisory warning rather than leaving a stale 1,440; add a test asserting every Tier 1 target names the skill path so the pointer cannot silently vanish; name PRINCIPLE-001's full citing set in ADR-176; verify the measured margin after the change rather than asserting it."
-      }
-    },
     {
       "task_id": "budget-1750-pointer-v1",
       "phase": "in_progress",
@@ -276,6 +252,25 @@
       "status": "in_progress",
       "timestamp": 1792781322.4862015,
       "timestamp_str": "2026-10-23 21:48:42"
+    },
+    {
+      "task_id": "review-followups-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/2] done: refusal message states the readable range.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792781405.3538678,
+      "timestamp_str": "2026-10-23 21:50:05"
+    },
+    {
+      "task_id": "review-followups-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-followups-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792781405.5695448,
+      "timestamp_str": "2026-10-23 21:50:05"
     }
   ]
 }
