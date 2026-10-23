@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
-- **Total Top-Level Functions**: `310`
-- **Total Class Methods**: `561`
-- **Total Source Lines**: `16411`
+- **Total Top-Level Functions**: `311`
+- **Total Class Methods**: `564`
+- **Total Source Lines**: `16464`
 
 ---
 
@@ -175,7 +175,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1656` lines (`76268` bytes)
+**Size**: `1678` lines (`77652` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -189,6 +189,7 @@
 - `def locked_ledger(ledger_file, timeout_seconds, poll_interval)` - *Serialize a full read-modify-write cycle on the task ledger (PRINCIPLE-013 Rule 3).*
 - `def fsync_dir(dir_path)` - *Flush a directory entry so a completed `os.replace` survives power loss (PRINCIPLE-013 R1).*
 - `def check_disk_headroom(target_dir, min_mb)` - *Check whether sufficient disk headroom exists before writing (PRINCIPLE-013).*
+- `def ledger_version_supported(version)` - *Whether this build can read a ledger declaring `version`: an int from 1 to the current schema.*
 - `def validate_ledger_version(data, path)` - *Refuse a ledger whose declared schema this build does not read (PRINCIPLE-013 R4).*
 - `def _read_ledger_file(path)` - *Parse one ledger file, validate its version, then normalize it in memory.*
 - `def _quarantine_ledger(path)` - *Move a corrupt ledger aside without overwriting an earlier quarantine in the same second.*
@@ -604,7 +605,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6542` lines (`366780` bytes)
+**Size**: `6573` lines (`368920` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -897,6 +898,9 @@
   - Method `.test_newer_backup_is_not_used_when_primary_is_missing()`
   - Method `.test_legacy_ledger_is_migrated_in_memory_only()`
   - Method `.test_invalid_ledger_versions_are_refused()`
+  - Method `.test_a_later_build_reads_and_upgrades_an_older_valid_ledger()`
+  - Method `.test_a_later_build_writes_an_older_valid_ledger_as_current()`
+  - Method `.test_a_later_build_still_refuses_invalid_and_newer_versions()`
   - Method `.test_resume_report_blocks_a_newer_ledger()`
   - Method `.test_save_refuses_a_newer_ledger_on_disk()`
   - Method `.test_save_refuses_a_newer_backup()`

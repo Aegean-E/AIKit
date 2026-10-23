@@ -3,46 +3,12 @@
   "active_task": {
     "task_id": "three-findings-fix-v1",
     "last_phase": "verification",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792778662.5226912
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792778895.3736603,
+    "completed_at": 1792778895.563825
   },
   "checkpoints": [
-    {
-      "task_id": "secret-redaction-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[5/5] All five milestones done. SECRET_PATTERNS 15 -> 28 shapes, all vendor-prefixed; private-key block covers ENCRYPTED and SSH2. scrub_text runs patterns only, never the entropy fallback, so prose keeps hashes and digests (regression test). checkpoint_command refuses credential-shaped free text with exit 1 before reading or writing the ledger, --redact scrubs instead, on both CLI surfaces through the one ADR-128 path. answer_text scrubs sub-agent output unconditionally. ADR-173 recorded, data_models noted. Phase 4 green: 469 tests, all six gates, CLI contract, slowest --help 145ms of 200ms. README at 22,485 of 22,500 (15 left). checklists: passed, except PRINCIPLE-018 push skipped (not authorized).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792696380.7927241,
-      "timestamp_str": "2026-10-22 22:13:00"
-    },
-    {
-      "task_id": "secret-redaction-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'secret-redaction-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792696384.8693156,
-      "timestamp_str": "2026-10-22 22:13:04"
-    },
-    {
-      "task_id": "handoff-packet-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] parse_handoff(text): pure parser and validator for 'state: ...; next: ...; failed: ...; open: ...; evidence: ...', mirroring the RISK_DIMENSIONS convention; next is required, an unknown key exits 2, total bounded to 2000 chars. [2/5] Store it as an optional handoff object on the checkpoint through record_checkpoint, with no schema version bump, and route its text through the ADR-173 credential gate. [3/5] --handoff on both CLI surfaces through the one checkpoint_command path. [4/5] format_resume_report prints the active task's latest handoff and uses its next value in place of the hardcoded Next Action line, inside PRINCIPLE-004 R5's 100-line budget. [5/5] README, data_models, ADR-174, map and sync refresh, then every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792697344.6502142,
-      "timestamp_str": "2026-10-22 22:29:04",
-      "impact_assessment": {
-        "why": "Resuming this session's own interrupted task required reading a git diff to learn which of six milestones were done, because the ledger records the plan but nothing about progress against it, nothing tried and abandoned, and nothing awaiting the user. format_resume_report's Next Action line is a hardcoded generic string, so the cold-start report tells every task the same thing. A question put to the user this session would have been lost to compaction with nowhere to record it.",
-        "benefits": "A resumed agent reads what was done, what failed, what is still open and what to do next instead of re-deriving it from a diff; the cold-start Next Action becomes task-specific; an unanswered user question survives compaction. One flag, one parser, consistent with the --risks format the kit already validates.",
-        "risks": "contract: --checkpoint and aikit checkpoint gain an optional --handoff flag and checkpoints gain an optional handoff key; no existing field changes and no reader is required to understand it. dependency: none. concurrency: none, the write stays inside the existing lock. state: deliberately NO ledger schema version bump; validate_ledger_version refuses any version that is not exactly LEDGER_SCHEMA_VERSION, including older ones, so bumping to 2 would make AIKit's own ledger and all 20 projects' ledgers unreadable. The change is purely additive, so an older build ignores the new key harmlessly.",
-        "mitigation": "Keep the field optional and absent-by-default so every existing ledger stays valid and every reader uses .get(); bound the parsed text and refuse unknown keys so the packet cannot grow into a second description field; scrub it with the ADR-173 gate so it cannot become a new credential surface; add failing-first tests for the parser, the round-trip through a v1 ledger, and the resume rendering; report the validate_ledger_version asymmetry to the user rather than fixing it inside this task (PRINCIPLE-007 R4)."
-      }
-    },
     {
       "task_id": "handoff-packet-v1",
       "phase": "implementation",
@@ -284,6 +250,40 @@
         "open": "dogfood --help flake now measured hitting 2 of 4 full Phase 4 sequences, needs the user's decision on best-of-N measurement",
         "evidence": "pin passes on the strict shield and fails on the repaired one, reachability track clean in 15/15 dogfood runs"
       }
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'three-findings-fix-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792778869.4480355,
+      "timestamp_str": "2026-10-23 21:07:49"
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/3] done: ledger version predicate shared by read and write; ADR-178.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792778895.3736603,
+      "timestamp_str": "2026-10-23 21:08:15",
+      "handoff": {
+        "state": "all 3 milestones done and verified",
+        "next": "report to the user and raise the dogfood --help flake decision",
+        "open": "whether dogfood should measure --help as best-of-N, given aikit.py has a ~160ms floor under a 200ms single-sample budget and the flake hit 2 of 4 full Phase 4 sequences",
+        "evidence": "489 tests and all six gates clean on the first run, 27/27 real ledgers still load as version 1 byte-identical"
+      }
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'three-findings-fix-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792778895.563826,
+      "timestamp_str": "2026-10-23 21:08:15"
     }
   ]
 }

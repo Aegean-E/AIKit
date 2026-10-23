@@ -8,7 +8,7 @@ Written only by `scripts/disruption_recovery.py` (locked, atomic; PRINCIPLE-013)
 
 | Key | Type | Meaning |
 |---|---|---|
-| `version` | int | Schema version, `1`; `migrate_ledger_schema` fills missing keys. A newer version is refused in place; a missing version is treated as legacy `1` in memory only. |
+| `version` | int | Schema version, `1`; `migrate_ledger_schema` fills missing keys. `ledger_version_supported` decides both the read and the write path: an int from 1 to the current schema is accepted, and an older one is upgraded to the current version (in memory on load, before writing on save). A newer version, or a value that is not a real version (`0`, `-1`, `True`, `"1"`, `1.0`), is refused in place. A missing version is treated as legacy `1` in memory only (ADR-178). |
 | `active_task` | object or null | `task_id`, `last_phase` (label), `active_phase` (1-5), `status`, `updated_at` (epoch s), optional `impact_assessment` {`why`, `benefits`, `risks`, `mitigation`}. |
 | `checkpoints` | list | At most 20 entries (the active task's plan checkpoint is always kept). Each: `task_id`, `phase`, `phase_num` (1-5), `description`, `files_affected`, `status`, `timestamp`, `timestamp_str`, optional `impact_assessment`, optional `handoff`. |
 | `checkpoints[].handoff` | object | Written only when `--handoff` is given, so a checkpoint without one carries no key and the ledger's shape is unchanged. Keys, all optional but `next`: `next` (the one action that resumes the task), `state`, `failed`, `open`, `evidence`. Bounded to 2,000 characters of input. The latest packet of the active task is what `--resume` prints, and its `next` replaces the generic Next Action line (ADR-174). |
@@ -78,4 +78,4 @@ Printed by `cmd_status` and `cmd_resume` in `scripts/aikit_cli.py` (`python aiki
 ## 🛡️ Model Invariants
 1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
 2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).
-3. A persisted model carries a version key (`version` in the ledger) and a migration function that fills missing keys (**PRINCIPLE-013** R4). A reader refuses an unsupported newer version without modifying or quarantining the file; a missing version is accepted only through a documented legacy migration.
+3. A persisted model carries a version key (`version` in the ledger) and a migration function that fills missing keys (**PRINCIPLE-013** R4). A reader refuses an unsupported newer version without modifying or quarantining the file, and upgrades an older supported version through the migration rather than refusing it; a missing version is accepted only through a documented legacy migration.

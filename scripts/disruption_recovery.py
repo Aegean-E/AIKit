@@ -236,12 +236,24 @@ def check_disk_headroom(target_dir: Path, min_mb: float = 10.0) -> bool:
         return True
 
 
+def ledger_version_supported(version: Any) -> bool:
+    """
+    Whether this build can read a ledger declaring `version`: an int from 1 to the current schema.
+
+    An older valid version is supported because `migrate_ledger_schema` upgrades it; only a newer
+    one, or a value that is not a real version (`0`, `-1`, `True`, `"1"`, `1.0`), is refused.
+    Both the read and the write path ask this one question: the check used to be `!=` in each,
+    so the first schema bump would have refused every existing ledger (ADR-178).
+    """
+    return type(version) is int and 1 <= version <= LEDGER_SCHEMA_VERSION
+
+
 def validate_ledger_version(data: Any, path: Path) -> None:
     """Refuse a ledger whose declared schema this build does not read (PRINCIPLE-013 R4)."""
     if not isinstance(data, dict) or "version" not in data:
         return
     version = data.get("version")
-    if type(version) is not int or version != LEDGER_SCHEMA_VERSION:
+    if not ledger_version_supported(version):
         raise UnsupportedLedgerVersion(path, version, LEDGER_SCHEMA_VERSION)
 
 
@@ -275,8 +287,14 @@ def migrate_ledger_schema(data: Any) -> Dict[str, Any]:
     if not isinstance(data, dict):
         return empty_ledger()
 
-    # Ensure mandatory fields
-    if "version" not in data:
+    # Ensure mandatory fields. A missing version is legacy 1; it and any older valid version leave
+    # here as the current one, so a loaded ledger always declares the format this build writes. A
+    # later schema adds its upgrade steps before this stamp. Both callers check the version first
+    # (_read_ledger_file through validate_ledger_version, save_ledger through
+    # ledger_version_supported), so a newer version never reaches it and is never relabelled.
+    version = data.get("version")
+    if "version" not in data or (ledger_version_supported(version)
+                                 and version < LEDGER_SCHEMA_VERSION):
         data["version"] = LEDGER_SCHEMA_VERSION
     if "active_task" not in data:
         data["active_task"] = None
@@ -475,8 +493,12 @@ def save_ledger(
     version = ledger.get("version")
     if version is None:
         ledger["version"] = LEDGER_SCHEMA_VERSION
-    elif type(version) is not int or version != LEDGER_SCHEMA_VERSION:
+    elif not ledger_version_supported(version):
         raise UnsupportedLedgerVersion(path, version, LEDGER_SCHEMA_VERSION)
+    elif version < LEDGER_SCHEMA_VERSION:
+        # An older valid ledger is upgraded before it is written, so the file never declares a
+        # version older than the format it now holds (ADR-178).
+        migrate_ledger_schema(ledger)
     active_id = ledger.get("active_task", {}).get("task_id") if ledger.get("active_task") else None
     if "checkpoints" in ledger:
         ledger["checkpoints"] = prune_checkpoints(

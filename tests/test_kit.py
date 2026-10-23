@@ -3551,6 +3551,37 @@ class TestDisruptionRecovery(unittest.TestCase):
                     load_ledger(self.ledger_file)
                 self.assertEqual(self.ledger_file.read_bytes(), before)
 
+    def test_a_later_build_reads_and_upgrades_an_older_valid_ledger(self):
+        # Every ledger in existence is version 1 (27 of them when ADR-178 was written). A build
+        # with a higher schema version used to refuse all of them, because the check was `!=`
+        # rather than "newer", and migrate_ledger_schema never ran.
+        payload = {"version": 1, "active_task": {"task_id": "old"}, "checkpoints": []}
+        self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+        before = self.ledger_file.read_bytes()
+        with mock.patch("scripts.disruption_recovery.LEDGER_SCHEMA_VERSION", 2):
+            loaded = load_ledger(self.ledger_file)
+        self.assertEqual(loaded["version"], 2, "the older ledger is upgraded in memory")
+        self.assertEqual(loaded["active_task"]["task_id"], "old")
+        self.assertEqual(self.ledger_file.read_bytes(), before, "loading never rewrites the file")
+
+    def test_a_later_build_writes_an_older_valid_ledger_as_current(self):
+        with mock.patch("scripts.disruption_recovery.LEDGER_SCHEMA_VERSION", 2):
+            save_ledger({"version": 1, "active_task": None, "checkpoints": []}, self.ledger_file)
+        self.assertEqual(json.loads(self.ledger_file.read_text(encoding="utf-8"))["version"], 2)
+
+    def test_a_later_build_still_refuses_invalid_and_newer_versions(self):
+        with mock.patch("scripts.disruption_recovery.LEDGER_SCHEMA_VERSION", 2):
+            for version in (0, -1, 3, True, "1", 1.0):
+                with self.subTest(version=version):
+                    payload = {"version": version, "active_task": None, "checkpoints": []}
+                    self.ledger_file.write_text(json.dumps(payload), encoding="utf-8")
+                    before = self.ledger_file.read_bytes()
+                    with self.assertRaises(UnsupportedLedgerVersion):
+                        load_ledger(self.ledger_file)
+                    self.assertEqual(self.ledger_file.read_bytes(), before)
+                    with self.assertRaises(UnsupportedLedgerVersion):
+                        save_ledger(dict(payload), self.ledger_file.with_name("w.json"))
+
     def test_resume_report_blocks_a_newer_ledger(self):
         workspace = self.test_dir / "workspace"
         (workspace / ".agents").mkdir(parents=True)
