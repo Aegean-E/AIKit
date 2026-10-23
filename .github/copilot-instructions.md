@@ -1,6 +1,7 @@
 # Copilot Instructions (Tier 1)
 
 > Generated from `GUIDELINES.md`; do not edit.
+> Runbook: `.agents/skills/aikit/SKILL.md` for test, sync, gate and recovery commands.
 > Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or ambiguity, read the `### PRINCIPLE-NNN:` section of each principle `sync_principles.py --involved` lists; never the whole file unless asked.
 
 ## Core Principles

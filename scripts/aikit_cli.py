@@ -221,15 +221,16 @@ def present_project(name: str, workspace: Path) -> Project:
 
 def project_is_clean(audit: Dict[str, object], open_ui_task: bool) -> bool:
     """
-    Whether the project's tree is delivery-ready, decided once for every surface that reports it.
+    Whether the project's tree and ledger are delivery-ready, decided once for every surface.
 
     `status --exit-code` and `status --json` both read this. Computing the same verdict twice is
     the defect class ADR-155 and ADR-161 each had to repair, where two readiness surfaces
-    disagreed about one tree and auto-push followed the laxer one (ADR-172).
+    disagreed about one tree and auto-push followed the laxer one (ADR-172). A ledger error is a
+    failed audit, not a clean tree, so it is part of the verdict (ADR-177).
     """
     dirty = (audit.get("modified_files") or audit.get("untracked_files")
              or audit.get("conflicted_files"))
-    return not (audit.get("git_missing") or dirty or open_ui_task)
+    return not (audit.get("git_missing") or audit.get("ledger_error") or dirty or open_ui_task)
 
 
 def project_payload(project: Project) -> Dict[str, object]:
@@ -263,10 +264,8 @@ def print_guidelines(project: Project) -> None:
 
 
 def cmd_new(args: argparse.Namespace) -> int:
-    root, warning = create_project(args.name, args.test, workspace=args.workspace)
+    root = create_project(args.name, args.test, workspace=args.workspace)
     print(f"[OK] Created project '{args.name}' at {root}")
-    if warning:
-        print(f"[WARN] {warning}", file=sys.stderr)
     if getattr(args, "publish", False):
         print(f"Publishing '{args.name}' to GitHub:")
         code, report = publish_project(root, args.name, public=getattr(args, "public", False))
@@ -313,15 +312,18 @@ def cmd_status(args: argparse.Namespace) -> int:
             return exc.exit_code
         audit = run_disruption_audit(workspace_dir=project.path)
         open_ui_task = (project.path / ui_contract.TASK_REL).is_file()
+        clean = project_is_clean(audit, open_ui_task)
         print(json.dumps({
             "ok": True,
-            "clean": project_is_clean(audit, open_ui_task),
+            "clean": clean,
             "project": project_payload(project),
             "disruption": audit,
             "ui_task_open": open_ui_task,
             "gates": [gate.name for gate in resolve_gates(project)],
         }, indent=2, default=str))
         if audit.get("ledger_error"):
+            return 1
+        if getattr(args, "exit_code", False) and not clean:
             return 1
         return 0
     project = present_project(args.name, args.workspace)

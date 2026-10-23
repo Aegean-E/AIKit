@@ -149,17 +149,22 @@ def delegate_subagent(
                          "compare the file with `git diff`, keep the session's own entries, and remove "
                          "any the sub-agent wrote.")
 
+    # Every report path is scrubbed here, not only inside `answer_text`: the JSON payload and the
+    # failure text embed stdout/stderr directly, so a sub-agent could otherwise leak a credential
+    # into the caller's context (PRINCIPLE-019 R4/R5, ADR-173, ADR-177).
+    safe_stdout, _ = scrub_text(proc.stdout or "")
+    safe_stderr, _ = scrub_text(proc.stderr or "")
     if output_format == "json":
         return proc.returncode, json.dumps({
             "status": "success" if proc.returncode == 0 else "error",
             "agent": role,
             "exit_code": proc.returncode,
             "duration_seconds": round(seconds, 3),
-            "output": proc.stdout.strip(),
+            "output": safe_stdout.strip(),
             "ledger_shield": "unmutated",
         }, indent=2)
     if proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
+        detail = safe_stderr.strip() or safe_stdout.strip() or f"exit code {proc.returncode}"
         return proc.returncode, f"[SUBAGENT ERROR ({role}, {seconds:.1f}s)]\n{detail}"
     return 0, f"[SUBAGENT OK ({role}, {seconds:.1f}s)]\n{answer_text(proc.stdout)}"
 

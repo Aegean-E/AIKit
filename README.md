@@ -23,7 +23,7 @@ The AI governance system extracted from production development: principles, powe
 | **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
 | **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=10ms unit, <=350ms integration|
 | **Run One Tier**| `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration`| Isolates a failing tier|
-| **Synchronize IDE Rules**| `python scripts/sync_principles.py`| <=1,600 est. tokens/target incl. a reserved 300-token Tier 1B|
+| **Synchronize IDE Rules**| `python scripts/sync_principles.py`| <=1,750 est. tokens/target incl. a reserved 300-token Tier 1B|
 | **Verify Rule Freshness**| `python scripts/sync_principles.py --check`| Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3)|
 | **Find Principles to Read**| `python scripts/sync_principles.py --involved <paths/commands/output>`| Same answer for every agent (PRINCIPLE-001 R3)|
 | **Cross-Principle Check Set**| `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>`| Principles a rule change must be checked against (PRINCIPLE-000 R3)|
@@ -167,7 +167,7 @@ cd /path/to/target && python scripts/sync_principles.py && python scripts/update
 - If the target already has instruction files, move their project-specific rules into
   `.agents/rules/domain.md` (max 1,200 chars) and delete the originals. Sync injects that block into
   all 8 Tier 1 files and refuses to overwrite a hand-authored file (`[PROTECTED]`).
-- The two commands above generate the 8 Tier 1 files (each <=1,600 tokens including Tier 1B) and
+- The two commands above generate the 8 Tier 1 files (each <=1,750 tokens including Tier 1B) and
   `knowledge/codebase_map.md`, the AST catalogue of every class, method, argument and docstring.
 
 ---

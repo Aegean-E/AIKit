@@ -1,109 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "tier1-header-slack-v1",
-    "last_phase": "verification",
+    "task_id": "review-findings-remediation-v1",
+    "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792698122.4676995,
-    "completed_at": 1792698126.3169153
+    "updated_at": 1792769478.9531684,
+    "completed_at": 1792773422.2192388
   },
   "checkpoints": [
-    {
-      "task_id": "ui-guard-evidence-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-guard-evidence-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792686459.454094,
-      "timestamp_str": "2026-10-22 19:27:39"
-    },
-    {
-      "task_id": "ui-guard-caveats-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Remove the evidence caveats: empty surfaces now require a finished-task digest, the digest includes permission bits, non-React/Vite projects can use ui init --fast/--paths, and legacy records get an explicit remedy. Verify the full gate set.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792688993.3014438,
-      "timestamp_str": "2026-10-22 20:09:53",
-      "impact_assessment": {
-        "why": "The final review identified three security/coverage caveats in the UI evidence tranche: empty surfaces bypassed the gate, permission changes were invisible, and the scaffold was limited to React/Vite.",
-        "benefits": "A declared empty surface cannot bypass evidence, executable-bit changes alter the digest, and other stacks can create a manual zero-dependency contract without guessing a framework.",
-        "risks": "contract: ui_history records must now include a surface_digest for every surface, including empty ones; existing records without it require a new task; dependency: none; concurrency: unchanged; state: history schema gains a digest field.",
-        "mitigation": "Keep the legacy remedy explicit, add tests for empty surfaces and the generic init override, include modes in the digest, and re-run every gate."
-      }
-    },
-    {
-      "task_id": "ui-guard-caveats-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Caveat fixes verified: 402 unit tests at 5.62ms/test, 49 integration at 208.22ms/test; sync, knowledge, secrets, reachability and dogfood clean. Empty surfaces now need evidence, permission bits are in the digest, and generic ui init uses --fast/--paths. checklists: passed for AIKit; projects/tempo has an unrelated external hygiene finding. Uncommitted.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792689047.0721886,
-      "timestamp_str": "2026-10-22 20:10:47"
-    },
-    {
-      "task_id": "ui-guard-caveats-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-guard-caveats-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792689047.2031434,
-      "timestamp_str": "2026-10-22 20:10:47"
-    },
-    {
-      "task_id": "aikit-scaffold-lint-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/6] Scaffold P1: make the ADR template non-parsing, strip HTML comments in the ADR audit, add bytecode/transient ignore rules, and fail cleanly when git identity is missing. [2/6] UI init P2: report when style lint is off, and derive generic protected patterns from the supplied surface paths instead of emitting dead src patterns. [3/6] Require a reason on ui allow, preserve reasons in history, and print them at finish. [4/6] Style lint: skip font properties whose value uses var(). [5/6] Hygiene: accept hygiene: allow on the finding line or the line immediately above it; warn on untracked README sources. [6/6] Update ADRs/docs/tests and run every Phase 4 gate; leave PRINCIPLE-015 R1 for explicit approval.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792692305.2721107,
-      "timestamp_str": "2026-10-22 21:05:05",
-      "impact_assessment": {
-        "why": "The external report confirmed new-project blockers and UI guard accuracy defects: the commented ADR template poisons the register, Python bytecode dirties new projects, missing git identity is only a warning, style lint silently turns off, generic init emits dead patterns, allow has no reason, tokenized font declarations are flagged, and allow markers are too rigid.",
-        "benefits": "New projects can record their first ADR, run tests without dirtying the tree, and fail early on missing git identity; UI verification reports style coverage honestly; allow decisions are reviewable; and lint findings match the stated rules.",
-        "risks": "contract: allow gains a required --reason and task/history allowed_removals become objects; existing string entries remain readable; dependency: none; concurrency: task writes remain locked; state: ADR audit ignores HTML comments; git identity failure now rejects a half-made project.",
-        "mitigation": "Keep backward-compatible readers, add failing-first tests for each change, update ADR/docs, and run the full gate set."
-      }
-    },
-    {
-      "task_id": "aikit-scaffold-lint-fixes-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[6/6] All six milestones implemented and verified. Phase 4 green on this exact tree: 409 unit (5.19ms/test) + 49 integration (216ms/test), sync --check, map --check, reachability, secrets --all, test budgets, dogfood 5/5. ADR-171 records all nine decisions; GUIDELINES.md P-011 R8 descriptive clause updated with the full 18-principle cross-check (0 Tier-1 files changed). Milestone 5's 'untracked README sources' decided as a named untracked-readme finding under the opt-in --artifacts mode (user did not recall the intent; rationale in ADR-171). checklists: passed, except PRINCIPLE-018 skipped (commit and push await user authorization per R1) and PRINCIPLE-019 staged-diff variant skipped in favour of the --all superset (nothing staged yet).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792694794.7019029,
-      "timestamp_str": "2026-10-22 21:46:34"
-    },
-    {
-      "task_id": "aikit-scaffold-lint-fixes-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-scaffold-lint-fixes-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792695109.7949142,
-      "timestamp_str": "2026-10-22 21:51:49"
-    },
-    {
-      "task_id": "status-resume-json-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/4] Extract one readiness predicate so `status --exit-code` and the new JSON cannot disagree. [2/4] `status --json`: project metadata, the disruption audit, ui_task_open, gates, clean; ProjectError returns the stable error envelope. [3/4] `resume --json` over the same audit projection. [4/4] README, ADR, map and sync refresh, then every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792695216.3003876,
-      "timestamp_str": "2026-10-22 21:53:36",
-      "impact_assessment": {
-        "why": "CI and wrappers can read `aikit status <name>` only by parsing 15 lines of human prose; `--exit-code` already exists for the pass/fail bit, which proves the machine-readable need, and `ui verify --json` already establishes the envelope to copy. Nothing structured exists for `resume`, whose plan and next action are exactly what a cold-start wrapper needs.",
-        "benefits": "A documented JSON contract for the two orientation commands, built from the audit dict that already carries the data; one readiness predicate shared by the exit code and the payload, so the two delivery signals cannot drift apart the way ADR-155 and ADR-161 both had to repair.",
-        "risks": "contract: adds a second output surface for status and resume, and every JSON field becomes public under PRINCIPLE-004 R4; text output stays byte-identical so no existing reader breaks. dependency: none, json is stdlib and already imported. concurrency: read-only commands, no ledger or task writes. state: no schema or persisted file changes; the payload is computed per call from run_disruption_audit.",
-        "mitigation": "Reuse the ui verify envelope shape and its ProjectError handling rather than inventing one; compute the readiness bit once and feed both the exit code and the payload; add failing-first tests asserting the payload keys, the error envelope and that text mode is unchanged; document the fields in README within the 313-char headroom and record the contract in an ADR."
-      }
-    },
     {
       "task_id": "status-resume-json-v1",
       "phase": "verification",
@@ -256,6 +161,115 @@
       "status": "completed",
       "timestamp": 1792698126.3169181,
       "timestamp_str": "2026-10-22 22:42:06"
+    },
+    {
+      "task_id": "budget-1750-pointer-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] Raise TARGET_TOKEN_BUDGET 1600 -> 1750 and update every stated number: GUIDELINES P-001 R6 (two limits and the 90% advisory warning 1,440 -> 1,575), README twice, SKILL.md once; the existing TestRuleNumberParity case is the failing-first test. [2/3] Add the runbook pointer line to the Tier 1 header so every host's instruction surface names .agents/skills/aikit/SKILL.md, with a test asserting all 8 targets carry it. [3/3] Regenerate all 8 targets, record ADR-176 with the PRINCIPLE-001 cross-principle check, refresh map and README, run every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792698355.9957318,
+      "timestamp_str": "2026-10-22 22:45:55",
+      "impact_assessment": {
+        "why": "The user decided to raise the per-target Tier 1 budget to 1,750 tokens. The purpose is to afford the runbook pointer: the operational runbook in .agents/skills/aikit/SKILL.md is auto-discovered by only 2 of the 8 supported hosts and no Tier 1 file references it, so every rule placed there is invisible to the other 6, and ADR-175 measured that the pointer did not fit in the 3 characters the old budget left.",
+        "benefits": "The runbook becomes reachable from all 8 host instruction surfaces, which makes SKILL.md a usable home for rules the capsule budget cannot afford; the measured margin goes from 35 characters to roughly 600, so the next rule change is a decision rather than a squeeze.",
+        "risks": "contract: the numeric limit in PRINCIPLE-001 R6 changes, which TestRuleNumberParity pins against the code constant, and all 8 generated host surfaces grow by one line and about 150 tokens of allowance. dependency: none. concurrency: none. state: no schema or persisted data changes; the Tier 1B 1,200-character adopter allowance is untouched, so no adopter loses room.",
+        "mitigation": "Update the code constant and every document that states the number in the same commit so the parity test stays green; recompute and state the 90% advisory warning rather than leaving a stale 1,440; add a test asserting every Tier 1 target names the skill path so the pointer cannot silently vanish; name PRINCIPLE-001's full citing set in ADR-176; verify the measured margin after the change rather than asserting it."
+      }
+    },
+    {
+      "task_id": "budget-1750-pointer-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/3] All three milestones done: budget 1600->1750 (warning 1575) with every stated number updated, the runbook pointer rendered from RUNBOOK_PATH into all 8 Tier 1 targets with a pinning test, ADR-176 recorded with the full PRINCIPLE-001 citing set, map and README refreshed. Phase 4 green: 431 unit at 6.12ms, 49 integration at 239.98ms, sync --check, knowledge --check, secrets --all, reachability and dogfood 5/5. checklists: passed. Delivery not authorized; files uncommitted.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792699604.6984036,
+      "timestamp_str": "2026-10-22 23:06:44",
+      "handoff": {
+        "state": "3/3 milestones complete and every Phase 4 gate passed on this tree",
+        "next": "when the user authorizes delivery, stage the 17 changed files by name, validate and commit",
+        "failed": "none",
+        "open": "commit and push were not requested, so the work is uncommitted."
+      }
+    },
+    {
+      "task_id": "budget-1750-pointer-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "Review fixes applied: ADR-176 now says 'no conflict' per PRINCIPLE-001 citing principle (PRINCIPLE-000 R3), the pointer test requires an actual '> Runbook: ' line, and TestRuleNumberParity pins the 1,575 warning. Phase 4 re-run green: 431 unit at 6.15ms, 49 integration at 230.78ms, sync/knowledge/secrets/reachability clean, dogfood 5/5. checklists passed. 18 changed files (17 content + ledger); uncommitted, delivery not authorized.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792700819.7426286,
+      "timestamp_str": "2026-10-22 23:26:59",
+      "handoff": {
+        "state": "review findings fixed, 3/3 milestones complete, every Phase 4 gate passed on this tree",
+        "next": "when delivery is authorized, stage the 18 changed files by name (17 content + .agents/task_ledger.json), validate and commit",
+        "failed": "none",
+        "open": "commit and push were not requested."
+      }
+    },
+    {
+      "task_id": "budget-1750-pointer-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'budget-1750-pointer-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792755900.6416035,
+      "timestamp_str": "2026-10-23 14:45:00"
+    },
+    {
+      "task_id": "review-findings-remediation-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] Scrub sub-agent stdout/stderr at the delegate output boundary so JSON and failure reports cannot leak credentials; tests for JSON success/failure, text failure and stderr-only. [2/4] Include ledger_error in project_is_clean and honor --exit-code in status --json; tests for the flag matrix and a corrupt ledger. [3/4] Check only a font declaration's value for a theme token in style_findings; tests for a literal font with a token color in both orders. [4/4] Remove the dead create_project warning channel, update every call site and knowledge/architecture.md, record ADR-177, refresh the map and run every Phase 4 gate.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792755952.961944,
+      "timestamp_str": "2026-10-23 14:45:52",
+      "impact_assessment": {
+        "why": "Five review findings are confirmed: the delegate leaks credentials in its JSON and failure paths, status --json ignores --exit-code, clean ignores ledger_error, the style lint skips a literal font when any var() follows on the line, and the create_project warning channel is dead while the architecture doc still describes it.",
+        "benefits": "Every sub-agent output path is scrubbed, the JSON exit code and clean key agree with the text verdict, mixed-line font literals are caught, and the create_project contract and architecture doc match its raising behavior.",
+        "risks": "contract: status --json --exit-code becomes stricter, clean now includes ledger_error, and create_project returns only the folder; dependency: none; concurrency: none; state: no ledger schema change.",
+        "mitigation": "Add failing-first tests for each behavior, update every create_project call site including the CLI mock, update the architecture doc and data model note, record ADR-177, and rerun every Phase 4 gate."
+      }
+    },
+    {
+      "task_id": "review-findings-remediation-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[4/4] Implementation complete: delegate scrubs stdout/stderr before every report, project_is_clean includes ledger_error and status --json honors --exit-code, style_findings checks only the declaration value, create_project returns only the folder with the warning channel removed, and the architecture/data-model/service docs plus ADR-177 are updated. Both test tiers pass; Phase 4 next.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792769394.0537758,
+      "timestamp_str": "2026-10-23 18:29:54"
+    },
+    {
+      "task_id": "review-findings-remediation-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] All remediation milestones verified. 434 unit at 5.85ms, 49 integration at 233.14ms; sync --check, knowledge --check, secrets --all, reachability and dogfood 5/5. Probes close all five findings: delegate text/JSON/error/stderr scrubbed; status --json --exit-code exits 1 on dirty and clean is false on ledger_error; mixed-line literal fonts flagged; create_project and the architecture doc match the raising contract. ADR-177 recorded. checklists: passed; delivery not authorized. 26 files (25 content + ledger) uncommitted, combining the budget/runbook and remediation work.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792769478.9531684,
+      "timestamp_str": "2026-10-23 18:31:18",
+      "handoff": {
+        "state": "budget/runbook and review remediation are complete and combined in the working tree",
+        "next": "when delivery is authorized, stage the 25 content files plus .agents/task_ledger.json by name, validate and commit",
+        "failed": "none",
+        "open": "no commit or push was requested",
+        "evidence": "434 unit, 49 integration, five read-only gates, dogfood 5/5"
+      }
+    },
+    {
+      "task_id": "review-findings-remediation-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-findings-remediation-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792773422.219241,
+      "timestamp_str": "2026-10-23 19:37:02"
     }
   ]
 }

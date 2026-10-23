@@ -103,7 +103,7 @@ After modifying `GUIDELINES.md` or `.agents/rules/domain.md`, update all 8 host 
 ```bash
 python scripts/sync_principles.py
 ```
-- Verify zero budget violations (<1,600 tokens per target):
+- Verify zero budget violations (<1,750 tokens per target):
 ```bash
 python scripts/sync_principles.py --check
 ```

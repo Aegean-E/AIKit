@@ -428,7 +428,7 @@ def _run_git(project_root: Path, *args: str) -> "subprocess.CompletedProcess[str
         ) from exc
 
 
-def _git_start(project_root: Path) -> Optional[str]:
+def _git_start(project_root: Path) -> None:
     """
     `git init`, then commit the project's memory and instructions so a new project starts clean.
     Raises when the commit cannot be made (typically no git identity): a clean baseline is required
@@ -457,12 +457,12 @@ def _git_start(project_root: Path) -> Optional[str]:
 
 
 def create_project(name: str, test_command: Optional[str] = None, workspace: Path = ROOT_DIR,
-                   git_start: Optional[Callable[[Path], Optional[str]]] = None
-                   ) -> Tuple[Path, Optional[str]]:
+                   git_start: Optional[Callable[[Path], None]] = None
+                   ) -> Path:
     """
     Create `projects/<name>/` as a new git repository whose first commit holds the project's
-    `.aikit/` memory; returns the folder and a warning, if any. `git_start` defaults to the real
-    git calls (PRINCIPLE-009 R4: a test injects a double).
+    `.aikit/` memory and return the folder. `git_start` defaults to the real git calls
+    (PRINCIPLE-009 R4: a test injects a double) and raises when it cannot commit a baseline.
     """
     git_start = git_start or _git_start
     validate_name(name)
@@ -483,12 +483,12 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     try:
         write_memory(project_root, name, test_command)
         seed_readme(project_root, name, test_command)
-        warning = git_start(project_root)
+        git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.
         shutil.rmtree(project_root, ignore_errors=True)
         raise
-    return project_root, warning
+    return project_root
 
 
 def attach_project(folder: Path, name: Optional[str] = None, test_command: Optional[str] = None,

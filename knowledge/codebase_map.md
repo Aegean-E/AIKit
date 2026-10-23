@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `310`
-- **Total Class Methods**: `554`
-- **Total Source Lines**: `16261`
+- **Total Class Methods**: `558`
+- **Total Source Lines**: `16354`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `717` lines (`35865` bytes)
+**Size**: `719` lines (`36012` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -39,7 +39,7 @@
 - `def report_error(error)` - *Print the error triad to stderr and return its exit code.*
 - `def build_parser()`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
-- `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree is delivery-ready, decided once for every surface that reports it.*
+- `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree and ledger are delivery-ready, decided once for every surface.*
 - `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
 - `def error_envelope(error)` - *The stable `--json` failure shape shared by every project command (ADR-167, ADR-172).*
 - `def print_guidelines(project)` - *The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2).*
@@ -296,7 +296,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `617` lines (`26419` bytes)
+**Size**: `617` lines (`26384` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -341,7 +341,7 @@
 ### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
 > *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
 
-**Size**: `186` lines (`9103` bytes)
+**Size**: `191` lines (`9474` bytes)
 
 **Functions:**
 - `def load_opencode_config(path)` - *The OpenCode configuration; its `providers` declare which Gemini models are free-tier.*
@@ -358,7 +358,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `817` lines (`40750` bytes)
+**Size**: `822` lines (`41127` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -439,7 +439,7 @@
 ### [`scripts/ui_proof.py`](scripts/ui_proof.py)
 > *Mechanical UI proofs for the opt-in UI guard (ADR-160).*
 
-**Size**: `92` lines (`3610` bytes)
+**Size**: `97` lines (`3896` bytes)
 
 **Functions:**
 - `def matches_pattern(path, patterns)` - *One relative path against contract patterns; `dir/**` covers the tree.*
@@ -503,7 +503,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1091` lines (`54036` bytes)
+**Size**: `1090` lines (`53989` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -604,7 +604,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6417` lines (`359037` bytes)
+**Size**: `6494` lines (`363935` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -745,6 +745,7 @@
   - Method `.test_rules_use_normative_keywords()`
   - Method `.test_tier1_header_mirrors_r3_triggers_and_r1_precedence()`
   - Method `.test_every_agent_rule_reaches_tier1()`
+  - Method `.test_every_tier1_target_names_the_operational_runbook()`
   - Method `.test_tier1_header_does_not_repeat_the_generator_name()`
   - Method `.test_precedence_never_contradicts_another_principle()`
   - Method `.test_open_terms_are_defined()`
@@ -982,6 +983,8 @@
   - Method `.test_status_displays_repo_url()`
   - Method `.test_status_exit_code_tracks_dirty_state_without_changing_plain_status()`
   - Method `.test_status_json_reports_the_same_readiness_as_the_exit_code()`
+  - Method `.test_status_json_honors_exit_code_when_both_flags_are_given()`
+  - Method `.test_status_treats_a_corrupt_ledger_as_unclean_on_both_surfaces()`
   - Method `.test_status_json_returns_the_error_envelope_for_an_unknown_project()`
   - Method `.test_resume_json_carries_the_audit_and_the_guidelines_count()`
   - Method `.test_check_triggers_auto_push_unless_opted_out()`
@@ -1068,12 +1071,13 @@
   - Method `.test_git_ignores_projects()`
 - `class TestSubagentDelegation` - *`aikit delegate`: bounded OpenCode sub-agent runs (ADR-126, ADR-128).*
   - Method `.setUp()`
-  - Method `.runner(returncode, stdout, effect)`
+  - Method `.runner(returncode, stdout, stderr, effect)`
   - Method `.delegate(role, prompt, **kwargs)`
   - Method `.test_roles_are_the_opencode_profiles()`
   - Method `.test_refuses_empty_brief_unknown_project_and_missing_file()`
   - Method `.test_runs_opencode_headless_with_the_brief()`
   - Method `.test_json_report()`
+  - Method `.test_json_and_failure_reports_scrub_credentials()`
   - Method `.test_a_changed_ledger_is_reported_and_never_overwritten()`
   - Method `.test_timeout_is_reported()`
 - `class TestProjectGuidelines` - *A project's own rules, below AIKit's principles (PRINCIPLE-001 R4, PRINCIPLE-000 R6, ADR-129).*

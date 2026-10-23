@@ -23,7 +23,7 @@ DOMAIN_RULES_PATH = ROOT_DIR / ".agents" / "rules" / "domain.md"
 # Tier 1 budget model (PRINCIPLE-001 R4/R6). One unit - estimated tokens - with no dominated
 # thresholds: a former 7,200-char "warn" branch sat ahead of the token check in an if/elif
 # chain and let ~1,860-token targets through with only a warning.
-TARGET_TOKEN_BUDGET = 1600  # per target, INCLUDING any Tier 1B block
+TARGET_TOKEN_BUDGET = 1750  # per target, INCLUDING any Tier 1B block (ADR-176)
 WARN_TOKEN_RATIO = 0.9  # advisory early warning, checked only after every violation
 MAX_DOMAIN_CHARS = 1200  # Tier 1B allowance (~300 tokens) that universal rules must leave free
 # Floor that catches a truncated or mis-parsed SSOT; raise it whenever a principle is added.
@@ -279,9 +279,11 @@ def validate_triad_consistency(
 # Every always-injected Tier 1 target: repo-relative path -> heading. One renderer keeps all
 # targets in lock-step; five near-identical generators previously had to be edited in parallel,
 # and the header text they shared had drifted into contradicting PRINCIPLE-001.
-# Generated copy -> source, relative to the repository: the runbook in a host's own skill folder.
+# The operational runbook every Tier 1 header names (ADR-176), and the hosts that load skills
+# only from their own folder: generated copy -> source, relative to the repository.
+RUNBOOK_PATH = ".agents/skills/aikit/SKILL.md"
 RUNBOOK_MIRRORS: Dict[str, str] = {
-    ".claude/skills/aikit/SKILL.md": ".agents/skills/aikit/SKILL.md",
+    ".claude/skills/aikit/SKILL.md": RUNBOOK_PATH,
 }
 
 # Claude Code sub-agents, generated from AIKit's role profiles in `.opencode/agents/` so one role
@@ -355,6 +357,9 @@ def render_tier1_target(heading: str, principles: List[Dict], domain_rules: str 
         # so the 32 characters bought nothing and the Tier 1 budget had 3 left (ADR-175). The
         # `Generated from ` prefix is a GENERATED_MARKERS entry and must stay.
         f"> Generated from `{SSOT_MD.name}`; do not edit.",
+        # Only 2 of the 8 hosts auto-discover the runbook, so the other 6 need this pointer to
+        # the commands the Tier 1 capsules name but do not spell out (ADR-176).
+        f"> Runbook: `{RUNBOOK_PATH}` for test, sync, gate and recovery commands.",
         "> Capsules bind; `GUIDELINES.md` wins on conflict. On a contract change, failure or "
         "ambiguity, read the `### PRINCIPLE-NNN:` section of each principle "
         "`sync_principles.py --involved` lists; never the whole file unless asked.",

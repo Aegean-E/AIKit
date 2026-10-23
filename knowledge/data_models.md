@@ -52,7 +52,7 @@ Returned by `delegate_subagent` in `scripts/aikit_cli.py` (`python aikit.py dele
 | `agent` | string | Subagent role invoked (`worker`, `architect`, `coder`, `tester`, `reviewer`, `explorer`). |
 | `exit_code` | int | Process exit code (`0` success, `1` operational failure, `2` usage error). |
 | `duration_seconds` | float | Execution duration in seconds measured with monotonic clock. |
-| `output` | string | Subagent execution findings, suggested diffs, or structured JSON. |
+| `output` | string | Subagent execution findings, suggested diffs, or structured JSON; credential-shaped spans are redacted on every report path (ADR-173, ADR-177). |
 | `ledger_shield` | string | `"unmutated"` confirming task ledgers were shielded against unauthorized modification. |
 
 ### Project Report Payload

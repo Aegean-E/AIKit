@@ -1008,6 +1008,8 @@ class TestRuleNumberParity(unittest.TestCase):
         sections = principle_sections(SSOT_MD.read_text(encoding="utf-8"))
         cases = [
             ("PRINCIPLE-001", f"{sync.TARGET_TOKEN_BUDGET:,} estimated tokens"),
+            ("PRINCIPLE-001",
+             f"{int(sync.TARGET_TOKEN_BUDGET * sync.WARN_TOKEN_RATIO):,} estimated tokens (90%)"),
             ("PRINCIPLE-001", f"{sync.MAX_DOMAIN_CHARS:,}-character"),
             ("PRINCIPLE-017", f"at most {sync.MAX_DOMAIN_CHARS:,} characters"),
             ("PRINCIPLE-004", f"at most {ledger.DEFAULT_MAX_CHECKPOINTS} checkpoints"),
@@ -1960,6 +1962,22 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
         for rule, phrase in required.items():
             with self.subTest(rule=rule):
                 self.assertIn(phrase, rendered, f"{rule} does not reach Tier 1")
+
+    def test_every_tier1_target_names_the_operational_runbook(self):
+        # The runbook is auto-discovered by 2 of the 8 supported hosts (.agents/skills/ and
+        # .claude/skills/); the other 6 read only their Tier 1 file, so without this line every
+        # rule placed in the skill is invisible to them (ADR-176). A capsule that merely mentions
+        # the path must not satisfy this, so the assertion requires a pointer line.
+        runbook = ".agents/skills/aikit/SKILL.md"
+        principles = parse_principles(SSOT_MD)
+        for rel, heading in TIER1_TARGETS.items():
+            with self.subTest(target=rel):
+                rendered = render_tier1_target(heading, principles)
+                self.assertTrue(any(line.startswith("> Runbook: ") and runbook in line
+                                    for line in rendered.splitlines()),
+                                f"{rel} has no runbook pointer line")
+        self.assertTrue((ROOT_DIR / ".agents" / "skills" / "aikit" / "SKILL.md").is_file(),
+                        "the Tier 1 header points at a runbook that does not exist")
 
     def test_tier1_header_does_not_repeat_the_generator_name(self):
         # The header spent 32 of the budget's last characters naming its own generator, which the
@@ -4337,9 +4355,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertFalse((self.kit / "projects" / "app").exists())
 
     def test_new_project_ignores_bytecode_and_has_a_clean_adr_template(self):
-        folder, warning = create_project("pyapp", workspace=self.kit,
-                                        git_start=lambda project_root: None)
-        self.assertIsNone(warning)
+        folder = create_project("pyapp", workspace=self.kit,
+                                git_start=lambda project_root: None)
         ignored = (folder / ".gitignore").read_text(encoding="utf-8")
         for line in ("__pycache__/", "*.py[cod]", "node_modules/"):
             self.assertIn(line, ignored)
@@ -4549,7 +4566,7 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertNotIn("ghost", out)
 
     def test_new_with_publish_flag_calls_publish_project(self):
-        with mock.patch("scripts.aikit_cli.create_project", return_value=(self.kit / "projects" / "publishedapp", None)), \
+        with mock.patch("scripts.aikit_cli.create_project", return_value=self.kit / "projects" / "publishedapp"), \
              mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "[OK] Published to GitHub")) as mock_pub:
             code, out, _ = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest")
             self.assertEqual(code, 0)
@@ -4623,6 +4640,40 @@ class TestProjectRegistry(unittest.TestCase):
                 exit_code, _, _ = self.run_cli("status", "jsonstatus", "--exit-code")
                 self.assertEqual(payload["clean"], exit_code == 0,
                                  "the payload and the exit code must not disagree")
+
+    def test_status_json_honors_exit_code_when_both_flags_are_given(self):
+        folder = self.make_folder()
+        attach_project(folder, "bothflags", workspace=self.kit)
+        dirty = {"modified_files": ["core.py"], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty):
+            code, out, err = self.run_cli("status", "bothflags", "--json", "--exit-code")
+        self.assertEqual(code, 1, "--exit-code must not be ignored in JSON mode")
+        self.assertFalse(json.loads(out)["clean"])
+        self.assertEqual(err, "")
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean):
+            code, out, _ = self.run_cli("status", "bothflags", "--json", "--exit-code")
+        self.assertEqual(code, 0)
+        self.assertTrue(json.loads(out)["clean"])
+
+    def test_status_treats_a_corrupt_ledger_as_unclean_on_both_surfaces(self):
+        folder = self.make_folder()
+        attach_project(folder, "corruptledger", workspace=self.kit)
+        audit = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": {"found": 2, "supported": 1, "why": "newer schema",
+                                  "fix": "use a newer AIKit"},
+                 "git_missing": False}
+        with mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=audit):
+            code, out, err = self.run_cli("status", "corruptledger", "--json")
+            payload = json.loads(out)
+            self.assertEqual(code, 1)
+            self.assertFalse(payload["clean"], "a corrupt ledger is not delivery-ready")
+            self.assertEqual(payload["disruption"]["ledger_error"]["found"], 2)
+            self.assertEqual(err, "")
+            code, _, _ = self.run_cli("status", "corruptledger", "--exit-code")
+        self.assertEqual(code, 1, "the text verdict must match the payload")
 
     def test_status_json_returns_the_error_envelope_for_an_unknown_project(self):
         code, out, err = self.run_cli("status", "nosuchproject", "--json")
@@ -5651,9 +5702,13 @@ class TestUiProof(unittest.TestCase):
         added = [("web/app.css", 3, "font-family: var(--font-sans);"),
                  ("web/app.css", 4, "font-size: var(--text-lg);"),
                  ("src/ui/menu.py", 5, "title.font_size = var(SIZE)"),
-                 ("web/app.css", 6, "font-family: var(--font-sans); color: #fff;")]
+                 ("web/app.css", 6, "font-family: var(--font-sans); color: #fff;"),
+                 ("web/app.css", 7, "font-size: 14px; color: var(--fg);"),
+                 ("src/ui/menu.py", 8, "title.font_size = 14; color = var(THEME)")]
         self.assertEqual(ui_proof.style_findings(added, ("src/theme.py",)),
-                         ["style literal '#fff' outside theme paths: web/app.css:6"])
+                         ["style literal '#fff' outside theme paths: web/app.css:6",
+                          "style literal 'font-size:' outside theme paths: web/app.css:7",
+                          "style literal 'font_size' outside theme paths: src/ui/menu.py:8"])
 
     def test_style_findings_are_off_without_declared_theme_paths(self):
         added = [("src/ui/menu.py", 12, 'fg = "#ff0000"')]
@@ -5691,12 +5746,12 @@ class TestSubagentDelegation(unittest.TestCase):
                                encoding="utf-8")
         self.calls = []
 
-    def runner(self, returncode=0, stdout="ok", effect=None):
+    def runner(self, returncode=0, stdout="ok", stderr="", effect=None):
         def run(cmd, cwd, timeout):
             self.calls.append((cmd, cwd, timeout))
             if effect:
                 effect()
-            return subprocess.CompletedProcess(cmd, returncode, stdout, "")
+            return subprocess.CompletedProcess(cmd, returncode, stdout, stderr)
         return run
 
     def delegate(self, role="worker", prompt="summarize docs", **kwargs):
@@ -5736,6 +5791,28 @@ class TestSubagentDelegation(unittest.TestCase):
         self.assertEqual(code, 0)
         data = json.loads(output)
         self.assertEqual((data["status"], data["agent"], data["output"]), ("success", "explorer", "found"))
+
+    def test_json_and_failure_reports_scrub_credentials(self):
+        # `answer_text` scrubbed only the success-text path; JSON and failure reports embedded
+        # stdout/stderr raw, so a sub-agent could leak a credential into the caller's context
+        # (PRINCIPLE-019 R4/R5, ADR-173, ADR-177).
+        leak = "glpat\x2daB3dE5gH7jK9mN1pQ3rS"  # aikit:allow-secret
+        cases = [
+            ("json success", {"output_format": "json"}, 0, leak, ""),
+            ("text failure", {}, 1, leak, ""),
+            ("json failure", {"output_format": "json"}, 1, leak, ""),
+            ("stderr failure", {}, 1, "", leak),
+        ]
+        for label, kwargs, returncode, stdout, stderr in cases:
+            with self.subTest(case=label):
+                code, output = self.delegate(
+                    runner=self.runner(returncode=returncode, stdout=stdout, stderr=stderr),
+                    **kwargs)
+                self.assertEqual(code, returncode)
+                self.assertNotIn(leak, output)
+                self.assertIn("[REDACTED]", output)
+        code, output = self.delegate(output_format="json", runner=self.runner(stdout=leak))
+        self.assertEqual(json.loads(output)["output"], "[REDACTED]")
 
     def test_a_changed_ledger_is_reported_and_never_overwritten(self):
         # The ledger may hold a parallel session's checkpoint; restoring a snapshot erased it (ADR-128).

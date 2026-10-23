@@ -101,7 +101,7 @@ When integrating a new AI agent service or client environment:
 1. **Step 1: Declare Instruction Target in `scripts/sync_principles.py`**:
    Add the client's conventional instruction filename to `TIER1_TARGETS` (e.g., `".windsurfrules"` or `".clinerules"`).
 2. **Step 2: Verify Context Budget Gate**:
-   Run `python scripts/sync_principles.py --check` to ensure the generated file strictly fits the 1,600-token Tier 1 ceiling.
+   Run `python scripts/sync_principles.py --check` to ensure the generated file strictly fits the 1,750-token Tier 1 ceiling.
 3. **Step 3: Map Native Skill & Tool Capabilities**:
    If the client supports custom skills, commands, or subagents, expose `.agents/skills/aikit/SKILL.md` or create a thin adapter following the client's declarative format.
 4. **Step 4: Verify Single Ledger Adherence**:

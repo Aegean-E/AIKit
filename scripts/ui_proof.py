@@ -83,8 +83,13 @@ def style_findings(added: Sequence[Tuple[str, int, str]],
             match = pattern.search(text)
             if not match:
                 continue
-            if pattern in FONT_PATTERNS and THEME_TOKEN.search(text, match.end()):
-                continue
+            if pattern in FONT_PATTERNS:
+                # Only a theme token in this declaration's value excuses the font. Searching the
+                # rest of the line let a token in a later declaration hide a hardcoded font
+                # (ADR-177).
+                value = text[match.end():].split(";", 1)[0]
+                if THEME_TOKEN.search(value):
+                    continue
             literal = match.group(1) if match.lastindex else match.group(0)
             findings.append(f"style literal '{literal}' outside theme paths: "
                             f"{path}:{number}")

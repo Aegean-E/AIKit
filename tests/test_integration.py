@@ -100,7 +100,7 @@ def setUpModule():
                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
     with mock.patch.dict(os.environ, identity):
         TEMPLATE_KIT = Path(tempfile.mkdtemp(prefix="test_project_template_"))
-        TEMPLATE_PROJECT, _ = create_project(
+        TEMPLATE_PROJECT = create_project(
             "app", test_command=f'"{sys.executable}" -c "pass"', workspace=TEMPLATE_KIT)
         complete_readme(TEMPLATE_PROJECT)
 
@@ -780,8 +780,7 @@ class TestProjectCreation(unittest.TestCase):
         patcher = mock.patch.dict(os.environ, identity)
         patcher.start()
         self.addCleanup(patcher.stop)
-        root, warning = create_project("app", workspace=kit)
-        self.assertIsNone(warning)
+        root = create_project("app", workspace=kit)
         top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=root, capture_output=True,
                              text=True, timeout=PROC_TIMEOUT).stdout.strip()
         self.assertEqual(Path(top).resolve(), root.resolve(), "the project is its own repository")
