@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `86`
+- **Total Classes**: `87`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `573`
-- **Total Source Lines**: `16641`
+- **Total Class Methods**: `577`
+- **Total Source Lines**: `16700`
 
 ---
 
@@ -139,7 +139,7 @@
 ### [`scripts/check_secrets.py`](scripts/check_secrets.py)
 > *Secret & Sensitive Data Hygiene Scanner (PRINCIPLE-019)*
 
-**Size**: `506` lines (`23365` bytes)
+**Size**: `520` lines (`24460` bytes)
 
 **Functions:**
 - `def shannon_entropy(value)` - *Bits of entropy per character; random credentials score high, English prose low.*
@@ -513,7 +513,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1114` lines (`55429` bytes)
+**Size**: `1159` lines (`57802` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -580,6 +580,11 @@
   - Method `.test_unit_tier_spawns_no_processes_and_never_sleeps()`
   - Method `.test_unit_tier_guards_itself_against_spawns()`
   - Method `.test_integration_tier_bounds_every_spawn()`
+- `class TestSecretScanSeesNonAsciiPaths` - *git quotes a non-ASCII path ("\305\237ifre.txt") unless told otherwise, so `--all` read a*
+  - Method `.make_repo()`
+  - Method `.scan(repo, mode)`
+  - Method `.test_all_scans_a_tracked_file_whose_name_is_not_ascii()`
+  - Method `.test_staged_findings_name_a_non_ascii_file()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180).*
   - Method `.test_help_parses_with_the_grammar_alone()`
   - Method `.test_a_real_command_still_loads_the_command_layer()`

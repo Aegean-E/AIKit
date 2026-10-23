@@ -1,48 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "py310-annotations-v1",
+    "task_id": "review-fixes-3-v1",
     "last_phase": "verification",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792782710.072613,
-    "completed_at": 1792782710.2643614
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792783510.8400617
   },
   "checkpoints": [
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/3] done: ui finish review-only message.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792778347.7727706,
-      "timestamp_str": "2026-10-23 20:59:07",
-      "handoff": {
-        "state": "milestone 1 of 3 verified, committing",
-        "next": "milestone 2, delete check_reachability's dead all_literals fallback and pin strict behaviour with a test",
-        "failed": "blaming the dogfood flake on worktrees or a cold bytecode cache - both disproved",
-        "open": "whether dogfood should measure --help as best-of-3, since aikit.py has a ~160ms floor under a 200ms single-sample budget",
-        "evidence": "real sandbox repro before and after, 485 tests, all six gates (check_test_budgets passed on re-run, tree unchanged)"
-      }
-    },
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/3] done: reachability dead fallback removed, strict behaviour pinned.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792778662.5226912,
-      "timestamp_str": "2026-10-23 21:04:22",
-      "handoff": {
-        "state": "milestones 1-2 of 3 committed or committing",
-        "next": "milestone 3, accept 1 <= version <= current on read and write via one shared predicate, data_models, ADR-178",
-        "failed": "nothing new",
-        "open": "dogfood --help flake now measured hitting 2 of 4 full Phase 4 sequences, needs the user's decision on best-of-N measurement",
-        "evidence": "pin passes on the strict shield and fails on the repaired one, reachability track clean in 15/15 dogfood runs"
-      }
-    },
     {
       "task_id": "three-findings-fix-v1",
       "phase": "completed",
@@ -259,6 +224,32 @@
       "status": "completed",
       "timestamp": 1792782710.264363,
       "timestamp_str": "2026-10-23 22:11:50"
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] check_secrets: list tracked files with ls-files -z and run git with core.quotePath=false, so --all scans non-ASCII names and diff findings name their file; integration test with a real repo. [2/4] Refuse a line break in a project gate command or a UI contract command at load, since Windows cmd runs only the first line. [3/4] README gate: in a repository that has aikit.py, a missing scripts/aikit_parser.py is an error instead of a silent skip. [4/4] aikit check pushes only with --push; --no-push stays accepted; README, runbook, services.md and ADR-182 updated.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792783254.5714424,
+      "timestamp_str": "2026-10-23 22:20:54",
+      "impact_assessment": {
+        "why": "The last-five-push review found: check_secrets --all silently skips every tracked file with a non-ASCII name because git quotes it, and its diff modes lose the file name; a multi-line command reports success on Windows after running only its first line; the README command check would switch itself off silently if the grammar file were renamed; and aikit check pushes by default although the runbook makes it a project's Phase 4 and PRINCIPLE-018 R4 pushes only when authorized. The user asked to fix the rest; CI cannot run, so local gates are the only verification.",
+        "benefits": "The secret sweep covers every tracked file and names every finding; a gate command behaves the same on Windows and POSIX or is refused; a verification check cannot disable itself unnoticed; running Phase 4 can no longer publish to a remote as a side effect.",
+        "risks": "contract: aikit check stops pushing unless --push is given, a deliberate behaviour change to a documented command; commands containing a line break, previously accepted, are now refused with exit 2; check_secrets output labels change for non-ASCII paths. dependency: none. concurrency: none. state: no persisted data.",
+        "mitigation": "Failing-first tests for each milestone, the secret one against a real git repository; keep --no-push accepted so existing scripts do not break; name the changed auto-push test in ADR-182 under PRINCIPLE-014 R3; refuse line breaks with a Why/Fix that says how to join steps; commit each milestone separately and verify each alone."
+      }
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/4] done: secret scan reads non-ASCII paths, ADR-182.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792783510.8400617,
+      "timestamp_str": "2026-10-23 22:25:10"
     }
   ]
 }

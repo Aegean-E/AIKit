@@ -768,6 +768,51 @@ class TestTierBudgetDiscipline(unittest.TestCase):
         )
 
 
+class TestSecretScanSeesNonAsciiPaths(unittest.TestCase):
+    """
+    git quotes a non-ASCII path ("\\305\\237ifre.txt") unless told otherwise, so `--all` read a
+    `.txt"` suffix and skipped the file silently, and diff findings lost their file name (ADR-182).
+    """
+
+    # Built at run time so no credential-shaped literal sits in this source file.
+    GITHUB = "ghp_" + "abcdefghijklmnopqrstuvwxyz0123456789"
+    GITLAB = "glpat-" + "aB3dE5gH7jK9mN1pQ3rS"
+    TURKISH = "şifre_notları.txt"
+
+    def make_repo(self) -> Path:
+        repo = Path(tempfile.mkdtemp(prefix="test_qpath_"))
+        self.addCleanup(remove_tree, repo)
+        for args in (["init", "-q"], ["config", "user.name", "t"],
+                     ["config", "user.email", "t@example.invalid"]):
+            subprocess.run(["git", *args], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        return repo
+
+    def scan(self, repo: Path, mode: str) -> str:
+        res = subprocess.run([sys.executable, str(ROOT_DIR / "scripts" / "check_secrets.py"),
+                              mode, "--workspace", str(repo)],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=PROC_TIMEOUT, stdin=subprocess.DEVNULL)
+        self.assertEqual(res.returncode, 1, res.stdout[-600:])
+        return res.stdout
+
+    def test_all_scans_a_tracked_file_whose_name_is_not_ascii(self):
+        repo = self.make_repo()
+        (repo / "notes.txt").write_text(f'token = "{self.GITHUB}"\n', encoding="utf-8")
+        (repo / self.TURKISH).write_text(f'token = "{self.GITHUB}"\n', encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        out = self.scan(repo, "--all")
+        self.assertIn("2 potential secret", out, "the non-ASCII file was skipped")
+        self.assertIn(self.TURKISH, out)
+
+    def test_staged_findings_name_a_non_ascii_file(self):
+        repo = self.make_repo()
+        (repo / self.TURKISH).write_text(f'key = "{self.GITLAB}"\n', encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        out = self.scan(repo, "--staged")
+        self.assertIn(f"{self.TURKISH}:1", out, "the finding lost its file name")
+
+
 class TestAikitHelpFastPath(unittest.TestCase):
     """`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180)."""
 

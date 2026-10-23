@@ -240,9 +240,12 @@ def should_skip(path_str: str) -> bool:
 
 
 def git_output(args: List[str], repo: Path = ROOT_DIR) -> Optional[str]:
+    # core.quotePath=false: git otherwise prints a non-ASCII path quoted and octal-escaped
+    # ("\305\237ifre.txt"), so a diff header no longer read as `+++ b/<path>` and the finding lost
+    # its file name (ADR-182).
     try:
         res = subprocess.run(
-            ["git", *args], cwd=str(repo), capture_output=True,
+            ["git", "-c", "core.quotePath=false", *args], cwd=str(repo), capture_output=True,
             text=True, encoding="utf-8", errors="replace", timeout=PROC_TIMEOUT,
         )
     except (OSError, subprocess.SubprocessError):
@@ -300,13 +303,15 @@ def scan_commits(rev_range: str, gaps: Optional[List[str]] = None,
 
 def iter_tracked_files(gaps: Optional[List[str]] = None, repo: Path = ROOT_DIR,
                         include_self: bool = False) -> Iterable[Path]:
-    listing = git_output(["ls-files"], repo)
+    # NUL-separated: a newline-separated listing quotes any path git considers unusual, and the
+    # quoted name ended in `.txt"`, failed the suffix test and was skipped without a gap - every
+    # tracked file with a non-ASCII name, silently, under `--all` (ADR-182).
+    listing = git_output(["ls-files", "-z"], repo)
     if listing is None:
         if gaps is not None:
             gaps.append("git ls-files failed, so no tracked file was scanned")
         return []
-    for rel in listing.splitlines():
-        rel = rel.strip()
+    for rel in listing.split("\0"):
         if not rel or (not include_self and should_skip(rel)):
             continue
         path = repo / rel
@@ -448,6 +453,15 @@ Exit codes:
 
 
 if __name__ == "__main__":
+    # Findings name the user's own files, so a non-ASCII path must survive a Windows pipe, whose
+    # default encoding is the console code page (cp1254, cp1252). Done here, not at import, so a
+    # module that imports this scanner keeps its own streams (ADR-182).
+    if sys.platform == "win32":
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, ValueError, OSError):  # hygiene: allow encoding is cosmetic; a stream that cannot change keeps its own
+                pass
     argv = sys.argv[1:]
     if "-h" in argv or "--help" in argv:
         print(HELP_TEXT, end="")
