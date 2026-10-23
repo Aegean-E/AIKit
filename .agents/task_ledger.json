@@ -1,33 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-findings-remediation-v1",
-    "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792769478.9531684,
-    "completed_at": 1792773422.2192388
+    "task_id": "three-findings-fix-v1",
+    "last_phase": "verification",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792778347.7727706
   },
   "checkpoints": [
-    {
-      "task_id": "status-resume-json-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[4/4] All four milestones done. project_is_clean is the single readiness predicate behind --exit-code and the payload's clean key; status --json and resume --json print the Project Report Payload now documented in data_models.md; guidelines are carried as rules, not a count, so a JSON cold start cannot lose them (PRINCIPLE-004 R2); failures use one project.error envelope and keep 0/1/2. ADR-172 recorded. Phase 4 green: 461 tests, sync, map, reachability, secrets, budgets, dogfood 5/5. README at 22,390 of 22,500 chars (110 left). checklists: passed, except PRINCIPLE-018 push skipped (not authorized).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792695490.7678177,
-      "timestamp_str": "2026-10-22 21:58:10"
-    },
-    {
-      "task_id": "status-resume-json-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'status-resume-json-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792695494.4620671,
-      "timestamp_str": "2026-10-22 21:58:14"
-    },
     {
       "task_id": "secret-redaction-v1",
       "phase": "planning",
@@ -270,6 +250,39 @@
       "status": "completed",
       "timestamp": 1792773422.219241,
       "timestamp_str": "2026-10-23 19:37:02"
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] ui finish: when review is the only blocker, say so and drop the revert/allow/abort advice; exit code and the ui.review-missing JSON code unchanged. [2/3] check_reachability: delete the dead all_literals fallback, correct its comment to the strict behaviour, and pin with a regression test that a producer hidden in a comprehension is flagged. [3/3] Ledger version: accept 1 <= version <= current on both read and write, still refusing < 1, newer and non-int; align data_models.md; ADR-178 recording the 27-ledger correction to ADR-174.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792777792.0424078,
+      "timestamp_str": "2026-10-23 20:49:52",
+      "impact_assessment": {
+        "why": "Three findings reproduced end to end. ui finish tells a user whose change verify just passed that it is outside its contract and leads with abort, which reverts the work. The reachability fallback is dead because a set cannot count above 1, and its comment describes a weaker behaviour that would have passed a hidden producer this session. validate_ledger_version and save_ledger refuse every version but the current one, so the first schema bump makes all 27 v1 ledgers unreadable and migrate_ledger_schema can never run.",
+        "benefits": "A user blocked only on review is told exactly that and keeps their work; the safety gate keeps its strict behaviour without a comment inviting someone to weaken it; a future schema bump can migrate existing ledgers instead of stopping every ledger command across 27 ledgers.",
+        "risks": "contract: finish's human stderr text changes in the review-only case, exit code 1 and JSON codes unchanged; the ledger accepts older valid versions, but with LEDGER_SCHEMA_VERSION 1 that is identical to today. dependency: none. concurrency: none. state: no ledger is rewritten; acceptance widens only below the current version and all existing refusals (True, '2', 2.0, 0, -1, newer) stay.",
+        "mitigation": "A failing-first test per milestone; reproduce the finish message against a real sandbox project; keep test_invalid_ledger_versions_are_refused unchanged and green; change both version checks through one shared predicate so they cannot drift; commit each milestone separately after its Phase 4 passes, per PRINCIPLE-006 R1."
+      }
+    },
+    {
+      "task_id": "three-findings-fix-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/3] done: ui finish review-only message.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792778347.7727706,
+      "timestamp_str": "2026-10-23 20:59:07",
+      "handoff": {
+        "state": "milestone 1 of 3 verified, committing",
+        "next": "milestone 2, delete check_reachability's dead all_literals fallback and pin strict behaviour with a test",
+        "failed": "blaming the dogfood flake on worktrees or a cold bytecode cache - both disproved",
+        "open": "whether dogfood should measure --help as best-of-3, since aikit.py has a ~160ms floor under a 200ms single-sample budget",
+        "evidence": "real sandbox repro before and after, 485 tests, all six gates (check_test_budgets passed on re-run, tree unchanged)"
+      }
     }
   ]
 }

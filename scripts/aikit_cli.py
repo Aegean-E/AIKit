@@ -646,6 +646,19 @@ def cmd_ui(args: argparse.Namespace) -> int:
             print("[INFO] style lint: off (no style.theme_paths declared).")
         for finding in findings:
             print(f"[FAIL] {finding}")
+        # finish() reports a missing review only after verify() found nothing, so when that is the
+        # sole finding the change is inside its contract. The contract advice below would say the
+        # opposite and lead with `ui abort`, which reverts valid work. Keyed on the stable finding
+        # code, not the message text, so the JSON contract and this branch cannot drift apart.
+        if findings and all(ui_contract.finding_code(f) == "ui.review-missing" for f in findings):
+            print("Error: the UI change passed verification; only the human review is missing.",
+                  file=sys.stderr)
+            print("Why: a UI task closes only after a person has looked at the running surface.",
+                  file=sys.stderr)
+            print(f"Fix: look at the running UI, then run `python aikit.py ui finish "
+                  f"{project.name} --reviewed` (add --reviewer <name> to record who).",
+                  file=sys.stderr)
+            return 1
         if findings:
             print("Error: the UI change is outside its contract.", file=sys.stderr)
             print("Why: a UI task proves one reviewed surface, not an unbounded rewrite.",

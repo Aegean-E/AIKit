@@ -9,8 +9,8 @@
 - **Total Python Modules**: `19`
 - **Total Classes**: `83`
 - **Total Top-Level Functions**: `310`
-- **Total Class Methods**: `558`
-- **Total Source Lines**: `16354`
+- **Total Class Methods**: `560`
+- **Total Source Lines**: `16394`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `719` lines (`36012` bytes)
+**Size**: `732` lines (`36998` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -604,7 +604,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6494` lines (`364010` bytes)
+**Size**: `6521` lines (`365777` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -997,6 +997,8 @@
   - Method `.test_ui_verify_json_emits_stable_codes()`
   - Method `.test_ui_init_writes_the_react_vite_pilot_contract()`
   - Method `.test_ui_evidence_and_json_error_paths()`
+  - Method `.test_ui_finish_blocked_only_by_review_says_so_and_offers_no_revert()`
+  - Method `.test_ui_finish_with_a_contract_finding_keeps_the_contract_advice()`
   - Method `.test_ui_finish_prints_every_allowed_removal_and_its_reason()`
   - Method `.test_ui_init_generic_override_from_cli()`
   - Method `.test_rendered_readme_uses_a_project_test_command()`

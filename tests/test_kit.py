@@ -4979,6 +4979,33 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("No UI contract", payload["error"]["message"])
         self.assertEqual(err, "")
 
+    def test_ui_finish_blocked_only_by_review_says_so_and_offers_no_revert(self):
+        # finish() returns the review finding only when verify() found nothing, so "outside its
+        # contract" was false in exactly this case, and its first remedy (abort) reverts the work.
+        folder = self.make_folder()
+        attach_project(folder, "reviewapp", workspace=self.kit)
+        review = "human review not recorded: no one confirmed the running UI looks right."
+        with mock.patch("scripts.aikit_cli.ui_contract.finish", return_value=[review]), \
+             mock.patch("scripts.aikit_cli.ui_contract.read_task", return_value={}):
+            code, out, err = self.run_cli("ui", "finish", "reviewapp")
+        self.assertEqual(code, 1, "an unreviewed task still must not close")
+        self.assertIn(f"[FAIL] {review}", out)
+        self.assertIn("passed verification", err)
+        self.assertIn("ui finish reviewapp --reviewed", err)
+        for misleading in ("outside its contract", "abort", "revert", "ui allow"):
+            self.assertNotIn(misleading, err, f"review-only failure still says '{misleading}'")
+
+    def test_ui_finish_with_a_contract_finding_keeps_the_contract_advice(self):
+        folder = self.make_folder()
+        attach_project(folder, "contractapp", workspace=self.kit)
+        violation = "out-of-surface edit: src/other.py"
+        with mock.patch("scripts.aikit_cli.ui_contract.finish", return_value=[violation]), \
+             mock.patch("scripts.aikit_cli.ui_contract.read_task", return_value={}):
+            code, _, err = self.run_cli("ui", "finish", "contractapp", "--reviewed")
+        self.assertEqual(code, 1)
+        self.assertIn("outside its contract", err)
+        self.assertIn("ui abort contractapp", err)
+
     def test_ui_finish_prints_every_allowed_removal_and_its_reason(self):
         folder = self.make_folder()
         attach_project(folder, "reasonapp", workspace=self.kit)
