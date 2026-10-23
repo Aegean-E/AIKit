@@ -3610,6 +3610,20 @@ class TestDisruptionRecovery(unittest.TestCase):
         self.assertIn("this AIKit reads versions 1 to 2", message)
         self.assertIn("schema versions 1 to 2", message)
 
+    def test_an_invalid_version_is_not_blamed_on_a_different_aikit(self):
+        # 0, -1, True, "2" and 2.0 are not schema versions any AIKit writes; blaming "a different
+        # AIKit" sent the user looking for a build that does not exist.
+        for found in (0, -1, True, "2", 2.0):
+            with self.subTest(found=found):
+                error = UnsupportedLedgerVersion(self.ledger_file, found, 1)
+                self.assertIn("not a schema version", error.why)
+                self.assertNotIn("different AIKit", error.why)
+                self.assertIn(".bak", error.fix)
+                self.assertIn("the file was not modified", error.fix)
+        newer = UnsupportedLedgerVersion(self.ledger_file, 2, 1)
+        self.assertIn("written by a different AIKit", newer.why, "a newer version keeps its text")
+        self.assertIn("open it with the AIKit version that wrote it", newer.fix)
+
     def test_resume_report_blocks_a_newer_ledger(self):
         workspace = self.test_dir / "workspace"
         (workspace / ".agents").mkdir(parents=True)

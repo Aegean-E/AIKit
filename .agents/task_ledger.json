@@ -5,18 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792781837.680896
+    "updated_at": 1792782036.5395947
   },
   "checkpoints": [
-    {
-      "task_id": "budget-1750-pointer-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'budget-1750-pointer-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792755900.6416035,
-      "timestamp_str": "2026-10-23 14:45:00"
-    },
     {
       "task_id": "review-findings-remediation-v1",
       "phase": "in_progress",
@@ -264,6 +255,16 @@
       "status": "in_progress",
       "timestamp": 1792781837.680896,
       "timestamp_str": "2026-10-23 21:57:17"
+    },
+    {
+      "task_id": "review-fixes-2-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/3] done: invalid-version refusal has its own Why/Fix.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792782036.5395947,
+      "timestamp_str": "2026-10-23 22:00:36"
     }
   ]
 }

@@ -62,10 +62,18 @@ class UnsupportedLedgerVersion(Exception):
         # Every version from 1 to `supported` is readable (ADR-178), so naming only `supported`
         # would tell a user their valid older ledger cannot be used.
         readable = f"version {supported}" if supported == 1 else f"versions 1 to {supported}"
-        self.why = ("the ledger was written by a different AIKit whose format this build does not "
-                    "understand; reading or rewriting it could lose task history")
-        self.fix = ("open it with the AIKit version that wrote it, or restore a ledger written in "
-                    f"schema {readable}; the file was not modified")
+        if type(found) is int and found > supported:
+            self.why = ("the ledger was written by a different AIKit whose format this build does "
+                        "not understand; reading or rewriting it could lose task history")
+            self.fix = ("open it with the AIKit version that wrote it, or restore a ledger written "
+                        f"in schema {readable}; the file was not modified")
+        else:
+            # 0, -1, True, "2", 2.0: no AIKit writes these, so blaming "a different AIKit" sent the
+            # user looking for a build that does not exist. The field was edited or damaged.
+            self.why = ("its version field is not a schema version (an integer from 1), so it was "
+                        "edited by hand or damaged; AIKit will not guess the format of its contents")
+            self.fix = ("restore the ledger from its .bak shadow or from git; the file was not "
+                        "modified")
         super().__init__(
             f"{self.path} declares ledger schema version {found!r}; this AIKit reads {readable}\n"
             f"Why: {self.why}\nFix: {self.fix}"
