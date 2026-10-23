@@ -1,46 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "help-budget-250-v1",
+    "task_id": "review-followups-v1",
     "last_phase": "verification",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792781038.8032715,
-    "completed_at": 1792781038.9952986
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792781322.4862015
   },
   "checkpoints": [
-    {
-      "task_id": "tier1-header-slack-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Drop the redundant generator name from the Tier 1 header, with a failing-first test pinning why it is safe: the marker survives, P-017's capsule names scripts/sync_principles.py, and line 2 names sync_principles.py --involved. [2/2] Regenerate all 8 targets, record ADR-175 with the measured budget, run every Phase 4 gate.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792698003.6882925,
-      "timestamp_str": "2026-10-22 22:40:03",
-      "impact_assessment": {
-        "why": "The Tier 1 token budget has 3 characters free of 6,403 at the worst target, which blocks the SKILL.md pointer item 3 needs and every future rule. The header spends 32 characters naming its own generator, which the P-017 capsule in the same file already names and which line 2 names again as sync_principles.py --involved.",
-        "benefits": "Frees 32 characters, taking the worst target from 6,400 to 6,368 of 6,403 and the budget margin from 3 to 35 characters, with no information removed from the file; a prerequisite for any further Tier 1 text and for raising or spending the budget deliberately rather than by accident.",
-        "risks": "contract: the 8 generated host instruction surfaces change one line of text; the GENERATED_MARKERS prefix 'Generated from `' is preserved, so sync still refuses to overwrite a file it did not generate. dependency: none. concurrency: none. state: no schema, ledger or persisted data changes; GUIDELINES.md and every principle section is untouched, so no cross-principle check set applies.",
-        "mitigation": "Pin the removal with a test asserting the marker still matches, the header still says 'Generated from' and 'do not edit', and the generator name still reaches Tier 1 through the P-017 capsule and the R3 trigger line; verify is_generated_target still accepts the rendered header; regenerate all 8 targets and run sync --check plus the full gate set."
-      }
-    },
-    {
-      "task_id": "tier1-header-slack-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/2] Both milestones done; ADR-175 records the measurement.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792698122.4676995,
-      "timestamp_str": "2026-10-22 22:42:02",
-      "handoff": {
-        "state": "Tier 1 budget margin raised from 3 to 35 chars at the worst target",
-        "next": "put the budget decision to the user, since 35 chars still cannot hold the SKILL.md pointer safely",
-        "failed": "all five pointer phrasings measured - backticked path overruns by 7, bare path by 4, and the two that fit leave only 1 and 4 chars on the gate that blocks every commit",
-        "evidence": "479 tests, six gates, all 8 targets regenerated, header marker preserved"
-      }
-    },
     {
       "task_id": "tier1-header-slack-v1",
       "phase": "completed",
@@ -283,6 +250,32 @@
       "status": "completed",
       "timestamp": 1792781038.995301,
       "timestamp_str": "2026-10-23 21:43:58"
+    },
+    {
+      "task_id": "review-followups-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] check_reachability: put the pinned test's full name on one line in the find_phantom_keys comment, so grepping the name finds the explanation. [2/2] UnsupportedLedgerVersion: state the readable range, versions 1 to N, in the message and its Fix line, since ADR-178 made a build read every version from 1 up; failing-first test under a patched version 2.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792781266.8727272,
+      "timestamp_str": "2026-10-23 21:47:46",
+      "impact_assessment": {
+        "why": "A pre-push review of the 4 unpushed commits found two gaps in my own work. Commit 9cad254's comment splits test_a_producer_hidden_in_a_comprehension_is_flagged across two lines, so a grep for the test finds only the test and never the comment saying the fallback must not be repaired. Commit 2f754e9 widened what a build reads to versions 1 through N but left the refusal message saying it reads exactly version N, which becomes wrong on the very schema bump that commit prepares for.",
+        "benefits": "The pin and its rationale are findable from either side; the refusal message stays true after a version bump instead of telling the user a valid older ledger cannot be used.",
+        "risks": "contract: none parsed; the message is free text, also carried in the ledger_error field of status --json, whose consumers must not parse prose; with LEDGER_SCHEMA_VERSION 1 the rendered text stays 'version 1'. dependency: none. concurrency: none. state: none.",
+        "mitigation": "Keep the message byte-identical while the version is 1, verified by a test; add a failing-first test that a patched version-2 build names versions 1-2; commit each milestone separately and verify each alone before pushing."
+      }
+    },
+    {
+      "task_id": "review-followups-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/2] done: pinned test name on one line.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792781322.4862015,
+      "timestamp_str": "2026-10-23 21:48:42"
     }
   ]
 }

@@ -257,8 +257,8 @@ def find_phantom_keys(files: List[Path]) -> List[Tuple[str, str]]:
     # A fallback here once meant to excuse any key appearing more than once as a literal. It
     # collected those literals into a set, so its count never exceeded 1 and it never excused
     # anything. It was removed rather than repaired: repaired, it would have passed the hidden
-    # producer this shield caught in the ADR-174 handoff work (`test_a_producer_hidden_in_a_
-    # comprehension_is_flagged` pins this).
+    # producer this shield caught in the ADR-174 handoff work. Pinned by
+    # test_a_producer_hidden_in_a_comprehension_is_flagged.
     reads, writes = collect_state_keys(files)
     return [(key, module) for key, module in sorted(reads.items())
             if key not in writes and key not in EXTERNAL_SCHEMA_KEYS]
