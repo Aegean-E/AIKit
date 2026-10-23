@@ -755,11 +755,18 @@ def audit_readme(
                    for flag in _FLAG.findall(match.group(2)) if f'"{flag}"' not in source]
     # The `aikit.py` grammar lives in aikit_parser.py, apart from the commands, so `--help` can
     # load it alone (ADR-180); the subcommands are read where they are declared.
+    documented = sorted(set(_AIKIT_COMMAND.findall(readme)))
     cli_source = script_source("scripts/aikit_parser.py")
     if cli_source:
         known = set(_AIKIT_SUBCOMMAND.findall(cli_source))
         errors += [f"README.md runs 'python aikit.py {cmd}', which the CLI does not declare (R3)"
-                   for cmd in sorted(set(_AIKIT_COMMAND.findall(readme))) if cmd not in known]
+                   for cmd in documented if cmd not in known]
+    elif documented and exists("aikit.py"):
+        # Where aikit.py lives, its grammar file must too: skipping here switched this check off
+        # without a word whenever the file was renamed. An adopter project has no aikit.py of its
+        # own and runs the commands from the AIKit folder, so it still skips (ADR-184).
+        errors.append("README.md runs `python aikit.py` commands, but scripts/aikit_parser.py, "
+                      "which declares them, does not exist (R3)")
     for module in _UNITTEST_COMMAND.findall(readme):
         if not exists(module.replace(".", "/") + ".py"):
             errors.append(f"README.md runs test module '{module}', which does not exist (R3)")

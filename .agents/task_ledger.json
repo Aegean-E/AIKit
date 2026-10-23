@@ -5,25 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792783625.4729838
+    "updated_at": 1792783740.1335657
   },
   "checkpoints": [
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/3] done: ledger version predicate shared by read and write; ADR-178.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792778895.3736603,
-      "timestamp_str": "2026-10-23 21:08:15",
-      "handoff": {
-        "state": "all 3 milestones done and verified",
-        "next": "report to the user and raise the dogfood --help flake decision",
-        "open": "whether dogfood should measure --help as best-of-N, given aikit.py has a ~160ms floor under a 200ms single-sample budget and the flake hit 2 of 4 full Phase 4 sequences",
-        "evidence": "489 tests and all six gates clean on the first run, 27/27 real ledgers still load as version 1 byte-identical"
-      }
-    },
     {
       "task_id": "three-findings-fix-v1",
       "phase": "completed",
@@ -251,6 +235,16 @@
       "status": "in_progress",
       "timestamp": 1792783625.4729838,
       "timestamp_str": "2026-10-23 22:27:05"
+    },
+    {
+      "task_id": "review-fixes-3-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/4] done: missing grammar file is an error where aikit.py exists, ADR-184.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792783740.1335657,
+      "timestamp_str": "2026-10-23 22:29:00"
     }
   ]
 }

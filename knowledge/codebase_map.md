@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `89`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `579`
-- **Total Source Lines**: `16734`
+- **Total Class Methods**: `581`
+- **Total Source Lines**: `16752`
 
 ---
 
@@ -462,7 +462,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1010` lines (`47112` bytes)
+**Size**: `1017` lines (`47630` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -624,7 +624,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6693` lines (`375602` bytes)
+**Size**: `6704` lines (`376335` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -659,6 +659,8 @@
 - `class TestPrinciple005ReadmeGate` - *PRINCIPLE-005: every README rule a program can decide is decided by `audit_readme`.*
   - Method `.audit(readme, tracked, exists)`
   - Method `.test_a_correct_readme_passes()`
+  - Method `.test_aikit_commands_without_their_grammar_file_fail_loudly()`
+  - Method `.test_a_project_without_aikit_py_still_skips_the_command_check()`
   - Method `.test_check_readme_uses_utf8_with_replace_on_git_listing()`
   - Method `.test_tree_paths_and_directories()`
   - Method `.test_a_dead_tree_path_fails()`

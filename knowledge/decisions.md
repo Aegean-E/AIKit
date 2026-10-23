@@ -2179,3 +2179,12 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   - *Trade-offs*: A multi-line command that worked on POSIX now fails everywhere until it is joined or scripted. Translating line breaks to `&&` was rejected because it changes meaning: `sh` runs every line regardless of earlier failures, while `&&` stops at the first.
   - *Limitation*: The refusal happens when the command runs, not when the config is loaded, so `aikit check` reports it as a failed gate with exit 1 rather than as a configuration error with exit 2.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-003 R4 and PRINCIPLE-011 R4 (one behaviour on every platform), PRINCIPLE-000 R5 (no gate passes without running its checks) and PRINCIPLE-014 R1 (a failing-first unit test that also proves no process starts, and an integration test that a trailing newline still runs).
+
+
+### ADR-184: The README Command Check Cannot Switch Itself Off
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: `audit_readme` checks each documented `python aikit.py <command>` against the subcommands `scripts/aikit_parser.py` declares (ADR-180). When that file was absent it skipped the check silently, which is right for an adopter project, whose README may document `aikit.py` commands that run from the AIKit folder, but meant a rename of the grammar file in AIKit itself would switch the check off without a word. ADR-180 recorded this as a pre-existing weakness and left it.
+- **Decision**: When the README documents `python aikit.py` commands and the audited repository has `aikit.py` at its root but no `scripts/aikit_parser.py`, `audit_readme` reports an error instead of skipping. A repository without its own `aikit.py`, such as an adopter project, still skips.
+- **Consequences**: In AIKit, renaming or deleting the grammar file now fails `update_knowledge_base.py --check` rather than quietly disabling it. AIKit's README and the READMEs of three projects checked by hand (`tally`, `lattice`, `neurocore`) pass unchanged. A unit test covers each branch.
+- Cross-principle check: no principle section changed. The change keeps PRINCIPLE-005 R3's command-parity check enforced and follows PRINCIPLE-000 R5 (a gate must not pass by not running); it carries a failing-first test (PRINCIPLE-014 R1).

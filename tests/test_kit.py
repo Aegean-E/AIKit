@@ -673,6 +673,17 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
     def test_a_correct_readme_passes(self):
         self.assertEqual(self.audit(self.TREE), [])
 
+    def test_aikit_commands_without_their_grammar_file_fail_loudly(self):
+        # A rename of the grammar file used to switch the command check off without a word.
+        readme = self.TREE + "\nRun `python aikit.py list`.\n"
+        on_disk = set(self.TRACKED) | {"scripts", "docs", "docs/deep", "aikit.py"}
+        errors = self.audit(readme, exists=on_disk.__contains__)
+        self.assertTrue(any("scripts/aikit_parser.py" in error for error in errors), errors)
+
+    def test_a_project_without_aikit_py_still_skips_the_command_check(self):
+        # An adopter project documents `aikit.py` commands but runs them from the AIKit folder.
+        self.assertEqual(self.audit(self.TREE + "\nRun `python aikit.py list`.\n"), [])
+
     def test_check_readme_uses_utf8_with_replace_on_git_listing(self):
         folder = Path(tempfile.mkdtemp(prefix="test_check_readme_"))
         self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
