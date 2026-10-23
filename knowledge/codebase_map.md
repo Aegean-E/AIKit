@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `85`
+- **Total Classes**: `86`
 - **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `572`
-- **Total Source Lines**: `16609`
+- **Total Class Methods**: `573`
+- **Total Source Lines**: `16641`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `592` lines (`28150` bytes)
+**Size**: `592` lines (`28156` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -617,7 +617,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6644` lines (`373064` bytes)
+**Size**: `6676` lines (`374732` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1048,6 +1048,8 @@
   - Method `.test_artifact_classifier_flags_tracked_caches_and_temporary_state()`
   - Method `.test_artifact_classifier_flags_an_untracked_project_readme()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
+- `class TestAnnotationsResolveOnEverySupportedPython` - *Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,*
+  - Method `.test_every_annotation_in_scripts_names_something_defined()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*
   - Method `.test_parser_constants_match_the_modules_they_mirror()`
   - Method `.test_parser_module_imports_only_the_standard_library_at_top_level()`

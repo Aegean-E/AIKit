@@ -1,56 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-fixes-2-v1",
+    "task_id": "py310-annotations-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792782531.8463964,
-    "completed_at": 1792782532.0758154
+    "updated_at": 1792782710.072613,
+    "completed_at": 1792782710.2643614
   },
   "checkpoints": [
-    {
-      "task_id": "review-findings-remediation-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[4/4] All remediation milestones verified. 434 unit at 5.85ms, 49 integration at 233.14ms; sync --check, knowledge --check, secrets --all, reachability and dogfood 5/5. Probes close all five findings: delegate text/JSON/error/stderr scrubbed; status --json --exit-code exits 1 on dirty and clean is false on ledger_error; mixed-line literal fonts flagged; create_project and the architecture doc match the raising contract. ADR-177 recorded. checklists: passed; delivery not authorized. 26 files (25 content + ledger) uncommitted, combining the budget/runbook and remediation work.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792769478.9531684,
-      "timestamp_str": "2026-10-23 18:31:18",
-      "handoff": {
-        "state": "budget/runbook and review remediation are complete and combined in the working tree",
-        "next": "when delivery is authorized, stage the 25 content files plus .agents/task_ledger.json by name, validate and commit",
-        "failed": "none",
-        "open": "no commit or push was requested",
-        "evidence": "434 unit, 49 integration, five read-only gates, dogfood 5/5"
-      }
-    },
-    {
-      "task_id": "review-findings-remediation-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-findings-remediation-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792773422.219241,
-      "timestamp_str": "2026-10-23 19:37:02"
-    },
-    {
-      "task_id": "three-findings-fix-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] ui finish: when review is the only blocker, say so and drop the revert/allow/abort advice; exit code and the ui.review-missing JSON code unchanged. [2/3] check_reachability: delete the dead all_literals fallback, correct its comment to the strict behaviour, and pin with a regression test that a producer hidden in a comprehension is flagged. [3/3] Ledger version: accept 1 <= version <= current on both read and write, still refusing < 1, newer and non-int; align data_models.md; ADR-178 recording the 27-ledger correction to ADR-174.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792777792.0424078,
-      "timestamp_str": "2026-10-23 20:49:52",
-      "impact_assessment": {
-        "why": "Three findings reproduced end to end. ui finish tells a user whose change verify just passed that it is outside its contract and leads with abort, which reverts the work. The reachability fallback is dead because a set cannot count above 1, and its comment describes a weaker behaviour that would have passed a hidden producer this session. validate_ledger_version and save_ledger refuse every version but the current one, so the first schema bump makes all 27 v1 ledgers unreadable and migrate_ledger_schema can never run.",
-        "benefits": "A user blocked only on review is told exactly that and keeps their work; the safety gate keeps its strict behaviour without a comment inviting someone to weaken it; a future schema bump can migrate existing ledgers instead of stopping every ledger command across 27 ledgers.",
-        "risks": "contract: finish's human stderr text changes in the review-only case, exit code 1 and JSON codes unchanged; the ledger accepts older valid versions, but with LEDGER_SCHEMA_VERSION 1 that is identical to today. dependency: none. concurrency: none. state: no ledger is rewritten; acceptance widens only below the current version and all existing refusals (True, '2', 2.0, 0, -1, newer) stay.",
-        "mitigation": "A failing-first test per milestone; reproduce the finish message against a real sandbox project; keep test_invalid_ledger_versions_are_refused unchanged and green; change both version checks through one shared predicate so they cannot drift; commit each milestone separately after its Phase 4 passes, per PRINCIPLE-006 R1."
-      }
-    },
     {
       "task_id": "three-findings-fix-v1",
       "phase": "verification",
@@ -266,6 +224,41 @@
       "status": "completed",
       "timestamp": 1792782532.075817,
       "timestamp_str": "2026-10-23 22:08:52"
+    },
+    {
+      "task_id": "py310-annotations-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] Import Dict in scripts/aikit_cli.py, whose project_is_clean and project_payload annotations name it without importing it; add a unit-tier guard that forces every annotation in scripts/ to evaluate, so a name that only resolves under Python 3.14's deferred annotations fails here; ADR-181 records the incident and the CI outage.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792782562.7645862,
+      "timestamp_str": "2026-10-23 22:09:22",
+      "impact_assessment": {
+        "why": "Commit e18a1b3 (ADR-172) annotated two functions with Dict but never imported it. Python 3.14 evaluates annotations lazily (PEP 649), so nothing on the only local interpreter noticed; Python 3.10 to 3.13, which the README states as supported and CI tests, evaluate them when def runs, so importing scripts.aikit_cli raises NameError and every aikit.py command fails. It has been on origin since push 9653975, and GitHub Actions caught nothing because the account is locked for billing and no CI step has run since at least 10-19.",
+        "benefits": "aikit.py works again on every supported Python; a guard that runs on 3.14 catches the whole class of deferred-annotation NameError, which matters most while CI cannot run.",
+        "risks": "contract: none, a missing import is restored. dependency: none. concurrency: none. state: none.",
+        "mitigation": "Prove the bug with a failing-first guard that reproduces Python 3.10-3.13's eager evaluation on 3.14 by reading every function and class __annotations__; confirm the simulation flags exactly the two known annotations and nothing else; keep the guard spawn-free and inside the unit tier's 10ms per-test budget."
+      }
+    },
+    {
+      "task_id": "py310-annotations-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] done: Dict imported, annotation guard added, ADR-181.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792782710.072613,
+      "timestamp_str": "2026-10-23 22:11:50"
+    },
+    {
+      "task_id": "py310-annotations-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'py310-annotations-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792782710.264363,
+      "timestamp_str": "2026-10-23 22:11:50"
     }
   ]
 }

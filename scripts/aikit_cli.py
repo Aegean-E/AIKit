@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from scripts.aikit_parser import TriadArgumentParser, build_parser, report_error  # re-exported
 from scripts.disruption_recovery import (

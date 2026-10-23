@@ -5388,6 +5388,38 @@ class TestProjectHygieneScan(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+class TestAnnotationsResolveOnEverySupportedPython(unittest.TestCase):
+    """
+    Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,
+    which README and CI support, evaluate them when `def` runs. An annotation naming something
+    never imported therefore passes every test on 3.14 and makes the module unimportable on the
+    rest. `aikit_cli` shipped exactly that (`Dict`, ADR-181), and CI could not catch it. Reading
+    every `__annotations__` here forces the older, eager evaluation on any interpreter.
+    """
+
+    def test_every_annotation_in_scripts_names_something_defined(self):
+        import importlib
+        import inspect
+        unresolved = []
+        for path in sorted((ROOT_DIR / "scripts").glob("*.py")):
+            if path.stem.startswith("_"):
+                continue
+            module = importlib.import_module(f"scripts.{path.stem}")
+            for obj in list(vars(module).values()):
+                if getattr(obj, "__module__", None) != module.__name__:
+                    continue
+                owners = [obj]
+                if inspect.isclass(obj):
+                    owners += [member for member in vars(obj).values() if inspect.isfunction(member)]
+                for owner in owners:
+                    if inspect.isfunction(owner) or inspect.isclass(owner):
+                        try:
+                            owner.__annotations__
+                        except NameError as error:
+                            unresolved.append(f"{module.__name__}.{owner.__qualname__}: {error}")
+        self.assertEqual(unresolved, [], "these annotations break import on Python 3.10-3.13")
+
+
 class TestAikitHelpFastPath(unittest.TestCase):
     """
     `python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light
