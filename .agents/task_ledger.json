@@ -1,49 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "close-open-items-v1",
-    "last_phase": "verification",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792823623.9692075,
-    "completed_at": 1792823624.1606622
+    "task_id": "review-pushes-11-20",
+    "last_phase": "implementation",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792828424.7358594
   },
   "checkpoints": [
-    {
-      "task_id": "py310-annotations-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/1] done: Dict imported, annotation guard added, ADR-181.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792782710.072613,
-      "timestamp_str": "2026-10-23 22:11:50"
-    },
-    {
-      "task_id": "py310-annotations-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'py310-annotations-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792782710.264363,
-      "timestamp_str": "2026-10-23 22:11:50"
-    },
-    {
-      "task_id": "review-fixes-3-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/4] check_secrets: list tracked files with ls-files -z and run git with core.quotePath=false, so --all scans non-ASCII names and diff findings name their file; integration test with a real repo. [2/4] Refuse a line break in a project gate command or a UI contract command at load, since Windows cmd runs only the first line. [3/4] README gate: in a repository that has aikit.py, a missing scripts/aikit_parser.py is an error instead of a silent skip. [4/4] aikit check pushes only with --push; --no-push stays accepted; README, runbook, services.md and ADR-182 updated.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792783254.5714424,
-      "timestamp_str": "2026-10-23 22:20:54",
-      "impact_assessment": {
-        "why": "The last-five-push review found: check_secrets --all silently skips every tracked file with a non-ASCII name because git quotes it, and its diff modes lose the file name; a multi-line command reports success on Windows after running only its first line; the README command check would switch itself off silently if the grammar file were renamed; and aikit check pushes by default although the runbook makes it a project's Phase 4 and PRINCIPLE-018 R4 pushes only when authorized. The user asked to fix the rest; CI cannot run, so local gates are the only verification.",
-        "benefits": "The secret sweep covers every tracked file and names every finding; a gate command behaves the same on Windows and POSIX or is refused; a verification check cannot disable itself unnoticed; running Phase 4 can no longer publish to a remote as a side effect.",
-        "risks": "contract: aikit check stops pushing unless --push is given, a deliberate behaviour change to a documented command; commands containing a line break, previously accepted, are now refused with exit 2; check_secrets output labels change for non-ASCII paths. dependency: none. concurrency: none. state: no persisted data.",
-        "mitigation": "Failing-first tests for each milestone, the secret one against a real git repository; keep --no-push accepted so existing scripts do not break; name the changed auto-push test in ADR-182 under PRINCIPLE-014 R3; refuse line breaks with a Why/Fix that says how to join steps; commit each milestone separately and verify each alone."
-      }
-    },
     {
       "task_id": "review-fixes-3-v1",
       "phase": "verification",
@@ -227,6 +191,54 @@
       "status": "completed",
       "timestamp": 1792823624.1606638,
       "timestamp_str": "2026-10-24 09:33:44"
+    },
+    {
+      "task_id": "review-pushes-11-20",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] git-exact origin URL parse and redacted URL display; [2/3] check --push exits 1 without origin, new --public needs --publish; [3/3] ADR-191 records the push 11-20 review incl. the public-repo key exposure",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792828155.557114,
+      "timestamp_str": "2026-10-24 10:49:15",
+      "impact_assessment": {
+        "why": "Pushes 11-20 review: status/list hide an origin spelled URL=, keep inline comments in the URL, print token-bearing URLs verbatim; check --push exits 0 when no origin exists; new --public alone is ignored; ADR-133 assumed a private repo that is now public.",
+        "benefits": "Displayed remote matches git; credentials in remote URLs never printed (P-019 R4); --push keeps its exit-1 promise; a silent flag no-op becomes a usage error.",
+        "risks": "contract: check --push without origin now exits 1, new --public alone exits 2; dependency: none; concurrency: none; state: none, read-only config parse.",
+        "mitigation": "Failing-first tests per defect; help and README updated in the same commit; full Phase 4 and verify_commit per milestone."
+      },
+      "handoff": {
+        "next": "milestone 1 URL parse + redaction in scripts/project_publish.py",
+        "open": "new --publish bypasses publish gates, awaiting user choice"
+      }
+    },
+    {
+      "task_id": "review-pushes-11-20",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] git-exact origin URL parse and redacted URL display (ADR-191); [2/3] check --push exits 1 without origin, new --public needs --publish (ADR-192); [3/3] ADR-193 records the push 11-20 review incl. the public-repo key exposure",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792828279.1623995,
+      "timestamp_str": "2026-10-24 10:51:19",
+      "handoff": {
+        "next": "Phase 4 for milestone 1",
+        "open": "new --publish bypasses publish gates, awaiting user choice"
+      }
+    },
+    {
+      "task_id": "review-pushes-11-20",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[1/3] done: origin URL read as git does, credentials hidden in every report; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792828424.7358594,
+      "timestamp_str": "2026-10-24 10:53:44",
+      "handoff": {
+        "next": "milestone 2 check --push without origin, new --public alone",
+        "open": "new --publish gating awaits user"
+      }
     }
   ]
 }

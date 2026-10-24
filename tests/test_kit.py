@@ -6531,6 +6531,52 @@ class TestProjectPublish(unittest.TestCase):
             (git_dir / "config").write_text(config, encoding="utf-8")
             self.assertEqual(get_project_repo_url(tmp_root), "https://github.com/team/core-app.git")
 
+    def test_repo_url_reads_the_config_as_git_does(self):
+        # ADR-191: `URL = ...` hid a real remote from `status`, and an inline comment stayed in it.
+        cases = (('[remote "origin"]\n\tURL = https://e.x/a.git\n', "https://e.x/a.git"),
+                 ('[remote "origin"]\n\turl = https://e.x/b.git ; note\n', "https://e.x/b.git"),
+                 ('[remote "origin"]\n\turl = "https://e.x/c d.git" # note\n', "https://e.x/c d.git"),
+                 ('[Remote "origin"]\n\turl = https://e.x/d.git\n', "https://e.x/d.git"),
+                 ('[remote "Origin"]\n\turl = https://e.x/e.git\n', None))
+        for config, expected in cases:
+            with self.subTest(config=config), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / ".git").mkdir()
+                (Path(tmp) / ".git" / "config").write_text(config, encoding="utf-8")
+                self.assertEqual(get_project_repo_url(Path(tmp)), expected)
+
+    def test_repo_url_never_shows_credentials(self):
+        # ADR-191: a token in the remote URL was printed by `status`, `list` and the push report.
+        hidden = "https://***@github.com/me/app.git"
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ".git").mkdir()
+            (Path(tmp) / ".git" / "config").write_text(
+                '[remote "origin"]\n\turl = https://me:s3cret@github.com/me/app.git\n',  # aikit:allow-secret
+                encoding="utf-8")
+            self.assertEqual(get_project_repo_url(Path(tmp)), hidden)
+        url = get_project_repo_url(Path("/p/app"), runner=self.runner(
+            **{"get-url": (0, "https://s3cret@github.com/me/app.git\n")}))
+        self.assertEqual(url, hidden)
+        scp = get_project_repo_url(Path("/p/app"), runner=self.runner(
+            **{"get-url": (0, "git@github.com:me/app.git\n")}))
+        self.assertEqual(scp, "git@github.com:me/app.git", "an scp-style user is not a credential")
+
+    def test_push_reports_never_show_credentials(self):
+        token_url = "https://me:s3cret@github.com/me/app.git"  # aikit:allow-secret
+        refused = self.runner(**{"get-url": (0, token_url), "push": (1, f"fatal: {token_url} refused")})
+
+        def unpushed(argv, cwd):
+            if "log" in argv:
+                return 0, "abc123 work"
+            return refused(argv, cwd)
+        for code, report in (auto_push_project(Path("/p/app"), "app", runner=unpushed),
+                             publish_project(Path("/p/app"), "app", runner=refused)):
+            self.assertEqual(code, 1, report)
+            self.assertNotIn("s3cret", report)
+            self.assertIn("https://***@github.com/me/app.git", report)
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(**{"get-url": (0, token_url)}))
+        self.assertEqual(code, 0, report)
+        self.assertNotIn("s3cret", report)
+
     def test_publish_passes_extracted_description(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

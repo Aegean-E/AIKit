@@ -4,8 +4,9 @@ Publish a project to its own GitHub repository (ADR-134).
 `python aikit.py publish <name>` creates a private repository named after the project with the
 GitHub CLI and pushes the project's committed history to it; a project that already has an
 `origin` is pushed there instead. Nothing is uploaded unless the project has a commit, `gh` is
-logged in, and a secret scan of every file the project tracks is clean (PRINCIPLE-019). Pushes are
-never forced (PRINCIPLE-018 R4).
+logged in, and a secret scan of every line the uploaded commits add is clean (PRINCIPLE-019,
+ADR-145). Pushes are never forced (PRINCIPLE-018 R4), and no report shows a credential that a
+remote URL carries (ADR-191).
 """
 
 import re
@@ -21,6 +22,10 @@ SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
 PUBLISH_TIMEOUT_SECONDS = 300
 
 Runner = Callable[[List[str], Path], Tuple[int, str]]
+# The user-info part of a URL, the name and token before `@host`: a credential, never printed (ADR-191).
+URL_CREDENTIALS_RE = re.compile(r"(\b[A-Za-z][A-Za-z0-9+.-]*://)[^/@\s]+@")
+# `[remote "origin"]`: the section name is case-insensitive in git, the subsection is not.
+ORIGIN_HEADER_RE = re.compile(r'(?i:remote)\s+"origin"')
 
 
 def run_command(argv: List[str], cwd: Path) -> Tuple[int, str]:
@@ -34,7 +39,8 @@ def run_command(argv: List[str], cwd: Path) -> Tuple[int, str]:
 
 
 def _triad(what: str, why: str, fix: str) -> str:
-    return f"Error: {what}\nWhy: {why}\nFix: {fix}"
+    # git output quotes the remote URL, credentials included, so every report is scrubbed (ADR-191).
+    return hide_url_credentials(f"Error: {what}\nWhy: {why}\nFix: {fix}")
 
 
 def _clean_markdown_line(raw: str) -> str:
@@ -85,12 +91,35 @@ def extract_readme_description(project_root: Path) -> str:
     return (text[:197].rstrip() + "...") if len(text) > 200 else text
 
 
+def hide_url_credentials(text: str) -> str:
+    """`text` with the user-info of every URL in it replaced by `***` (PRINCIPLE-019 R4)."""
+    return URL_CREDENTIALS_RE.sub(r"\1***@", text)
+
+
+def config_value(raw: str) -> str:
+    """A git config value as git reads it: quotes removed, and a `;` or `#` outside quotes ends it."""
+    value, quoted, escaped = [], False, False
+    for char in raw.strip():
+        if escaped:
+            value.append(char)
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == '"':
+            quoted = not quoted
+        elif char in ";#" and not quoted:
+            break
+        else:
+            value.append(char)
+    return "".join(value).strip()
+
+
 def get_project_repo_url(project_root: Path, runner: Optional[Runner] = None) -> Optional[str]:
-    """Return the URL of the project's 'origin' remote, or None if not configured."""
+    """The URL of the project's 'origin' remote with any credential in it hidden, or None."""
     if runner is not None:
         code, output = runner(["git", "remote", "get-url", "origin"], project_root)
         if code == 0 and output.strip():
-            return output.strip()
+            return hide_url_credentials(output.strip())
         return None
 
     # Read .git/config directly: zero process spawns, pure stdlib speed (PRINCIPLE-010, PRINCIPLE-014 R3)
@@ -113,23 +142,21 @@ def get_project_repo_url(project_root: Path, runner: Optional[Runner] = None) ->
 
     try:
         lines = config_file.read_text(encoding="utf-8", errors="replace").splitlines()
-        in_origin = False
-        for raw_line in lines:
-            line = raw_line.strip()
-            if not line or line.startswith(("#", ";")):
-                continue
-            if line.startswith("[") and line.endswith("]"):
-                header = line[1:-1].strip()
-                normalized_header = re.sub(r"\s+", " ", header)
-                in_origin = (normalized_header == 'remote "origin"')
-                continue
-            if in_origin and "=" in line:
-                key, val = line.split("=", 1)
-                if key.strip() == "url":
-                    return val.strip()
     except OSError:
         return None
-
+    in_origin = False
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_origin = ORIGIN_HEADER_RE.fullmatch(line[1:-1].strip()) is not None
+            continue
+        if in_origin and "=" in line:
+            key, val = line.split("=", 1)
+            # Variable names are case-insensitive in git: `URL = ...` is the remote's url.
+            if key.strip().lower() == "url":
+                return hide_url_credentials(config_value(val)) or None
     return None
 
 
@@ -206,6 +233,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
                          f"commit the project's work first (its gates: `python aikit.py check {name}`).")
     code, origin = run(["git", "remote", "get-url", "origin"], project_root)
     has_origin = code == 0 and bool(origin.strip())
+    origin = hide_url_credentials(origin)
     refusal = scan_refusal(project_root, push_range(project_root, run) if has_origin else "HEAD", run)
     if refusal:
         return 1, refusal
@@ -238,7 +266,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
                          "GitHub refused the repository, for example because the name is taken.",
                          "rename or delete the existing repository on GitHub, or add a remote yourself with "
                          "`git remote add origin <url>` in the project, then publish again.")
-    url = run(["git", "remote", "get-url", "origin"], project_root)[1].strip() or output
+    url = hide_url_credentials(run(["git", "remote", "get-url", "origin"], project_root)[1].strip() or output)
     kind = "public" if public else "private"
     desc_note = f" with description '{desc}'" if desc else ""
     return 0, "\n".join([f"[OK] Created the {kind} repository {url}{desc_note} and pushed '{name}'.", *notes])

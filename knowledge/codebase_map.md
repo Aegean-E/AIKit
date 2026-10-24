@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `314`
-- **Total Class Methods**: `593`
-- **Total Source Lines**: `17093`
+- **Total Top-Level Functions**: `316`
+- **Total Class Methods**: `596`
+- **Total Source Lines**: `17167`
 
 ---
 
@@ -290,14 +290,16 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `245` lines (`11371` bytes)
+**Size**: `273` lines (`12733` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
 - `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
 - `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for the GitHub description.*
-- `def get_project_repo_url(project_root, runner)` - *Return the URL of the project's 'origin' remote, or None if not configured.*
+- `def hide_url_credentials(text)` - *`text` with the user-info of every URL in it replaced by `***` (PRINCIPLE-019 R4).*
+- `def config_value(raw)` - *A git config value as git reads it: quotes removed, and a `;` or `#` outside quotes ends it.*
+- `def get_project_repo_url(project_root, runner)` - *The URL of the project's 'origin' remote with any credential in it hidden, or None.*
 - `def push_range(project_root, run)` - *The commits a push uploads: those past the upstream, or the whole history without one.*
 - `def scan_refusal(project_root, rev_range, run)` - *Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
@@ -631,7 +633,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6860` lines (`385358` bytes)
+**Size**: `6906` lines (`388211` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1171,6 +1173,9 @@
   - Method `.test_uncommitted_work_is_named_in_the_report()`
   - Method `.test_extract_readme_description_finds_first_paragraph_and_truncates()`
   - Method `.test_get_project_repo_url()`
+  - Method `.test_repo_url_reads_the_config_as_git_does()`
+  - Method `.test_repo_url_never_shows_credentials()`
+  - Method `.test_push_reports_never_show_credentials()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`
 - `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*
