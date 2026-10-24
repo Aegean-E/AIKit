@@ -9,6 +9,7 @@ overwriting the file would erase that work (PRINCIPLE-006 R6, PRINCIPLE-013).
 """
 
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -25,6 +26,12 @@ OPENCODE_CONFIG = ROOT_DIR / "opencode.jsonc"
 LOCAL_PROVIDERS = ("ollama", "lmstudio")
 # Providers whose models in `opencode.jsonc` are only the free-tier ones verified by a live call.
 DECLARED_FREE_PROVIDERS = ("gemini",)
+# A Windows `.cmd`/`.bat` runs through cmd.exe, which re-parses the command line: a `"` ends the
+# quoting so `&` runs a command, and `%VAR%` expands even inside quotes (ADR-194).
+SHELL_SCRIPT_SUFFIXES = (".cmd", ".bat")
+CMD_META_CHARS = frozenset('"%!^&|<>\r\n')
+# The executable an npm shim forwards to: `"%dp0%\node_modules\...\opencode.exe"   %*`.
+SHIM_TARGET_RE = re.compile(r'"%~?dp0%?\\?([^"%]+?\.exe)"', re.IGNORECASE)
 
 
 def load_opencode_config(path: Path = OPENCODE_CONFIG) -> Dict[str, Any]:
@@ -39,6 +46,8 @@ def is_free_model(model: str, config: Dict[str, Any]) -> bool:
     provider. Anything else is treated as paid (PRINCIPLE-012 R8: free models only).
     """
     provider, _, name = model.partition("/")
+    # `provider/model#variant`: the variant is not part of the name, so `#-free` frees nothing.
+    name = name.partition("#")[0]
     if not provider or not name:
         return False
     if provider in LOCAL_PROVIDERS or name.endswith(("-free", ":free")):
@@ -65,7 +74,24 @@ def opencode_command(runner_bin: str, role: str, prompt: str, file: Optional[str
         cmd += ["--file", str(file)]
     if model:
         cmd += ["--model", str(model)]
-    return cmd + [prompt]
+    # `--` ends the options: a brief starting with `--auto` was read as a flag (ADR-194).
+    return cmd + ["--", prompt]
+
+
+def direct_executable(found: str) -> str:
+    """
+    The program to start for `found`: the executable an npm `.cmd` shim forwards to when it exists,
+    so no cmd.exe parses the brief; otherwise `found` itself.
+    """
+    path = Path(found)
+    if path.suffix.lower() not in SHELL_SCRIPT_SUFFIXES:
+        return found
+    try:
+        match = SHIM_TARGET_RE.search(path.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return found
+    target = path.parent / match.group(1) if match else None
+    return str(target) if target is not None and target.is_file() else found
 
 
 def _run_supervised(cmd: List[str], cwd: Path, timeout: int) -> subprocess.CompletedProcess:
@@ -123,7 +149,15 @@ def delegate_subagent(
             return 1, _triad("the `opencode` CLI was not found on PATH.",
                              "delegation runs OpenCode sub-agents (PRINCIPLE-009 R6).",
                              "install OpenCode and make `opencode` callable, then retry.")
-        runner_bin, runner = found, _run_supervised
+        runner_bin, runner = direct_executable(found), _run_supervised
+        unsafe = sorted(CMD_META_CHARS.intersection(prompt + (file or "") + (model or "")))
+        if Path(runner_bin).suffix.lower() in SHELL_SCRIPT_SUFFIXES and unsafe:
+            return 1, _triad(f"the brief holds {' '.join(map(repr, unsafe))}, which cmd.exe would "
+                             f"interpret: {runner_bin} is a script, not an executable.",
+                             "cmd.exe runs a command after a quote and `&`, and expands %VAR% inside "
+                             "quotes, so the brief could run commands or leak the environment.",
+                             "install OpenCode so its executable is found beside the shim, or "
+                             "rephrase the brief without those characters.")
 
     ledgers = {workspace_ledger_path(workspace), workspace_ledger_path(target)}
     before = {path: path.read_bytes() if path.is_file() else None for path in ledgers}

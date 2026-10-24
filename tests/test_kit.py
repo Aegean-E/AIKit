@@ -118,7 +118,8 @@ from scripts.disruption_recovery import (
 )
 from scripts.aikit_cli import build_parser, main as aikit_main
 from scripts.verify_commit import scanned_range, verify_commit
-from scripts.subagent_delegate import answer_text, delegate_subagent, is_free_model, subagent_roles
+from scripts.subagent_delegate import (answer_text, delegate_subagent, direct_executable, is_free_model,
+                                       opencode_command, subagent_roles)
 from scripts.project_publish import (
     auto_push_project,
     extract_readme_description,
@@ -6094,6 +6095,55 @@ class TestSubagentDelegation(unittest.TestCase):
     def delegate(self, role="worker", prompt="summarize docs", **kwargs):
         return delegate_subagent(role, prompt, workspace=self.kit, **kwargs)
 
+    def test_the_brief_is_always_the_message(self):
+        # ADR-194: a brief starting with `--` was parsed as opencode flags; `--auto` approves
+        # every permission the role does not explicitly deny.
+        cmd = opencode_command("opencode", "worker", "--auto --model x", None, None)
+        self.assertEqual(cmd[-2:], ["--", "--auto --model x"])
+
+    def shim(self, with_exe):
+        """An npm-style `opencode.cmd` that forwards to a real executable, as npm installs it."""
+        bin_dir = self.kit / "npm"
+        (bin_dir / "node_modules" / "@opencode" / "cli" / "bin").mkdir(parents=True)
+        shim = bin_dir / "opencode.cmd"
+        shim.write_text('@ECHO off\r\nSETLOCAL\r\nCALL :find_dp0\r\n'
+                        '"%dp0%\\node_modules\\@opencode\\cli\\bin\\opencode.exe"   %*\r\n', encoding="utf-8")
+        exe = bin_dir / "node_modules" / "@opencode" / "cli" / "bin" / "opencode.exe"
+        if with_exe:
+            exe.write_bytes(b"MZ")
+        return shim, exe
+
+    def test_a_cmd_shim_runs_its_executable_never_cmd_exe(self):
+        # ADR-194: through the .cmd shim, cmd.exe ran `"&echo x > f` from a brief and expanded %VAR%.
+        shim, exe = self.shim(with_exe=True)
+        self.assertEqual(Path(direct_executable(str(shim))), exe)
+        launched = []
+        with mock.patch("scripts.subagent_delegate.shutil.which", return_value=str(shim)), \
+             mock.patch("scripts.subagent_delegate._run_supervised",
+                        side_effect=lambda cmd, cwd, timeout: launched.append(cmd)
+                        or subprocess.CompletedProcess(cmd, 0, "ok", "")):
+            code, output = self.delegate(prompt='quote " & echo x > f %PATH%')
+        self.assertEqual(code, 0, output)
+        self.assertEqual(Path(launched[0][0]), exe)
+
+    def test_a_cmd_shim_without_its_executable_refuses_shell_characters(self):
+        shim, _ = self.shim(with_exe=False)
+        self.assertEqual(direct_executable(str(shim)), str(shim))
+        launched = []
+        with mock.patch("scripts.subagent_delegate.shutil.which", return_value=str(shim)), \
+             mock.patch("scripts.subagent_delegate._run_supervised",
+                        side_effect=lambda cmd, cwd, timeout: launched.append(cmd)
+                        or subprocess.CompletedProcess(cmd, 0, "ok", "")):
+            for brief in ('a" & echo x > f', "show %PATH%", "x|y"):
+                with self.subTest(brief=brief):
+                    code, output = self.delegate(prompt=brief)
+                    self.assertEqual(code, 1)
+                    self.assertIn("cmd.exe", output)
+                    self.assertIn("Fix:", output)
+            self.assertEqual(launched, [], "nothing ran")
+            self.assertEqual(self.delegate(prompt="summarize the docs")[0], 0)
+        self.assertEqual(len(launched), 1)
+
     def test_roles_are_the_opencode_profiles(self):
         self.assertEqual(subagent_roles(), tuple(sorted(p.stem for p in (ROOT_DIR / ".opencode" / "agents").glob("*.md"))))
         code, output = self.delegate(role="hacker")
@@ -6281,9 +6331,11 @@ class TestFreeModelPolicy(unittest.TestCase):
     def test_policy_names_free_and_paid_models(self):
         free = ["opencode/deepseek-v4.1-flash-free", "openrouter/qwen/qwen-2.5-coder-32b-instruct:free",
                 "ollama/qwen2.5-coder:latest", "lmstudio/any-model", "gemini/gemini-3.8-flash",
-                "gemini/gemini-3.5-flash-lite"]
+                "gemini/gemini-3.5-flash-lite", "opencode/deepseek-v4.1-flash-free#high"]
         paid = ["gemini/gemini-3.1-pro-preview", "openrouter/google/gemini-2.5-pro", "opencode/claude-sonnet",
-                "anthropic/claude-opus", "gemini/", "", "free"]
+                "anthropic/claude-opus", "gemini/", "", "free",
+                # ADR-194: the `#variant` is not part of the name; `-free` there named a paid model.
+                "opencode/claude-sonnet#-free", "gemini/gemini-3.1-pro-preview#x"]
         for model in free:
             with self.subTest(model=model):
                 self.assertTrue(is_free_model(model, self.CONFIG))

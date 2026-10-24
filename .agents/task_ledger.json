@@ -1,33 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-pushes-11-20",
-    "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792828725.3119662,
-    "completed_at": 1792828757.0693862
+    "task_id": "review-pushes-21-30",
+    "last_phase": "implementation",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792830143.4394414
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-3-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[4/4] done: check pushes only on --push, ADR-185.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792783912.362171,
-      "timestamp_str": "2026-10-23 22:31:52"
-    },
-    {
-      "task_id": "review-fixes-3-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-fixes-3-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792783912.5559974,
-      "timestamp_str": "2026-10-23 22:31:52"
-    },
     {
       "task_id": "verify-advice-v1",
       "phase": "planning",
@@ -248,6 +228,40 @@
       "status": "completed",
       "timestamp": 1792828757.0693874,
       "timestamp_str": "2026-10-24 10:59:17"
+    },
+    {
+      "task_id": "review-pushes-21-30",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] delegate never runs through cmd.exe, ends options before the brief, and checks the model name without its #variant (ADR-194); [2/2] ADR-195 records the push 21-30 review",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792829822.9217477,
+      "timestamp_str": "2026-10-24 11:17:02",
+      "impact_assessment": {
+        "why": "Pushes 21-30 review: on Windows opencode is an npm .CMD shim, so a brief with a quote and & ran arbitrary commands and %VAR% expanded into the brief; a brief starting with -- was parsed as opencode flags (--auto approves permissions); opencode/<paid>#-free passed the free-model check.",
+        "benefits": "No shell interprets a brief; the brief is always the message; only free models run.",
+        "risks": "contract: a .cmd/.bat opencode whose real executable cannot be found refuses briefs holding cmd metacharacters; dependency: none; concurrency: none; state: none.",
+        "mitigation": "Failing-first tests with a fake shim and a recorded argv; Phase 4 and verify_commit per milestone."
+      },
+      "handoff": {
+        "next": "milestone 1 in scripts/subagent_delegate.py",
+        "open": "new --publish gating awaits user (ADR-193)"
+      }
+    },
+    {
+      "task_id": "review-pushes-21-30",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[1/2] done: delegate starts the shim's executable, refuses cmd metacharacters without one, ends options before the brief, drops #variant in the free check; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792830143.4394414,
+      "timestamp_str": "2026-10-24 11:22:23",
+      "handoff": {
+        "next": "milestone 2 ADR-195 review record",
+        "open": "new --publish gating awaits user (ADR-193)"
+      }
     }
   ]
 }

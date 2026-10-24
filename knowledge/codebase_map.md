@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `316`
-- **Total Class Methods**: `597`
-- **Total Source Lines**: `17203`
+- **Total Top-Level Functions**: `317`
+- **Total Class Methods**: `601`
+- **Total Source Lines**: `17291`
 
 ---
 
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `169` lines (`10455` bytes)
+**Size**: `171` lines (`10663` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -355,7 +355,7 @@
 ### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
 > *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
 
-**Size**: `191` lines (`9474` bytes)
+**Size**: `225` lines (`11491` bytes)
 
 **Functions:**
 - `def load_opencode_config(path)` - *The OpenCode configuration; its `providers` declare which Gemini models are free-tier.*
@@ -363,6 +363,7 @@
 - `def subagent_roles(agents_dir)` - *The roles OpenCode can run: one per profile in `.opencode/agents/` (the single source).*
 - `def _triad(what, why, fix)`
 - `def opencode_command(runner_bin, role, prompt, file, model)` - *The `opencode run` argv for one headless sub-agent call.*
+- `def direct_executable(found)` - *The program to start for `found`: the executable an npm `.cmd` shim forwards to when it exists,*
 - `def _run_supervised(cmd, cwd, timeout)`
 - `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Run `role` on `prompt` in AIKit or in project `project_name`; returns (exit code, report).*
 - `def answer_text(stdout)` - *The sub-agent's own words from OpenCode's `--format json` event stream: the `text` parts in*
@@ -633,7 +634,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6917` lines (`388887` bytes)
+**Size**: `6969` lines (`392019` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1129,6 +1130,10 @@
   - Method `.setUp()`
   - Method `.runner(returncode, stdout, stderr, effect)`
   - Method `.delegate(role, prompt, **kwargs)`
+  - Method `.test_the_brief_is_always_the_message()`
+  - Method `.shim(with_exe)` - *An npm-style `opencode.cmd` that forwards to a real executable, as npm installs it.*
+  - Method `.test_a_cmd_shim_runs_its_executable_never_cmd_exe()`
+  - Method `.test_a_cmd_shim_without_its_executable_refuses_shell_characters()`
   - Method `.test_roles_are_the_opencode_profiles()`
   - Method `.test_refuses_empty_brief_unknown_project_and_missing_file()`
   - Method `.test_runs_opencode_headless_with_the_brief()`

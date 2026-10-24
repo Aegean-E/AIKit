@@ -160,7 +160,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
     delegate.add_argument("role", help="a profile name in .opencode/agents/")
-    delegate.add_argument("prompt", help="the brief for the sub-agent")
+    delegate.add_argument("prompt", help="the brief for the sub-agent, always sent as the message; "
+                                         "exit 1 if only a .cmd shim is found and the brief holds "
+                                         "characters cmd.exe would interpret")
     delegate.add_argument("--file", "-f", default=None, help="file to attach to the brief")
     delegate.add_argument("--project", "-p", default=None, help="run inside this registered project")
     delegate.add_argument("--model", "-m", default=None, help="model ID, e.g. ollama/qwen2.5-coder")

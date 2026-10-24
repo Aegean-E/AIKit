@@ -2303,3 +2303,15 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: ADR-133 stays unedited (the register is append-only); this ADR corrects its "private repository" statement. Revoking the key is the user's action and cannot be verified from the repository; history is still not rewritten, since a public history may already be cloned and a force push is never used (PRINCIPLE-018 R4).
 - **Consequences**: The key must be treated as compromised until revoked. Item 5 stays open until the user chooses.
 - Cross-principle check: no principle section changed. The review serves PRINCIPLE-019 R6 (a pushed credential is rotated, not reverted), PRINCIPLE-018 R7 (each commit verified alone) and PRINCIPLE-003 R1 (claims checked against the real state).
+
+### ADR-194: A Delegated Brief Never Reaches cmd.exe and Is Always the Message
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Reviewing pushes 21-30 re-tested `aikit delegate` (b643039, 79825f7, 4a53d0a) on this Windows machine. `shutil.which("opencode")` returns npm's `opencode.CMD` shim, and Windows starts a `.cmd` through cmd.exe, which re-parses the command line that `subprocess` built. With a harmless fake shim, the brief `a" & echo x > INJECTED.txt & rem "` created the file: a quote in a brief ended the quoting and `&` ran a command. `%PATH%` in a brief arrived expanded, so a brief could carry an environment value, a key included, to the model. Separately, the brief was the last argument with no end of options: the real `opencode run --agent <unknown> "--version"` printed the version instead of treating it as the message, so a brief starting `--auto` would auto-approve every permission the role does not explicitly deny, shell commands included. And `is_free_model` read `opencode/<paid>#-free` as free, testing the `#variant` as part of the model name.
+- **Decision**:
+  1. `direct_executable` reads an npm `.cmd`/`.bat` shim for the executable it forwards to (`"%dp0%\...\opencode.exe" %*`) and starts that executable directly, so no shell parses the brief. On this machine it resolves to `node_modules\@opencode\cli\bin\opencode.exe`.
+  2. When only a script is found, a brief, file or model holding a character cmd.exe interprets (`" % ! ^ & | < >` or a line break) is refused with exit 1 and a triad before anything runs.
+  3. `opencode_command` puts `--` before the brief, which the real `opencode run` honours.
+  4. `is_free_model` drops the `#variant` before testing the name.
+- **Consequences**: A brief reaches the sub-agent byte for byte on every platform, and it is always the message. The refusal in 2 only applies to an installation whose shim names no executable that exists; the `delegate` help states it. Tests use a fake shim with and without its executable, a recorded argv and `#variant` model names, with no process started.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-019 R4 (no environment value reaches a model), PRINCIPLE-012 R8 (free models only), PRINCIPLE-003 R4 (platform parity) and PRINCIPLE-014 R1 (failing-first tests).
