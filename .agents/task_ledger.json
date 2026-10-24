@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "review-pushes-11-20",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792828725.3119662
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792828725.3119662,
+    "completed_at": 1792828757.0693862
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-3-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/4] done: missing grammar file is an error where aikit.py exists, ADR-184.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792783740.1335657,
-      "timestamp_str": "2026-10-23 22:29:00"
-    },
     {
       "task_id": "review-fixes-3-v1",
       "phase": "verification",
@@ -248,6 +239,15 @@
         "next": "user decides new --publish gating and key revocation",
         "open": "new --publish bypasses publish gates"
       }
+    },
+    {
+      "task_id": "review-pushes-11-20",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-pushes-11-20' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792828757.0693874,
+      "timestamp_str": "2026-10-24 10:59:17"
     }
   ]
 }
