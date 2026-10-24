@@ -4779,9 +4779,14 @@ class TestProjectRegistry(unittest.TestCase):
     def test_new_with_publish_flag_calls_publish_project(self):
         with mock.patch("scripts.aikit_cli.create_project", return_value=self.kit / "projects" / "publishedapp"), \
              mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "[OK] Published to GitHub")) as mock_pub:
-            code, out, _ = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest")
+            code, out, _ = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest",
+                                        "--description", "A tool that publishes itself on creation.",
+                                        "--topic", "Demo")
             self.assertEqual(code, 0)
             mock_pub.assert_called_once()
+            # ADR-200: the new project's description and topics reach the repository it creates.
+            self.assertEqual(mock_pub.call_args.kwargs["description"], "A tool that publishes itself on creation.")
+            self.assertEqual(mock_pub.call_args.kwargs["topics"], ["aikit", "demo"])
             self.assertIn("Publishing 'publishedapp' to GitHub:", out)
             self.assertIn("[OK] Published to GitHub", out)
 
@@ -5108,6 +5113,9 @@ class TestProjectRegistry(unittest.TestCase):
             code, _, _ = self.run_cli("publish", "uiapp")
         self.assertEqual(code, 0)
         publish.assert_called_once()
+        # ADR-200: a project.json without topics, from before ADR-199, still gets `aikit`.
+        self.assertEqual(publish.call_args.kwargs["topics"], ["aikit"])
+        self.assertIsNone(publish.call_args.kwargs["description"])
 
         failed = self._gate_result()
         failed.passed = False
@@ -6729,6 +6737,36 @@ class TestProjectPublish(unittest.TestCase):
         code, report = publish_project(Path("/p/app"), "app", runner=self.runner(**{"get-url": (0, token_url)}))
         self.assertEqual(code, 0, report)
         self.assertNotIn("s3cret", report)
+
+    def test_publish_sets_the_recorded_description_and_topics(self):
+        # ADR-200: `new` records them in project.json; publish puts them on the repository.
+        description = "A command-line tool that keeps a reading list in sync across devices."
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(),
+                                       description=description, topics=["aikit", "python", "cli"])
+        self.assertEqual(code, 0, report)
+        create = self.made("create")[0]
+        self.assertEqual(create[create.index("--description") + 1], description)
+        self.assertIn(["gh", "repo", "edit", "--add-topic", "aikit,python,cli"], self.calls)
+        self.assertIn("topics aikit, python, cli", report)
+
+        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(
+            **{"get-url": (0, "https://github.com/me/app.git")}), description=description, topics=["aikit"])
+        self.assertEqual(code, 0, report)
+        self.assertIn(["gh", "repo", "edit", "--description", description], self.calls)
+        self.assertIn(["gh", "repo", "edit", "--add-topic", "aikit"], self.calls)
+
+    def test_a_topic_failure_after_upload_is_a_note(self):
+        base = self.runner()
+
+        def run(argv, cwd):
+            if "--add-topic" in argv:
+                self.calls.append(argv)
+                return 1, "HTTP 422: topic invalid"
+            return base(argv, cwd)
+        code, report = publish_project(Path("/p/app"), "app", runner=run, topics=["aikit", "web"])
+        self.assertEqual(code, 0, "the repository exists and holds the commits")
+        self.assertIn("Note: the topics were not set", report)
+        self.assertIn("gh repo edit --add-topic aikit,web", report)
 
     def test_publish_passes_extracted_description(self):
         with tempfile.TemporaryDirectory() as tmp:

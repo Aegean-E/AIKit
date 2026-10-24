@@ -225,10 +225,28 @@ def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = 
     return 0, f"[OK] Pushed '{name}' commits to {url}."
 
 
+def apply_topics(project_root: Path, topics: Optional[List[str]], run: Runner) -> List[str]:
+    """
+    Set `topics` on the project's repository; returns the report lines. The repository already
+    holds the commits, so a refused topic is a note with the command to retry, not a failure.
+    """
+    if not topics:
+        return []
+    joined = ",".join(topics)
+    code, output = run(["gh", "repo", "edit", "--add-topic", joined], project_root)
+    if code != 0:
+        return [hide_url_credentials(f"Note: the topics were not set ({output.strip()[-200:]}); run "
+                                     f"`gh repo edit --add-topic {joined}` in the project.")]
+    return [f"[OK] Set topics {', '.join(topics)}."]
+
+
 def publish_project(project_root: Path, name: str, public: bool = False,
-                    runner: Optional[Runner] = None) -> Tuple[int, str]:
+                    runner: Optional[Runner] = None, description: Optional[str] = None,
+                    topics: Optional[List[str]] = None) -> Tuple[int, str]:
     """
     Upload the project's commits to its own GitHub repository; returns (exit code, report).
+    `description` and `topics` are those `new` recorded in project.json (ADR-199, ADR-200);
+    without a description the README's first paragraph is used.
     `runner` defaults to real git, gh and Python calls (PRINCIPLE-009 R4: tests inject a fake).
     """
     run = runner or run_command
@@ -246,7 +264,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
     if run(["git", "status", "--porcelain"], project_root)[1].strip():
         notes.append("Note: uncommitted changes stay local; commit them and publish again to upload them.")
 
-    desc = extract_readme_description(project_root)
+    desc = description or extract_readme_description(project_root)
 
     if has_origin:
         code, output = run(["git", "push", "-u", "origin", "HEAD"], project_root)
@@ -254,8 +272,10 @@ def publish_project(project_root: Path, name: str, public: bool = False,
             return 1, _triad(f"pushing '{name}' to {origin.strip()} failed.\n{output[-800:]}",
                              "the remote refused the push or could not be reached; nothing is forced.",
                              "pull or fix the cause shown, then publish again.")
-        if desc and run(["gh", "auth", "status"], project_root)[0] == 0:
-            run(["gh", "repo", "edit", "--description", desc], project_root)
+        if run(["gh", "auth", "status"], project_root)[0] == 0:
+            if desc:
+                run(["gh", "repo", "edit", "--description", desc], project_root)
+            notes = apply_topics(project_root, topics, run) + notes
         return 0, "\n".join([f"[OK] Pushed '{name}' to {origin.strip()}.", *notes])
 
     if run(["gh", "auth", "status"], project_root)[0] != 0:
@@ -274,5 +294,6 @@ def publish_project(project_root: Path, name: str, public: bool = False,
     url = hide_url_credentials(run(["git", "remote", "get-url", "origin"], project_root)[1].strip() or output)
     kind = "public" if public else "private"
     desc_note = f" with description '{desc}'" if desc else ""
+    notes = apply_topics(project_root, topics, run) + notes
     return 0, "\n".join([f"[OK] Created the {kind} repository {url}{desc_note} and pushed '{name}'.", *notes])
 

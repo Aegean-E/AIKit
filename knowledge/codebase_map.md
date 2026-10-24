@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `320`
-- **Total Class Methods**: `608`
-- **Total Source Lines**: `17494`
+- **Total Top-Level Functions**: `321`
+- **Total Class Methods**: `610`
+- **Total Source Lines**: `17561`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `613` lines (`29457` bytes)
+**Size**: `621` lines (`29958` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -290,7 +290,7 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `278` lines (`13258` bytes)
+**Size**: `299` lines (`14382` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
@@ -303,7 +303,8 @@
 - `def push_range(project_root, run)` - *The commits a push uploads: those past the upstream, or the whole history without one.*
 - `def scan_refusal(project_root, rev_range, run)` - *Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
-- `def publish_project(project_root, name, public, runner)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
+- `def apply_topics(project_root, topics, run)` - *Set `topics` on the project's repository; returns the report lines. The repository already*
+- `def publish_project(project_root, name, public, runner, description, topics)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
 ---
 
@@ -637,7 +638,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7062` lines (`398258` bytes)
+**Size**: `7100` lines (`400699` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1192,6 +1193,8 @@
   - Method `.test_repo_url_reads_the_config_as_git_does()`
   - Method `.test_repo_url_never_shows_credentials()`
   - Method `.test_push_reports_never_show_credentials()`
+  - Method `.test_publish_sets_the_recorded_description_and_topics()`
+  - Method `.test_a_topic_failure_after_upload_is_a_note()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`
 - `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*

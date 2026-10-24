@@ -5,23 +5,9 @@
     "last_phase": "implementation",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792833370.6412961
+    "updated_at": 1792833772.3941705
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-11-20",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] git-exact origin URL parse and redacted URL display (ADR-191); [2/3] check --push exits 1 without origin, new --public needs --publish (ADR-192); [3/3] ADR-193 records the push 11-20 review incl. the public-repo key exposure",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792828279.1623995,
-      "timestamp_str": "2026-10-24 10:51:19",
-      "handoff": {
-        "next": "Phase 4 for milestone 1",
-        "open": "new --publish bypasses publish gates, awaiting user choice"
-      }
-    },
     {
       "task_id": "review-pushes-11-20",
       "phase": "implementation",
@@ -279,6 +265,21 @@
       "timestamp_str": "2026-10-24 12:16:10",
       "handoff": {
         "next": "milestone 2, publish applies project.json description and topics in scripts/project_publish.py"
+      }
+    },
+    {
+      "task_id": "new-project-identity",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[2/2] done: publish sets project.json description and topics (aikit first), a refused topic is a note; Phase 4 green in a clean worktree (untracked references/ folder from another actor excluded)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792833772.3941705,
+      "timestamp_str": "2026-10-24 12:22:52",
+      "handoff": {
+        "state": "committed, unpushed",
+        "next": "user review",
+        "open": "untracked references/ folder and another agent in this repo"
       }
     }
   ]

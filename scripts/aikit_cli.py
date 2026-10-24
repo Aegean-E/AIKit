@@ -38,9 +38,11 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     load_config,
+    normalize_topics,
     project_guidelines,
     reconcile_readme_tree,
     seed_readme,
+    validate_description,
     write_memory,
 )
 from scripts.subagent_delegate import delegate_subagent
@@ -139,7 +141,9 @@ def cmd_new(args: argparse.Namespace) -> int:
     print(f"[OK] Created project '{args.name}' at {root}")
     if getattr(args, "publish", False):
         print(f"Publishing '{args.name}' to GitHub:")
-        code, report = publish_project(root, args.name, public=getattr(args, "public", False))
+        code, report = publish_project(root, args.name, public=getattr(args, "public", False),
+                                       description=validate_description(args.description),
+                                       topics=normalize_topics(args.topic))
         print(report, file=sys.stdout if code == 0 else sys.stderr)
         if code != 0:
             print(f"[WARN] Project created locally at {root}, but GitHub publication failed.", file=sys.stderr)
@@ -457,7 +461,11 @@ def cmd_publish(args: argparse.Namespace) -> int:
         print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not "
               "detected.", file=sys.stderr)
         return 1
-    code, report = publish_project(project.path, project.name, public=args.public)
+    # `new` records the description and topics; a project.json from before ADR-199 has neither.
+    config = load_config(project.path)
+    code, report = publish_project(project.path, project.name, public=args.public,
+                                   description=config.get("description"),
+                                   topics=config.get("topics") or ["aikit"])
     print(report, file=sys.stdout if code == 0 else sys.stderr)
     return code
 
