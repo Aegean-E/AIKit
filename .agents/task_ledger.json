@@ -3,23 +3,15 @@
   "active_task": {
     "task_id": "ownership-history",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1792863956.8354454,
     "owner": "claude-code:850bdc47",
     "started_by": null,
-    "continuations": []
+    "continuations": [],
+    "completed_at": 1792863957.620362
   },
   "checkpoints": [
-    {
-      "task_id": "integrate-and-deliver",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'integrate-and-deliver' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792858479.5621836,
-      "timestamp_str": "2026-10-24 19:14:39"
-    },
     {
       "task_id": "readme-condense",
       "phase": "planning",
@@ -291,6 +283,16 @@
       "handoff": {
         "next": "verify every unpushed commit alone, then push"
       }
+    },
+    {
+      "task_id": "ownership-history",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ownership-history' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792863957.6203635,
+      "timestamp_str": "2026-10-24 20:45:57",
+      "agent": "claude-code:850bdc47"
     }
   ]
 }
