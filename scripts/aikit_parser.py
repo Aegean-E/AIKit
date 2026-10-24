@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
     new = commands.add_parser("new", help="create projects/<name>/ as a new git repository")
     new.add_argument("name", help="folder name: lowercase letters, digits, '-' or '_'; not a Windows device name such as con or nul")
     new.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
+    new.add_argument("--description", metavar="TEXT",
+                     help="one line of 10-350 characters: the README's first paragraph and the "
+                          "GitHub description")
+    new.add_argument("--topic", action="append", metavar="TOPIC",
+                     help="a GitHub topic, repeatable; 'aikit' is always added")
     new.add_argument("--publish", action="store_true", help="publish to GitHub immediately after creation")
     new.add_argument("--public", action="store_true", help="with --publish: make the GitHub repository public (default: private)")
 

@@ -2358,3 +2358,16 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: No historical commit edits. The findings were addressed at HEAD with failing-first tests and verified through the pre-commit gates.
 - **Consequences**: Pushes 1-50 have now all been audited. Open items remain for user consultation.
 - Cross-principle check: no principle section changed. The review serves PRINCIPLE-018 R7 (each commit verified alone), PRINCIPLE-003 R1 (claims checked against the real state), and PRINCIPLE-016 R1 (knowledge matches the code).
+
+### ADR-199: A New Project Starts AGPL-3.0 Licensed, Described, Tagged and Linked to AIKit
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The user asked that every project `aikit new` starts carry the GNU Affero General Public License v3.0, a proper description of a proper length, tags, and a README mark that it was built with AIKit, leading to AIKit's page. A new project had none of these: no LICENSE, a README whose first section was the quick reference, and nothing for GitHub's description or topics beyond what `publish` could extract from the README.
+- **Decision**:
+  1. `create_project` copies AIKit's own LICENSE, the GNU AGPL-3.0 text GitHub identifies as `agpl-3.0`, into the project and commits it in the first commit; it refuses with a triad when that file is missing or is not the AGPL text. `_git_start` stages only the seed files that exist.
+  2. The seed README opens with a "Built with AIKit" badge linking to `https://github.com/Aegean-E/AIKit`, then the description, lists `LICENSE` in its tree and ends with a License section. `fix`, which also seeds a missing README, adds the badge but not the license lines, since only `new` writes the LICENSE.
+  3. `new --description` takes one line of 10-350 characters (350 is GitHub's limit for a repository description); without it the README carries a `<FILL:` marker, so the guidelines gate stays red until the project says what it is, as the prerequisites marker already does (ADR-138). `extract_readme_description` drops the marker, so it is never uploaded.
+  4. `new --topic` is repeatable; each topic is lowercased and must follow GitHub's topic rules (letters, digits and `-`, at most 50 characters), `aikit` is always first, repeats are dropped and a repository holds at most 20.
+  5. Description and topics are validated before the project folder exists and are recorded in `.aikit/project.json` (`description`, `topics`) for `publish` (ADR-200).
+- **Consequences**: A real `aikit new` with a description and topics, its prerequisites filled, passes all four project gates; its first commit holds LICENSE. `attach` adds no license: an existing folder keeps its own. The badge image is served by shields.io; the hygiene gate checks only `.html`, `.css` and `.js` assets, so a README badge is not a hidden dependency of the project's code.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-005 R1 (a README that says what the project is), PRINCIPLE-011 R5 (exit 2 with a triad on an invalid value, before anything is created) and PRINCIPLE-014 R1 (failing-first tests).

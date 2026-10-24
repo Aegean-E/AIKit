@@ -33,6 +33,15 @@ from scripts.update_knowledge_base import check_readme, guideline_errors, write_
 PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
+# Every project AIKit seeds names where it came from; the badge links to AIKit's page (ADR-199).
+AIKIT_URL = "https://github.com/Aegean-E/AIKit"
+AIKIT_BADGE = f"[![Built with AIKit](https://img.shields.io/badge/built%20with-AIKit-6f42c1)]({AIKIT_URL})"
+DESCRIPTION_MIN, DESCRIPTION_MAX = 10, 350
+DESCRIPTION_FILL = (f"<FILL: one sentence on what this project does and for whom, "
+                    f"{DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters>")
+# GitHub's topic rules: lowercase letters, digits and '-', at most 50 characters, 20 per repository.
+TOPIC_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
+MAX_TOPICS = 20
 DECISIONS_FILENAME = "decisions.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
 GUIDELINES_FILENAME = "guidelines.md"
@@ -61,15 +70,22 @@ DECISIONS_TEMPLATE = (
     "-->\n"
 )
 
-def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
+def render_project_readme(name: str, test_command: Optional[str] = None,
+                          description: Optional[str] = None, agpl: bool = False) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
     every tracked top-level entry; `.aikit/` is listed without children, so a new memory file never
-    makes the tree incomplete.
+    makes the tree incomplete. A badge under the title links to AIKit, and the paragraph after it
+    is the description `publish` uploads; `agpl` lists the LICENSE `new` copies (ADR-199).
     """
+    license_line = "├── LICENSE                   <- GNU AGPL-3.0\n" if agpl else ""
+    license_section = ("\n## 📜 License\n\n"
+                       "GNU Affero General Public License v3.0; see [LICENSE](LICENSE).\n") if agpl else ""
     return (
         f"# {name}\n\n"
+        f"{AIKIT_BADGE}\n\n"
+        f"{description or DESCRIPTION_FILL}\n\n"
         "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
         "- **Runtime Prerequisites**: <FILL: each runtime this project needs and its minimum version>\n"
         "- **Canonical Regression Shield Gate**:\n"
@@ -87,22 +103,88 @@ def render_project_readme(name: str, test_command: Optional[str] = None) -> str:
         "```text\n"
         f"{name}/\n"
         "├── .gitignore                <- transient AIKit state excluded\n"
+        f"{license_line}"
         "├── README.md\n"
         "└── .aikit/                   <- this project's memory: record, ledger, decisions\n"
         "```\n"
+        f"{license_section}"
     )
 
 
-def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
+def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None,
+                description: Optional[str] = None, agpl: bool = False) -> bool:
     """
     Write the template README when the project has none; returns whether it did. `new` and `fix`
-    call it, `attach` never does: attaching leaves an existing folder's files alone.
+    call it, `attach` never does: attaching leaves an existing folder's files alone. Only `new`
+    passes `agpl`, since only it writes the LICENSE.
     """
     readme = project_root / "README.md"
     if readme.exists():
         return False
-    write_generated_file(readme, render_project_readme(name, test_command))
+    write_generated_file(readme, render_project_readme(name, test_command, description, agpl))
     return True
+
+
+def validate_description(description: Optional[str]) -> Optional[str]:
+    """The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350)."""
+    if description is None:
+        return None
+    text = description.strip()
+    if "\n" in text or "\r" in text or not DESCRIPTION_MIN <= len(text) <= DESCRIPTION_MAX:
+        raise ProjectError(
+            f"Invalid description ({len(text)} characters).",
+            f"it becomes the README's first paragraph and the GitHub description, which holds one "
+            f"line of at most {DESCRIPTION_MAX} characters; under {DESCRIPTION_MIN} says nothing.",
+            f"write one line of {DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters on what the project "
+            "does and for whom.",
+            exit_code=2,
+        )
+    return text
+
+
+def normalize_topics(topics: Optional[List[str]]) -> List[str]:
+    """`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse."""
+    result = ["aikit"]
+    for raw in topics or []:
+        topic = raw.strip().lower()
+        if not TOPIC_PATTERN.match(topic):
+            raise ProjectError(
+                f"Invalid topic '{raw}'.",
+                "GitHub topics are lowercase letters, digits and '-', start with a letter or digit, "
+                "and hold at most 50 characters.",
+                "pass each topic as one word, e.g. `--topic web --topic flask`.",
+                exit_code=2,
+            )
+        if topic not in result:
+            result.append(topic)
+    if len(result) > MAX_TOPICS:
+        raise ProjectError(
+            f"{len(result)} topics, counting 'aikit'.",
+            f"a GitHub repository holds at most {MAX_TOPICS} topics.",
+            f"keep at most {MAX_TOPICS - 1} --topic values.",
+            exit_code=2,
+        )
+    return result
+
+
+def seed_license(project_root: Path) -> None:
+    """Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199)."""
+    source = ROOT_DIR / "LICENSE"
+    try:
+        text = source.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ProjectError(
+            f"Cannot read {source}: {exc}",
+            "a new project starts with the GNU AGPL-3.0 license text AIKit ships.",
+            "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
+        ) from exc
+    if not text.lstrip().startswith("GNU AFFERO GENERAL PUBLIC LICENSE"):
+        raise ProjectError(
+            f"{source} is not the GNU AGPL-3.0 text.",
+            "a new project starts with the GNU AGPL-3.0 license text AIKit ships.",
+            "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
+        )
+    write_generated_file(project_root / "LICENSE", text)
 
 
 def _tree_entry_name(line: str) -> Optional[str]:
@@ -353,7 +435,8 @@ def _ensure_gitignore(project_root: Path) -> None:
         handle.write(block)
 
 
-def write_memory(project_root: Path, name: str, test_command: Optional[str] = None) -> bool:
+def write_memory(project_root: Path, name: str, test_command: Optional[str] = None,
+                 description: Optional[str] = None, topics: Optional[List[str]] = None) -> bool:
     """
     Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`
     unless they exist. Returns whether `project.json` was created: existing memory is never
@@ -379,6 +462,9 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
         "schema": SCHEMA_VERSION,
         "name": name,
         "test_command": test_command,
+        # What `publish` sets on the GitHub repository (ADR-199, ADR-200).
+        "description": description,
+        "topics": topics if topics is not None else ["aikit"],
         # Gate name -> command, or null to disable a detected gate (project_gates, ADR-122).
         "gates": {},
         # Opt-in: strict delivery and publish require .aikit/ui.json (ADR-166).
@@ -452,7 +538,9 @@ def _git_start(project_root: Path) -> None:
             "every project is its own git repository, separate from AIKit's.",
             "fix the git error above, then run the command again.",
         )
-    stage_items = [".gitignore", "README.md", PROJECT_MEMORY_DIRNAME]
+    # LICENSE only when present: `git add` of a missing path fails the whole call.
+    stage_items = [item for item in (".gitignore", "LICENSE", "README.md", PROJECT_MEMORY_DIRNAME)
+                   if (project_root / item).exists()]
     _run_git(project_root, "add", "--", *stage_items)
     result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
     if result.returncode != 0:
@@ -468,7 +556,8 @@ def _git_start(project_root: Path) -> None:
 
 
 def create_project(name: str, test_command: Optional[str] = None, workspace: Path = ROOT_DIR,
-                   git_start: Optional[Callable[[Path], None]] = None
+                   git_start: Optional[Callable[[Path], None]] = None,
+                   description: Optional[str] = None, topics: Optional[List[str]] = None
                    ) -> Path:
     """
     Create `projects/<name>/` as a new git repository whose first commit holds the project's
@@ -477,6 +566,9 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     """
     git_start = git_start or _git_start
     validate_name(name)
+    # Checked before the folder exists, so a refused value leaves nothing behind (ADR-199).
+    description = validate_description(description)
+    topics = normalize_topics(topics)
     if name in _registered_names(workspace):
         raise ProjectError(
             f"A project named '{name}' already exists.",
@@ -492,8 +584,9 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
         )
     project_root.mkdir(parents=True)
     try:
-        write_memory(project_root, name, test_command)
-        seed_readme(project_root, name, test_command)
+        write_memory(project_root, name, test_command, description, topics)
+        seed_license(project_root)
+        seed_readme(project_root, name, test_command, description, agpl=True)
         git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.

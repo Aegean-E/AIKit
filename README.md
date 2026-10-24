@@ -128,7 +128,7 @@ portable_agent_kit/
 Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it.
 
 ```bash
-python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ memory
+python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AGPL-3.0 LICENSE, AIKit badge
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked, --json for CI

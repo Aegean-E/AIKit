@@ -1,43 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-pushes-31-50",
-    "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792832056.2354977,
-    "completed_at": 1792832073.180608
+    "task_id": "new-project-identity",
+    "last_phase": "implementation",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792833370.6412961
   },
   "checkpoints": [
-    {
-      "task_id": "close-open-items-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'close-open-items-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792823624.1606638,
-      "timestamp_str": "2026-10-24 09:33:44"
-    },
-    {
-      "task_id": "review-pushes-11-20",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] git-exact origin URL parse and redacted URL display; [2/3] check --push exits 1 without origin, new --public needs --publish; [3/3] ADR-191 records the push 11-20 review incl. the public-repo key exposure",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792828155.557114,
-      "timestamp_str": "2026-10-24 10:49:15",
-      "impact_assessment": {
-        "why": "Pushes 11-20 review: status/list hide an origin spelled URL=, keep inline comments in the URL, print token-bearing URLs verbatim; check --push exits 0 when no origin exists; new --public alone is ignored; ADR-133 assumed a private repo that is now public.",
-        "benefits": "Displayed remote matches git; credentials in remote URLs never printed (P-019 R4); --push keeps its exit-1 promise; a silent flag no-op becomes a usage error.",
-        "risks": "contract: check --push without origin now exits 1, new --public alone exits 2; dependency: none; concurrency: none; state: none, read-only config parse.",
-        "mitigation": "Failing-first tests per defect; help and README updated in the same commit; full Phase 4 and verify_commit per milestone."
-      },
-      "handoff": {
-        "next": "milestone 1 URL parse + redaction in scripts/project_publish.py",
-        "open": "new --publish bypasses publish gates, awaiting user choice"
-      }
-    },
     {
       "task_id": "review-pushes-11-20",
       "phase": "planning",
@@ -277,6 +247,39 @@
       "status": "completed",
       "timestamp": 1792832073.1806095,
       "timestamp_str": "2026-10-24 11:54:33"
+    },
+    {
+      "task_id": "new-project-identity",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] new seeds AIKit's AGPL-3.0 LICENSE, a Built with AIKit badge and a description paragraph; --description (10-350 chars) and repeatable --topic (GitHub rules, aikit always added) validated and kept in project.json (ADR-198); [2/2] publish sets the recorded description and topics on GitHub (ADR-199)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792833068.484292,
+      "timestamp_str": "2026-10-24 12:11:08",
+      "impact_assessment": {
+        "why": "User request: every new project starts AGPL-3.0 licensed, with a proper description, tags, and a README badge that leads to AIKit.",
+        "benefits": "New projects are licensed, discoverable by topic and described from the start; their README links back to AIKit.",
+        "risks": "contract: new gains --description/--topic, its seed README and first commit gain LICENSE and a badge, publish runs gh repo edit for topics; dependency: AIKit's own LICENSE file is the source; concurrency: another agent commits in this repo, so each commit is preceded by a log check; state: project.json gains optional description/topics.",
+        "mitigation": "Failing-first tests per behaviour; validation before anything is created; a topic failure after a created repo is a note; README and help updated in the same commits; Phase 4 and verify_commit per milestone."
+      },
+      "handoff": {
+        "next": "milestone 1 in scripts/project_registry.py and scripts/aikit_parser.py",
+        "open": "another agent is active in this repo"
+      }
+    },
+    {
+      "task_id": "new-project-identity",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[1/2] done: new seeds AGPL-3.0 LICENSE, Built with AIKit badge, description; --description/--topic validated, kept in project.json; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792833370.6412961,
+      "timestamp_str": "2026-10-24 12:16:10",
+      "handoff": {
+        "next": "milestone 2, publish applies project.json description and topics in scripts/project_publish.py"
+      }
     }
   ]
 }

@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `317`
-- **Total Class Methods**: `603`
-- **Total Source Lines**: `17330`
+- **Total Top-Level Functions**: `320`
+- **Total Class Methods**: `608`
+- **Total Source Lines**: `17494`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `612` lines (`29382` bytes)
+**Size**: `613` lines (`29457` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `171` lines (`10709` bytes)
+**Size**: `176` lines (`11055` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -310,7 +310,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `628` lines (`27020` bytes)
+**Size**: `721` lines (`31960` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -319,8 +319,11 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
-- `def seed_readme(project_root, name, test_command)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def render_project_readme(name, test_command, description, agpl)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def seed_readme(project_root, name, test_command, description, agpl)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
+- `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
+- `def seed_license(project_root)` - *Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
 - `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
 - `def _python_test(root)`
@@ -335,13 +338,13 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
+- `def write_memory(project_root, name, test_command, description, topics)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
 - `def _run_git(project_root, *args)`
 - `def _git_start(project_root)` - *`git init`, then commit the project's memory and instructions so a new project starts clean.*
-- `def create_project(name, test_command, workspace, git_start)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
+- `def create_project(name, test_command, workspace, git_start, description, topics)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
 - `def _build_project(name, path, attached)`
 - `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
@@ -634,7 +637,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6997` lines (`393898` bytes)
+**Size**: `7062` lines (`398258` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1007,6 +1010,11 @@
   - Method `.test_projects_folder_is_discovered_without_the_attached_file()`
   - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
   - Method `.test_failed_git_init_leaves_no_half_made_project()`
+  - Method `.test_new_project_starts_licensed_described_tagged_and_linked_to_aikit()`
+  - Method `.test_new_project_without_description_keeps_a_fill_marker()`
+  - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
+  - Method `.test_first_commit_holds_the_license()`
+  - Method `.test_cli_new_takes_a_description_and_topics()`
   - Method `.test_new_project_ignores_bytecode_and_has_a_clean_adr_template()`
   - Method `.test_git_identity_failure_is_an_error_not_a_warning()`
   - Method `.test_cli_reports_triad_and_exit_codes()`

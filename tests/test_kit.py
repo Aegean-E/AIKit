@@ -143,6 +143,7 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     load_config,
+    AIKIT_URL,
     render_project_readme,
     validate_name,
 )
@@ -4499,6 +4500,70 @@ class TestProjectRegistry(unittest.TestCase):
         with self.assertRaises(ProjectError):
             create_project("app", workspace=self.kit, git_start=refuse)
         self.assertFalse((self.kit / "projects" / "app").exists())
+
+    def test_new_project_starts_licensed_described_tagged_and_linked_to_aikit(self):
+        # ADR-199: a new project is AGPL-3.0 licensed, says what it is, carries GitHub topics and
+        # its README links back to AIKit.
+        description = "A command-line tool that keeps a reading list in sync across devices."
+        folder = create_project("reader", workspace=self.kit, git_start=lambda project_root: None,
+                                description=description, topics=["Python", "cli", "python"])
+        self.assertEqual((folder / "LICENSE").read_text(encoding="utf-8"),
+                         (ROOT_DIR / "LICENSE").read_text(encoding="utf-8"))
+        self.assertTrue((folder / "LICENSE").read_text(encoding="utf-8").lstrip()
+                        .startswith("GNU AFFERO GENERAL PUBLIC LICENSE"))
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn(f"]({AIKIT_URL})", readme, "the badge links to AIKit")
+        self.assertIn("Built with AIKit", readme)
+        self.assertIn(f"\n{description}\n", readme)
+        self.assertIn("├── LICENSE", readme)
+        self.assertIn("GNU Affero General Public License v3.0", readme)
+        self.assertEqual(extract_readme_description(folder), description, "publish reads it back")
+        config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["description"], description)
+        self.assertEqual(config["topics"], ["aikit", "python", "cli"], "aikit first, deduplicated")
+
+    def test_new_project_without_description_keeps_a_fill_marker(self):
+        folder = create_project("blank", workspace=self.kit, git_start=lambda project_root: None)
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn("<FILL: one sentence on what this project does", readme)
+        self.assertEqual(extract_readme_description(folder), "", "the marker is never uploaded")
+        config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
+        self.assertIsNone(config["description"])
+        self.assertEqual(config["topics"], ["aikit"])
+
+    def test_description_and_topics_are_checked_before_anything_is_created(self):
+        for kwargs in ({"description": "too short"}, {"description": "x" * 351},
+                       {"description": "first line\nsecond line long enough"},
+                       {"topics": ["-lead"]}, {"topics": ["two words"]}, {"topics": ["x" * 51]},
+                       {"topics": [f"t{n}" for n in range(20)]}):
+            with self.subTest(kwargs=str(kwargs)[:40]), self.assertRaises(ProjectError) as caught:
+                create_project("checked", workspace=self.kit, git_start=lambda project_root: None,
+                               **kwargs)
+            self.assertEqual(caught.exception.exit_code, 2)
+            self.assertFalse((self.kit / "projects" / "checked").exists())
+
+    def test_first_commit_holds_the_license(self):
+        from scripts.project_registry import _git_start
+        folder = self.make_folder(("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE\n"))
+        ok = mock.Mock(returncode=0, stderr="")
+        with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
+            _git_start(folder)
+        added = next(c.args for c in run.call_args_list if c.args[1] == "add")
+        self.assertIn("LICENSE", added)
+        with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
+            _git_start(self.make_folder())
+        added = next(c.args for c in run.call_args_list if c.args[1] == "add")
+        self.assertNotIn("LICENSE", added, "a missing file would make `git add` fail")
+
+    def test_cli_new_takes_a_description_and_topics(self):
+        with mock.patch("scripts.project_registry._git_start"):
+            code, out, err = self.run_cli("new", "tagged", "--description",
+                                          "A small web app that tracks shared household chores.",
+                                          "--topic", "web", "--topic", "flask")
+        self.assertEqual(code, 0, err)
+        config = json.loads((self.kit / "projects" / "tagged" / ".aikit" / "project.json")
+                            .read_text(encoding="utf-8"))
+        self.assertEqual(config["topics"], ["aikit", "web", "flask"])
 
     def test_new_project_ignores_bytecode_and_has_a_clean_adr_template(self):
         folder = create_project("pyapp", workspace=self.kit,

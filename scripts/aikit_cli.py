@@ -134,7 +134,8 @@ def cmd_new(args: argparse.Namespace) -> int:
             "--public` later.",
             exit_code=2,
         ))
-    root = create_project(args.name, args.test, workspace=args.workspace)
+    root = create_project(args.name, args.test, workspace=args.workspace,
+                          description=args.description, topics=args.topic)
     print(f"[OK] Created project '{args.name}' at {root}")
     if getattr(args, "publish", False):
         print(f"Publishing '{args.name}' to GitHub:")
