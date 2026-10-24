@@ -2,21 +2,12 @@
   "version": 1,
   "active_task": {
     "task_id": "integrate-and-deliver",
-    "last_phase": "implementation",
+    "last_phase": "delivery",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792858398.1745014
+    "updated_at": 1792858478.8160462
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-11-20",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-pushes-11-20' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792828757.0693874,
-      "timestamp_str": "2026-10-24 10:59:17"
-    },
     {
       "task_id": "review-pushes-21-30",
       "phase": "planning",
@@ -278,6 +269,19 @@
       "timestamp_str": "2026-10-24 19:13:18",
       "handoff": {
         "next": "milestone 3 ADR-203 review record, verify every unpushed commit alone, push"
+      }
+    },
+    {
+      "task_id": "integrate-and-deliver",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[3/3] done: ADR-203 records the review since c39ccf8, corrects ADR-198, notes the deleted key; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792858478.8160462,
+      "timestamp_str": "2026-10-24 19:14:38",
+      "handoff": {
+        "next": "verify each unpushed commit alone, then push without force"
       }
     }
   ]
