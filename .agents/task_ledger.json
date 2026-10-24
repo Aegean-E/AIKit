@@ -3,8 +3,8 @@
   "active_task": {
     "task_id": "ownership-review-fixes",
     "last_phase": "planning",
-    "active_phase": 2,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1792863201.491605,
     "owner": "claude-code:850bdc47",
     "impact_assessment": {
@@ -12,28 +12,10 @@
       "benefits": "Errors keep their own message; every take-over is traceable; history is not misleading.",
       "risks": "contract: none beyond the extra key on a superseded entry; dependency: none; concurrency: inside the existing lock; state: superseded entries may gain continued_from.",
       "mitigation": "Failing-first tests; Phase 4; verify_commit."
-    }
+    },
+    "completed_at": 1792863330.0773396
   },
   "checkpoints": [
-    {
-      "task_id": "integrate-and-deliver",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] references/ is git-ignored and the map and structure checks skip top-level directories the root .gitignore lists (ADR-201); [2/3] attach adds an AIKit Integrated badge under the README title, and the README is the one source of the GitHub description, up to 350 chars (ADR-202); [3/3] ADR-203 records the review since c39ccf8 and the revoked key; verify each commit, then push",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792833920.7578495,
-      "timestamp_str": "2026-10-24 12:25:20",
-      "impact_assessment": {
-        "why": "User request: an attached project shows AIKit Integrated; references/ stays off GitHub and out of AIKit's gates; review since the last push found the description kept twice, so publish could upload a stale one; the user authorized the push.",
-        "benefits": "Attached projects link to AIKit; foreign reference code never fails AIKit's gates or reaches GitHub; one description source.",
-        "risks": "contract: attach now edits README.md (badge, idempotent, uncommitted), publish reads the description only from the README with a 350-char cap, find_python_files skips root-gitignored directories; dependency: none; concurrency: another agent may commit, so HEAD is checked before every commit and push; state: project.json no longer gains description.",
-        "mitigation": "Failing-first tests; ADR names the changed truncation expectation; Phase 4 and verify_commit for every commit; push never forced and only after each unpushed commit passes alone."
-      },
-      "handoff": {
-        "next": "milestone 1 .gitignore and scripts/update_knowledge_base.py find_python_files"
-      }
-    },
     {
       "task_id": "integrate-and-deliver",
       "phase": "implementation",
@@ -296,6 +278,16 @@
       "handoff": {
         "next": "tests in TestAgentOwnership, then scripts/disruption_recovery.py"
       }
+    },
+    {
+      "task_id": "ownership-review-fixes",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ownership-review-fixes' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792863330.0773408,
+      "timestamp_str": "2026-10-24 20:35:30",
+      "agent": "claude-code:850bdc47"
     }
   ]
 }
