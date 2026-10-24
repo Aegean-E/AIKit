@@ -10,7 +10,7 @@
 - **Total Classes**: `91`
 - **Total Top-Level Functions**: `323`
 - **Total Class Methods**: `618`
-- **Total Source Lines**: `17735`
+- **Total Source Lines**: `17740`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `636` lines (`30979` bytes)
+**Size**: `639` lines (`31242` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -640,7 +640,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7192` lines (`406705` bytes)
+**Size**: `7194` lines (`406897` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

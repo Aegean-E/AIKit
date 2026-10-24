@@ -167,6 +167,9 @@ def cmd_attach(args: argparse.Namespace) -> int:
     name, folder, created = attach_project(args.path, args.name, args.test, workspace=args.workspace)
     state = "created .aikit/ memory" if created else "kept its existing .aikit/ memory"
     print(f"[OK] Attached '{name}' at {folder} ({state})")
+    # The gates are the project's own commands; a process boundary is no security boundary (ADR-207).
+    print("     Note: check, fix and publish run this project's own commands under your account, "
+          "unsandboxed; attach only repositories you trust.")
     # An integrated project says so and links to AIKit; the edit is the user's to commit (ADR-202).
     if add_aikit_badge(folder):
         print("     Added the AIKit Integrated badge under the README title (uncommitted; review and "

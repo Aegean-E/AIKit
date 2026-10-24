@@ -4567,6 +4567,8 @@ class TestProjectRegistry(unittest.TestCase):
                          "inserted under the title, the file's own line endings kept")
         self.assertIn("AIKit Integrated badge", out)
         self.assertIn("uncommitted", out)
+        # ADR-207: an attached repository's own commands run as the user; nothing sandboxes them.
+        self.assertIn("run this project's own commands under your account, unsandboxed", out)
         self.assertEqual(extract_readme_description(folder), "What it does.", "the badge is no description")
 
     def test_a_folder_is_attached_under_one_name_only(self):

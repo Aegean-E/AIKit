@@ -1,37 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "publish-and-readonly",
+    "task_id": "trust-boundary",
     "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792859449.4098134,
-    "completed_at": 1792859450.9130125
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792860106.6116881
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] done: ADR-198 records the push 31-50 review",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792831721.072139,
-      "timestamp_str": "2026-10-24 11:48:41",
-      "handoff": {
-        "next": "complete the review-pushes-31-50 task",
-        "open": "new --publish gating and OpenCode read-only shell await user"
-      }
-    },
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-pushes-31-50' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792831741.2795818,
-      "timestamp_str": "2026-10-24 11:49:01"
-    },
     {
       "task_id": "review-pushes-31-50",
       "phase": "implementation",
@@ -275,6 +251,38 @@
       "status": "completed",
       "timestamp": 1792859450.9130144,
       "timestamp_str": "2026-10-24 19:30:50"
+    },
+    {
+      "task_id": "trust-boundary",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] README and attach state that check, fix and publish run a project's own commands under the user's account, unsandboxed (ADR-207)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792860011.6628008,
+      "timestamp_str": "2026-10-24 19:40:11",
+      "impact_assessment": {
+        "why": "External review: running an attached repository's gates executes its code as the user, and nothing said so.",
+        "benefits": "Users attach only repositories they trust, knowing the gates are no isolation.",
+        "risks": "contract: attach prints one more line; dependency: none; concurrency: another agent may commit, HEAD checked before commit; state: none.",
+        "mitigation": "Failing-first test of the attach note; README gate; Phase 4 and verify_commit."
+      },
+      "handoff": {
+        "next": "test in tests/test_kit.py, note in scripts/aikit_cli.py cmd_attach, README sentence"
+      }
+    },
+    {
+      "task_id": "trust-boundary",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[1/1] done: attach and README state the unsandboxed trust boundary; GitHub description and topics corrected; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792860106.6116881,
+      "timestamp_str": "2026-10-24 19:41:46",
+      "handoff": {
+        "next": "analyze and verify every commit since 14726ab, push, then step 4 review log"
+      }
     }
   ]
 }
