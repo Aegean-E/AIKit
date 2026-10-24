@@ -2444,3 +2444,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `attach` prints that `check`, `fix` and `publish` run the project's own commands under the user's account, unsandboxed, and to attach only trusted repositories; the README states the same. The dogfood jail (PRINCIPLE-015) stays described as a disposable workspace for AIKit's own runs, not as isolation for a project's code.
 - **Consequences**: The trust boundary is stated where a user meets it. No isolation is added; containerised gate runs remain a possible later option. The README has 2 characters of headroom.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-011 R5 (a user is told what a command does), PRINCIPLE-019 (security boundaries are explicit) and PRINCIPLE-014 R1 (failing-first test).
+
+### ADR-208: Review Records Are Indexed, Not Moved Out of the Register
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: An external review found the 483 KB register hard to navigate because decisions and review records are mixed, and suggested moving review records to a separate log. The plan was to move the bodies of the review ADRs into `knowledge/review_log.md`, leaving a pointer in each. PRINCIPLE-016 R3 forbids it: an ADR "MAY be edited until the commit that adds it; after that its text is fixed".
+- **Decision**: No committed ADR text changes. `knowledge/INDEX.md` gains a "Review Records" table listing the reviews (ADR-107, ADR-113, ADR-128, ADR-163, ADR-177, ADR-193, ADR-195, ADR-203), the corrections of earlier ADRs (ADR-117, ADR-170, ADR-188, ADR-193, ADR-203) and the incidents (ADR-042, ADR-133), noting that ADR-198 gives the wrong push range and ADR-203 replaces its findings.
+- **Consequences**: A reader finds the review history from the index. The register keeps growing with each review; recording future reviews outside it would need PRINCIPLE-016 R3 amended, which is the user's decision.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-016 R1 and R3 (navigable knowledge; the register's text left fixed).

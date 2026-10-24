@@ -1,37 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "trust-boundary",
+    "task_id": "review-index",
     "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792860106.6116881,
-    "completed_at": 1792860107.4349082
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792860369.9471016
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] done: ADR-198 records the push 31-50 review and OpenCode read-only shell finding",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792832056.2354977,
-      "timestamp_str": "2026-10-24 11:54:16",
-      "handoff": {
-        "next": "complete the review-pushes-31-50 task",
-        "open": "new --publish gating and OpenCode read-only shell await user"
-      }
-    },
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-pushes-31-50' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792832073.1806095,
-      "timestamp_str": "2026-10-24 11:54:33"
-    },
     {
       "task_id": "new-project-identity",
       "phase": "planning",
@@ -279,6 +255,38 @@
       "status": "completed",
       "timestamp": 1792860107.43491,
       "timestamp_str": "2026-10-24 19:41:47"
+    },
+    {
+      "task_id": "review-index",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] knowledge/INDEX.md lists the review, correction and incident ADRs; their text stays in the register (ADR-208)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792860311.9825494,
+      "timestamp_str": "2026-10-24 19:45:11",
+      "impact_assessment": {
+        "why": "External review: the 483 KB register mixes decisions with review records and is hard to navigate; moving committed ADR text out would break PRINCIPLE-016 R3.",
+        "benefits": "Review records are found from the index without reading the register; no ADR text changes.",
+        "risks": "contract: none, documentation only; dependency: none; concurrency: HEAD checked before commit; state: none.",
+        "mitigation": "INDEX link check, register audit, Phase 4 and verify_commit."
+      },
+      "handoff": {
+        "next": "Phase 4, commit, verify, push"
+      }
+    },
+    {
+      "task_id": "review-index",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[1/1] done: INDEX.md lists review, correction and incident ADRs; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792860369.9471016,
+      "timestamp_str": "2026-10-24 19:46:09",
+      "handoff": {
+        "next": "talk with the user about the tamper-evident ledger (item 6)"
+      }
     }
   ]
 }

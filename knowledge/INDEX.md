@@ -20,6 +20,18 @@
 
 ---
 
+## 🔎 Review Records in [`decisions.md`](decisions.md)
+
+The register is append-only (PRINCIPLE-016 R3), so reviews, corrections and incidents stay where they were written; this list finds them without reading the whole register (ADR-208).
+
+| Kind | ADRs |
+|---|---|
+| Reviews of earlier work | ADR-107 (seven-pass audit of all principles), ADR-113, ADR-128, ADR-163, ADR-177, ADR-193 (pushes 11-20), ADR-195 (pushes 21-30), ADR-203 (since `c39ccf8`) |
+| Corrections of earlier ADRs | ADR-117, ADR-170, ADR-188, ADR-193 (of ADR-133), ADR-203 (replaces ADR-198's findings: ADR-198 describes the wrong push range) |
+| Incidents | ADR-042 (CI blocked at the account level), ADR-133 (a real Gemini key committed; deleted, ADR-203) |
+
+---
+
 ## ⚡ Maintenance Protocol
 
 1. Whenever any service, architecture, or data model is added or modified, update the matching document in the same commit.
