@@ -124,6 +124,16 @@ def print_guidelines(project: Project) -> None:
 
 
 def cmd_new(args: argparse.Namespace) -> int:
+    # Checked before anything is created: alone, --public was silently ignored (ADR-192).
+    if getattr(args, "public", False) and not getattr(args, "publish", False):
+        return report_error(ProjectError(
+            "--public needs --publish.",
+            "--public sets the visibility of the GitHub repository that --publish creates; "
+            "without --publish no repository is created.",
+            f"add --publish, or create the project now and run `python aikit.py publish {args.name} "
+            "--public` later.",
+            exit_code=2,
+        ))
     root = create_project(args.name, args.test, workspace=args.workspace)
     print(f"[OK] Created project '{args.name}' at {root}")
     if getattr(args, "publish", False):

@@ -1188,6 +1188,16 @@ class TestProjectPublishLifecycle(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("Repo:      none (local only", out)
 
+        # 1b. A requested push with no remote to push to fails instead of exiting 0 (ADR-192). The
+        #     template's filled README is committed first, so the push is not refused as dirty.
+        subprocess.run(["git", "commit", "-q", "-am", "docs: fill README"], cwd=root,
+                       timeout=PROC_TIMEOUT, check=True)
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = aikit_main(["--workspace", str(kit), "check", "app", "--push"])
+        self.assertEqual(code, 1, err.getvalue())
+        self.assertIn("no 'origin' remote", err.getvalue())
+
         # 2. Add an origin remote
         fake_url = "https://github.com/test-owner/test-app.git"
         subprocess.run(["git", "remote", "add", "origin", fake_url], cwd=root, timeout=PROC_TIMEOUT, check=True)

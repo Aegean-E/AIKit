@@ -4839,6 +4839,14 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(payload["disruption"]["interrupted_task"]["task_id"], "t1")
         self.assertEqual(err, "")
 
+    def test_new_public_without_publish_is_a_usage_error(self):
+        # ADR-192: `new <name> --public` alone created a local project and ignored the flag.
+        code, _, err = self.run_cli("new", "loneflag", "--public")
+        self.assertEqual(code, 2)
+        self.assertIn("--public needs --publish", err)
+        self.assertIn("Fix:", err)
+        self.assertFalse((self.kit / "projects" / "loneflag").exists(), "nothing is created")
+
     def test_check_pushes_only_when_asked(self):
         folder = self.make_folder()
         attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
@@ -6588,9 +6596,12 @@ class TestProjectPublish(unittest.TestCase):
 
     def test_auto_push_project(self):
         root = Path("/p/app")
-        # 1. Local only (no remote) -> returncode 0, no push
+        # 1. Local only (no remote): the push was asked for and cannot happen, so it fails. It
+        #    returned 0 while the push ran implicitly after every check (ADR-185, ADR-192).
         code, msg = auto_push_project(root, "app", runner=self.runner(**{"get-url": (1, "")}))
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
+        self.assertIn("no 'origin' remote", msg)
+        self.assertIn("python aikit.py publish app", msg)
         self.assertEqual(self.made("push"), [])
 
         # 2. No commits on HEAD -> returncode 0, no push

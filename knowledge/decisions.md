@@ -2279,3 +2279,13 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   3. The module docstring no longer says publish scans every tracked file; it scans the lines the uploaded commits add (ADR-145).
 - **Consequences**: `status` and `list` name the remote git uses for the cases above, and no AIKit report prints a credential from a remote URL. The push itself is unchanged: it always ran `git push origin`, so git, not this reader, chose the remote. `include` and `includeIf` sections are not followed; a remote defined only through an included file still shows as none, as before.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-019 R4 (redacted diagnostics), PRINCIPLE-003 R4 (the displayed state matches the real state) and PRINCIPLE-014 R1 (failing-first tests).
+
+### ADR-192: `check --push` Without an Origin Fails; `new --public` Needs `--publish`
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The review of pushes 11-20 ran `check <name> --push` on a real project with no `origin` remote: it exited 0 and printed nothing. `auto_push_project` returned `(0, "")` for a project without a remote, which was right while 339f3ee pushed implicitly after every passing check, but ADR-185 made the push opt-in and ADR-187 and ADR-190 promise exit 1 when a requested push does not happen; the help and README already said so, the code did not. Separately, `new <name> --public` without `--publish` created a local project and ignored the flag, since only the publish branch reads it.
+- **Decision**:
+  1. `auto_push_project`, whose only caller is `check --push`, returns 1 with a triad when the project has no `origin`, naming `python aikit.py publish <name>` and `git remote add origin <url>`. A project already up to date, or with no commit, still returns 0: nothing is left to push.
+  2. `new` refuses `--public` without `--publish` as a usage error (exit 2) before creating anything; the `--public` help says it applies with `--publish`.
+- **Consequences**: A script that runs `check --push` on a local-only project now exits 1, as documented. `test_auto_push_project` expected 0 for that case; the expectation is now 1, which tightens the contract rather than weakening it. A real-repository integration step and a CLI test cover the two refusals.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-011 R5 (exit 1 on an operational failure, 2 on misuse), PRINCIPLE-018 R4 (a push happens only on request, and a request that cannot be met is reported) and PRINCIPLE-014 R1 (failing-first tests).

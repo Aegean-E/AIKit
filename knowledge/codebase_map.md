@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
 - **Total Top-Level Functions**: `316`
-- **Total Class Methods**: `596`
-- **Total Source Lines**: `17167`
+- **Total Class Methods**: `597`
+- **Total Source Lines**: `17203`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `602` lines (`28808` bytes)
+**Size**: `612` lines (`29382` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `169` lines (`10439` bytes)
+**Size**: `169` lines (`10455` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -290,7 +290,7 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `273` lines (`12733` bytes)
+**Size**: `278` lines (`13258` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
@@ -518,7 +518,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1213` lines (`60900` bytes)
+**Size**: `1223` lines (`61549` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -633,7 +633,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6906` lines (`388211` bytes)
+**Size**: `6917` lines (`388887` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1027,6 +1027,7 @@
   - Method `.test_status_treats_a_corrupt_ledger_as_unclean_on_both_surfaces()`
   - Method `.test_status_json_returns_the_error_envelope_for_an_unknown_project()`
   - Method `.test_resume_json_carries_the_audit_and_the_guidelines_count()`
+  - Method `.test_new_public_without_publish_is_a_usage_error()`
   - Method `.test_check_pushes_only_when_asked()`
   - Method `._gate_result()`
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`

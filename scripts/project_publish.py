@@ -185,13 +185,18 @@ def scan_refusal(project_root: Path, rev_range: str, run: Runner) -> Optional[st
 def auto_push_project(project_root: Path, name: str, runner: Optional[Runner] = None) -> Tuple[int, str]:
     """
     Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).
-    Returns (0, message) on success or when no push was needed; (1, triad) if push failed.
-    Never forces (PRINCIPLE-018 R4).
+    Returns (0, message) on success or when no push was needed; (1, triad) when the push failed or
+    there is no origin to push to. Never forces (PRINCIPLE-018 R4).
     """
     run = runner or run_command
     url = get_project_repo_url(project_root, runner=run)
     if not url:
-        return 0, ""
+        # The push is asked for (`check --push`), so no remote is a failure, not "nothing to do":
+        # exit 0 here read as "pushed" (ADR-192).
+        return 1, _triad(f"project '{name}' has no 'origin' remote; nothing was pushed.",
+                         "`--push` uploads to the project's origin, and it has none.",
+                         f"create its repository with `python aikit.py publish {name}`, or add one "
+                         "with `git remote add origin <url>`, then push again.")
 
     # If HEAD cannot be resolved (no commits made yet), nothing to push
     if run(["git", "rev-parse", "--verify", "HEAD"], project_root)[0] != 0:
