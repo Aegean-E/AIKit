@@ -4438,6 +4438,18 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(caught.exception.exit_code, 2)
         validate_name("my-app_2")
 
+    def test_name_is_not_a_windows_device(self):
+        # ADR-196: `new nul` said the folder already exists and `new con` failed in `git init`;
+        # elsewhere such a project is created and its repository cannot be cloned on Windows.
+        for bad in ("con", "prn", "aux", "nul", "com0", "com1", "com9", "lpt0", "lpt1", "lpt9"):
+            with self.subTest(name=bad), self.assertRaises(ProjectError) as caught:
+                validate_name(bad)
+            self.assertEqual(caught.exception.exit_code, 2)
+            self.assertIn("Windows device", caught.exception.why)
+        for good in ("conin", "console", "com10", "lpt10", "nul-app", "auxiliary"):
+            with self.subTest(name=good):
+                validate_name(good)
+
     def test_attach_writes_memory_once_and_lists_the_project(self):
         folder = self.make_folder(("Cargo.toml", "[package]\n"))
         name, path, created = attach_project(folder, "svc", workspace=self.kit)

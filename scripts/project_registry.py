@@ -178,6 +178,9 @@ def reconcile_readme_tree(project_root: Path, runner: Optional[Callable] = None)
 
 SCHEMA_VERSION = 1
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+# Names Windows reserves for devices: a folder cannot carry one, so it is no portable segment (ADR-196).
+WINDOWS_DEVICE_NAMES = frozenset({"con", "prn", "aux", "nul",
+                                  *(f"{port}{n}" for port in ("com", "lpt") for n in range(10))})
 GIT_TIMEOUT_SECONDS = 30
 
 # Transient files AIKit's atomic writes and locks leave next to project state (PRINCIPLE-013).
@@ -296,6 +299,14 @@ def validate_name(name: str) -> None:
             "segment.",
             "use 1-64 lowercase letters, digits, '-' or '_', starting with a letter or digit, "
             "e.g. 'my-app'.",
+            exit_code=2,
+        )
+    if name in WINDOWS_DEVICE_NAMES:
+        raise ProjectError(
+            f"Invalid project name '{name}'.",
+            "it is a Windows device name: no folder can be called that on Windows, so the project "
+            "could not be created there, nor its repository cloned.",
+            f"pick another name, e.g. '{name}-app'.",
             exit_code=2,
         )
 

@@ -62,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
         return sub
 
     new = commands.add_parser("new", help="create projects/<name>/ as a new git repository")
-    new.add_argument("name", help="folder name: lowercase letters, digits, '-' or '_'")
+    new.add_argument("name", help="folder name: lowercase letters, digits, '-' or '_'; not a Windows device name such as con or nul")
     new.add_argument("--test", metavar="CMD", help="test command, when it cannot be detected")
     new.add_argument("--publish", action="store_true", help="publish to GitHub immediately after creation")
     new.add_argument("--public", action="store_true", help="with --publish: make the GitHub repository public (default: private)")

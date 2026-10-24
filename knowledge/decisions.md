@@ -2328,3 +2328,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: No further change. The red commits are pushed history and were repaired by their successors; the ceilings they missed have since been raised with ADRs.
 - **Consequences**: Pushes 1-30 have now been reviewed (ADR-193 and this ADR for 11-30). Open items remain the user's: revoking the ADR-133 key and the `new --publish` gating choice (ADR-193 item 5).
 - Cross-principle check: no principle section changed. The review serves PRINCIPLE-018 R7 (each commit verified alone) and PRINCIPLE-003 R1 (claims checked against the real state).
+
+### ADR-196: A Project Name Is Never a Windows Device Name
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Reviewing pushes 31-50 probed `validate_name` (f7f4cc4), which promises "one portable path segment", with hostile names. Path separators, `..`, dots, upper case and a leading `-` were refused with exit 2, but the Windows device names passed: `new nul` exited 1 claiming that `projects\nul` "already exists", and `new con`, `aux`, `prn`, `com1` and `lpt1` exited 1 because `git init` failed. Nothing was left behind, but the errors named the wrong cause, and on Linux or macOS such a project is created and its repository cannot be checked out on Windows.
+- **Decision**: `validate_name` also refuses `con`, `prn`, `aux`, `nul`, `com0`-`com9` and `lpt0`-`lpt9` (the reserved names in Microsoft's file naming rules that the name pattern can produce) with exit 2 and a triad naming the cause. It runs only in `create_project` and `attach_project`, so a project already registered under such a name stays reachable. The `new` help says so.
+- **Consequences**: `new` and `attach` refuse these 24 names up front on every platform; names that merely contain one (`conin`, `nul-app`, `com10`) are still accepted. A unit test covers both sets.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-003 R4 (one behaviour on every platform), PRINCIPLE-011 R5 (exit 2 on misuse, with the true cause) and PRINCIPLE-014 R1 (failing-first test).

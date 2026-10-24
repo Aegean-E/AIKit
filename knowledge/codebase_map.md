@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
 - **Total Top-Level Functions**: `317`
-- **Total Class Methods**: `601`
-- **Total Source Lines**: `17291`
+- **Total Class Methods**: `602`
+- **Total Source Lines**: `17314`
 
 ---
 
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `171` lines (`10663` bytes)
+**Size**: `171` lines (`10709` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -310,7 +310,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `617` lines (`26384` bytes)
+**Size**: `628` lines (`27020` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -634,7 +634,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6969` lines (`392019` bytes)
+**Size**: `6981` lines (`392763` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1000,6 +1000,7 @@
   - Method `.test_detects_every_stack_and_its_test_command()`
   - Method `.test_npm_placeholder_is_not_a_test_command()`
   - Method `.test_name_must_be_one_portable_segment()`
+  - Method `.test_name_is_not_a_windows_device()`
   - Method `.test_attach_writes_memory_once_and_lists_the_project()`
   - Method `.test_override_beats_detection_and_missing_folder_is_reported()`
   - Method `.test_attach_refuses_folders_overlapping_the_kit()`
