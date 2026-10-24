@@ -956,6 +956,15 @@ def _validate_argv(argv: List[str], known: set, help_text: str) -> None:
 
 
 if __name__ == "__main__":
+    # This CLI prints a project's own file paths, so a non-ASCII name must survive a Windows pipe,
+    # whose default encoding is the console code page; `aikit check` reads gate output as UTF-8.
+    # Here rather than at import, so a module that imports this one keeps its streams (ADR-189).
+    if sys.platform == "win32":
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, ValueError, OSError):  # hygiene: allow encoding is cosmetic; a stream that cannot change keeps its own
+                pass
     _validate_argv(sys.argv[1:], KNOWN_FLAGS, HELP_TEXT)
 
     target_root = ROOT_DIR

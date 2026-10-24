@@ -571,6 +571,37 @@ def resolve_phase_num(phase: str, explicit_num: Optional[int] = None) -> int:
 UNMERGED_CODES = frozenset({"DD", "AU", "UD", "UA", "DU", "AA", "UU"})
 
 
+_GIT_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def unquote_git_path(path: str) -> str:
+    """
+    A path as git printed it, back as the real name.
+
+    Porcelain v1 wraps a path holding a space, a quote, a control character or a non-ASCII
+    letter in double quotes, C-style, with each byte above 0x7f as an octal escape: `şifre.txt`
+    arrives as `"\\305\\237ifre.txt"`. The escapes are bytes of the UTF-8 name, so they are
+    collected as bytes and decoded once. An unquoted path is returned as it is (ADR-189).
+    """
+    if len(path) < 2 or path[0] != '"' or path[-1] != '"':
+        return path
+    body, out, i = path[1:-1], bytearray(), 0
+    while i < len(body):
+        if body[i] == "\\" and i + 1 < len(body):
+            octal = body[i + 1:i + 4]
+            if len(octal) == 3 and all(c in "01234567" for c in octal):
+                out.append(int(octal, 8))
+                i += 4
+                continue
+            if body[i + 1] in _GIT_ESCAPES:
+                out.append(_GIT_ESCAPES[body[i + 1]])
+                i += 2
+                continue
+        out += body[i].encode("utf-8")
+        i += 1
+    return out.decode("utf-8", errors="replace")
+
+
 def classify_git_status(porcelain_output: str) -> Dict[str, List[str]]:
     """
     Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).
@@ -594,6 +625,12 @@ def classify_git_status(porcelain_output: str) -> Dict[str, List[str]]:
             continue
         xy = raw_line[:2]
         file_rel = raw_line[3:].strip()
+        # A rename or copy is `old -> new`, each side quoted on its own; anything else is one path.
+        if xy[0] in "RC" and " -> " in file_rel:
+            old, new = file_rel.split(" -> ", 1)
+            file_rel = f"{unquote_git_path(old)} -> {unquote_git_path(new)}"
+        else:
+            file_rel = unquote_git_path(file_rel)
         if xy == "??":
             result["untracked"].append(file_rel)
         elif xy == "!!":

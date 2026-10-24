@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `90`
-- **Total Top-Level Functions**: `312`
-- **Total Class Methods**: `587`
-- **Total Source Lines**: `16911`
+- **Total Classes**: `91`
+- **Total Top-Level Functions**: `313`
+- **Total Class Methods**: `591`
+- **Total Source Lines**: `17034`
 
 ---
 
@@ -74,7 +74,7 @@
 ### [`scripts/check_project_hygiene.py`](scripts/check_project_hygiene.py)
 > *Project hygiene scan (PRINCIPLE-003 R4, PRINCIPLE-010, PRINCIPLE-011 R3, PRINCIPLE-000 R5).*
 
-**Size**: `699` lines (`33359` bytes)
+**Size**: `708` lines (`33981` bytes)
 
 **Classes:**
 - `class Finding` - *One violation, addressed to the line a developer must change.*
@@ -184,7 +184,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1689` lines (`78494` bytes)
+**Size**: `1726` lines (`80061` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -210,6 +210,7 @@
 - `def _refuse_newer_ledger_on_disk(path)` - *Re-check both slots under the lock before replacing either (PRINCIPLE-013 R3).*
 - `def save_ledger(ledger, ledger_file, max_history, _locked)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
+- `def unquote_git_path(path)` - *A path as git printed it, back as the real name.*
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
 - `def resolve_active_phase(active_task, default)` - *Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).*
 - `def repo_relative(path)` - *A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators*
@@ -264,7 +265,7 @@
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
-**Size**: `200` lines (`8742` bytes)
+**Size**: `205` lines (`9102` bytes)
 
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
@@ -462,7 +463,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1017` lines (`47630` bytes)
+**Size**: `1026` lines (`48252` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -500,7 +501,7 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `213` lines (`10052` bytes)
+**Size**: `222` lines (`10674` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
@@ -514,7 +515,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1168` lines (`58161` bytes)
+**Size**: `1197` lines (`59796` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -583,6 +584,9 @@
   - Method `.test_integration_tier_bounds_every_spawn()`
 - `class TestGateCommandLineBreaks` - *A trailing newline is not a second step, so it still runs (ADR-183).*
   - Method `.test_a_trailing_newline_still_runs_the_command()`
+- `class TestReportedPathsAreRealPaths` - *Git quotes spaces and non-ASCII letters; what AIKit reports must name real files (ADR-189).*
+  - Method `.test_the_audit_reports_paths_that_exist()`
+  - Method `.test_a_project_gate_prints_a_non_ascii_path_as_utf8()`
 - `class TestSecretScanSeesNonAsciiPaths` - *git quotes a non-ASCII path ("\305\237ifre.txt") unless told otherwise, so `--all` read a*
   - Method `.make_repo()`
   - Method `.scan(repo, mode)`
@@ -625,7 +629,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6824` lines (`383248` bytes)
+**Size**: `6849` lines (`384641` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -975,6 +979,7 @@
   - Method `.test_conflict_states_carry_their_code_for_diagnostics()`
   - Method `.test_ignored_and_blank_lines_are_skipped()`
   - Method `.test_empty_output_is_clean()`
+  - Method `.test_paths_git_quotes_are_reported_as_the_real_names()`
   - Method `.test_paths_with_spaces_survive_classification()`
 - `class TestAstSignatureFidelity` - *The symbol catalog is what agents consult before verifying call-sites (PRINCIPLE-004 R3), so*
   - Method `.setUp()`
@@ -1059,6 +1064,7 @@
   - Method `.test_artifact_classifier_flags_an_untracked_project_readme()`
   - Method `.test_artifact_classifier_keeps_bookkeeping_and_normal_source()`
 - `class TestGateCommandsHaveOneLine` - *Windows `cmd /c` runs only the first line of a command, so `exit 0\nexit 7` reported success*
+  - Method `.test_a_nul_inside_a_command_is_refused_instead_of_crashing()`
   - Method `.test_a_line_break_inside_a_command_is_refused_without_running_it()`
 - `class TestAnnotationsResolveOnEverySupportedPython` - *Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,*
   - Method `.test_every_annotation_in_scripts_names_something_defined()`

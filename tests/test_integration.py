@@ -777,6 +777,35 @@ class TestGateCommandLineBreaks(unittest.TestCase):
         self.assertEqual(code, 3, output)
 
 
+class TestReportedPathsAreRealPaths(unittest.TestCase):
+    """Git quotes spaces and non-ASCII letters; what AIKit reports must name real files (ADR-189)."""
+
+    NAMES = ("şifre_notları.txt", "with space.txt", "plain.txt")
+
+    def test_the_audit_reports_paths_that_exist(self):
+        repo = Path(tempfile.mkdtemp(prefix="test_audit_paths_"))
+        self.addCleanup(remove_tree, repo)
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        for name in self.NAMES:
+            (repo / name).write_text("x\n", encoding="utf-8")
+        reported = run_disruption_audit(workspace_dir=repo)["untracked_files"]
+        self.assertEqual(sorted(reported), sorted(self.NAMES))
+        self.assertTrue(all((repo / name).exists() for name in reported))
+
+    def test_a_project_gate_prints_a_non_ascii_path_as_utf8(self):
+        # `aikit check` reads gate output as UTF-8; the hygiene scan wrote the console code page,
+        # so şifre_araç.py arrived as replacement characters on Windows.
+        folder = Path(tempfile.mkdtemp(prefix="test_hygiene_utf8_"))
+        self.addCleanup(remove_tree, folder)
+        name = "şifre_araç.py"
+        (folder / name).write_text("import os\nos.system('x')\n", encoding="utf-8")
+        res = subprocess.run([sys.executable, str(ROOT_DIR / "scripts" / "check_project_hygiene.py"),
+                              "--workspace", str(folder)], capture_output=True, timeout=PROC_TIMEOUT,
+                             stdin=subprocess.DEVNULL)
+        self.assertEqual(res.returncode, 1)
+        self.assertIn(name, res.stdout.decode("utf-8", "replace"))
+
+
 class TestSecretScanSeesNonAsciiPaths(unittest.TestCase):
     """
     git quotes a non-ASCII path ("\\305\\237ifre.txt") unless told otherwise, so `--all` read a

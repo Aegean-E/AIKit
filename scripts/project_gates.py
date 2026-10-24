@@ -167,6 +167,11 @@ def run_shell(command: str, cwd: Path, timeout: float) -> Tuple[int, str]:
         return -1, ("refused: the command contains a line break, and Windows cmd runs only its "
                     "first line while reporting success for the rest. Join the steps with && (or "
                     "put them in a script) so every platform runs all of them.")
+    # A JSON "\u0000" escape decodes to NUL; no process can receive one, and Popen raised an
+    # uncaught ValueError, so `aikit check` ended in a traceback (ADR-189).
+    if "\0" in command:
+        return -1, ("refused: the command contains a NUL character, which no shell can run; "
+                    "remove the \\u0000 escape from its configuration.")
     # Windows gets one command line: `list2cmdline` would backslash-escape the command's own
     # quotes, which cmd does not understand; `/s` makes cmd strip only the outer pair.
     shell: Union[str, List[str]] = (f'cmd /d /s /c "{command}"' if sys.platform == "win32"

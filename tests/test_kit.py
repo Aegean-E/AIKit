@@ -4294,6 +4294,23 @@ class TestPorcelainClassification(unittest.TestCase):
             classify_git_status(""), {"modified": [], "untracked": [], "conflicted": []}
         )
 
+    def test_paths_git_quotes_are_reported_as_the_real_names(self):
+        # Porcelain v1 quotes a path with a space or a non-ASCII letter, C-style, so the audit -
+        # and `status --json` - named files that do not exist (ADR-189).
+        q, bs = chr(34), chr(92)
+        porcelain = "\n".join([
+            f"?? {q}{bs}305{bs}237ifre_notlar{bs}304{bs}261.txt{q}",   # şifre_notları.txt
+            f"?? {q}with space.txt{q}",
+            f" M {q}say {bs}{q}hi{bs}{q}.txt{q}",                         # say "hi".txt
+            f"R  {q}old name.txt{q} -> {q}new name.txt{q}",
+            f"UU {q}both added.txt{q}",
+            "?? plain.txt",
+        ])
+        out = classify_git_status(porcelain)
+        self.assertEqual(out["untracked"], ["şifre_notları.txt", "with space.txt", "plain.txt"])
+        self.assertEqual(out["modified"], ['say "hi".txt', "old name.txt -> new name.txt"])
+        self.assertEqual(out["conflicted"], ["UU both added.txt"])
+
     def test_paths_with_spaces_survive_classification(self):
         out = classify_git_status("?? my new file.txt")
         self.assertEqual(out["untracked"], ["my new file.txt"])
@@ -5432,6 +5449,14 @@ class TestGateCommandsHaveOneLine(unittest.TestCase):
     there while /bin/sh returned 7. A command with a line break inside is refused on every
     platform, before any process starts (ADR-183).
     """
+
+    def test_a_nul_inside_a_command_is_refused_instead_of_crashing(self):
+        # A JSON "\u0000" escape decodes to NUL, and Popen raised an uncaught ValueError on it,
+        # so `aikit check` ended in a traceback (ADR-189).
+        from scripts.project_gates import run_shell
+        code, output = run_shell("pytest" + chr(0) + "x", ROOT_DIR, 5)
+        self.assertEqual(code, -1)
+        self.assertIn("NUL", output)
 
     def test_a_line_break_inside_a_command_is_refused_without_running_it(self):
         from scripts.project_gates import run_shell

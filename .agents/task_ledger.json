@@ -5,25 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792822758.1750135
+    "updated_at": 1792822972.9261181
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-2-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] check_reachability: count .setdefault(\"k\", ...) as a producer as well as a read, since it creates the key; failing-first test. [2/3] UnsupportedLedgerVersion: give an invalid version value (0, -1, True, '2', 2.0) its own Why/Fix instead of blaming a different AIKit, keeping the newer-version text unchanged. [3/3] aikit.py --help fast path: move build_parser, TriadArgumentParser and report_error to a light scripts/aikit_parser.py that imports no AIKit module at top level; aikit_cli re-exports them; aikit.py parses with it alone when -h/--help is present; parity tests for ROOT_DIR and TEMP_STALE_SECONDS; byte-identical help and usage-error output.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792781755.6971564,
-      "timestamp_str": "2026-10-23 21:55:55",
-      "impact_assessment": {
-        "why": "The user asked to fix three issues found in the last pre-push review: setdefault is counted only as a read, so a key it alone creates would be flagged as phantom; the ledger refusal blames 'a different AIKit' for values like 0 or True that are simply invalid; and aikit.py --help takes ~158ms because it imports the whole module graph to print help, where argparse and pathlib alone take ~77ms.",
-        "benefits": "No false phantom for a setdefault-produced key; an accurate diagnosis for a hand-edited or corrupted version field; aikit.py --help roughly halved, back under the old 200ms with wide margin, and aikit_cli's help path brought in line with PRINCIPLE-010 R5's top-level-import clause.",
-        "risks": "contract: --help and usage-error output of aikit.py must stay byte-identical, and every scripts.aikit_cli name the 66 test patches target must remain; aikit_parser duplicates two constants. dependency: none. concurrency: none. state: none.",
-        "mitigation": "Byte-compare stdout, stderr and exit code of aikit.py help and usage errors before and after across every subcommand; re-export the moved names from aikit_cli; parity tests tie aikit_parser's ROOT_DIR and TEMP_STALE_SECONDS to disruption_recovery's; aikit_parser imports ProjectError lazily and never imports aikit_cli, so the cycle audit stays green; an integration test proves --help no longer imports aikit_cli; commit each milestone separately."
-      }
-    },
     {
       "task_id": "review-fixes-2-v1",
       "phase": "verification",
@@ -240,6 +224,16 @@
       "status": "in_progress",
       "timestamp": 1792822758.1750135,
       "timestamp_str": "2026-10-24 09:19:18"
+    },
+    {
+      "task_id": "review-fixes-4-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/4] done: unquoted audit paths, NUL refusal, UTF-8 gate output, ADR-189.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792822972.9261181,
+      "timestamp_str": "2026-10-24 09:22:52"
     }
   ]
 }
