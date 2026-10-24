@@ -1050,6 +1050,24 @@ class TestPythonFileDiscovery(unittest.TestCase):
         (root / "venv" / "skip.py").write_text("x = 1\n", encoding="utf-8")
         self.assertEqual([p.relative_to(root).as_posix() for p in find_python_files(root)], ["pkg/mod.py"])
 
+    def test_top_level_directories_the_root_gitignore_lists_are_skipped(self):
+        # ADR-201: an untracked `references/` of another project's code entered AIKit's map and
+        # failed its structure gate, though it is no part of the repository.
+        root = Path(tempfile.mkdtemp(prefix="test_discovery_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        for rel in ("pkg/mod.py", "references/other.py", "vendored/lib.py", "keep/references/x.py",
+                    "notes/n.py"):
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text("x = 1\n", encoding="utf-8")
+        (root / ".gitignore").write_text("# local material\nreferences/\n/vendored/\n*.log\nnotes\n",
+                                         encoding="utf-8")
+        found = [p.relative_to(root).as_posix() for p in find_python_files(root)]
+        self.assertEqual(found, ["keep/references/x.py", "notes/n.py", "pkg/mod.py"],
+                         "only `name/` or `/name/` entries prune, and only at the top level")
+
+    def test_this_repository_ignores_references(self):
+        self.assertIn("references/", (ROOT_DIR / ".gitignore").read_text(encoding="utf-8").splitlines())
+
 
 class TestOpenCodePermissionBoundaries(unittest.TestCase):
     """

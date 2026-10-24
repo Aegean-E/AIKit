@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 KNOWLEDGE_DIR = ROOT_DIR / "knowledge"
@@ -222,6 +222,23 @@ def _extract_symbols_uncached(file_path: Path, content: str, strict: bool) -> Di
     }
 
 
+# A root `.gitignore` line naming one directory, `name/` or `/name/`: no glob, no negation.
+GITIGNORED_DIR_RE = re.compile(r"^/?([^\s/*?\[\]!#]+)/$")
+
+
+def gitignored_top_dirs(root: Path) -> Set[str]:
+    """
+    The top-level directories `root/.gitignore` excludes by name. Git never tracks them, so their
+    code is no part of the repository and must not enter its map or structure checks (ADR-201).
+    Glob and nested patterns are left to git: only the plain form is recognised.
+    """
+    try:
+        lines = (root / ".gitignore").read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return set()
+    return {m.group(1) for m in map(GITIGNORED_DIR_RE.match, (line.strip() for line in lines)) if m}
+
+
 def find_python_files(root: Path) -> List[Path]:
     """
     Every Python file under `root`, skipping `IGNORE_DIRS`. Ignored directories are pruned while
@@ -230,8 +247,10 @@ def find_python_files(root: Path) -> List[Path]:
     `/home/u/env/` would have catalogued nothing.
     """
     py_files: List[Path] = []
+    skipped_at_top = IGNORE_DIRS | gitignored_top_dirs(root)
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
+        skipped = skipped_at_top if Path(dirpath) == root else IGNORE_DIRS
+        dirnames[:] = [d for d in dirnames if d not in skipped]
         py_files += [Path(dirpath) / name for name in filenames if name.endswith(".py")]
     return sorted(py_files)
 

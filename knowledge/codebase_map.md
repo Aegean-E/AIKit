@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `321`
-- **Total Class Methods**: `610`
-- **Total Source Lines**: `17561`
+- **Total Top-Level Functions**: `322`
+- **Total Class Methods**: `612`
+- **Total Source Lines**: `17598`
 
 ---
 
@@ -471,7 +471,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1026` lines (`48252` bytes)
+**Size**: `1045` lines (`49131` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -480,6 +480,7 @@
 - `def parse_source(content, filename)` - *`ast.parse` at the minimum supported grammar (PRINCIPLE-003 R7), cached by content.*
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
 - `def _extract_symbols_uncached(file_path, content, strict)` - *AST extraction proper; see extract_python_symbols().*
+- `def gitignored_top_dirs(root)` - *The top-level directories `root/.gitignore` excludes by name. Git never tracks them, so their*
 - `def find_python_files(root)` - *Every Python file under `root`, skipping `IGNORE_DIRS`. Ignored directories are pruned while*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
@@ -638,7 +639,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7100` lines (`400699` bytes)
+**Size**: `7118` lines (`401932` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -715,6 +716,8 @@
   - Method `.test_rule_numbers_match_code_constants()`
 - `class TestPythonFileDiscovery` - *`find_python_files` prunes ignored directories relative to the root (ADR-115).*
   - Method `.test_a_repository_under_an_ignored_name_is_still_scanned()`
+  - Method `.test_top_level_directories_the_root_gitignore_lists_are_skipped()`
+  - Method `.test_this_repository_ignores_references()`
 - `class TestOpenCodePermissionBoundaries` - *PRINCIPLE-008 R6 / PRINCIPLE-009 R6 (ADR-116): replay OpenCode v2's documented evaluation*
   - Method `.decide(rules, action, resource)`
   - Method `.setUpClass()`
