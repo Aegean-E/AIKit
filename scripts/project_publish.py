@@ -88,7 +88,8 @@ def extract_readme_description(project_root: Path) -> str:
         if clean:
             desc_lines.append(clean)
     text = " ".join(desc_lines).strip()
-    return (text[:197].rstrip() + "...") if len(text) > 200 else text
+    # GitHub holds 350 characters; the 200 used before cut what `new --description` accepts (ADR-202).
+    return (text[:347].rstrip() + "...") if len(text) > 350 else text
 
 
 def hide_url_credentials(text: str) -> str:
@@ -241,12 +242,12 @@ def apply_topics(project_root: Path, topics: Optional[List[str]], run: Runner) -
 
 
 def publish_project(project_root: Path, name: str, public: bool = False,
-                    runner: Optional[Runner] = None, description: Optional[str] = None,
+                    runner: Optional[Runner] = None,
                     topics: Optional[List[str]] = None) -> Tuple[int, str]:
     """
     Upload the project's commits to its own GitHub repository; returns (exit code, report).
-    `description` and `topics` are those `new` recorded in project.json (ADR-199, ADR-200);
-    without a description the README's first paragraph is used.
+    The description is the README's first paragraph, the one copy kept (ADR-202); `topics` are
+    those `new` recorded in project.json (ADR-199, ADR-200).
     `runner` defaults to real git, gh and Python calls (PRINCIPLE-009 R4: tests inject a fake).
     """
     run = runner or run_command
@@ -264,7 +265,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
     if run(["git", "status", "--porcelain"], project_root)[1].strip():
         notes.append("Note: uncommitted changes stay local; commit them and publish again to upload them.")
 
-    desc = description or extract_readme_description(project_root)
+    desc = extract_readme_description(project_root)
 
     if has_origin:
         code, output = run(["git", "push", "-u", "origin", "HEAD"], project_root)

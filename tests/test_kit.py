@@ -142,8 +142,12 @@ from scripts.project_registry import (
     find_project,
     latest_decision,
     list_projects,
+    load_attached,
     load_config,
+    AIKIT_BADGE,
+    AIKIT_INTEGRATED_BADGE,
     AIKIT_URL,
+    add_aikit_badge,
     render_project_readme,
     validate_name,
 )
@@ -4537,8 +4541,49 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("GNU Affero General Public License v3.0", readme)
         self.assertEqual(extract_readme_description(folder), description, "publish reads it back")
         config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
-        self.assertEqual(config["description"], description)
+        self.assertNotIn("description", config, "the README is its one source (ADR-202)")
         self.assertEqual(config["topics"], ["aikit", "python", "cli"], "aikit first, deduplicated")
+
+    def test_attach_adds_the_integrated_badge_under_the_title(self):
+        # ADR-202: a project AIKit is integrated into says so and links to AIKit.
+        folder = self.make_folder()
+        (folder / "README.md").write_bytes(b"# Tool\r\n\r\nWhat it does.\r\n")
+        code, out, err = self.run_cli("attach", str(folder), "--name", "tool")
+        self.assertEqual(code, 0, err)
+        self.assertEqual((folder / "README.md").read_bytes(),
+                         f"# Tool\r\n\r\n{AIKIT_INTEGRATED_BADGE}\r\n\r\nWhat it does.\r\n".encode(),
+                         "inserted under the title, the file's own line endings kept")
+        self.assertIn("AIKit Integrated badge", out)
+        self.assertIn("uncommitted", out)
+        self.assertEqual(extract_readme_description(folder), "What it does.", "the badge is no description")
+
+    def test_a_folder_is_attached_under_one_name_only(self):
+        # ADR-202: a second name for an attached folder made two projects share one .aikit/ ledger.
+        folder = self.make_folder()
+        attach_project(folder, "first", workspace=self.kit)
+        attach_project(folder, "first", workspace=self.kit)  # the same pair again is a no-op
+        with self.assertRaises(ProjectError) as caught:
+            attach_project(folder, "second", workspace=self.kit)
+        self.assertEqual(caught.exception.exit_code, 2)
+        self.assertIn("already attached as 'first'", str(caught.exception))
+        self.assertEqual(set(load_attached(self.kit)), {"first"})
+
+    def test_the_badge_is_added_once_and_only_to_a_readme(self):
+        folder = self.make_folder(("README.md", "No title here.\n"))
+        self.assertTrue(add_aikit_badge(folder))
+        self.assertEqual((folder / "README.md").read_text(encoding="utf-8"),
+                         f"{AIKIT_INTEGRATED_BADGE}\n\nNo title here.\n")
+        self.assertFalse(add_aikit_badge(folder), "a README that links to AIKit is left alone")
+        built = self.make_folder(("README.md", f"# x\n\n{AIKIT_BADGE}\n"))
+        self.assertFalse(add_aikit_badge(built), "a Built with AIKit badge already links to AIKit")
+        self.assertFalse(add_aikit_badge(self.make_folder()), "no README is created")
+
+    def test_fix_seeds_an_attached_projects_readme_with_the_integrated_badge(self):
+        self.assertIn(AIKIT_INTEGRATED_BADGE, render_project_readme("app", integrated=True))
+        self.assertNotIn(AIKIT_BADGE, render_project_readme("app", integrated=True))
+        self.assertIn(AIKIT_BADGE, render_project_readme("app"))
+        template = (ROOT_DIR / ".agents" / "rules" / "readme_quickref.md.template").read_text(encoding="utf-8")
+        self.assertTrue(template.startswith(AIKIT_INTEGRATED_BADGE), "the copy-in README starts with it")
 
     def test_new_project_without_description_keeps_a_fill_marker(self):
         folder = create_project("blank", workspace=self.kit, git_start=lambda project_root: None)
@@ -4546,7 +4591,7 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("<FILL: one sentence on what this project does", readme)
         self.assertEqual(extract_readme_description(folder), "", "the marker is never uploaded")
         config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
-        self.assertIsNone(config["description"])
+        self.assertNotIn("description", config)
         self.assertEqual(config["topics"], ["aikit"])
 
     def test_description_and_topics_are_checked_before_anything_is_created(self):
@@ -4803,7 +4848,7 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(code, 0)
             mock_pub.assert_called_once()
             # ADR-200: the new project's description and topics reach the repository it creates.
-            self.assertEqual(mock_pub.call_args.kwargs["description"], "A tool that publishes itself on creation.")
+            self.assertNotIn("description", mock_pub.call_args.kwargs, "publish reads the README (ADR-202)")
             self.assertEqual(mock_pub.call_args.kwargs["topics"], ["aikit", "demo"])
             self.assertIn("Publishing 'publishedapp' to GitHub:", out)
             self.assertIn("[OK] Published to GitHub", out)
@@ -5133,7 +5178,7 @@ class TestProjectRegistry(unittest.TestCase):
         publish.assert_called_once()
         # ADR-200: a project.json without topics, from before ADR-199, still gets `aikit`.
         self.assertEqual(publish.call_args.kwargs["topics"], ["aikit"])
-        self.assertIsNone(publish.call_args.kwargs["description"])
+        self.assertNotIn("description", publish.call_args.kwargs)
 
         failed = self._gate_result()
         failed.passed = False
@@ -6656,11 +6701,13 @@ class TestProjectPublish(unittest.TestCase):
             # With description paragraph
             (root / "README.md").write_text("# my-app\n\n> **A lightweight CLI app.**\n\n## Quick Start\n", encoding="utf-8")
             self.assertEqual(extract_readme_description(root), "A lightweight CLI app.")
-            # Truncation over 200 chars
-            long_desc = "x" * 250
-            (root / "README.md").write_text(f"# my-app\n\n{long_desc}\n", encoding="utf-8")
+            # Cut at GitHub's 350-character limit; it was 200, which cut a description that
+            # `new --description` accepts (ADR-202).
+            (root / "README.md").write_text(f"# my-app\n\n{'x' * 300}\n", encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "x" * 300)
+            (root / "README.md").write_text(f"# my-app\n\n{'x' * 400}\n", encoding="utf-8")
             extracted = extract_readme_description(root)
-            self.assertEqual(len(extracted), 200)
+            self.assertEqual(len(extracted), 350)
             self.assertTrue(extracted.endswith("..."))
 
             # Badges and images are stripped, finding the real description
@@ -6756,19 +6803,23 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(code, 0, report)
         self.assertNotIn("s3cret", report)
 
-    def test_publish_sets_the_recorded_description_and_topics(self):
-        # ADR-200: `new` records them in project.json; publish puts them on the repository.
+    def test_publish_sets_the_readme_description_and_recorded_topics(self):
+        # ADR-200, ADR-202: topics come from project.json, the description from the README alone,
+        # so an edited README is what reaches GitHub.
         description = "A command-line tool that keeps a reading list in sync across devices."
-        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(),
-                                       description=description, topics=["aikit", "python", "cli"])
+        root = Path(tempfile.mkdtemp(prefix="test_publish_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "README.md").write_text(f"# app\n\n{AIKIT_BADGE}\n\n{description}\n\n## Quick\n",
+                                        encoding="utf-8")
+        code, report = publish_project(root, "app", runner=self.runner(), topics=["aikit", "python", "cli"])
         self.assertEqual(code, 0, report)
         create = self.made("create")[0]
         self.assertEqual(create[create.index("--description") + 1], description)
         self.assertIn(["gh", "repo", "edit", "--add-topic", "aikit,python,cli"], self.calls)
         self.assertIn("topics aikit, python, cli", report)
 
-        code, report = publish_project(Path("/p/app"), "app", runner=self.runner(
-            **{"get-url": (0, "https://github.com/me/app.git")}), description=description, topics=["aikit"])
+        code, report = publish_project(root, "app", runner=self.runner(
+            **{"get-url": (0, "https://github.com/me/app.git")}), topics=["aikit"])
         self.assertEqual(code, 0, report)
         self.assertIn(["gh", "repo", "edit", "--description", description], self.calls)
         self.assertIn(["gh", "repo", "edit", "--add-topic", "aikit"], self.calls)

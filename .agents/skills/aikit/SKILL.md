@@ -28,7 +28,7 @@ The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
 python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]...  # projects/<name>/: own repo, .aikit/ memory, AGPL-3.0 LICENSE, Built with AIKit badge; topic aikit always added
-python aikit.py attach <path>        # an existing folder
+python aikit.py attach <path>        # an existing folder: adds .aikit/ memory and an AIKit Integrated badge under its README title (uncommitted)
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit; never pushes, add --push only when push delivery is authorized (PRINCIPLE-018 R4)
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles

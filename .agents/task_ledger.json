@@ -2,33 +2,12 @@
   "version": 1,
   "active_task": {
     "task_id": "integrate-and-deliver",
-    "last_phase": "planning",
-    "active_phase": 2,
+    "last_phase": "implementation",
+    "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792833920.7578495,
-    "impact_assessment": {
-      "why": "User request: an attached project shows AIKit Integrated; references/ stays off GitHub and out of AIKit's gates; review since the last push found the description kept twice, so publish could upload a stale one; the user authorized the push.",
-      "benefits": "Attached projects link to AIKit; foreign reference code never fails AIKit's gates or reaches GitHub; one description source.",
-      "risks": "contract: attach now edits README.md (badge, idempotent, uncommitted), publish reads the description only from the README with a 350-char cap, find_python_files skips root-gitignored directories; dependency: none; concurrency: another agent may commit, so HEAD is checked before every commit and push; state: project.json no longer gains description.",
-      "mitigation": "Failing-first tests; ADR names the changed truncation expectation; Phase 4 and verify_commit for every commit; push never forced and only after each unpushed commit passes alone."
-    }
+    "updated_at": 1792858398.1745014
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-11-20",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[3/3] done: ADR-193 records the push 11-20 review, the public-repo key exposure and the open new --publish gating choice; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792828725.3119662,
-      "timestamp_str": "2026-10-24 10:58:45",
-      "handoff": {
-        "state": "3 milestones committed, unpushed",
-        "next": "user decides new --publish gating and key revocation",
-        "open": "new --publish bypasses publish gates"
-      }
-    },
     {
       "task_id": "review-pushes-11-20",
       "phase": "completed",
@@ -286,6 +265,19 @@
       },
       "handoff": {
         "next": "milestone 1 .gitignore and scripts/update_knowledge_base.py find_python_files"
+      }
+    },
+    {
+      "task_id": "integrate-and-deliver",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[2/3] done: attach adds AIKit Integrated badge, fix and the copy-in template carry it, README is the one description (350-char cap), one folder one name; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792858398.1745014,
+      "timestamp_str": "2026-10-24 19:13:18",
+      "handoff": {
+        "next": "milestone 3 ADR-203 review record, verify every unpushed commit alone, push"
       }
     }
   ]

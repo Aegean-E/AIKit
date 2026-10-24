@@ -36,6 +36,8 @@ CONFIG_FILENAME = "project.json"
 # Every project AIKit seeds names where it came from; the badge links to AIKit's page (ADR-199).
 AIKIT_URL = "https://github.com/Aegean-E/AIKit"
 AIKIT_BADGE = f"[![Built with AIKit](https://img.shields.io/badge/built%20with-AIKit-6f42c1)]({AIKIT_URL})"
+# A project AIKit is attached to, or copied into, was not built by it: it is integrated (ADR-202).
+AIKIT_INTEGRATED_BADGE = f"[![AIKit Integrated](https://img.shields.io/badge/AIKit-integrated-6f42c1)]({AIKIT_URL})"
 DESCRIPTION_MIN, DESCRIPTION_MAX = 10, 350
 DESCRIPTION_FILL = (f"<FILL: one sentence on what this project does and for whom, "
                     f"{DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters>")
@@ -71,20 +73,22 @@ DECISIONS_TEMPLATE = (
 )
 
 def render_project_readme(name: str, test_command: Optional[str] = None,
-                          description: Optional[str] = None, agpl: bool = False) -> str:
+                          description: Optional[str] = None, agpl: bool = False,
+                          integrated: bool = False) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
     every tracked top-level entry; `.aikit/` is listed without children, so a new memory file never
     makes the tree incomplete. A badge under the title links to AIKit, and the paragraph after it
-    is the description `publish` uploads; `agpl` lists the LICENSE `new` copies (ADR-199).
+    is the description `publish` uploads; `agpl` lists the LICENSE `new` copies (ADR-199), and
+    `integrated` marks a project AIKit was attached to rather than one it built (ADR-202).
     """
     license_line = "├── LICENSE                   <- GNU AGPL-3.0\n" if agpl else ""
     license_section = ("\n## 📜 License\n\n"
                        "GNU Affero General Public License v3.0; see [LICENSE](LICENSE).\n") if agpl else ""
     return (
         f"# {name}\n\n"
-        f"{AIKIT_BADGE}\n\n"
+        f"{AIKIT_INTEGRATED_BADGE if integrated else AIKIT_BADGE}\n\n"
         f"{description or DESCRIPTION_FILL}\n\n"
         "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
         "- **Runtime Prerequisites**: <FILL: each runtime this project needs and its minimum version>\n"
@@ -112,16 +116,44 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
 
 
 def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None,
-                description: Optional[str] = None, agpl: bool = False) -> bool:
+                description: Optional[str] = None, agpl: bool = False,
+                integrated: bool = False) -> bool:
     """
     Write the template README when the project has none; returns whether it did. `new` and `fix`
     call it, `attach` never does: attaching leaves an existing folder's files alone. Only `new`
-    passes `agpl`, since only it writes the LICENSE.
+    passes `agpl`, since only it writes the LICENSE; `fix` passes `integrated` for an attached one.
     """
     readme = project_root / "README.md"
     if readme.exists():
         return False
-    write_generated_file(readme, render_project_readme(name, test_command, description, agpl))
+    write_generated_file(readme, render_project_readme(name, test_command, description, agpl, integrated))
+    return True
+
+
+def add_aikit_badge(project_root: Path) -> bool:
+    """
+    Put the AIKit Integrated badge under the README's title, or at its top without one; returns
+    whether it did. A README that already links to AIKit, or no README, is left alone. The file's
+    own line endings are kept, so the only change in its diff is the badge (ADR-202).
+    """
+    readme = project_root / "README.md"
+    try:
+        with open(readme, encoding="utf-8", newline="") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return False
+    if AIKIT_URL in text:
+        return False
+    newline = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(newline)
+    title = next((i for i, line in enumerate(lines) if line.startswith("# ")), None)
+    if title is None:
+        lines[0:0] = [AIKIT_INTEGRATED_BADGE, ""]
+    elif title + 1 < len(lines) and lines[title + 1] == "":
+        lines[title + 2:title + 2] = [AIKIT_INTEGRATED_BADGE, ""]
+    else:
+        lines[title + 1:title + 1] = ["", AIKIT_INTEGRATED_BADGE, ""]
+    write_generated_file(readme, newline.join(lines), newline="")
     return True
 
 
@@ -436,7 +468,7 @@ def _ensure_gitignore(project_root: Path) -> None:
 
 
 def write_memory(project_root: Path, name: str, test_command: Optional[str] = None,
-                 description: Optional[str] = None, topics: Optional[List[str]] = None) -> bool:
+                 topics: Optional[List[str]] = None) -> bool:
     """
     Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`
     unless they exist. Returns whether `project.json` was created: existing memory is never
@@ -462,8 +494,8 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
         "schema": SCHEMA_VERSION,
         "name": name,
         "test_command": test_command,
-        # What `publish` sets on the GitHub repository (ADR-199, ADR-200).
-        "description": description,
+        # The topics `publish` sets on GitHub (ADR-200). The description is the README's first
+        # paragraph only: a second copy here went stale once the README was edited (ADR-202).
         "topics": topics if topics is not None else ["aikit"],
         # Gate name -> command, or null to disable a detected gate (project_gates, ADR-122).
         "gates": {},
@@ -584,7 +616,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
         )
     project_root.mkdir(parents=True)
     try:
-        write_memory(project_root, name, test_command, description, topics)
+        write_memory(project_root, name, test_command, topics)
         seed_license(project_root)
         seed_readme(project_root, name, test_command, description, agpl=True)
         git_start(project_root)
@@ -627,6 +659,16 @@ def attach_project(folder: Path, name: Optional[str] = None, test_command: Optio
             f"A different project named '{name}' already exists.",
             "a name selects exactly one project folder.",
             "pass another name with `--name`.",
+        )
+    # One folder, one name: a second name made two projects share one .aikit/ ledger (ADR-202).
+    other = next((known for known, path in registered.items()
+                  if known != name and path.resolve() == folder), None)
+    if other is not None:
+        raise ProjectError(
+            f"{folder} is already attached as '{other}'.",
+            "a folder holds one .aikit/ memory, so it can be one project only.",
+            f"use `{other}`, or detach it first by removing its entry from projects/attached.json.",
+            exit_code=2,
         )
     created = write_memory(folder, name, test_command)
     if not inside_projects:

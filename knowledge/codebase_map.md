@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `322`
-- **Total Class Methods**: `612`
-- **Total Source Lines**: `17598`
+- **Total Top-Level Functions**: `323`
+- **Total Class Methods**: `616`
+- **Total Source Lines**: `17699`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `621` lines (`29958` bytes)
+**Size**: `625` lines (`30229` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `176` lines (`11055` bytes)
+**Size**: `176` lines (`11104` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -290,7 +290,7 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `299` lines (`14382` bytes)
+**Size**: `300` lines (`14435` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
@@ -304,14 +304,14 @@
 - `def scan_refusal(project_root, rev_range, run)` - *Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
 - `def apply_topics(project_root, topics, run)` - *Set `topics` on the project's repository; returns the report lines. The repository already*
-- `def publish_project(project_root, name, public, runner, description, topics)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
+- `def publish_project(project_root, name, public, runner, topics)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
 ---
 
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `721` lines (`31960` bytes)
+**Size**: `763` lines (`34176` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -320,8 +320,9 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command, description, agpl)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
-- `def seed_readme(project_root, name, test_command, description, agpl)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def render_project_readme(name, test_command, description, agpl, integrated)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def seed_readme(project_root, name, test_command, description, agpl, integrated)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
 - `def seed_license(project_root)` - *Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199).*
@@ -339,7 +340,7 @@
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
-- `def write_memory(project_root, name, test_command, description, topics)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
+- `def write_memory(project_root, name, test_command, topics)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
 - `def _attached_path(workspace)`
 - `def load_attached(workspace)` - *Attached project folders by name; an unreadable file is an error, not an empty list.*
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
@@ -471,11 +472,11 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1045` lines (`49131` bytes)
+**Size**: `1048` lines (`49293` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
-- `def write_generated_file(file_path, content)` - *Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1).*
+- `def write_generated_file(file_path, content, newline)` - *Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1).*
 - `def render_signature(node, drop_self)` - *Render a complete call signature from an AST function node (PRINCIPLE-003, PRINCIPLE-016).*
 - `def parse_source(content, filename)` - *`ast.parse` at the minimum supported grammar (PRINCIPLE-003 R7), cached by content.*
 - `def extract_python_symbols(file_path, strict)` - *Parse a python file with AST and extract docstrings, classes, and functions (PRINCIPLE-003).*
@@ -639,7 +640,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7118` lines (`401932` bytes)
+**Size**: `7169` lines (`405264` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1015,6 +1016,10 @@
   - Method `.test_corrupt_attached_file_is_an_error_not_an_empty_list()`
   - Method `.test_failed_git_init_leaves_no_half_made_project()`
   - Method `.test_new_project_starts_licensed_described_tagged_and_linked_to_aikit()`
+  - Method `.test_attach_adds_the_integrated_badge_under_the_title()`
+  - Method `.test_a_folder_is_attached_under_one_name_only()`
+  - Method `.test_the_badge_is_added_once_and_only_to_a_readme()`
+  - Method `.test_fix_seeds_an_attached_projects_readme_with_the_integrated_badge()`
   - Method `.test_new_project_without_description_keeps_a_fill_marker()`
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
   - Method `.test_first_commit_holds_the_license()`
@@ -1196,7 +1201,7 @@
   - Method `.test_repo_url_reads_the_config_as_git_does()`
   - Method `.test_repo_url_never_shows_credentials()`
   - Method `.test_push_reports_never_show_credentials()`
-  - Method `.test_publish_sets_the_recorded_description_and_topics()`
+  - Method `.test_publish_sets_the_readme_description_and_recorded_topics()`
   - Method `.test_a_topic_failure_after_upload_is_a_note()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`

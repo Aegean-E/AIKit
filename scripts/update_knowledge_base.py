@@ -84,11 +84,14 @@ def fsync_dir(dir_path: Path) -> bool:
                 pass
 
 
-def write_generated_file(file_path: Path, content: str) -> None:
-    """Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1)."""
+def write_generated_file(file_path: Path, content: str, newline: Optional[str] = None) -> None:
+    """
+    Atomically persist generated text file (flush + fsync + os.replace + fsync_dir) (PRINCIPLE-013 R1).
+    `newline=""` writes `content`'s line endings as they are, for an edit to a file someone else wrote.
+    """
     file_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = file_path.with_suffix(file_path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
-    with open(tmp_path, "w", encoding="utf-8") as f:
+    with open(tmp_path, "w", encoding="utf-8", newline=newline) as f:
         f.write(content)
         f.flush()
         os.fsync(f.fileno())

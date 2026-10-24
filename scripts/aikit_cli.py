@@ -31,6 +31,7 @@ from scripts.project_publish import (
 from scripts.project_registry import (
     Project,
     ProjectError,
+    add_aikit_badge,
     add_guideline,
     attach_project,
     create_project,
@@ -42,7 +43,6 @@ from scripts.project_registry import (
     project_guidelines,
     reconcile_readme_tree,
     seed_readme,
-    validate_description,
     write_memory,
 )
 from scripts.subagent_delegate import delegate_subagent
@@ -142,7 +142,6 @@ def cmd_new(args: argparse.Namespace) -> int:
     if getattr(args, "publish", False):
         print(f"Publishing '{args.name}' to GitHub:")
         code, report = publish_project(root, args.name, public=getattr(args, "public", False),
-                                       description=validate_description(args.description),
                                        topics=normalize_topics(args.topic))
         print(report, file=sys.stdout if code == 0 else sys.stderr)
         if code != 0:
@@ -157,6 +156,12 @@ def cmd_attach(args: argparse.Namespace) -> int:
     name, folder, created = attach_project(args.path, args.name, args.test, workspace=args.workspace)
     state = "created .aikit/ memory" if created else "kept its existing .aikit/ memory"
     print(f"[OK] Attached '{name}' at {folder} ({state})")
+    # An integrated project says so and links to AIKit; the edit is the user's to commit (ADR-202).
+    if add_aikit_badge(folder):
+        print("     Added the AIKit Integrated badge under the README title (uncommitted; review and "
+              "commit it).")
+    elif not (folder / "README.md").is_file():
+        print(f"     No README.md: `python aikit.py fix {name}` writes one with the AIKit Integrated badge.")
     return 0
 
 
@@ -413,7 +418,7 @@ def cmd_fix(args: argparse.Namespace) -> int:
     missing = [name for name in expected if not (memory / name).is_file()]
     write_memory(project.path, project.name, project.test_command)
     fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
-    if seed_readme(project.path, project.name, project.test_command):
+    if seed_readme(project.path, project.name, project.test_command, integrated=project.attached):
         fixes.append("seeded README.md from the project template (complete it by hand)")
     fixes += reconcile_readme_tree(project.path)
     fixes += [f"removed stale buffer {rel}" for rel in clean_dangling_temp_files(project.path)]
@@ -461,10 +466,9 @@ def cmd_publish(args: argparse.Namespace) -> int:
         print("Fix: write tests, and set `test_command` in .aikit/project.json when it is not "
               "detected.", file=sys.stderr)
         return 1
-    # `new` records the description and topics; a project.json from before ADR-199 has neither.
+    # `new` records the topics; a project.json from before ADR-199 has none (ADR-200).
     config = load_config(project.path)
     code, report = publish_project(project.path, project.name, public=args.public,
-                                   description=config.get("description"),
                                    topics=config.get("topics") or ["aikit"])
     print(report, file=sys.stdout if code == 0 else sys.stderr)
     return code
