@@ -2315,3 +2315,16 @@ Record all significant architectural decisions, trade-offs, and rationale here.
   4. `is_free_model` drops the `#variant` before testing the name.
 - **Consequences**: A brief reaches the sub-agent byte for byte on every platform, and it is always the message. The refusal in 2 only applies to an installation whose shim names no executable that exists; the `delegate` help states it. Tests use a fake shim with and without its executable, a recorded argv and `#variant` model names, with no process started.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-019 R4 (no environment value reaches a model), PRINCIPLE-012 R8 (free models only), PRINCIPLE-003 R4 (platform parity) and PRINCIPLE-014 R1 (failing-first tests).
+
+### ADR-195: Review of Pushes 21-30
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Pushes 21-30 (`f7f4cc4..4a53d0a`, sixteen commits on 2026-10-17) built the project system: per-project ledger and decisions, `aikit check` and `fix`, project guidelines, `delegate`, the Claude Code and OpenCode role profiles and the Gemini free-tier provider. Each commit's own gates were run in a throwaway worktree, and the parts still live at HEAD were re-tested.
+- **Findings**:
+  1. b643039 was pushed red: the README tree omitted the `.claude` and `.clinerules` entries it added, failing the README drift test, `update_knowledge_base --check` and dogfood; c2f49b9 repaired it.
+  2. Every other failure is the `--help` startup ceiling of the time, 200 ms (now 250 ms, ADR-179), which the dogfood gate and the test that runs it enforced: `aikit.py --help` at 227-229 ms, `disruption_recovery.py --help` at 215-352 ms. These runs overlapped other gate runs on the same machine, so their times are upper bounds. The tier and hygiene gates did not exist yet.
+  3. 4a53d0a is the commit that put the real Gemini key in a test (ADR-133, ADR-193). The secret scanner of that commit passed it, as ADR-133 recorded.
+  4. Live defects found and fixed in `aikit delegate`: cmd.exe parsing of the brief through the npm shim, a brief read as opencode flags, and a `#variant` read as part of a model name (ADR-194).
+- **Decision**: No further change. The red commits are pushed history and were repaired by their successors; the ceilings they missed have since been raised with ADRs.
+- **Consequences**: Pushes 1-30 have now been reviewed (ADR-193 and this ADR for 11-30). Open items remain the user's: revoking the ADR-133 key and the `new --publish` gating choice (ADR-193 item 5).
+- Cross-principle check: no principle section changed. The review serves PRINCIPLE-018 R7 (each commit verified alone) and PRINCIPLE-003 R1 (claims checked against the real state).

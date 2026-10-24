@@ -2,28 +2,12 @@
   "version": 1,
   "active_task": {
     "task_id": "review-pushes-21-30",
-    "last_phase": "implementation",
+    "last_phase": "delivery",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792830143.4394414
+    "updated_at": 1792830252.7800934
   },
   "checkpoints": [
-    {
-      "task_id": "verify-advice-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] verify_commit: choose the Fix line by where the failing commit is - already on the remote: fix forward; not HEAD: fix forward; unpushed HEAD: the existing git reset --soft HEAD^ advice; ADR-186.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792821198.6112723,
-      "timestamp_str": "2026-10-24 08:53:18",
-      "impact_assessment": {
-        "why": "Reviewing the five pushes before the last five: verify_commit, introduced in 9a95501, printed 'git reset --soft HEAD^' for every failing commit. Verifying 83b67de, which is on origin, with HEAD at 7003657 told the user to undo a different, passing commit.",
-        "benefits": "The advice a failing verification prints is safe to follow wherever the commit is.",
-        "risks": "contract: the Fix line text changes for a failing commit that is pushed or is not HEAD; exit codes and gates unchanged. dependency: none. concurrency: none. state: none.",
-        "mitigation": "Failing-first tests for both new branches with an extended fake runner that models the upstream check; the existing unpushed-HEAD test keeps its reset assertion; checked on the real published commit."
-      }
-    },
     {
       "task_id": "verify-advice-v1",
       "phase": "verification",
@@ -261,6 +245,20 @@
       "handoff": {
         "next": "milestone 2 ADR-195 review record",
         "open": "new --publish gating awaits user (ADR-193)"
+      }
+    },
+    {
+      "task_id": "review-pushes-21-30",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[2/2] done: ADR-195 records the push 21-30 review; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792830252.7800934,
+      "timestamp_str": "2026-10-24 11:24:12",
+      "handoff": {
+        "state": "committed, unpushed",
+        "next": "user decides key revocation and new --publish gating"
       }
     }
   ]
