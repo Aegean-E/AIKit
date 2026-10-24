@@ -83,6 +83,25 @@ def scanned_range(repo: Path, ref: str, run: Runner) -> str:
     return f"{parent}..{head}" if parent else head
 
 
+def recovery_fix(ref: str, resolved: str, repo: Path, run: Runner) -> str:
+    """
+    The Fix line for a commit that fails on its own, chosen by where that commit is.
+
+    The undo PRINCIPLE-018 R5 names, `git reset --soft HEAD^`, fits only an unpushed HEAD. It used
+    to be printed for every failing commit, so verifying an older one with --ref, or one already on
+    the remote, told the user to undo a different commit or rewrite published history (ADR-186).
+    """
+    target = run(["git", "rev-parse", ref], repo)[1].strip()
+    if run(["git", "merge-base", "--is-ancestor", target, "HEAD@{u}"], repo)[0] == 0:
+        return (f"Fix: {resolved} is already on the remote, so do not rewrite it: add what is "
+                "missing in a new commit (PRINCIPLE-018 R5).")
+    if target != run(["git", "rev-parse", "HEAD"], repo)[1].strip():
+        return (f"Fix: {resolved} is not HEAD, so undoing HEAD would remove a different commit: "
+                "add what is missing in a new commit (PRINCIPLE-018 R5).")
+    return ("Fix: while the commit is unpushed, `git reset --soft HEAD^` (PRINCIPLE-018 R5), add "
+            "what is missing, and commit again.")
+
+
 def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
                   runner: Optional[Runner] = None) -> Tuple[int, List[str]]:
     """
@@ -128,8 +147,7 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
             f"Error: commit {resolved} does not pass on its own: {', '.join(failures)}.",
             "Why: the pre-commit gates ran on the working tree, so the commit can hold less than "
             "what was tested (PRINCIPLE-018 R3, R7).",
-            "Fix: while the commit is unpushed, `git reset --soft HEAD^` (PRINCIPLE-018 R5), add "
-            "what is missing, and commit again.",
+            recovery_fix(ref, resolved, repo, run),
         ]
     return 0, report + [f"[OK] Commit {resolved} passes every gate on its own."]
 

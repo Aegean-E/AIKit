@@ -6613,15 +6613,19 @@ class TestChecklistWording(unittest.TestCase):
 class TestPostCommitVerification(unittest.TestCase):
     """PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149)."""
 
-    def runner(self, failing=(), worktree_fails=False):
+    def runner(self, failing=(), worktree_fails=False, pushed=False):
         """A scripted git/gate stand-in; records every call so order and cwd can be asserted."""
         self.calls = []
 
         def run(argv, cwd):
             self.calls.append((argv, Path(cwd)))
             joined = " ".join(str(a) for a in argv)
+            if "merge-base --is-ancestor" in joined:
+                return (0, "") if pushed else (1, "")
             if "rev-parse --short" in joined:
                 return 0, "abc1234"
+            if joined.endswith("rev-parse 1111old"):
+                return 0, "1111old"
             if "rev-parse HEAD@{u}" in joined:
                 return 0, "0000upstream"
             if "rev-parse" in joined:
@@ -6692,6 +6696,27 @@ class TestPostCommitVerification(unittest.TestCase):
         self.assertIn("git reset --soft HEAD^", text)
         for part in ("Why:", "Fix:"):
             self.assertIn(part, text)
+
+    def test_a_pushed_commit_is_told_to_fix_forward_not_to_reset(self):
+        # The old Fix always said `git reset --soft HEAD^`, which rewrites published history when
+        # the failing commit is already on the remote.
+        code, report = verify_commit(repo=Path("/repo"),
+                                     runner=self.runner(failing=("knowledge",), pushed=True))
+        text = "\n".join(report)
+        self.assertEqual(code, 1)
+        self.assertIn("already on the remote", text)
+        self.assertIn("new commit", text)
+        self.assertNotIn("git reset", text)
+
+    def test_a_commit_that_is_not_head_is_not_told_to_reset_head(self):
+        # Verifying an older commit with --ref: resetting HEAD would undo a different commit.
+        code, report = verify_commit(ref="1111old", repo=Path("/repo"),
+                                     runner=self.runner(failing=("knowledge",)))
+        text = "\n".join(report)
+        self.assertEqual(code, 1)
+        self.assertIn("not HEAD", text)
+        self.assertIn("new commit", text)
+        self.assertNotIn("git reset", text)
 
     def test_the_worktree_is_removed_even_when_a_gate_fails(self):
         for failing in ((), ("tiers", "knowledge")):

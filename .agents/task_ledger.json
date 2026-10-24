@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-fixes-3-v1",
+    "task_id": "verify-advice-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792783912.362171,
-    "completed_at": 1792783912.555996
+    "updated_at": 1792821255.899225,
+    "completed_at": 1792821256.0808728
   },
   "checkpoints": [
-    {
-      "task_id": "help-budget-250-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/1] done: --help budget 250ms, ADR-179.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792781038.8032715,
-      "timestamp_str": "2026-10-23 21:43:58",
-      "handoff": {
-        "state": "milestone done and verified",
-        "next": "commit, verify alone, report to the user",
-        "failed": "the first load test ran before ADR-179 existed, so sync --check correctly failed every sequence and those six runs were discarded",
-        "evidence": "6 of 6 full Phase 4 sequences green under load with slowest --help 160-183ms, idle 0 of 80 over 250ms"
-      }
-    },
-    {
-      "task_id": "help-budget-250-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'help-budget-250-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792781038.995301,
-      "timestamp_str": "2026-10-23 21:43:58"
-    },
-    {
-      "task_id": "review-followups-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] check_reachability: put the pinned test's full name on one line in the find_phantom_keys comment, so grepping the name finds the explanation. [2/2] UnsupportedLedgerVersion: state the readable range, versions 1 to N, in the message and its Fix line, since ADR-178 made a build read every version from 1 up; failing-first test under a patched version 2.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792781266.8727272,
-      "timestamp_str": "2026-10-23 21:47:46",
-      "impact_assessment": {
-        "why": "A pre-push review of the 4 unpushed commits found two gaps in my own work. Commit 9cad254's comment splits test_a_producer_hidden_in_a_comprehension_is_flagged across two lines, so a grep for the test finds only the test and never the comment saying the fallback must not be repaired. Commit 2f754e9 widened what a build reads to versions 1 through N but left the refusal message saying it reads exactly version N, which becomes wrong on the very schema bump that commit prepares for.",
-        "benefits": "The pin and its rationale are findable from either side; the refusal message stays true after a version bump instead of telling the user a valid older ledger cannot be used.",
-        "risks": "contract: none parsed; the message is free text, also carried in the ledger_error field of status --json, whose consumers must not parse prose; with LEDGER_SCHEMA_VERSION 1 the rendered text stays 'version 1'. dependency: none. concurrency: none. state: none.",
-        "mitigation": "Keep the message byte-identical while the version is 1, verified by a test; add a failing-first test that a patched version-2 build names versions 1-2; commit each milestone separately and verify each alone before pushing."
-      }
-    },
     {
       "task_id": "review-followups-v1",
       "phase": "verification",
@@ -240,6 +199,41 @@
       "status": "completed",
       "timestamp": 1792783912.5559974,
       "timestamp_str": "2026-10-23 22:31:52"
+    },
+    {
+      "task_id": "verify-advice-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] verify_commit: choose the Fix line by where the failing commit is - already on the remote: fix forward; not HEAD: fix forward; unpushed HEAD: the existing git reset --soft HEAD^ advice; ADR-186.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792821198.6112723,
+      "timestamp_str": "2026-10-24 08:53:18",
+      "impact_assessment": {
+        "why": "Reviewing the five pushes before the last five: verify_commit, introduced in 9a95501, printed 'git reset --soft HEAD^' for every failing commit. Verifying 83b67de, which is on origin, with HEAD at 7003657 told the user to undo a different, passing commit.",
+        "benefits": "The advice a failing verification prints is safe to follow wherever the commit is.",
+        "risks": "contract: the Fix line text changes for a failing commit that is pushed or is not HEAD; exit codes and gates unchanged. dependency: none. concurrency: none. state: none.",
+        "mitigation": "Failing-first tests for both new branches with an extended fake runner that models the upstream check; the existing unpushed-HEAD test keeps its reset assertion; checked on the real published commit."
+      }
+    },
+    {
+      "task_id": "verify-advice-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] done: recovery_fix chooses the Fix line, ADR-186.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792821255.899225,
+      "timestamp_str": "2026-10-24 08:54:15"
+    },
+    {
+      "task_id": "verify-advice-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'verify-advice-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792821256.0808744,
+      "timestamp_str": "2026-10-24 08:54:16"
     }
   ]
 }

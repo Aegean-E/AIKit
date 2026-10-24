@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `89`
-- **Total Top-Level Functions**: `311`
-- **Total Class Methods**: `581`
-- **Total Source Lines**: `16774`
+- **Total Top-Level Functions**: `312`
+- **Total Class Methods**: `583`
+- **Total Source Lines**: `16817`
 
 ---
 
@@ -500,12 +500,13 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `190` lines (`8555` bytes)
+**Size**: `208` lines (`9630` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
 - `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the*
 - `def scanned_range(repo, ref, run)` - *The commits this verification covers, as resolved SHAs: everything past the upstream when one*
+- `def recovery_fix(ref, resolved, repo, run)` - *The Fix line for a commit that fails on its own, chosen by where that commit is.*
 - `def verify_commit(ref, repo, runner)` - *Run every gate against `ref` checked out on its own; returns (exit code, report lines).*
 
 ---
@@ -624,7 +625,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6717` lines (`377127` bytes)
+**Size**: `6742` lines (`378433` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1175,12 +1176,14 @@
   - Method `.test_checklists_contain_no_hedge_words()`
   - Method `.test_every_checklist_item_cites_a_principle()`
 - `class TestPostCommitVerification` - *PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149).*
-  - Method `.runner(failing, worktree_fails)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
+  - Method `.runner(failing, worktree_fails, pushed)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
   - Method `.ran(fragment)`
   - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
   - Method `.test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas()`
   - Method `.test_the_scanned_range_is_what_this_verification_covers()`
   - Method `.test_a_failing_gate_is_named_with_the_undo_that_fits_an_unpushed_commit()`
+  - Method `.test_a_pushed_commit_is_told_to_fix_forward_not_to_reset()`
+  - Method `.test_a_commit_that_is_not_head_is_not_told_to_reset_head()`
   - Method `.test_the_worktree_is_removed_even_when_a_gate_fails()`
   - Method `.test_a_worktree_that_cannot_be_made_is_reported_not_passed()`
   - Method `.test_a_ref_that_is_no_commit_is_refused()`
