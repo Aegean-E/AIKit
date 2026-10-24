@@ -3,30 +3,12 @@
   "active_task": {
     "task_id": "review-pushes-21-30",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792830252.7800934
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792830252.7800934,
+    "completed_at": 1792830285.0678208
   },
   "checkpoints": [
-    {
-      "task_id": "verify-advice-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/1] done: recovery_fix chooses the Fix line, ADR-186.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792821255.899225,
-      "timestamp_str": "2026-10-24 08:54:15"
-    },
-    {
-      "task_id": "verify-advice-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'verify-advice-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792821256.0808744,
-      "timestamp_str": "2026-10-24 08:54:16"
-    },
     {
       "task_id": "review-fixes-4-v1",
       "phase": "planning",
@@ -260,6 +242,24 @@
         "state": "committed, unpushed",
         "next": "user decides key revocation and new --publish gating"
       }
+    },
+    {
+      "task_id": "review-pushes-21-30",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-pushes-21-30' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792830263.6005406,
+      "timestamp_str": "2026-10-24 11:24:23"
+    },
+    {
+      "task_id": "review-pushes-21-30",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-pushes-21-30' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792830285.067822,
+      "timestamp_str": "2026-10-24 11:24:45"
     }
   ]
 }
