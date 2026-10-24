@@ -4841,6 +4841,20 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(code, 0)
             mock_push.assert_not_called()
 
+        # 5. A requested push the secret scan refuses is a failure, not a warning (ADR-187).
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[gate_res]),              mock.patch("scripts.aikit_cli.resolve_gates", return_value=[Gate("test", "dummy", "detected")]),              mock.patch("scripts.aikit_cli.auto_push_project",
+                        return_value=(1, "Error: refused\nWhy: a credential\nFix: rotate")) as refused:
+            code, _, err = self.run_cli("check", "pushapp", "--push")
+            self.assertEqual(code, 1)
+            self.assertIn("Why: a credential", err)
+            refused.assert_called_once()
+
+            # 6. fix ends in a check, and before ADR-185 it pushed on every clean run with no way
+            #    to opt out; a repair must never publish.
+            refused.reset_mock()
+            code, _, _ = self.run_cli("fix", "pushapp")
+            refused.assert_not_called()
+
         # 4. Asking for both is a usage error, not a silent choice.
         err = io.StringIO()
         with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as caught:
@@ -4867,7 +4881,7 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=dirty_audit), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
             code, out, err = self.run_cli("check", "dirtyapp", "--push")
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 1, "an explicit push that cannot happen is a failure")
             self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("skipping the push", err)
             push.assert_not_called()
@@ -4887,7 +4901,7 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=conflicted), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
             code, out, err = self.run_cli("check", "conflictedapp", "--push")
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 1, "an explicit push that cannot happen is a failure")
             self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("1 conflicted", out)
             self.assertIn("skipping the push", err)
@@ -4909,7 +4923,7 @@ class TestProjectRegistry(unittest.TestCase):
              mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
              mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "")) as push:
             code, out, err = self.run_cli("check", "uiopenapp", "--push")
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 1, "an explicit push that cannot happen is a failure")
             self.assertIn("[DELIVERY] NOT READY", out)
             self.assertIn("1 open UI task", out)
             self.assertIn("skipping the push", err)

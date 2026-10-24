@@ -1,34 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "verify-advice-v1",
+    "task_id": "review-fixes-4-v1",
     "last_phase": "verification",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792821255.899225,
-    "completed_at": 1792821256.0808728
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792822521.578379
   },
   "checkpoints": [
-    {
-      "task_id": "review-followups-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/2] done: pinned test name on one line.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792781322.4862015,
-      "timestamp_str": "2026-10-23 21:48:42"
-    },
-    {
-      "task_id": "review-followups-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/2] done: refusal message states the readable range.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792781405.3538678,
-      "timestamp_str": "2026-10-23 21:50:05"
-    },
     {
       "task_id": "review-followups-v1",
       "phase": "completed",
@@ -234,6 +213,32 @@
       "status": "completed",
       "timestamp": 1792821256.0808744,
       "timestamp_str": "2026-10-24 08:54:16"
+    },
+    {
+      "task_id": "review-fixes-4-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] check --push exits 1 when the requested push is skipped or refused; the three dirty-tree tests expect 1; a refused-push test; a test that fix never pushes; ADR-187. [2/4] verify_commit treats a commit any remote-tracking branch contains as pushed; the annotation guard also reads module-level annotations; a guard for f-string syntax Python 3.10 rejects; ADR-188 corrects ADR-181, ADR-182, ADR-186 and three commit messages. [3/4] run_shell refuses NUL; the ledger audit unquotes git's quoted paths; hygiene, update_knowledge_base and verify_commit print UTF-8 on Windows; ADR-189. [4/4] Full re-verification of every commit, then report.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792822406.5930018,
+      "timestamp_str": "2026-10-24 09:13:26",
+      "impact_assessment": {
+        "why": "The verification of the nine unpushed commits found nine issues, each reproduced, with every proposed fix tested; the stop hook and the user's standing pattern call for fixing what is found. Re-checking the private-attribute rule showed its 12 production hits in neurocore are the singleton idiom, so widening it would flag correct code and the recommendation is withdrawn.",
+        "benefits": "An explicit --push that fails is reported as a failure; the reset advice cannot target a published commit; the 3.10 guards cover module annotations and PEP 701 f-strings; no command crashes on a NUL; ledger reports name real paths, spaces included; project gate output keeps non-ASCII names.",
+        "risks": "contract: check --push now exits 1 when its push does not happen; status --json reports unquoted paths; Fix text changes for a pushed commit without upstream. dependency: none. concurrency: none. state: none.",
+        "mitigation": "A failing-first test per fix; the changed test expectations named in ADR-187 under PRINCIPLE-014 R3; the path unquoting is a pure function tested on git's own quoted output; every commit verified alone."
+      }
+    },
+    {
+      "task_id": "review-fixes-4-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/4] done: check --push failures exit 1, fix never pushes, ADR-187.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792822521.578379,
+      "timestamp_str": "2026-10-24 09:15:21"
     }
   ]
 }

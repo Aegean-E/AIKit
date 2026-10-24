@@ -364,17 +364,24 @@ def cmd_check(args: argparse.Namespace) -> int:
     # Pushing is opt-in. check is the documented Phase 4, and it used to publish unpushed commits
     # whenever its gates passed, so an agent whose host allows a push only on request pushed
     # without one (PRINCIPLE-018 R4, ADR-185).
+    # A push that was asked for and did not happen is an operational failure, exit 1: while the push
+    # was implicit a warning was enough, but a caller that passed --push reads exit 0 as "pushed"
+    # (PRINCIPLE-011 R5, ADR-187).
     if getattr(args, "push", False):
         if dirty:
-            print("[WARN] Uncommitted changes or unresolved conflicts exist; skipping the push. "
-                  "Commit or resolve them and run `check --strict` before pushing.", file=sys.stderr)
-        else:
-            push_code, push_report = auto_push_project(project.path, project.name)
-            if push_code == 0:
-                if push_report:
-                    print(push_report)
-            else:
-                print(f"[WARN] {push_report}", file=sys.stderr)
+            print("Error: uncommitted changes or unresolved conflicts exist; skipping the push.",
+                  file=sys.stderr)
+            print("Why: a push must upload the tree the gates verified, not a working copy that "
+                  "differs from it.", file=sys.stderr)
+            print("Fix: commit or resolve the changes and run `check --strict` before pushing.",
+                  file=sys.stderr)
+            return 1
+        push_code, push_report = auto_push_project(project.path, project.name)
+        if push_code != 0:
+            print(push_report, file=sys.stderr)
+            return 1
+        if push_report:
+            print(push_report)
     return 0
 
 
