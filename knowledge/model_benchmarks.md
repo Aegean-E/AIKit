@@ -35,6 +35,10 @@ Model selection MUST match the task's token footprint and required context reten
 
 These figures were entered without a per-row source. Each row is `unverified` until its Source column holds the URL its scores were read from; an unverified score is never a reason to choose a model (**PRINCIPLE-009 R6**, ADR-114):
 
+The **Specialized Subagent Profile** column says what a model suits, not what runs: each role runs the `model:` of its `.opencode/agents/<role>.md` profile, and another model only through `delegate --model` (ADR-197).
+
+Configured today: `architect` and `reviewer` `gemini/gemini-3.8-flash`, `coder` `opencode/glm-5.3-flash-free`, `explorer` `opencode/mimo-v2.6-flash-free`, `tester` and `worker` `opencode/deepseek-v4.1-flash-free`.
+
 | Model Identifier | Provider / Engine | Cost Tier | Context Window | SWE-bench Verified (%) | LiveCodeBench (%) | HumanEval (%) | Throughput | Specialized Subagent Profile | Source |
 |---|---|---|---|---|---|---|---|---|---|
 | **`openrouter/deepseek/deepseek-r1:free`** | OpenRouter Free | **Free ($0.00)** | **128k** | **49.2%** | **65.9%** | **92.8%** | Deliberate (~25 t/s) | **`architect`**: Deep reasoning on system design, ADR preparation, and subtle test failure diagnostics | `unverified` |
@@ -66,7 +70,7 @@ All metrics are verifiable against public evaluation registries:
 
 ## 🧭 Multi-Subagent Selection & Routing Decision Tree
 
-When delegating background tasks to subagents under **PRINCIPLE-012 R8**, match task requirements across Context Window, Reasoning Depth, and Agent Role:
+When delegating background tasks to subagents under **PRINCIPLE-012 R8**, match task requirements across Context Window, Reasoning Depth, and Agent Role. A branch naming a model other than the role's configured one is a `--model` override:
 
 ```
 Task Delegation Request
@@ -79,19 +83,19 @@ Task Delegation Request
 │   └── YES ──► Use 'openrouter/meta-llama/llama-3.3-70b-instruct:free' (Agent: reviewer, 128k context)
 │
 ├── 3. Deep Architectural Reasoning, ADR Trade-offs, or Tricky Bug Diagnosis?
-│   └── YES ──► Use 'openrouter/deepseek/deepseek-r1:free' (Agent: architect, 128k context, 49.2% SWE-bench)
+│   └── YES ──► Use 'openrouter/deepseek/deepseek-r1:free' (Agent: architect, 128k context)
 │
 ├── 4. Bounded Code Generation, Feature Implementation, or Complex Refactoring?
-│   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' (Agent: coder, 128k context, 39.8% SWE-bench)
+│   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' (Agent: coder, 128k context)
 │
 ├── 5. Unit / Integration Test Generation and Regression Shield Expansion?
 │   └── YES ──► Use 'openrouter/qwen/qwen-2.5-coder-32b-instruct:free' (Agent: tester, 128k context)
 │
 ├── 6. High-Speed Symbol Discovery, Regex Search, or File Tree Exploration?
-│   └── YES ──► Use 'opencode/mimo-v2.6-flash-free' (Agent: explorer, 140 t/s)
+│   └── YES ──► Use 'opencode/mimo-v2.6-flash-free' (Agent: explorer)
 │
 ├── 7. General-Purpose Background Search, File Summaries, and Boilerplate Drafting?
-│   └── YES ──► Use 'opencode/deepseek-v4.1-flash-free' (Agent: worker, 110 t/s, 128k context)
+│   └── YES ──► Use 'opencode/deepseek-v4.1-flash-free' (Agent: worker, 128k context)
 │
 └── 8. Task Ledger Updates, Git Commits, and Phase 4 Gate Approvals?
     └── MUST REMAIN WITH PARENT ORCHESTRATOR (PRINCIPLE-008 R6, PRINCIPLE-018 R2)

@@ -2,22 +2,12 @@
   "version": 1,
   "active_task": {
     "task_id": "review-pushes-31-50",
-    "last_phase": "implementation",
+    "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792831132.9946876
+    "updated_at": 1792831657.045237
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-4-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/4] done: remote-tracking pushed check, module-level annotation guard, f-string 3.10 guard, ADR-188 corrections.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792822758.1750135,
-      "timestamp_str": "2026-10-24 09:19:18"
-    },
     {
       "task_id": "review-fixes-4-v1",
       "phase": "verification",
@@ -265,6 +255,20 @@
       "timestamp_str": "2026-10-24 11:38:52",
       "handoff": {
         "next": "milestone 2 model_benchmarks.md configured roles + test",
+        "open": "new --publish gating and OpenCode read-only shell await user"
+      }
+    },
+    {
+      "task_id": "review-pushes-31-50",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/3] done: model_benchmarks.md names configured roles and test pins doc; ADR-197",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792831657.045237,
+      "timestamp_str": "2026-10-24 11:47:37",
+      "handoff": {
+        "next": "milestone 3 ADR-198 records the push 31-50 review",
         "open": "new --publish gating and OpenCode read-only shell await user"
       }
     }

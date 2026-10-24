@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
 - **Total Top-Level Functions**: `317`
-- **Total Class Methods**: `602`
-- **Total Source Lines**: `17314`
+- **Total Class Methods**: `603`
+- **Total Source Lines**: `17330`
 
 ---
 
@@ -634,7 +634,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6981` lines (`392763` bytes)
+**Size**: `6997` lines (`393898` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1158,6 +1158,7 @@
   - Method `.test_no_agent_may_edit_a_task_ledger()`
 - `class TestFreeModelPolicy` - *Sub-agents run only on free models (PRINCIPLE-012 R8, ADR-132).*
   - Method `.test_policy_names_free_and_paid_models()`
+  - Method `.test_benchmark_doc_names_each_roles_configured_model()`
   - Method `.test_every_role_and_the_default_run_on_a_free_model()`
   - Method `.test_delegate_refuses_a_paid_model_before_running_anything()`
   - Method `.test_gemini_key_comes_only_from_the_environment()`

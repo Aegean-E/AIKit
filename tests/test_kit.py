@@ -6355,6 +6355,22 @@ class TestFreeModelPolicy(unittest.TestCase):
             with self.subTest(model=model):
                 self.assertFalse(is_free_model(model, self.CONFIG))
 
+    def test_benchmark_doc_names_each_roles_configured_model(self):
+        # ADR-197: the doc's role column put coder/tester on a model no profile runs, and nothing
+        # said the profiles decide; its `Configured today:` line now must match every profile.
+        text = (ROOT_DIR / "knowledge" / "model_benchmarks.md").read_text(encoding="utf-8")
+        line = re.search(r"^Configured today: (.+)$", text, re.M)
+        self.assertIsNotNone(line, "model_benchmarks.md has no `Configured today:` line")
+        documented = {}
+        for roles, model in re.findall(r"((?:`\w+`(?:, | and )?)+) `([^`]+)`", line.group(1)):
+            for role in re.findall(r"`(\w+)`", roles):
+                documented[role] = model
+        configured = {path.stem: re.search(r"^model:\s*(\S+)", path.read_text(encoding="utf-8"), re.M).group(1)
+                      for path in (ROOT_DIR / ".opencode" / "agents").glob("*.md")}
+        self.assertEqual(documented, configured)
+        tree = text[text.index("Routing Decision Tree"):]
+        self.assertNotRegex(tree, r"SWE-bench|\d+ t/s", "an unverified score is never a reason to choose")
+
     def test_every_role_and_the_default_run_on_a_free_model(self):
         models = {"default": self.CONFIG["model"]}
         for path in (ROOT_DIR / ".opencode" / "agents").glob("*.md"):
