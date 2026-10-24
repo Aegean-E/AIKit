@@ -735,8 +735,15 @@ def resolve_agent(explicit: Optional[str] = None, env: Optional[Mapping[str, str
     return UNIDENTIFIED_AGENT
 
 
-def agent_history(checkpoints: List[Dict[str, Any]]) -> str:
-    """Who worked on a task, in order: `started by A; continued by B` (ADR-209)."""
+def agent_history(checkpoints: List[Dict[str, Any]], active: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Who worked on a task, in order: `started by A; continued by B` (ADR-209). The chain the active
+    task keeps wins: checkpoints are pruned to 20, which dropped a long task's take-overs (ADR-211).
+    """
+    if active and ("started_by" in active or active.get("continuations")):
+        parts = [f"started by {active.get('started_by') or 'an unrecorded agent'}"]
+        parts += [f"continued by {c['agent']}" for c in active.get("continuations", []) if c.get("agent")]
+        return "; ".join(parts)
     if not checkpoints:
         return ""
     # A task begun before ADR-209 has unnamed first entries: its starter is unknown, not the
@@ -842,8 +849,11 @@ def record_checkpoint(
         previous = ledger.get("active_task") or {}
         # Raises before anything is written; a continued task records whom it continues.
         continued_from = _claim(previous, agent, take_over)
-        if continued_from and previous.get("task_id") == task_id:
+        same_task = previous.get("task_id") == task_id and previous.get("status") == "in_progress"
+        continuations = list(previous.get("continuations") or []) if same_task else []
+        if continued_from and same_task:
             checkpoint_entry["continued_from"] = continued_from
+            continuations.append({"agent": agent, "from": continued_from, "at": checkpoint_entry["timestamp"]})
         if previous.get("status") == "in_progress" and previous.get("task_id") != task_id:
             # PRINCIPLE-006 R5: a task left without --complete or --reset used to vanish from
             # --resume silently. Its last state is kept and the switch is reported.
@@ -868,6 +878,9 @@ def record_checkpoint(
             "status": status,
             "updated_at": checkpoint_entry["timestamp"],
             "owner": agent,
+            # Kept here, not only on entries, so pruning cannot lose who worked on it (ADR-211).
+            "started_by": previous.get("started_by") if same_task else agent,
+            "continuations": continuations,
         }
         if why or benefits or risks or mitigation:
             ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
@@ -889,6 +902,9 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None, agent:
         if ledger.get("active_task", {}).get("task_id") != task_id:
             return False
         continued_from = _claim(ledger["active_task"], agent, take_over)
+        if continued_from:
+            ledger["active_task"].setdefault("continuations", []).append(
+                {"agent": agent, "from": continued_from, "at": time.time()})
         ledger["active_task"]["status"] = "completed"
         ledger["active_task"]["active_phase"] = 5
         ledger["active_task"]["completed_at"] = time.time()
@@ -920,6 +936,8 @@ def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional
         if not active or active.get("status") != "in_progress":
             return None
         continued_from = _claim(active, agent, take_over)
+        if continued_from:
+            active.setdefault("continuations", []).append({"agent": agent, "from": continued_from, "at": time.time()})
 
         task_id = active.get("task_id", "unknown")
         active["status"] = "abandoned"
@@ -1086,7 +1104,7 @@ def run_disruption_audit(
                     audit["plan"] = plan.get("description")
                 if active.get("owner"):
                     audit["owner"] = active["owner"]
-                    audit["agent_history"] = agent_history(own)
+                    audit["agent_history"] = agent_history(own, active)
                 # The latest packet wins: an older one describes a state already moved past.
                 for cp in reversed(own):
                     if isinstance(cp.get("handoff"), dict) and cp["handoff"]:
@@ -1664,8 +1682,6 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
     resolved = resolve_phase_num(phase, phase_num)
     errors = impact_errors(desc, resolved, impact, prior)
     warning = missing_impact_warning(task_id, resolved, prior, any(impact.values()))
-    if warning:
-        print(warning, file=sys.stderr)
     if errors:
         print(f"[INCOMPLETE IMPACT] {'; '.join(errors)}", file=sys.stderr)
         print("Why: the first plan of a Track C task records why, benefits, risks and mitigation "
@@ -1690,6 +1706,9 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
                                take_over=take_over)
     except LedgerOwnershipError as error:
         return report_ownership(error)
+    # Printed only once the write happened: a refused write used to warn about itself (ADR-211).
+    if warning:
+        print(warning, file=sys.stderr)
     owner_note = f" (continued from '{cp['continued_from']}')" if cp.get("continued_from") else ""
     print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}{owner_note}")
     return 0

@@ -1130,6 +1130,26 @@ class TestAgentOwnership(unittest.TestCase):
                          "started by a; continued by b")
         self.assertEqual(agent_history([]), "")
 
+    def test_who_continued_survives_checkpoint_pruning(self):
+        # ADR-211: the ledger keeps 20 checkpoints, so a long task's take-over entry was pruned and
+        # --resume no longer said who continued; the active task now keeps the chain itself.
+        record_checkpoint("t", "implementation", "x", ledger_file=self.ledger, phase_num=3, agent="b",
+                          take_over=True)
+        for n in range(30):
+            record_checkpoint("t", "implementation", f"step {n}", ledger_file=self.ledger, phase_num=3, agent="b")
+        ledger = load_ledger(self.ledger)
+        self.assertFalse(any(c.get("continued_from") for c in ledger["checkpoints"]), "the entry was pruned")
+        report = format_resume_report(run_disruption_audit(workspace_dir=self.dir))
+        self.assertIn("Owner: b (started by a; continued by b)", report)
+
+    def test_a_refused_write_prints_no_warning(self):
+        # ADR-211: the impact warning was printed before the ownership refusal, for a write that
+        # never happened.
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            self.assertEqual(checkpoint_command("t", "implementation", 3, "x", {}, self.ledger, agent="b"), 1)
+        self.assertNotIn("[WARN]", err.getvalue())
+
     def test_only_a_bad_agent_name_is_reported_as_one(self):
         # ADR-210: the ValueError catch wrapped record_checkpoint, so any ValueError inside it
         # would have been reported as an invalid agent name.

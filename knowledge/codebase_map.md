@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `93`
 - **Total Top-Level Functions**: `327`
-- **Total Class Methods**: `630`
-- **Total Source Lines**: `18054`
+- **Total Class Methods**: `632`
+- **Total Source Lines**: `18093`
 
 ---
 
@@ -184,7 +184,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1922` lines (`90261` bytes)
+**Size**: `1941` lines (`91653` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -218,7 +218,7 @@
 - `def resolve_active_phase(active_task, default)` - *Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).*
 - `def repo_relative(path)` - *A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators*
 - `def resolve_agent(explicit, env)` - *The agent a ledger write is attributed to (ADR-209): `--agent`, else `AIKIT_AGENT`, else the*
-- `def agent_history(checkpoints)` - *Who worked on a task, in order: `started by A; continued by B` (ADR-209).*
+- `def agent_history(checkpoints, active)` - *Who worked on a task, in order: `started by A; continued by B` (ADR-209). The chain the active*
 - `def _claim(active, agent, take_over)` - *Check that `agent` may write the in-progress task `active`; returns the previous owner when the*
 - `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation, handoff, agent, take_over)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
 - `def mark_task_completed(task_id, ledger_file, agent, take_over)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
@@ -646,7 +646,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7321` lines (`415072` bytes)
+**Size**: `7341` lines (`416382` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -730,6 +730,8 @@
   - Method `.test_the_agent_is_named_explicitly_or_by_its_host()`
   - Method `.test_replacing_another_agents_task_records_whose_it_was()`
   - Method `.test_history_of_a_task_older_than_attribution()`
+  - Method `.test_who_continued_survives_checkpoint_pruning()`
+  - Method `.test_a_refused_write_prints_no_warning()`
   - Method `.test_only_a_bad_agent_name_is_reported_as_one()`
   - Method `.test_checkpoint_command_reports_the_owner_and_the_take_over()`
 - `class TestPythonFileDiscovery` - *`find_python_files` prunes ignored directories relative to the root (ADR-115).*

@@ -1,47 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ownership-review-fixes",
-    "last_phase": "planning",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792863201.491605,
+    "task_id": "ownership-history",
+    "last_phase": "delivery",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792863956.8354454,
     "owner": "claude-code:850bdc47",
-    "impact_assessment": {
-      "why": "Review of 2683d1d: a broad ValueError catch could mislabel a future error as an invalid agent; replacing another agent's task left no record of whose it was; a pre-ADR-209 task's history named the wrong starter.",
-      "benefits": "Errors keep their own message; every take-over is traceable; history is not misleading.",
-      "risks": "contract: none beyond the extra key on a superseded entry; dependency: none; concurrency: inside the existing lock; state: superseded entries may gain continued_from.",
-      "mitigation": "Failing-first tests; Phase 4; verify_commit."
-    },
-    "completed_at": 1792863330.0773396
+    "started_by": null,
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "integrate-and-deliver",
-      "phase": "implementation",
-      "phase_num": 4,
-      "description": "[2/3] done: attach adds AIKit Integrated badge, fix and the copy-in template carry it, README is the one description (350-char cap), one folder one name; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792858398.1745014,
-      "timestamp_str": "2026-10-24 19:13:18",
-      "handoff": {
-        "next": "milestone 3 ADR-203 review record, verify every unpushed commit alone, push"
-      }
-    },
-    {
-      "task_id": "integrate-and-deliver",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[3/3] done: ADR-203 records the review since c39ccf8, corrects ADR-198, notes the deleted key; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792858478.8160462,
-      "timestamp_str": "2026-10-24 19:14:38",
-      "handoff": {
-        "next": "verify each unpushed commit alone, then push without force"
-      }
-    },
     {
       "task_id": "integrate-and-deliver",
       "phase": "completed",
@@ -288,6 +257,40 @@
       "timestamp": 1792863330.0773408,
       "timestamp_str": "2026-10-24 20:35:30",
       "agent": "claude-code:850bdc47"
+    },
+    {
+      "task_id": "ownership-history",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] the active task keeps started_by and every take-over, so pruning cannot lose who continued; a refused write prints no warning (ADR-211)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792863856.2566068,
+      "timestamp_str": "2026-10-24 20:44:16",
+      "agent": "claude-code:850bdc47",
+      "impact_assessment": {
+        "why": "Second review of 2683d1d..dbd8336: the 20-checkpoint cap prunes a long task's take-over entries, so --resume lost who continued; a refused checkpoint printed an impact warning for a write that never happened.",
+        "benefits": "The ownership chain survives any pruning; output matches what was written.",
+        "risks": "contract: none; dependency: none; concurrency: written inside the existing lock; state: active_task gains started_by and continuations.",
+        "mitigation": "Failing-first tests; Phase 4; verify_commit before push."
+      },
+      "handoff": {
+        "next": "tests in TestAgentOwnership, then record_checkpoint and agent_history"
+      }
+    },
+    {
+      "task_id": "ownership-history",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[1/1] done: active task keeps started_by and continuations; warning only after a write; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792863956.8354454,
+      "timestamp_str": "2026-10-24 20:45:56",
+      "agent": "claude-code:850bdc47",
+      "handoff": {
+        "next": "verify every unpushed commit alone, then push"
+      }
     }
   ]
 }
