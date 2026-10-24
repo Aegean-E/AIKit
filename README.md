@@ -132,7 +132,7 @@ python aikit.py new my-app          # projects/my-app/: new git repo + .aikit/ m
 python aikit.py attach ../existing  # register a folder elsewhere; adds only .aikit/ and .gitignore lines
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked, --json for CI
-python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets; --push to push
+python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets; --push to push (exit 1 if it cannot)
 python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts, no open UI task
 python aikit.py ui init my-app        # React/Vite pilot: write a conservative .aikit/ui.json
 python aikit.py ui init my-app --fast "npm run test" --paths "src/**"  # manual other-stack contract

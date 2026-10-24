@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
-- **Total Top-Level Functions**: `313`
-- **Total Class Methods**: `591`
-- **Total Source Lines**: `17034`
+- **Total Top-Level Functions**: `314`
+- **Total Class Methods**: `593`
+- **Total Source Lines**: `17093`
 
 ---
 
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `168` lines (`10353` bytes)
+**Size**: `169` lines (`10439` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -184,7 +184,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1726` lines (`80061` bytes)
+**Size**: `1757` lines (`81250` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -211,6 +211,7 @@
 - `def save_ledger(ledger, ledger_file, max_history, _locked)` - *Save the task ledger atomically to disk with bounded rolling history (PRINCIPLE-004).*
 - `def resolve_phase_num(phase, explicit_num)` - *Resolve lifecycle phase number 1..5 for compaction orientation (PRINCIPLE-002).*
 - `def unquote_git_path(path)` - *A path as git printed it, back as the real name.*
+- `def porcelain_entries(porcelain_output)` - *`(XY, path)` for each entry of `git status --porcelain` output; a rename or copy is reported*
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
 - `def resolve_active_phase(active_task, default)` - *Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).*
 - `def repo_relative(path)` - *A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators*
@@ -220,7 +221,7 @@
 - `def _reraise(error)`
 - `def sweep_files(workspace_dir, pattern)` - *Files under `workspace_dir` matching `pattern`, pruning `SWEEP_PRUNED_DIRS` while walking, so a*
 - `def clean_dangling_temp_files(workspace_dir, min_age_seconds)` - *Purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006 R6, PRINCIPLE-013).*
-- `def git_porcelain_status(workspace)` - *Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3).*
+- `def git_porcelain_status(workspace)` - *Default git adapter: run `git status --porcelain -z` in `workspace` (bounded, PRINCIPLE-010 R3).*
 - `def run_disruption_audit(workspace_dir, git_status)` - *Execute a comprehensive pre-flight disruption audit (PRINCIPLE-006, PRINCIPLE-007).*
 - `def append_file_list(lines, title, files, cap)` - *Append a titled file list of at most `cap` entries, so a huge tree stays bounded (PRINCIPLE-004 R5).*
 - `def audit_body_lines(audit)` - *Findings shared by --audit and --resume, so neither report hides what the other shows.*
@@ -515,7 +516,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1197` lines (`59796` bytes)
+**Size**: `1213` lines (`60900` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -586,6 +587,7 @@
   - Method `.test_a_trailing_newline_still_runs_the_command()`
 - `class TestReportedPathsAreRealPaths` - *Git quotes spaces and non-ASCII letters; what AIKit reports must name real files (ADR-189).*
   - Method `.test_the_audit_reports_paths_that_exist()`
+  - Method `.test_the_audit_reads_nul_separated_status_and_a_real_rename()`
   - Method `.test_a_project_gate_prints_a_non_ascii_path_as_utf8()`
 - `class TestSecretScanSeesNonAsciiPaths` - *git quotes a non-ASCII path ("\305\237ifre.txt") unless told otherwise, so `--all` read a*
   - Method `.make_repo()`
@@ -629,7 +631,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6849` lines (`384641` bytes)
+**Size**: `6860` lines (`385358` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -979,6 +981,7 @@
   - Method `.test_conflict_states_carry_their_code_for_diagnostics()`
   - Method `.test_ignored_and_blank_lines_are_skipped()`
   - Method `.test_empty_output_is_clean()`
+  - Method `.test_nul_separated_status_parses_a_rename_whose_names_contain_an_arrow()`
   - Method `.test_paths_git_quotes_are_reported_as_the_real_names()`
   - Method `.test_paths_with_spaces_survive_classification()`
 - `class TestAstSignatureFidelity` - *The symbol catalog is what agents consult before verifying call-sites (PRINCIPLE-004 R3), so*

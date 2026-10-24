@@ -4294,6 +4294,17 @@ class TestPorcelainClassification(unittest.TestCase):
             classify_git_status(""), {"modified": [], "untracked": [], "conflicted": []}
         )
 
+    def test_nul_separated_status_parses_a_rename_whose_names_contain_an_arrow(self):
+        # `git status --porcelain -z` quotes nothing and gives a rename as two fields, the new
+        # path first. v1 output could not be split when a name held " -> " (POSIX allows it).
+        nul = chr(0)
+        porcelain = nul.join(["R  new -> name.txt", "old -> name.txt", "?? yeni çift.txt",
+                              " M keep.txt", "UU both.txt", ""])
+        out = classify_git_status(porcelain)
+        self.assertEqual(out["modified"], ["old -> name.txt -> new -> name.txt", "keep.txt"])
+        self.assertEqual(out["untracked"], ["yeni çift.txt"])
+        self.assertEqual(out["conflicted"], ["UU both.txt"])
+
     def test_paths_git_quotes_are_reported_as_the_real_names(self):
         # Porcelain v1 quotes a path with a space or a non-ASCII letter, C-style, so the audit -
         # and `status --json` - named files that do not exist (ADR-189).

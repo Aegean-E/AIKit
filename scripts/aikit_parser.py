@@ -110,7 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
     # authorized (PRINCIPLE-018 R4, ADR-185). --no-push is now the default, kept for old scripts.
     delivery = check.add_mutually_exclusive_group()
     delivery.add_argument("--push", action="store_true",
-                          help="after every gate passes, push unpushed commits to origin (never forced)")
+                          help="after every gate passes on a clean tree, push unpushed commits to "
+                               "origin (never forced); exit 1 if the push does not happen")
     delivery.add_argument("--no-push", action="store_true",
                           help="the default; kept so existing scripts still run")
     check.add_argument("--strict", action="store_true",

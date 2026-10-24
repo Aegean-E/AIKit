@@ -1,56 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-fixes-4-v1",
+    "task_id": "close-open-items-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792823272.1845508,
-    "completed_at": 1792823272.3789313
+    "updated_at": 1792823623.9692075,
+    "completed_at": 1792823624.1606622
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-2-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/3] done: --help fast path via scripts/aikit_parser.py, ADR-180.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792782531.8463964,
-      "timestamp_str": "2026-10-23 22:08:51",
-      "handoff": {
-        "state": "all 3 milestones done",
-        "next": "fix the missing Dict import in aikit_cli.py, which breaks every command on Python 3.10-3.13, as its own task with a guard test",
-        "failed": "the projected ~80ms floor, real result 123ms because argparse on 3.14 and parser construction cost ~80ms",
-        "open": "GitHub Actions has not run a step since at least 10-19 because the account is locked for billing, which only the user can resolve",
-        "evidence": "50 of 50 help and usage-error forms byte-identical, Phase 4 green with outputs kept"
-      }
-    },
-    {
-      "task_id": "review-fixes-2-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-fixes-2-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792782532.075817,
-      "timestamp_str": "2026-10-23 22:08:52"
-    },
-    {
-      "task_id": "py310-annotations-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] Import Dict in scripts/aikit_cli.py, whose project_is_clean and project_payload annotations name it without importing it; add a unit-tier guard that forces every annotation in scripts/ to evaluate, so a name that only resolves under Python 3.14's deferred annotations fails here; ADR-181 records the incident and the CI outage.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792782562.7645862,
-      "timestamp_str": "2026-10-23 22:09:22",
-      "impact_assessment": {
-        "why": "Commit e18a1b3 (ADR-172) annotated two functions with Dict but never imported it. Python 3.14 evaluates annotations lazily (PEP 649), so nothing on the only local interpreter noticed; Python 3.10 to 3.13, which the README states as supported and CI tests, evaluate them when def runs, so importing scripts.aikit_cli raises NameError and every aikit.py command fails. It has been on origin since push 9653975, and GitHub Actions caught nothing because the account is locked for billing and no CI step has run since at least 10-19.",
-        "benefits": "aikit.py works again on every supported Python; a guard that runs on 3.14 catches the whole class of deferred-annotation NameError, which matters most while CI cannot run.",
-        "risks": "contract: none, a missing import is restored. dependency: none. concurrency: none. state: none.",
-        "mitigation": "Prove the bug with a failing-first guard that reproduces Python 3.10-3.13's eager evaluation on 3.14 by reading every function and class __annotations__; confirm the simulation flags exactly the two known annotations and nothing else; keep the guard spawn-free and inside the unit tier's 10ms per-test budget."
-      }
-    },
     {
       "task_id": "py310-annotations-v1",
       "phase": "verification",
@@ -234,6 +192,41 @@
       "status": "completed",
       "timestamp": 1792823272.3789334,
       "timestamp_str": "2026-10-24 09:27:52"
+    },
+    {
+      "task_id": "close-open-items-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] The ledger audit reads git status --porcelain -z, closing ADR-189's limit on renames whose names hold ' -> '; the check --push help and README state the exit-1 behaviour 2f123c0 added, as PRINCIPLE-005 R2 requires; ADR-190.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792823572.123393,
+      "timestamp_str": "2026-10-24 09:32:52",
+      "impact_assessment": {
+        "why": "Reviewing the two changed help forms in full showed check --push's help and README still described the pre-2f123c0 behaviour, although PRINCIPLE-005 R2 requires a change to a command's non-zero exit conditions to update its --help and README in the same commit. ADR-189 left v1 porcelain's rename ambiguity open.",
+        "benefits": "The audit parses every path exactly, renames included; check's help and README match what the command does.",
+        "risks": "contract: check --help text changes; git_porcelain_status returns NUL-separated output; the rename display stays old -> new. dependency: none. concurrency: none. state: none.",
+        "mitigation": "Failing-first tests on a synthesised -z rename with arrows in its names and on a real git mv through the real audit; v1 parsing kept for callers and tests that pass v1 text."
+      }
+    },
+    {
+      "task_id": "close-open-items-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] done: -z audit, check --push help and README, ADR-190.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792823623.9692075,
+      "timestamp_str": "2026-10-24 09:33:43"
+    },
+    {
+      "task_id": "close-open-items-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'close-open-items-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792823624.1606638,
+      "timestamp_str": "2026-10-24 09:33:44"
     }
   ]
 }

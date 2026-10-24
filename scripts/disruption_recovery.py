@@ -602,6 +602,44 @@ def unquote_git_path(path: str) -> str:
     return out.decode("utf-8", errors="replace")
 
 
+def porcelain_entries(porcelain_output: str) -> List[Tuple[str, str]]:
+    """
+    `(XY, path)` for each entry of `git status --porcelain` output; a rename or copy is reported
+    as `old -> new`.
+
+    NUL-separated output (`-z`, what the audit asks git for) quotes nothing and gives a rename as
+    two fields, the new path first, so it parses exactly even when a name holds " -> " - which
+    POSIX allows and v1 text cannot express unambiguously. Newline-separated v1 text, which
+    callers and tests may still pass, is unquoted C-style instead (ADR-189, ADR-190).
+    """
+    entries: List[Tuple[str, str]] = []
+    if "\0" in porcelain_output:
+        fields = porcelain_output.split("\0")
+        i = 0
+        while i < len(fields):
+            entry = fields[i]
+            i += 1
+            if len(entry) < 4:
+                continue
+            xy, path = entry[:2], entry[3:]
+            if xy[0] in "RC" and i < len(fields):
+                path = f"{fields[i]} -> {path}"
+                i += 1
+            entries.append((xy, path))
+        return entries
+    for raw_line in porcelain_output.splitlines():
+        if not raw_line or len(raw_line) < 4:
+            continue
+        xy, file_rel = raw_line[:2], raw_line[3:].strip()
+        if xy[0] in "RC" and " -> " in file_rel:
+            old, new = file_rel.split(" -> ", 1)
+            file_rel = f"{unquote_git_path(old)} -> {unquote_git_path(new)}"
+        else:
+            file_rel = unquote_git_path(file_rel)
+        entries.append((xy, file_rel))
+    return entries
+
+
 def classify_git_status(porcelain_output: str) -> Dict[str, List[str]]:
     """
     Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).
@@ -620,17 +658,7 @@ def classify_git_status(porcelain_output: str) -> Dict[str, List[str]]:
     sufficient. The modified bucket stays open-ended so future codes can never vanish.
     """
     result: Dict[str, List[str]] = {"modified": [], "untracked": [], "conflicted": []}
-    for raw_line in porcelain_output.splitlines():
-        if not raw_line or len(raw_line) < 4:
-            continue
-        xy = raw_line[:2]
-        file_rel = raw_line[3:].strip()
-        # A rename or copy is `old -> new`, each side quoted on its own; anything else is one path.
-        if xy[0] in "RC" and " -> " in file_rel:
-            old, new = file_rel.split(" -> ", 1)
-            file_rel = f"{unquote_git_path(old)} -> {unquote_git_path(new)}"
-        else:
-            file_rel = unquote_git_path(file_rel)
+    for xy, file_rel in porcelain_entries(porcelain_output):
         if xy == "??":
             result["untracked"].append(file_rel)
         elif xy == "!!":
@@ -867,9 +895,12 @@ def clean_dangling_temp_files(workspace_dir: Optional[Path] = None, min_age_seco
 
 
 def git_porcelain_status(workspace: Path) -> Tuple[int, str, str]:
-    """Default git adapter: run `git status --porcelain` in `workspace` (bounded, PRINCIPLE-010 R3)."""
+    """
+    Default git adapter: run `git status --porcelain -z` in `workspace` (bounded, PRINCIPLE-010 R3).
+    NUL-separated, so no path is quoted and a rename is two exact fields (ADR-190).
+    """
     proc = subprocess.run(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain", "-z"],
         cwd=str(workspace),
         capture_output=True,
         text=True,

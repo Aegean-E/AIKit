@@ -49,6 +49,7 @@ from scripts.disruption_recovery import (  # noqa: E402
     load_ledger,
     record_checkpoint,
     run_disruption_audit,
+    git_porcelain_status,
     format_audit_report,
     format_resume_report,
     classify_git_status,
@@ -791,6 +792,21 @@ class TestReportedPathsAreRealPaths(unittest.TestCase):
         reported = run_disruption_audit(workspace_dir=repo)["untracked_files"]
         self.assertEqual(sorted(reported), sorted(self.NAMES))
         self.assertTrue(all((repo / name).exists() for name in reported))
+
+    def test_the_audit_reads_nul_separated_status_and_a_real_rename(self):
+        repo = Path(tempfile.mkdtemp(prefix="test_audit_rename_"))
+        self.addCleanup(remove_tree, repo)
+        for args in (["init", "-q"], ["config", "user.name", "t"], ["config", "user.email", "t@example.invalid"]):
+            subprocess.run(["git", *args], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        (repo / "old name.txt").write_text("x\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        subprocess.run(["git", "mv", "old name.txt", "new name.txt"], cwd=repo, check=True, timeout=PROC_TIMEOUT)
+        code, stdout, _ = git_porcelain_status(repo)
+        self.assertEqual(code, 0)
+        self.assertIn("\0", stdout, "the audit must ask git for NUL-separated output")
+        self.assertEqual(run_disruption_audit(workspace_dir=repo)["modified_files"],
+                         ["old name.txt -> new name.txt"])
 
     def test_a_project_gate_prints_a_non_ascii_path_as_utf8(self):
         # `aikit check` reads gate output as UTF-8; the hygiene scan wrote the console code page,
