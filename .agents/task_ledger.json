@@ -5,19 +5,9 @@
     "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792831657.045237
+    "updated_at": 1792831721.072139
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-4-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/4] done: unquoted audit paths, NUL refusal, UTF-8 gate output, ADR-189.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792822972.9261181,
-      "timestamp_str": "2026-10-24 09:22:52"
-    },
     {
       "task_id": "review-fixes-4-v1",
       "phase": "verification",
@@ -269,6 +259,20 @@
       "timestamp_str": "2026-10-24 11:47:37",
       "handoff": {
         "next": "milestone 3 ADR-198 records the push 31-50 review",
+        "open": "new --publish gating and OpenCode read-only shell await user"
+      }
+    },
+    {
+      "task_id": "review-pushes-31-50",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/3] done: ADR-198 records the push 31-50 review",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792831721.072139,
+      "timestamp_str": "2026-10-24 11:48:41",
+      "handoff": {
+        "next": "complete the review-pushes-31-50 task",
         "open": "new --publish gating and OpenCode read-only shell await user"
       }
     }

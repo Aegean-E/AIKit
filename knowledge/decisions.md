@@ -2344,3 +2344,17 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The doc states that the column is suitability, that each role runs its profile's `model:`, and that any other model is a `delegate --model` override; a `Configured today:` line names each role's model. The tree drops the unverified scores and throughput figures and says a branch naming another model is an override. `test_benchmark_doc_names_each_roles_configured_model` parses that line against every profile and keeps scores out of the tree.
 - **Consequences**: A reader routing a task finds the model that will actually run, and a profile change without a doc change fails the suite. The table's unverified rows are unchanged; they remain unusable as reasons until sourced.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-009 R6 (sourced model claims), PRINCIPLE-016 R1 (knowledge matches the code) and PRINCIPLE-014 R1 (failing-first test).
+
+### ADR-198: Review of Pushes 31-50
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Pushes 31-50 (`b6e5465..7b7412d`, thirty commits, 2026-10-19 to 2026-10-23) were reviewed: each commit's own gates, the project system, UI review and proof safeguards, post-commit verification, license migration to AGPL-3.0, secret write-boundary scrubbing, cold-start handoff packets, and model benchmark routing.
+- **Findings**:
+  1. Live defects found and fixed at HEAD:
+     - `validate_name` allowed Windows device names (`con`, `prn`, `aux`, `nul`, `com0`-`com9`, `lpt0`-`lpt9`), failing on Windows during directory creation or leaving repositories uncloneable on Windows (ADR-196).
+     - `knowledge/model_benchmarks.md` role table and decision tree contradicted the configured role profiles in `.opencode/agents/` and used unverified SWE-bench/throughput figures to justify routing; corrected and pinned by a test (ADR-197).
+  2. Gates and budget evolution: `verify_commit.py` was introduced in this push range (9a95501) and strengthened; the `--help` startup ceiling was adjusted to 250ms (ADR-179); UI verification (`ui_proof.py`) and explicit staging checks were integrated into the pre-commit triad.
+  3. Open items carried forward: `new <name> --publish` gating tradeoff (ADR-193 item 5) and the OpenCode read-only shell remain open for user direction.
+- **Decision**: No historical commit edits. The findings were addressed at HEAD with failing-first tests and verified through the pre-commit gates.
+- **Consequences**: Pushes 1-50 have now all been audited. Open items remain for user consultation.
+- Cross-principle check: no principle section changed. The review serves PRINCIPLE-018 R7 (each commit verified alone), PRINCIPLE-003 R1 (claims checked against the real state), and PRINCIPLE-016 R1 (knowledge matches the code).
