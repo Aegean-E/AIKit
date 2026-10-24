@@ -3,25 +3,12 @@
   "active_task": {
     "task_id": "publish-and-readonly",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792859449.4098134
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792859449.4098134,
+    "completed_at": 1792859450.9130125
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/3] done: model_benchmarks.md names configured roles and test pins doc; ADR-197",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792831657.045237,
-      "timestamp_str": "2026-10-24 11:47:37",
-      "handoff": {
-        "next": "milestone 3 ADR-198 records the push 31-50 review",
-        "open": "new --publish gating and OpenCode read-only shell await user"
-      }
-    },
     {
       "task_id": "review-pushes-31-50",
       "phase": "in_progress",
@@ -279,6 +266,15 @@
       "handoff": {
         "next": "user decides on the external review's open items"
       }
+    },
+    {
+      "task_id": "publish-and-readonly",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'publish-and-readonly' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792859450.9130144,
+      "timestamp_str": "2026-10-24 19:30:50"
     }
   ]
 }
