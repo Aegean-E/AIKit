@@ -1,42 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "integrate-and-deliver",
+    "task_id": "readme-condense",
     "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792858478.8160462,
-    "completed_at": 1792858479.5621822
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792858854.73955
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-21-30",
-      "phase": "implementation",
-      "phase_num": 4,
-      "description": "[1/2] done: delegate starts the shim's executable, refuses cmd metacharacters without one, ends options before the brief, drops #variant in the free check; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792830143.4394414,
-      "timestamp_str": "2026-10-24 11:22:23",
-      "handoff": {
-        "next": "milestone 2 ADR-195 review record",
-        "open": "new --publish gating awaits user (ADR-193)"
-      }
-    },
-    {
-      "task_id": "review-pushes-21-30",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[2/2] done: ADR-195 records the push 21-30 review; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792830252.7800934,
-      "timestamp_str": "2026-10-24 11:24:12",
-      "handoff": {
-        "state": "committed, unpushed",
-        "next": "user decides key revocation and new --publish gating"
-      }
-    },
     {
       "task_id": "review-pushes-21-30",
       "phase": "completed",
@@ -273,6 +244,39 @@
       "status": "completed",
       "timestamp": 1792858479.5621836,
       "timestamp_str": "2026-10-24 19:14:39"
+    },
+    {
+      "task_id": "readme-condense",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] condense README by removing two sentences the command matrix already states, and correct 'auto-push' to check --push (ADR-204)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792858797.0364344,
+      "timestamp_str": "2026-10-24 19:19:57",
+      "impact_assessment": {
+        "why": "README had 22 characters of headroom under PRINCIPLE-005's 22,500; the user allowed condensing with no loss of information or of meaning.",
+        "benefits": "188 characters of headroom for the next addition; one stale term corrected.",
+        "risks": "contract: none, documentation only; dependency: none; concurrency: another agent may commit, HEAD checked before commit; state: none.",
+        "mitigation": "Each removed sentence is matched to the matrix row that states the same fact; README gate and Phase 4."
+      },
+      "handoff": {
+        "next": "Phase 4 then commit",
+        "open": "user decision on new --publish and OpenCode shell"
+      }
+    },
+    {
+      "task_id": "readme-condense",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[1/1] done: two matrix-duplicated sentences removed, auto-push corrected; 188 chars headroom; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792858854.73955,
+      "timestamp_str": "2026-10-24 19:20:54",
+      "handoff": {
+        "next": "user decision on new --publish and OpenCode shell"
+      }
     }
   ]
 }

@@ -2412,3 +2412,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: ADR-198 stays as written (the register is append-only); this ADR replaces its findings. Each unpushed commit is verified alone, then pushed without force.
 - **Consequences**: Open items left for the user: whether `new --publish` runs the gates `publish` enforces (ADR-193 item 5), and whether OpenCode's `explorer` and `architect` lose the shell. The README has 22 characters of headroom under PRINCIPLE-005's 22,500.
 - Cross-principle check: no principle section changed. The review serves PRINCIPLE-018 R7 (each commit verified alone before the push), PRINCIPLE-016 R3 (the register corrected by appending) and PRINCIPLE-003 R4 (the oldest supported Python).
+
+### ADR-204: README Condensed Without Loss; "auto-push" Corrected
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The README had 22 characters of headroom under PRINCIPLE-005's 22,500-character limit. The user allowed condensing it provided no information is lost and no text can be read differently by another agent.
+- **Decision**: Two sentences that repeat the command matrix are removed, each matched to the row that states the same fact: "`--check` is the read-only mode of `sync_principles.py` and `update_knowledge_base.py`" (both `--check` rows begin "Read-only"), and step 2 of Disruption Recovery's "a task's first plan checkpoint must carry `--why --benefits --risks --mitigation`" (the checkpoint row: "exits 2 when a task's first plan lacks `--why --benefits --risks --mitigation`"). "an open UI task blocks ... auto-push" now names `check --push`: ADR-185 removed the implicit push, and `cmd_check` counts an open UI task as dirty and refuses the requested push.
+- **Consequences**: 166 characters saved; the README has 188 characters of headroom. No command, limit, exit code or rule left the README.
+- Cross-principle check: no principle section changed. The change serves PRINCIPLE-005 R1 (the size budget) and PRINCIPLE-003 R1 (the text matches the code).
