@@ -69,7 +69,9 @@ def build_parser() -> argparse.ArgumentParser:
                           "GitHub description")
     new.add_argument("--topic", action="append", metavar="TOPIC",
                      help="a GitHub topic, repeatable; 'aikit' is always added")
-    new.add_argument("--publish", action="store_true", help="publish to GitHub immediately after creation")
+    new.add_argument("--publish", action="store_true",
+                     help="upload the starter files to GitHub at creation (needs --description); later "
+                          "uploads go through `publish` and its gates")
     new.add_argument("--public", action="store_true", help="with --publish: make the GitHub repository public (default: private)")
 
     attach = commands.add_parser("attach", help="register an existing project folder and add the AIKit Integrated badge to its README")

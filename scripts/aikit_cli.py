@@ -136,6 +136,17 @@ def cmd_new(args: argparse.Namespace) -> int:
             "--public` later.",
             exit_code=2,
         ))
+    # `new --publish` uploads only AIKit's starter files, so it skips publish's gates, which the
+    # seed's <FILL: markers would always fail; a repository still never starts undescribed (ADR-205).
+    if getattr(args, "publish", False) and not getattr(args, "description", None):
+        return report_error(ProjectError(
+            "--publish needs --description.",
+            "the GitHub repository --publish creates takes its description from the new README, "
+            "which has none until --description gives it one.",
+            f'add --description "<one line, 10-350 characters>", or create the project now and run '
+            f"`python aikit.py publish {args.name}` once its README is filled.",
+            exit_code=2,
+        ))
     root = create_project(args.name, args.test, workspace=args.workspace,
                           description=args.description, topics=args.topic)
     print(f"[OK] Created project '{args.name}' at {root}")

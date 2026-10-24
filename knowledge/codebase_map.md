@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `91`
 - **Total Top-Level Functions**: `323`
-- **Total Class Methods**: `616`
-- **Total Source Lines**: `17699`
+- **Total Class Methods**: `617`
+- **Total Source Lines**: `17723`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `625` lines (`30229` bytes)
+**Size**: `636` lines (`30979` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `176` lines (`11104` bytes)
+**Size**: `178` lines (`11228` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -640,7 +640,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7169` lines (`405264` bytes)
+**Size**: `7180` lines (`405921` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1047,6 +1047,7 @@
   - Method `.test_status_json_returns_the_error_envelope_for_an_unknown_project()`
   - Method `.test_resume_json_carries_the_audit_and_the_guidelines_count()`
   - Method `.test_new_public_without_publish_is_a_usage_error()`
+  - Method `.test_new_publish_without_description_is_a_usage_error()`
   - Method `.test_check_pushes_only_when_asked()`
   - Method `._gate_result()`
   - Method `.test_dirty_check_skips_auto_push_and_strict_fails()`

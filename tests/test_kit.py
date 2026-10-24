@@ -4993,6 +4993,17 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("Fix:", err)
         self.assertFalse((self.kit / "projects" / "loneflag").exists(), "nothing is created")
 
+    def test_new_publish_without_description_is_a_usage_error(self):
+        # ADR-205: `new --publish` uploads AIKit's starter files without publish's gates, so it must
+        # at least give the repository a description; without one nothing is created.
+        with mock.patch("scripts.aikit_cli.publish_project") as publish:
+            code, _, err = self.run_cli("new", "nodesc", "--publish")
+        self.assertEqual(code, 2)
+        self.assertIn("--publish needs --description", err)
+        self.assertIn("Fix:", err)
+        publish.assert_not_called()
+        self.assertFalse((self.kit / "projects" / "nodesc").exists(), "nothing is created")
+
     def test_check_pushes_only_when_asked(self):
         folder = self.make_folder()
         attach_project(folder, "pushapp", test_command="python -c exit(0)", workspace=self.kit)
