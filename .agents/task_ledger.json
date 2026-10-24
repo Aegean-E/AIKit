@@ -2,38 +2,13 @@
   "version": 1,
   "active_task": {
     "task_id": "review-pushes-31-50",
-    "last_phase": "implementation",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792831886.4356565
+    "last_phase": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792832056.2354977,
+    "completed_at": 1792832073.180608
   },
   "checkpoints": [
-    {
-      "task_id": "close-open-items-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] The ledger audit reads git status --porcelain -z, closing ADR-189's limit on renames whose names hold ' -> '; the check --push help and README state the exit-1 behaviour 2f123c0 added, as PRINCIPLE-005 R2 requires; ADR-190.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792823572.123393,
-      "timestamp_str": "2026-10-24 09:32:52",
-      "impact_assessment": {
-        "why": "Reviewing the two changed help forms in full showed check --push's help and README still described the pre-2f123c0 behaviour, although PRINCIPLE-005 R2 requires a change to a command's non-zero exit conditions to update its --help and README in the same commit. ADR-189 left v1 porcelain's rename ambiguity open.",
-        "benefits": "The audit parses every path exactly, renames included; check's help and README match what the command does.",
-        "risks": "contract: check --help text changes; git_porcelain_status returns NUL-separated output; the rename display stays old -> new. dependency: none. concurrency: none. state: none.",
-        "mitigation": "Failing-first tests on a synthesised -z rename with arrows in its names and on a real git mv through the real audit; v1 parsing kept for callers and tests that pass v1 text."
-      }
-    },
-    {
-      "task_id": "close-open-items-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[1/1] done: -z audit, check --push help and README, ADR-190.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792823623.9692075,
-      "timestamp_str": "2026-10-24 09:33:43"
-    },
     {
       "task_id": "close-open-items-v1",
       "phase": "completed",
@@ -279,6 +254,29 @@
         "next": "milestone 3 ADR-198 review record (draft in scratchpad adr198.md)",
         "open": "new --publish gating and OpenCode read-only shell await user"
       }
+    },
+    {
+      "task_id": "review-pushes-31-50",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/3] done: ADR-198 records the push 31-50 review and OpenCode read-only shell finding",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792832056.2354977,
+      "timestamp_str": "2026-10-24 11:54:16",
+      "handoff": {
+        "next": "complete the review-pushes-31-50 task",
+        "open": "new --publish gating and OpenCode read-only shell await user"
+      }
+    },
+    {
+      "task_id": "review-pushes-31-50",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-pushes-31-50' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792832073.1806095,
+      "timestamp_str": "2026-10-24 11:54:33"
     }
   ]
 }
