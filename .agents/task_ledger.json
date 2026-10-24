@@ -3,25 +3,12 @@
   "active_task": {
     "task_id": "trust-boundary",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792860106.6116881
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792860106.6116881,
+    "completed_at": 1792860107.4349082
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-31-50",
-      "phase": "implementation",
-      "phase_num": 4,
-      "description": "[2/3] done: model_benchmarks.md names the configured role models, pinned by a test, tree drops unverified scores; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792831886.4356565,
-      "timestamp_str": "2026-10-24 11:51:26",
-      "handoff": {
-        "next": "milestone 3 ADR-198 review record (draft in scratchpad adr198.md)",
-        "open": "new --publish gating and OpenCode read-only shell await user"
-      }
-    },
     {
       "task_id": "review-pushes-31-50",
       "phase": "in_progress",
@@ -283,6 +270,15 @@
       "handoff": {
         "next": "analyze and verify every commit since 14726ab, push, then step 4 review log"
       }
+    },
+    {
+      "task_id": "trust-boundary",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'trust-boundary' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792860107.43491,
+      "timestamp_str": "2026-10-24 19:41:47"
     }
   ]
 }
