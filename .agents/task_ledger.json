@@ -2,22 +2,12 @@
   "version": 1,
   "active_task": {
     "task_id": "review-pushes-11-20",
-    "last_phase": "implementation",
+    "last_phase": "delivery",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792828623.6804335
+    "updated_at": 1792828725.3119662
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-3-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/4] done: run_shell refuses multi-line commands, ADR-183.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792783625.4729838,
-      "timestamp_str": "2026-10-23 22:27:05"
-    },
     {
       "task_id": "review-fixes-3-v1",
       "phase": "verification",
@@ -242,6 +232,21 @@
       "handoff": {
         "next": "milestone 3 ADR-193 review record",
         "open": "new --publish gating awaits user"
+      }
+    },
+    {
+      "task_id": "review-pushes-11-20",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[3/3] done: ADR-193 records the push 11-20 review, the public-repo key exposure and the open new --publish gating choice; Phase 4 green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792828725.3119662,
+      "timestamp_str": "2026-10-24 10:58:45",
+      "handoff": {
+        "state": "3 milestones committed, unpushed",
+        "next": "user decides new --publish gating and key revocation",
+        "open": "new --publish bypasses publish gates"
       }
     }
   ]
