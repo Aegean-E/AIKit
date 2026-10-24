@@ -3,31 +3,12 @@
   "active_task": {
     "task_id": "review-index",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792860369.9471016
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792860369.9471016,
+    "completed_at": 1792860370.8214903
   },
   "checkpoints": [
-    {
-      "task_id": "new-project-identity",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] new seeds AIKit's AGPL-3.0 LICENSE, a Built with AIKit badge and a description paragraph; --description (10-350 chars) and repeatable --topic (GitHub rules, aikit always added) validated and kept in project.json (ADR-198); [2/2] publish sets the recorded description and topics on GitHub (ADR-199)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792833068.484292,
-      "timestamp_str": "2026-10-24 12:11:08",
-      "impact_assessment": {
-        "why": "User request: every new project starts AGPL-3.0 licensed, with a proper description, tags, and a README badge that leads to AIKit.",
-        "benefits": "New projects are licensed, discoverable by topic and described from the start; their README links back to AIKit.",
-        "risks": "contract: new gains --description/--topic, its seed README and first commit gain LICENSE and a badge, publish runs gh repo edit for topics; dependency: AIKit's own LICENSE file is the source; concurrency: another agent commits in this repo, so each commit is preceded by a log check; state: project.json gains optional description/topics.",
-        "mitigation": "Failing-first tests per behaviour; validation before anything is created; a topic failure after a created repo is a note; README and help updated in the same commits; Phase 4 and verify_commit per milestone."
-      },
-      "handoff": {
-        "next": "milestone 1 in scripts/project_registry.py and scripts/aikit_parser.py",
-        "open": "another agent is active in this repo"
-      }
-    },
     {
       "task_id": "new-project-identity",
       "phase": "implementation",
@@ -287,6 +268,15 @@
       "handoff": {
         "next": "talk with the user about the tamper-evident ledger (item 6)"
       }
+    },
+    {
+      "task_id": "review-index",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-index' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792860370.821492,
+      "timestamp_str": "2026-10-24 19:46:10"
     }
   ]
 }
