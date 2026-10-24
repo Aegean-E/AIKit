@@ -3,20 +3,12 @@
   "active_task": {
     "task_id": "readme-condense",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792858854.73955
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792858854.73955,
+    "completed_at": 1792858855.671758
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-21-30",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-pushes-21-30' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792830263.6005406,
-      "timestamp_str": "2026-10-24 11:24:23"
-    },
     {
       "task_id": "review-pushes-21-30",
       "phase": "completed",
@@ -277,6 +269,15 @@
       "handoff": {
         "next": "user decision on new --publish and OpenCode shell"
       }
+    },
+    {
+      "task_id": "readme-condense",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'readme-condense' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792858855.6717591,
+      "timestamp_str": "2026-10-24 19:20:55"
     }
   ]
 }
