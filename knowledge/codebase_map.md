@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `89`
+- **Total Classes**: `90`
 - **Total Top-Level Functions**: `312`
-- **Total Class Methods**: `583`
-- **Total Source Lines**: `16838`
+- **Total Class Methods**: `587`
+- **Total Source Lines**: `16911`
 
 ---
 
@@ -500,7 +500,7 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `208` lines (`9630` bytes)
+**Size**: `213` lines (`10052` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
@@ -625,7 +625,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `6756` lines (`379528` bytes)
+**Size**: `6824` lines (`383248` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1062,6 +1062,10 @@
   - Method `.test_a_line_break_inside_a_command_is_refused_without_running_it()`
 - `class TestAnnotationsResolveOnEverySupportedPython` - *Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,*
   - Method `.test_every_annotation_in_scripts_names_something_defined()`
+- `class TestFstringsParseOnPython310` - *Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside*
+  - Method `.rejected_on_310(src)`
+  - Method `.test_the_check_flags_what_310_rejects_and_nothing_it_accepts()`
+  - Method `.test_no_fstring_in_aikit_needs_python_312()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*
   - Method `.test_parser_constants_match_the_modules_they_mirror()`
   - Method `.test_parser_module_imports_only_the_standard_library_at_top_level()`
@@ -1176,13 +1180,14 @@
   - Method `.test_checklists_contain_no_hedge_words()`
   - Method `.test_every_checklist_item_cites_a_principle()`
 - `class TestPostCommitVerification` - *PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149).*
-  - Method `.runner(failing, worktree_fails, pushed)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
+  - Method `.runner(failing, worktree_fails, pushed, remote_contains)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
   - Method `.ran(fragment)`
   - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
   - Method `.test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas()`
   - Method `.test_the_scanned_range_is_what_this_verification_covers()`
   - Method `.test_a_failing_gate_is_named_with_the_undo_that_fits_an_unpushed_commit()`
   - Method `.test_a_pushed_commit_is_told_to_fix_forward_not_to_reset()`
+  - Method `.test_a_commit_pushed_without_an_upstream_is_not_told_to_reset()`
   - Method `.test_a_commit_that_is_not_head_is_not_told_to_reset_head()`
   - Method `.test_the_worktree_is_removed_even_when_a_gate_fails()`
   - Method `.test_a_worktree_that_cannot_be_made_is_reported_not_passed()`

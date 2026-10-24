@@ -5,18 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792822521.578379
+    "updated_at": 1792822758.1750135
   },
   "checkpoints": [
-    {
-      "task_id": "review-followups-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-followups-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792781405.5695448,
-      "timestamp_str": "2026-10-23 21:50:05"
-    },
     {
       "task_id": "review-fixes-2-v1",
       "phase": "planning",
@@ -239,6 +230,16 @@
       "status": "in_progress",
       "timestamp": 1792822521.578379,
       "timestamp_str": "2026-10-24 09:15:21"
+    },
+    {
+      "task_id": "review-fixes-4-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/4] done: remote-tracking pushed check, module-level annotation guard, f-string 3.10 guard, ADR-188 corrections.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792822758.1750135,
+      "timestamp_str": "2026-10-24 09:19:18"
     }
   ]
 }

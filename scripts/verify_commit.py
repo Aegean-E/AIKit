@@ -92,7 +92,12 @@ def recovery_fix(ref: str, resolved: str, repo: Path, run: Runner) -> str:
     the remote, told the user to undo a different commit or rewrite published history (ADR-186).
     """
     target = run(["git", "rev-parse", ref], repo)[1].strip()
-    if run(["git", "merge-base", "--is-ancestor", target, "HEAD@{u}"], repo)[0] == 0:
+    # Published if the upstream has it, or - when there is no upstream, as after `git push origin
+    # HEAD` without -u - if any remote-tracking branch does. Treating "no upstream" as "unpushed"
+    # printed the reset advice for a commit already on the remote (ADR-188).
+    upstream_has_it = run(["git", "merge-base", "--is-ancestor", target, "HEAD@{u}"], repo)[0] == 0
+    remote_has_it = bool(run(["git", "branch", "-r", "--contains", target], repo)[1].strip())
+    if upstream_has_it or remote_has_it:
         return (f"Fix: {resolved} is already on the remote, so do not rewrite it: add what is "
                 "missing in a new commit (PRINCIPLE-018 R5).")
     if target != run(["git", "rev-parse", "HEAD"], repo)[1].strip():
