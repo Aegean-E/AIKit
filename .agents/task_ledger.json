@@ -3,31 +3,12 @@
   "active_task": {
     "task_id": "integrate-and-deliver",
     "last_phase": "delivery",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792858478.8160462
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792858478.8160462,
+    "completed_at": 1792858479.5621822
   },
   "checkpoints": [
-    {
-      "task_id": "review-pushes-21-30",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] delegate never runs through cmd.exe, ends options before the brief, and checks the model name without its #variant (ADR-194); [2/2] ADR-195 records the push 21-30 review",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792829822.9217477,
-      "timestamp_str": "2026-10-24 11:17:02",
-      "impact_assessment": {
-        "why": "Pushes 21-30 review: on Windows opencode is an npm .CMD shim, so a brief with a quote and & ran arbitrary commands and %VAR% expanded into the brief; a brief starting with -- was parsed as opencode flags (--auto approves permissions); opencode/<paid>#-free passed the free-model check.",
-        "benefits": "No shell interprets a brief; the brief is always the message; only free models run.",
-        "risks": "contract: a .cmd/.bat opencode whose real executable cannot be found refuses briefs holding cmd metacharacters; dependency: none; concurrency: none; state: none.",
-        "mitigation": "Failing-first tests with a fake shim and a recorded argv; Phase 4 and verify_commit per milestone."
-      },
-      "handoff": {
-        "next": "milestone 1 in scripts/subagent_delegate.py",
-        "open": "new --publish gating awaits user (ADR-193)"
-      }
-    },
     {
       "task_id": "review-pushes-21-30",
       "phase": "implementation",
@@ -283,6 +264,15 @@
       "handoff": {
         "next": "verify each unpushed commit alone, then push without force"
       }
+    },
+    {
+      "task_id": "integrate-and-deliver",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'integrate-and-deliver' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792858479.5621836,
+      "timestamp_str": "2026-10-24 19:14:39"
     }
   ]
 }
