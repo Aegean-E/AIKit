@@ -737,11 +737,12 @@ def resolve_agent(explicit: Optional[str] = None, env: Optional[Mapping[str, str
 
 def agent_history(checkpoints: List[Dict[str, Any]]) -> str:
     """Who worked on a task, in order: `started by A; continued by B` (ADR-209)."""
-    named = [c for c in checkpoints if c.get("agent")]
-    if not named:
+    if not checkpoints:
         return ""
-    parts = [f"started by {named[0]['agent']}"]
-    parts += [f"continued by {c['agent']}" for c in named[1:] if c.get("continued_from")]
+    # A task begun before ADR-209 has unnamed first entries: its starter is unknown, not the
+    # first agent that happened to write later (ADR-210).
+    parts = [f"started by {checkpoints[0].get('agent') or 'an unrecorded agent'}"]
+    parts += [f"continued by {c['agent']}" for c in checkpoints[1:] if c.get("agent") and c.get("continued_from")]
     return "; ".join(parts)
 
 
@@ -855,6 +856,8 @@ def record_checkpoint(
                 "timestamp": checkpoint_entry["timestamp"],
                 "timestamp_str": checkpoint_entry["timestamp_str"],
                 "agent": agent,
+                # A take-over that replaces another agent's task names whose it was (ADR-210).
+                **({"continued_from": continued_from} if continued_from else {}),
             })
             sys.stderr.write(f"[WARN] Task '{previous.get('task_id')}' was still in progress; recorded as "
                              f"superseded by '{task_id}'. Use --complete or --reset before switching.\n")
@@ -1670,18 +1673,21 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
         print('Fix: add --why, --benefits, --mitigation and --risks "contract: ...; dependency: ...; '
               'concurrency: ...; state: ..."', file=sys.stderr)
         return 2
+    # Only the name check is inside this `try`: any other ValueError keeps its own report (ADR-210).
     try:
-        cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
-                               why=impact.get("why"), benefits=impact.get("benefits"),
-                               risks=impact.get("risks"), mitigation=impact.get("mitigation"),
-                               ledger_file=ledger_file, handoff=packet, agent=resolve_agent(agent),
-                               take_over=take_over)
+        writer = resolve_agent(agent)
     except ValueError as error:
         print(f"[INVALID AGENT] {error}", file=sys.stderr)
         print("Why: the ledger names the agent behind every write so another agent can tell whose "
               "task it is (ADR-209).", file=sys.stderr)
         print("Fix: pass --agent <host>:<session>, e.g. --agent kilo:2, or set AIKIT_AGENT.", file=sys.stderr)
         return 2
+    try:
+        cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
+                               why=impact.get("why"), benefits=impact.get("benefits"),
+                               risks=impact.get("risks"), mitigation=impact.get("mitigation"),
+                               ledger_file=ledger_file, handoff=packet, agent=writer,
+                               take_over=take_over)
     except LedgerOwnershipError as error:
         return report_ownership(error)
     owner_note = f" (continued from '{cp['continued_from']}')" if cp.get("continued_from") else ""
@@ -1845,13 +1851,14 @@ if __name__ == "__main__":
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1]
         try:
-            completed = mark_task_completed(tid, ledger_file=_ledger, agent=resolve_agent(_agent_arg),
-                                            take_over=_take_over)
+            _writer = resolve_agent(_agent_arg)
         except ValueError as error:
             print(f"[INVALID AGENT] {error}", file=sys.stderr)
             print("Why: the ledger names the agent behind every write (ADR-209).", file=sys.stderr)
             print("Fix: pass --agent <host>:<session>, or set AIKIT_AGENT.", file=sys.stderr)
             sys.exit(2)
+        try:
+            completed = mark_task_completed(tid, ledger_file=_ledger, agent=_writer, take_over=_take_over)
         except LedgerOwnershipError as error:
             sys.exit(report_ownership(error))
         if not completed:
@@ -1864,13 +1871,14 @@ if __name__ == "__main__":
         idx = sys.argv.index("--reset")
         reason = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "Reset by user/agent"
         try:
-            res = reset_active_task(reason=reason, ledger_file=_ledger, agent=resolve_agent(_agent_arg),
-                                    take_over=_take_over)
+            _writer = resolve_agent(_agent_arg)
         except ValueError as error:
             print(f"[INVALID AGENT] {error}", file=sys.stderr)
             print("Why: the ledger names the agent behind every write (ADR-209).", file=sys.stderr)
             print("Fix: pass --agent <host>:<session>, or set AIKIT_AGENT.", file=sys.stderr)
             sys.exit(2)
+        try:
+            res = reset_active_task(reason=reason, ledger_file=_ledger, agent=_writer, take_over=_take_over)
         except LedgerOwnershipError as error:
             sys.exit(report_ownership(error))
         if res:

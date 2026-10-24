@@ -287,11 +287,13 @@ def cmd_checkpoint(args: argparse.Namespace) -> int:
 def cmd_complete(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
     try:
-        completed = mark_task_completed(args.task, ledger_file=workspace_ledger_path(project.path),
-                                        agent=resolve_agent(args.agent), take_over=args.take_over)
+        writer = resolve_agent(args.agent)
     except ValueError as error:
         return report_error(ProjectError(str(error), "the ledger names the agent behind every write (ADR-209).",
                                          "pass --agent <host>:<session>, or set AIKIT_AGENT.", exit_code=2))
+    try:
+        completed = mark_task_completed(args.task, ledger_file=workspace_ledger_path(project.path),
+                                        agent=writer, take_over=args.take_over)
     except LedgerOwnershipError as error:
         return report_ownership(error)
     if completed:

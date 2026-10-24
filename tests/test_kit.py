@@ -83,6 +83,7 @@ from scripts.disruption_recovery import (
     LEDGER_SCHEMA_VERSION,
     UnsupportedLedgerVersion,
     LedgerOwnershipError,
+    agent_history,
     UNIDENTIFIED_AGENT,
     load_ledger,
     resolve_agent,
@@ -1112,6 +1113,30 @@ class TestAgentOwnership(unittest.TestCase):
         for bad in ("two words", "x" * 65, "-lead", "semi;colon"):
             with self.subTest(name=bad), self.assertRaises(ValueError):
                 resolve_agent(bad, {})
+
+    def test_replacing_another_agents_task_records_whose_it_was(self):
+        # ADR-210: the superseded entry named only the new agent, not the owner it replaced.
+        record_checkpoint("u", "planning", "[1/1] plan", ledger_file=self.ledger, phase_num=2,
+                          agent="b", take_over=True)
+        superseded = [c for c in load_ledger(self.ledger)["checkpoints"] if c["status"] == "superseded"]
+        self.assertEqual(superseded[-1]["agent"], "b")
+        self.assertEqual(superseded[-1]["continued_from"], "a")
+
+    def test_history_of_a_task_older_than_attribution(self):
+        # ADR-210: a task begun before ADR-209 was said to be "started by" its first named writer.
+        self.assertEqual(agent_history([{"task_id": "t"}, {"task_id": "t", "agent": "a"}]),
+                         "started by an unrecorded agent")
+        self.assertEqual(agent_history([{"agent": "a"}, {"agent": "b", "continued_from": "a"}]),
+                         "started by a; continued by b")
+        self.assertEqual(agent_history([]), "")
+
+    def test_only_a_bad_agent_name_is_reported_as_one(self):
+        # ADR-210: the ValueError catch wrapped record_checkpoint, so any ValueError inside it
+        # would have been reported as an invalid agent name.
+        with mock.patch("scripts.disruption_recovery.record_checkpoint", side_effect=ValueError("disk says no")), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+             self.assertRaisesRegex(ValueError, "disk says no"):
+            checkpoint_command("t", "implementation", 3, "x", {}, self.ledger, agent="a")
 
     def test_checkpoint_command_reports_the_owner_and_the_take_over(self):
         err = io.StringIO()

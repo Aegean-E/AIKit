@@ -9,8 +9,8 @@
 - **Total Python Modules**: `20`
 - **Total Classes**: `93`
 - **Total Top-Level Functions**: `327`
-- **Total Class Methods**: `627`
-- **Total Source Lines**: `18019`
+- **Total Class Methods**: `630`
+- **Total Source Lines**: `18054`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `650` lines (`31826` bytes)
+**Size**: `652` lines (`31859` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -184,7 +184,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1914` lines (`89782` bytes)
+**Size**: `1922` lines (`90261` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -646,7 +646,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7296` lines (`413412` bytes)
+**Size**: `7321` lines (`415072` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -728,6 +728,9 @@
   - Method `.test_a_take_over_records_who_continued()`
   - Method `.test_an_unidentified_owner_is_claimed_with_a_record()`
   - Method `.test_the_agent_is_named_explicitly_or_by_its_host()`
+  - Method `.test_replacing_another_agents_task_records_whose_it_was()`
+  - Method `.test_history_of_a_task_older_than_attribution()`
+  - Method `.test_only_a_bad_agent_name_is_reported_as_one()`
   - Method `.test_checkpoint_command_reports_the_owner_and_the_take_over()`
 - `class TestPythonFileDiscovery` - *`find_python_files` prunes ignored directories relative to the root (ADR-115).*
   - Method `.test_a_repository_under_an_ignored_name_is_still_scanned()`
