@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "review-pushes-31-50",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792831721.072139
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792831721.072139,
+    "completed_at": 1792831741.27958
   },
   "checkpoints": [
-    {
-      "task_id": "review-fixes-4-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[4/4] done: all 12 unpushed commits pass every gate alone; maps consistent; no outgoing credential; 48 of 50 help forms byte-identical (only check's intended change).",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792823272.1845508,
-      "timestamp_str": "2026-10-24 09:27:52"
-    },
     {
       "task_id": "review-fixes-4-v1",
       "phase": "completed",
@@ -275,6 +266,15 @@
         "next": "complete the review-pushes-31-50 task",
         "open": "new --publish gating and OpenCode read-only shell await user"
       }
+    },
+    {
+      "task_id": "review-pushes-31-50",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-pushes-31-50' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792831741.2795818,
+      "timestamp_str": "2026-10-24 11:49:01"
     }
   ]
 }
