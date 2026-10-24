@@ -82,7 +82,10 @@ from scripts.sync_principles import (
 from scripts.disruption_recovery import (
     LEDGER_SCHEMA_VERSION,
     UnsupportedLedgerVersion,
+    LedgerOwnershipError,
+    UNIDENTIFIED_AGENT,
     load_ledger,
+    resolve_agent,
     save_ledger,
     atomic_write_json,
     record_checkpoint,
@@ -341,7 +344,9 @@ class TestPrincipleSync(unittest.TestCase):
         # Mechanisms, not labels (ADR-078).
         for mechanism in ("commit `[milestone n/m]` once phase 4 passes under principle-018 r1",
                           "failing work uncommitted via `--checkpoint`",
-                          "`--complete`/`--reset` before switching tasks", "`--clean` stale `.tmp_*`"):
+                          "`--complete`/`--reset` before switching tasks", "`--clean` stale `.tmp_*`",
+                          # ADR-209: every host learns to name itself and not to take another's task.
+                          "ledger writes name `--agent`; another agent's task needs `--take-over`"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p6["invariant"].lower())
 
@@ -1040,6 +1045,86 @@ class TestRuleNumberParity(unittest.TestCase):
                 self.assertIn(phrase, sections[pid])
 
 
+class TestAgentOwnership(unittest.TestCase):
+    """
+    Every ledger write names its agent, and an agent cannot write another agent's task without an
+    explicit take-over (ADR-209). Another agent once finished an active task, committed its
+    half-done work under its own messages and pushed it, and the ledger did not notice.
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix="test_ownership_"))
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.ledger = self.dir / ".agents" / "task_ledger.json"
+        record_checkpoint("t", "planning", "[1/1] plan", ledger_file=self.ledger, phase_num=2, agent="a")
+
+    def test_every_write_names_its_agent(self):
+        record_checkpoint("t", "implementation", "work", ledger_file=self.ledger, phase_num=3, agent="a")
+        self.assertTrue(mark_task_completed("t", ledger_file=self.ledger, agent="a"))
+        ledger = load_ledger(self.ledger)
+        self.assertEqual([c["agent"] for c in ledger["checkpoints"]], ["a", "a", "a"])
+        self.assertEqual(ledger["active_task"]["owner"], "a")
+
+    def test_another_agent_cannot_write_an_owned_task(self):
+        before = self.ledger.read_bytes()
+        for attempt in (lambda: record_checkpoint("t", "implementation", "x", ledger_file=self.ledger,
+                                                  phase_num=3, agent="b"),
+                        lambda: record_checkpoint("u", "planning", "x", ledger_file=self.ledger,
+                                                  phase_num=2, agent="b"),
+                        lambda: mark_task_completed("t", ledger_file=self.ledger, agent="b"),
+                        lambda: reset_active_task("x", ledger_file=self.ledger, agent="b"),
+                        lambda: record_checkpoint("t", "implementation", "x", ledger_file=self.ledger,
+                                                  phase_num=3, agent=UNIDENTIFIED_AGENT)):
+            with self.subTest(attempt=attempt), self.assertRaises(LedgerOwnershipError) as caught:
+                attempt()
+            self.assertEqual(caught.exception.owner, "a")
+            self.assertEqual(self.ledger.read_bytes(), before, "nothing was written")
+
+    def test_a_take_over_records_who_continued(self):
+        record_checkpoint("t", "implementation", "x", ledger_file=self.ledger, phase_num=3, agent="b",
+                          take_over=True)
+        ledger = load_ledger(self.ledger)
+        self.assertEqual(ledger["checkpoints"][-1]["continued_from"], "a")
+        self.assertEqual(ledger["active_task"]["owner"], "b")
+        with self.assertRaises(LedgerOwnershipError):
+            mark_task_completed("t", ledger_file=self.ledger, agent="a")
+        report = format_resume_report(run_disruption_audit(workspace_dir=self.dir))
+        self.assertIn("Owner: b", report)
+        self.assertIn("started by a; continued by b", report)
+
+    def test_an_unidentified_owner_is_claimed_with_a_record(self):
+        record_checkpoint("v", "planning", "[1/1] plan", ledger_file=self.ledger, phase_num=2,
+                          agent="a", take_over=True)
+        record_checkpoint("v", "implementation", "x", ledger_file=self.ledger, phase_num=3,
+                          agent=UNIDENTIFIED_AGENT, take_over=True)
+        record_checkpoint("v", "implementation", "y", ledger_file=self.ledger, phase_num=3, agent="c")
+        ledger = load_ledger(self.ledger)
+        self.assertEqual(ledger["active_task"]["owner"], "c")
+        self.assertEqual(ledger["checkpoints"][-1]["continued_from"], UNIDENTIFIED_AGENT)
+
+    def test_the_agent_is_named_explicitly_or_by_its_host(self):
+        self.assertEqual(resolve_agent("me", {"AIKIT_AGENT": "env", "AI_AGENT": "claude-code_2_agent"}), "me")
+        self.assertEqual(resolve_agent(None, {"AIKIT_AGENT": "env", "AI_AGENT": "x_1"}), "env")
+        self.assertEqual(resolve_agent(None, {"AI_AGENT": "claude-code_2-1-309_agent",
+                                              "CLAUDE_CODE_SESSION_ID": "850bdc47-c6a3"}), "claude-code:850bdc47")
+        self.assertEqual(resolve_agent(None, {"AI_AGENT": "claude-code_2_agent"}), "claude-code")
+        self.assertEqual(resolve_agent(None, {}), UNIDENTIFIED_AGENT)
+        for bad in ("two words", "x" * 65, "-lead", "semi;colon"):
+            with self.subTest(name=bad), self.assertRaises(ValueError):
+                resolve_agent(bad, {})
+
+    def test_checkpoint_command_reports_the_owner_and_the_take_over(self):
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = checkpoint_command("t", "implementation", 3, "x", {}, self.ledger, agent="b")
+        self.assertEqual(code, 1)
+        self.assertIn("belongs to agent 'a'", err.getvalue())
+        self.assertIn("--take-over", err.getvalue())
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(checkpoint_command("t", "implementation", 3, "x", {}, self.ledger,
+                                                agent="b", take_over=True), 0)
+
+
 class TestPythonFileDiscovery(unittest.TestCase):
     """`find_python_files` prunes ignored directories relative to the root (ADR-115)."""
 
@@ -1537,7 +1622,9 @@ class TestPrinciple006Unambiguity(unittest.TestCase):
 
     def test_every_rule_names_its_audience(self):
         numbered = re.findall(r"^  (\d+)\. \*\*([^*]+)\*\*([^\n]*)", self.rules, re.M)
-        self.assertEqual(len(numbered), 6, "PRINCIPLE-006 must keep rules R1-R6 (cited elsewhere)")
+        # R1-R6 are cited elsewhere and keep their numbers; R7 was appended by ADR-209.
+        self.assertEqual([int(n) for n, _, _ in numbered], list(range(1, 8)),
+                         "PRINCIPLE-006 must keep rules R1-R6 (cited elsewhere) and R7 after them")
         for number, _, rest in numbered:
             with self.subTest(rule=f"R{number}"):
                 self.assertRegex(rest, r"\*\[(Agent|Maintainer|Agent \+ Maintainer)\]\*")
@@ -5006,6 +5093,21 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("--public needs --publish", err)
         self.assertIn("Fix:", err)
         self.assertFalse((self.kit / "projects" / "loneflag").exists(), "nothing is created")
+
+    def test_aikit_ledger_commands_name_the_agent_and_guard_its_task(self):
+        # ADR-209: the project ledger has the same owner rule as AIKit's own.
+        attach_project(self.make_folder(), "owned", workspace=self.kit)
+        code, _, err = self.run_cli("checkpoint", "owned", "--task", "t", "--phase-num", "1",
+                                    "--desc", "start", "--agent", "kilo:1")
+        self.assertEqual(code, 0, err)
+        code, _, err = self.run_cli("complete", "owned", "--task", "t", "--agent", "gemini:3")
+        self.assertEqual(code, 1)
+        self.assertIn("belongs to agent 'kilo:1'", err)
+        code, _, err = self.run_cli("complete", "owned", "--task", "t", "--agent", "gemini:3", "--take-over")
+        self.assertEqual(code, 0, err)
+        code, _, err = self.run_cli("checkpoint", "owned", "--task", "u", "--phase-num", "1",
+                                    "--desc", "x", "--agent", "bad name")
+        self.assertEqual(code, 2)
 
     def test_new_publish_without_description_is_a_usage_error(self):
         # ADR-205: `new --publish` uploads AIKit's starter files without publish's gates, so it must

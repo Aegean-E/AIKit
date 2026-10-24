@@ -15,10 +15,13 @@ from typing import Dict, List, Optional
 from scripts.aikit_parser import TriadArgumentParser, build_parser, report_error  # re-exported
 from scripts.disruption_recovery import (
     UnsupportedLedgerVersion,
+    LedgerOwnershipError,
     checkpoint_command,
     clean_dangling_temp_files,
     format_resume_report,
     mark_task_completed,
+    report_ownership,
+    resolve_agent,
     run_disruption_audit,
     workspace_ledger_path,
 )
@@ -278,12 +281,20 @@ def cmd_checkpoint(args: argparse.Namespace) -> int:
               "mitigation": args.mitigation}
     return checkpoint_command(args.task, f"phase {args.phase_num}", args.phase_num, args.desc, impact,
                               workspace_ledger_path(project.path), redact=args.redact,
-                              handoff=args.handoff)
+                              handoff=args.handoff, agent=args.agent, take_over=args.take_over)
 
 
 def cmd_complete(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
-    if mark_task_completed(args.task, ledger_file=workspace_ledger_path(project.path)):
+    try:
+        completed = mark_task_completed(args.task, ledger_file=workspace_ledger_path(project.path),
+                                        agent=resolve_agent(args.agent), take_over=args.take_over)
+    except ValueError as error:
+        return report_error(ProjectError(str(error), "the ledger names the agent behind every write (ADR-209).",
+                                         "pass --agent <host>:<session>, or set AIKIT_AGENT.", exit_code=2))
+    except LedgerOwnershipError as error:
+        return report_ownership(error)
+    if completed:
         print(f"[OK] Task '{args.task}' marked as completed in '{project.name}'.")
         return 0
     print(f"Error: task '{args.task}' is not the active task of '{project.name}'.", file=sys.stderr)

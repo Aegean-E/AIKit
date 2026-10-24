@@ -91,7 +91,9 @@ EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test", "build", "ui:snapshot", "pr
                                   "models", "type", "part", "text", "surfaces", "paths",
                                   "protected", "commands", "fast", "fast_timeout", "snapshot",
                                   "snapshot_timeout", "style", "theme_paths", "limits",
-                                  "max_files", "max_lines"}
+                                  "max_files", "max_lines",
+                                  # Environment variables `resolve_agent` reads; hosts set them (ADR-209).
+                                  "AIKIT_AGENT", "AI_AGENT", "CLAUDE_CODE_SESSION_ID"}
 
 # Generator/content functions referenced only through data structures or f-strings.
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")

@@ -1,27 +1,20 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "review-index",
-    "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792860369.9471016,
-    "completed_at": 1792860370.8214903
+    "task_id": "agent-ownership",
+    "last_phase": "planning",
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1792861532.0417097,
+    "owner": "claude-code:850bdc47",
+    "impact_assessment": {
+      "why": "User request after another agent finished, committed and pushed this session's task: each agent records who did what and who continued.",
+      "benefits": "No agent silently continues, completes or replaces another's task; resume shows the chain.",
+      "risks": "contract: ledger writes by a different identified agent exit 1 without --take-over; dependency: none; concurrency: the check runs inside the existing ledger lock; state: entries gain agent/continued_from, the active task gains owner, no version bump.",
+      "mitigation": "Failing-first tests; Phase 4 green; verify_commit before push."
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "new-project-identity",
-      "phase": "implementation",
-      "phase_num": 4,
-      "description": "[1/2] done: new seeds AGPL-3.0 LICENSE, Built with AIKit badge, description; --description/--topic validated, kept in project.json; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792833370.6412961,
-      "timestamp_str": "2026-10-24 12:16:10",
-      "handoff": {
-        "next": "milestone 2, publish applies project.json description and topics in scripts/project_publish.py"
-      }
-    },
     {
       "task_id": "new-project-identity",
       "phase": "implementation",
@@ -277,6 +270,26 @@
       "status": "completed",
       "timestamp": 1792860370.821492,
       "timestamp_str": "2026-10-24 19:46:10"
+    },
+    {
+      "task_id": "agent-ownership",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] every ledger write names its agent; another agent's task needs --take-over; --resume shows owner and who continued; PRINCIPLE-006 R7 (ADR-209). Recorded late: the edits preceded this checkpoint",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792861532.0417097,
+      "timestamp_str": "2026-10-24 20:05:32",
+      "agent": "claude-code:850bdc47",
+      "impact_assessment": {
+        "why": "User request after another agent finished, committed and pushed this session's task: each agent records who did what and who continued.",
+        "benefits": "No agent silently continues, completes or replaces another's task; resume shows the chain.",
+        "risks": "contract: ledger writes by a different identified agent exit 1 without --take-over; dependency: none; concurrency: the check runs inside the existing ledger lock; state: entries gain agent/continued_from, the active task gains owner, no version bump.",
+        "mitigation": "Failing-first tests; Phase 4 green; verify_commit before push."
+      },
+      "handoff": {
+        "next": "commit, verify alone, report to the user"
+      }
     }
   ]
 }

@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
-- **Total Classes**: `91`
-- **Total Top-Level Functions**: `323`
-- **Total Class Methods**: `618`
-- **Total Source Lines**: `17740`
+- **Total Classes**: `93`
+- **Total Top-Level Functions**: `327`
+- **Total Class Methods**: `627`
+- **Total Source Lines**: `18019`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `639` lines (`31242` bytes)
+**Size**: `650` lines (`31826` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -59,7 +59,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `178` lines (`11228` bytes)
+**Size**: `185` lines (`11740` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -121,7 +121,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `347` lines (`14540` bytes)
+**Size**: `349` lines (`14734` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -184,11 +184,13 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1757` lines (`81250` bytes)
+**Size**: `1914` lines (`89782` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
   - Method `.__init__(path, found, supported)`
+- `class LedgerOwnershipError` - *A write to a task another identified agent owns, refused before anything changed (ADR-209).*
+  - Method `.__init__(task_id, owner, agent, since)`
 
 **Functions:**
 - `def empty_ledger()` - *A fresh in-memory ledger; load_ledger() never creates the file for this.*
@@ -215,9 +217,12 @@
 - `def classify_git_status(porcelain_output)` - *Classify `git status --porcelain` v1 output into disruption categories (PRINCIPLE-006 R2).*
 - `def resolve_active_phase(active_task, default)` - *Read the recorded lifecycle phase of a task (PRINCIPLE-002 R4, PRINCIPLE-004 R2).*
 - `def repo_relative(path)` - *A path as the ledger stores it (PRINCIPLE-012 R5): repository-relative with `/` separators*
-- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation, handoff)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
-- `def mark_task_completed(task_id, ledger_file)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
-- `def reset_active_task(reason, ledger_file)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006).*
+- `def resolve_agent(explicit, env)` - *The agent a ledger write is attributed to (ADR-209): `--agent`, else `AIKIT_AGENT`, else the*
+- `def agent_history(checkpoints)` - *Who worked on a task, in order: `started by A; continued by B` (ADR-209).*
+- `def _claim(active, agent, take_over)` - *Check that `agent` may write the in-progress task `active`; returns the previous owner when the*
+- `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation, handoff, agent, take_over)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
+- `def mark_task_completed(task_id, ledger_file, agent, take_over)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
+- `def reset_active_task(reason, ledger_file, agent, take_over)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006). Another*
 - `def _reraise(error)`
 - `def sweep_files(workspace_dir, pattern)` - *Files under `workspace_dir` matching `pattern`, pruning `SWEEP_PRUNED_DIRS` while walking, so a*
 - `def clean_dangling_temp_files(workspace_dir, min_age_seconds)` - *Purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006 R6, PRINCIPLE-013).*
@@ -238,7 +243,8 @@
 - `def impact_errors(description, phase_num, fields, has_prior_impact)` - *PRINCIPLE-007 R6: a task's first plan checkpoint (Phase 2, `--desc` starting `[1/`) carries the*
 - `def missing_impact_warning(task_id, phase_num, has_prior_impact, has_impact_now)` - *PRINCIPLE-007 R1: a Track C task records its impact assessment before its first edit. A task*
 - `def scrub_checkpoint_text(desc, impact, redact, handoff)` - *The checkpoint's free text, scrubbed when `redact` is set, plus the detectors that fired.*
-- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file, redact, handoff)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
+- `def checkpoint_command(task_id, phase, phase_num, desc, impact, ledger_file, redact, handoff, agent, take_over)` - *Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one*
+- `def report_ownership(error)` - *Print the triad for a refused write to another agent's task; returns exit code 1.*
 - `def argv_value_errors(argv)` - *Value flags given without a value, or with an invalid one (PRINCIPLE-003 R6). These used to*
 
 ---
@@ -640,7 +646,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7194` lines (`406897` bytes)
+**Size**: `7296` lines (`413412` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -715,6 +721,14 @@
   - Method `.test_a_rule_without_audience_is_rejected()`
 - `class TestRuleNumberParity` - *Every number a rule states equals the constant the code enforces (ADR-113). The budget moved*
   - Method `.test_rule_numbers_match_code_constants()`
+- `class TestAgentOwnership` - *Every ledger write names its agent, and an agent cannot write another agent's task without an*
+  - Method `.setUp()`
+  - Method `.test_every_write_names_its_agent()`
+  - Method `.test_another_agent_cannot_write_an_owned_task()`
+  - Method `.test_a_take_over_records_who_continued()`
+  - Method `.test_an_unidentified_owner_is_claimed_with_a_record()`
+  - Method `.test_the_agent_is_named_explicitly_or_by_its_host()`
+  - Method `.test_checkpoint_command_reports_the_owner_and_the_take_over()`
 - `class TestPythonFileDiscovery` - *`find_python_files` prunes ignored directories relative to the root (ADR-115).*
   - Method `.test_a_repository_under_an_ignored_name_is_still_scanned()`
   - Method `.test_top_level_directories_the_root_gitignore_lists_are_skipped()`
@@ -1048,6 +1062,7 @@
   - Method `.test_status_json_returns_the_error_envelope_for_an_unknown_project()`
   - Method `.test_resume_json_carries_the_audit_and_the_guidelines_count()`
   - Method `.test_new_public_without_publish_is_a_usage_error()`
+  - Method `.test_aikit_ledger_commands_name_the_agent_and_guard_its_task()`
   - Method `.test_new_publish_without_description_is_a_usage_error()`
   - Method `.test_check_pushes_only_when_asked()`
   - Method `._gate_result()`

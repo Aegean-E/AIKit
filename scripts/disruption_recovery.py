@@ -11,12 +11,13 @@ import sys
 import json
 import time
 import fnmatch
+import re
 import shutil
 import contextlib
 import copy
 import subprocess
 from pathlib import Path
-from typing import Callable, Dict, Any, Optional, List, Tuple
+from typing import Callable, Dict, Any, Mapping, Optional, List, Tuple
 
 # The ledger's write boundary needs the hygiene rules PRINCIPLE-019 R3 already points at it.
 # check_secrets imports nothing from this module, so the edge adds no cycle (ADR-173).
@@ -707,6 +708,69 @@ def repo_relative(path: Any) -> str:
     return candidate.as_posix()
 
 
+UNIDENTIFIED_AGENT = "unidentified"
+# An agent name as the ledger stores it: host, optionally `:session`, no spaces or separators.
+AGENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$")
+
+
+def resolve_agent(explicit: Optional[str] = None, env: Optional[Mapping[str, str]] = None) -> str:
+    """
+    The agent a ledger write is attributed to (ADR-209): `--agent`, else `AIKIT_AGENT`, else the
+    host Claude Code names in `AI_AGENT` with its session id, else `unidentified`. Only Claude
+    Code's variables are read because only they were verified; any other host passes `--agent`.
+    Raises ValueError for a name the ledger cannot store.
+    """
+    env = os.environ if env is None else env
+    for value in (explicit, env.get("AIKIT_AGENT")):
+        if value and value.strip():
+            name = value.strip()
+            if not AGENT_NAME_RE.match(name):
+                raise ValueError(f"'{name}' is not an agent name: use 1-64 letters, digits or . _ : @ -, "
+                                 "starting with a letter or digit")
+            return name
+    host = (env.get("AI_AGENT") or "").split("_", 1)[0]
+    if AGENT_NAME_RE.match(host or "-"):
+        session = (env.get("CLAUDE_CODE_SESSION_ID") or "")[:8]
+        return f"{host}:{session}" if AGENT_NAME_RE.match(session or "-") else host
+    return UNIDENTIFIED_AGENT
+
+
+def agent_history(checkpoints: List[Dict[str, Any]]) -> str:
+    """Who worked on a task, in order: `started by A; continued by B` (ADR-209)."""
+    named = [c for c in checkpoints if c.get("agent")]
+    if not named:
+        return ""
+    parts = [f"started by {named[0]['agent']}"]
+    parts += [f"continued by {c['agent']}" for c in named[1:] if c.get("continued_from")]
+    return "; ".join(parts)
+
+
+class LedgerOwnershipError(Exception):
+    """A write to a task another identified agent owns, refused before anything changed (ADR-209)."""
+
+    def __init__(self, task_id: str, owner: str, agent: str, since: Optional[float]):
+        self.task_id, self.owner, self.agent = task_id, owner, agent
+        when = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(since)) if since else "an unknown time"
+        super().__init__(f"task '{task_id}' belongs to agent '{owner}' (last write {when}), not '{agent}'; "
+                         "nothing was recorded.")
+
+
+def _claim(active: Dict[str, Any], agent: str, take_over: bool) -> Optional[str]:
+    """
+    Check that `agent` may write the in-progress task `active`; returns the previous owner when the
+    write continues another agent's task, else None. An unidentified owner can be claimed, since
+    nothing tells two unidentified agents apart; an identified one only through `take_over`.
+    """
+    if not active or active.get("status") != "in_progress":
+        return None
+    owner = active.get("owner")
+    if not owner or owner == agent:
+        return None
+    if owner != UNIDENTIFIED_AGENT and not take_over:
+        raise LedgerOwnershipError(active.get("task_id", "unknown"), owner, agent, active.get("updated_at"))
+    return owner
+
+
 def record_checkpoint(
     task_id: str,
     phase: str,
@@ -720,6 +784,8 @@ def record_checkpoint(
     risks: Optional[str] = None,
     mitigation: Optional[str] = None,
     handoff: Optional[Dict[str, str]] = None,
+    agent: Optional[str] = None,
+    take_over: bool = False,
 ) -> Dict[str, Any]:
     """
     Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).
@@ -728,7 +794,10 @@ def record_checkpoint(
     An optional `handoff` packet carries what the plan cannot: progress, dead ends, open questions
     and evidence (ADR-174). It is written only when given, so a ledger's shape is unchanged without
     one and no schema version bump is needed.
+    The write is attributed to `agent` (default: `resolve_agent()`), and a task another identified
+    agent owns, or replacing it, needs `take_over`; LedgerOwnershipError otherwise (ADR-209).
     """
+    agent = agent or resolve_agent()
     resolved_phase = resolve_phase_num(phase, phase_num)
     checkpoint_entry = {
         "task_id": task_id,
@@ -739,6 +808,7 @@ def record_checkpoint(
         "status": status,
         "timestamp": time.time(),
         "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        "agent": agent,
     }
 
     if why or benefits or risks or mitigation:
@@ -769,6 +839,10 @@ def record_checkpoint(
     # Locked read-modify-write: parallel subagents must not interleave here (PRINCIPLE-013 R3)
     with locked_ledger(ledger_file) as ledger:
         previous = ledger.get("active_task") or {}
+        # Raises before anything is written; a continued task records whom it continues.
+        continued_from = _claim(previous, agent, take_over)
+        if continued_from and previous.get("task_id") == task_id:
+            checkpoint_entry["continued_from"] = continued_from
         if previous.get("status") == "in_progress" and previous.get("task_id") != task_id:
             # PRINCIPLE-006 R5: a task left without --complete or --reset used to vanish from
             # --resume silently. Its last state is kept and the switch is reported.
@@ -780,6 +854,7 @@ def record_checkpoint(
                 "status": "superseded",
                 "timestamp": checkpoint_entry["timestamp"],
                 "timestamp_str": checkpoint_entry["timestamp_str"],
+                "agent": agent,
             })
             sys.stderr.write(f"[WARN] Task '{previous.get('task_id')}' was still in progress; recorded as "
                              f"superseded by '{task_id}'. Use --complete or --reset before switching.\n")
@@ -789,6 +864,7 @@ def record_checkpoint(
             "active_phase": resolved_phase,
             "status": status,
             "updated_at": checkpoint_entry["timestamp"],
+            "owner": agent,
         }
         if why or benefits or risks or mitigation:
             ledger["active_task"]["impact_assessment"] = checkpoint_entry.get("impact_assessment")
@@ -797,15 +873,19 @@ def record_checkpoint(
     return checkpoint_entry
 
 
-def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> bool:
+def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None, agent: Optional[str] = None,
+                        take_over: bool = False) -> bool:
     """
     Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,
     when `task_id` is not the active task: a mistyped id used to print [OK] and leave the task
-    in progress, so the next `--resume` reopened finished work.
+    in progress, so the next `--resume` reopened finished work. Another identified agent's task
+    needs `take_over` (LedgerOwnershipError, ADR-209).
     """
+    agent = agent or resolve_agent()
     with locked_ledger(ledger_file) as ledger:
         if ledger.get("active_task", {}).get("task_id") != task_id:
             return False
+        continued_from = _claim(ledger["active_task"], agent, take_over)
         ledger["active_task"]["status"] = "completed"
         ledger["active_task"]["active_phase"] = 5
         ledger["active_task"]["completed_at"] = time.time()
@@ -819,16 +899,24 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None) -> boo
             "status": "completed",
             "timestamp": time.time(),
             "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "agent": agent,
+            **({"continued_from": continued_from} if continued_from else {}),
         })
     return True
 
 
-def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006)."""
+def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None,
+                      agent: Optional[str] = None, take_over: bool = False) -> Optional[Dict[str, Any]]:
+    """
+    Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006). Another
+    identified agent's task needs `take_over` (LedgerOwnershipError, ADR-209).
+    """
+    agent = agent or resolve_agent()
     with locked_ledger(ledger_file) as ledger:
         active = ledger.get("active_task")
         if not active or active.get("status") != "in_progress":
             return None
+        continued_from = _claim(active, agent, take_over)
 
         task_id = active.get("task_id", "unknown")
         active["status"] = "abandoned"
@@ -843,6 +931,8 @@ def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional
             "status": "abandoned",
             "timestamp": time.time(),
             "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "agent": agent,
+            **({"continued_from": continued_from} if continued_from else {}),
         })
         ledger["active_task"] = None
     return active
@@ -991,6 +1081,9 @@ def run_disruption_audit(
                 plan = task_plan_checkpoint(own)
                 if plan:
                     audit["plan"] = plan.get("description")
+                if active.get("owner"):
+                    audit["owner"] = active["owner"]
+                    audit["agent_history"] = agent_history(own)
                 # The latest packet wins: an older one describes a state already moved past.
                 for cp in reversed(own):
                     if isinstance(cp.get("handoff"), dict) and cp["handoff"]:
@@ -1141,6 +1234,9 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
     next_phase_num = phase_num
     
     lines.append(f"⚠️  RESUMING INTERRUPTED TASK: '{task_id}'")
+    if audit.get("owner"):
+        history = f" ({audit['agent_history']})" if audit.get("agent_history") else ""
+        lines.append(f"👤 Owner: {audit['owner']}{history}")
     lines.append(f"📌 Last Active Phase: Phase {phase_num} ({phase})")
     lines.append(f"🚀 Recommended Resumption Phase: Phase {next_phase_num}")
     if audit.get("plan"):
@@ -1340,12 +1436,12 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
 VALUE_FLAGS = {
     "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
     "--why", "--benefits", "--benefit", "--risks", "--mitigation", "--handoff",
-    "--complete", "--reset", "--workspace",
+    "--complete", "--reset", "--workspace", "--agent",
 }
 # Standalone action flags.
 ACTION_FLAGS = {"--clean", "--resume", "--audit", "--track", "--help", "-h"}
 # Valueless flags that modify an action rather than being one.
-MODIFIER_FLAGS = {"--redact"}
+MODIFIER_FLAGS = {"--redact", "--take-over"}
 KNOWN_FLAGS = VALUE_FLAGS | ACTION_FLAGS | MODIFIER_FLAGS
 
 HELP_TEXT = """AIKit Disruption Recovery & Task Ledger (PRINCIPLE-006, PRINCIPLE-013)
@@ -1386,6 +1482,13 @@ Checkpoint options:
                              next (required), state, failed, open, evidence (PRINCIPLE-004 R2)
   --redact                   With --checkpoint: record credential-shaped free text as
                              [REDACTED] instead of refusing the write (PRINCIPLE-019 R3)
+
+Agent options (--checkpoint, --complete, --reset; ADR-209):
+  --agent <name>             Who is writing, e.g. kilo:2 (default: AIKIT_AGENT, else Claude
+                             Code's own session id, else 'unidentified'); every write records it
+  --take-over                Continue a task another identified agent owns; without it the write
+                             exits 1 and changes nothing, with it the ledger records who
+                             continued from whom
   -h, --help                 Show this help message and exit
 
 Exit codes:
@@ -1529,7 +1632,8 @@ def scrub_checkpoint_text(desc: str, impact: Dict[str, Optional[str]], redact: b
 
 def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc: str,
                        impact: Dict[str, Optional[str]], ledger_file: Optional[Path] = None,
-                       redact: bool = False, handoff: str = "") -> int:
+                       redact: bool = False, handoff: str = "", agent: Optional[str] = None,
+                       take_over: bool = False) -> int:
     """
     Record a checkpoint behind the PRINCIPLE-007 R1/R6 impact gate; returns the exit code. The one
     path for every CLI that records checkpoints (`--checkpoint` here, `aikit checkpoint`): a second
@@ -1566,12 +1670,33 @@ def checkpoint_command(task_id: str, phase: str, phase_num: Optional[int], desc:
         print('Fix: add --why, --benefits, --mitigation and --risks "contract: ...; dependency: ...; '
               'concurrency: ...; state: ..."', file=sys.stderr)
         return 2
-    cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
-                           why=impact.get("why"), benefits=impact.get("benefits"),
-                           risks=impact.get("risks"), mitigation=impact.get("mitigation"),
-                           ledger_file=ledger_file, handoff=packet)
-    print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}")
+    try:
+        cp = record_checkpoint(task_id=task_id, phase=phase, phase_num=phase_num, description=desc,
+                               why=impact.get("why"), benefits=impact.get("benefits"),
+                               risks=impact.get("risks"), mitigation=impact.get("mitigation"),
+                               ledger_file=ledger_file, handoff=packet, agent=resolve_agent(agent),
+                               take_over=take_over)
+    except ValueError as error:
+        print(f"[INVALID AGENT] {error}", file=sys.stderr)
+        print("Why: the ledger names the agent behind every write so another agent can tell whose "
+              "task it is (ADR-209).", file=sys.stderr)
+        print("Fix: pass --agent <host>:<session>, e.g. --agent kilo:2, or set AIKIT_AGENT.", file=sys.stderr)
+        return 2
+    except LedgerOwnershipError as error:
+        return report_ownership(error)
+    owner_note = f" (continued from '{cp['continued_from']}')" if cp.get("continued_from") else ""
+    print(f"[OK] Checkpoint recorded: Task '{task_id}', Phase {cp.get('phase_num')} ({phase}) - {desc}{owner_note}")
     return 0
+
+
+def report_ownership(error: "LedgerOwnershipError") -> int:
+    """Print the triad for a refused write to another agent's task; returns exit code 1."""
+    print(f"[OWNED BY ANOTHER AGENT] {error}", file=sys.stderr)
+    print("Why: two agents writing one task interleave their work and finish, commit or push each "
+          "other's changes; the ledger names one owner per task (ADR-209).", file=sys.stderr)
+    print(f"Fix: if '{error.owner}' has stopped, rerun with --take-over: the ledger records that "
+          f"'{error.agent}' continued from '{error.owner}'. Otherwise leave the task to it.", file=sys.stderr)
+    return 1
 
 
 def argv_value_errors(argv: List[str]) -> List[str]:
@@ -1625,6 +1750,18 @@ if __name__ == "__main__":
             sys.exit(2)
     _ledger = workspace_ledger_path(_ws_dir) if _ws_dir else None
     _audit_root = _ws_dir if _ws_dir else None
+    # Who is writing (ADR-209): resolved per action, so an invalid name is refused there with exit 2.
+    _agent_arg = None
+    if "--agent" in sys.argv:
+        _aidx = sys.argv.index("--agent")
+        if len(sys.argv) > _aidx + 1 and not sys.argv[_aidx + 1].startswith("--"):
+            _agent_arg = sys.argv[_aidx + 1]
+        else:
+            print("[INVALID USAGE] --agent requires a name.", file=sys.stderr)
+            print("Why: the ledger records which agent made each write.", file=sys.stderr)
+            print("Fix: pass '--agent <host>:<session>', e.g. --agent kilo:2", file=sys.stderr)
+            sys.exit(2)
+    _take_over = "--take-over" in sys.argv
 
     if "--validate-commit" in sys.argv:
         idx = sys.argv.index("--validate-commit")
@@ -1702,11 +1839,22 @@ if __name__ == "__main__":
         sys.exit(checkpoint_command(task_id, phase, phase_num, desc,
                                     {"why": why, "benefits": benefits, "risks": risks,
                                      "mitigation": mitigation}, _ledger,
-                                    redact="--redact" in sys.argv, handoff=handoff))
+                                    redact="--redact" in sys.argv, handoff=handoff,
+                                    agent=_agent_arg, take_over=_take_over))
     elif "--complete" in sys.argv:
         idx = sys.argv.index("--complete")
         tid = sys.argv[idx + 1]
-        if not mark_task_completed(tid, ledger_file=_ledger):
+        try:
+            completed = mark_task_completed(tid, ledger_file=_ledger, agent=resolve_agent(_agent_arg),
+                                            take_over=_take_over)
+        except ValueError as error:
+            print(f"[INVALID AGENT] {error}", file=sys.stderr)
+            print("Why: the ledger names the agent behind every write (ADR-209).", file=sys.stderr)
+            print("Fix: pass --agent <host>:<session>, or set AIKIT_AGENT.", file=sys.stderr)
+            sys.exit(2)
+        except LedgerOwnershipError as error:
+            sys.exit(report_ownership(error))
+        if not completed:
             print(f"[NOT COMPLETED] Task '{tid}' is not the active task.", file=sys.stderr)
             print("Why: only the active task can be completed; nothing was changed.", file=sys.stderr)
             print("Fix: run --resume to see the active task id, then --complete <that id>.", file=sys.stderr)
@@ -1715,7 +1863,16 @@ if __name__ == "__main__":
     elif "--reset" in sys.argv:
         idx = sys.argv.index("--reset")
         reason = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("--") else "Reset by user/agent"
-        res = reset_active_task(reason=reason, ledger_file=_ledger)
+        try:
+            res = reset_active_task(reason=reason, ledger_file=_ledger, agent=resolve_agent(_agent_arg),
+                                    take_over=_take_over)
+        except ValueError as error:
+            print(f"[INVALID AGENT] {error}", file=sys.stderr)
+            print("Why: the ledger names the agent behind every write (ADR-209).", file=sys.stderr)
+            print("Fix: pass --agent <host>:<session>, or set AIKIT_AGENT.", file=sys.stderr)
+            sys.exit(2)
+        except LedgerOwnershipError as error:
+            sys.exit(report_ownership(error))
         if res:
             print(f"[OK] Active task '{res.get('task_id')}' abandoned and reset: {reason}")
         else:

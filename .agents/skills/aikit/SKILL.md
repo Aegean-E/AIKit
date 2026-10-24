@@ -34,9 +34,9 @@ python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene,
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
 python aikit.py publish <name> [--public]   # its own GitHub repo with project.json's description and topics; only when the user asks
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
-python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger
+python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger; --agent <host>:<session> names you
 python aikit.py resume <name>        # disruption resume on the project
-python aikit.py complete <name>      # mark project task complete
+python aikit.py complete <name>      # mark project task complete; another agent's task needs --take-over
 python aikit.py clean <name>         # clean dangling project buffers
 ```
 - Request names no single project: ask which one, or the name of a new one, before writing code.
@@ -93,6 +93,7 @@ Checkpoint plan with explicit impact assessment (`--why`, `--benefits`, `--risks
 python scripts/disruption_recovery.py --checkpoint <task_id> --phase-num 2 --desc "[1/M] Planning and architectural design" --why "<motivation>" --benefits "<gains>" --risks "contract: ...; dependency: ...; concurrency: ...; state: ..." --mitigation "<strategy>"
 ```
 - Bound milestone count to $M \le 6$ (PRINCIPLE-008 R3).
+- Name yourself on every `--checkpoint`, `--complete` and `--reset`: `--agent <host>:<session>` (e.g. `kilo:2`) unless `AIKIT_AGENT` is set or you are Claude Code. A task another agent owns is refused (exit 1); continue it only with `--take-over` once that agent has stopped, and tell the user (PRINCIPLE-006 R7).
 
 ---
 

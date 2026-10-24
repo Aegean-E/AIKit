@@ -106,6 +106,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     complete = project_command("complete", "mark the project's active task completed")
     complete.add_argument("--task", required=True, help="the active task's ID")
+    # Every ledger write names its agent; another agent's task needs --take-over (ADR-209).
+    for sub in (checkpoint, complete):
+        sub.add_argument("--agent", metavar="NAME",
+                         help="who is writing, e.g. kilo:2 (default: AIKIT_AGENT, else Claude Code's "
+                              "session, else 'unidentified')")
+        sub.add_argument("--take-over", action="store_true",
+                         help="continue a task another agent owns; the ledger records who continued")
 
     project_command("clean", f"delete the project's temp buffers older than {TEMP_STALE_SECONDS}s")
     guideline = project_command("guideline", "add a rule to the project's guidelines (below the principles)")
