@@ -1088,6 +1088,7 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
     EDITS = {"architect": [], "explorer": [], "reviewer": ["knowledge/architecture.md", "README.md"],
              "coder": ["scripts/sync_principles.py", "tests/test_kit.py"], "tester": ["tests/test_kit.py"],
              "worker": ["knowledge/architecture.md", "README.md"]}
+    READ_ONLY = ("architect", "explorer")
 
     @staticmethod
     def decide(rules, action, resource):
@@ -1128,8 +1129,19 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
                 expected = "allow" if path in self.EDITS[name] else "deny"
                 with self.subTest(agent=name, edit=path):
                     self.assertEqual(self.decide(chain, "edit", path), expected)
+            # ADR-206: the read-only roles run no command, as on Claude Code; the others run tests.
+            expected = "deny" if name in self.READ_ONLY else "allow"
             with self.subTest(agent=name, shell="tests"):
-                self.assertEqual(self.decide(chain, "shell", "python -m unittest discover tests"), "allow")
+                self.assertEqual(self.decide(chain, "shell", "python -m unittest discover tests"), expected)
+
+    def test_read_only_subagents_cannot_write_through_the_shell(self):
+        # ADR-206: `edit` was denied, but `echo > f`, `python -c` or `Set-Content` wrote anyway.
+        for name in self.READ_ONLY:
+            chain = self.global_rules + self.agents[name]
+            for command in ("echo x > notes.md", 'python -c "open(1)"', "Set-Content f x", "mv a b",
+                            "git log", "git grep -w -e name"):
+                with self.subTest(agent=name, shell=command):
+                    self.assertEqual(self.decide(chain, "shell", command), "deny")
 
 
 class TestKnowledgeCitations(unittest.TestCase):
