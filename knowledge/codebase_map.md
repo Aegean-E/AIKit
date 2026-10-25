@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `21`
 - **Total Classes**: `94`
-- **Total Top-Level Functions**: `335`
-- **Total Class Methods**: `649`
-- **Total Source Lines**: `18573`
+- **Total Top-Level Functions**: `336`
+- **Total Class Methods**: `650`
+- **Total Source Lines**: `18603`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `704` lines (`34629` bytes)
+**Size**: `718` lines (`35300` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -34,6 +34,7 @@
 - `def run_gates(path, gates)`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree and ledger are delivery-ready, decided once for every surface.*
+- `def license_summary(project)` - *One line on the project's license tier for `status` (ADR-214).*
 - `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
 - `def error_envelope(error)` - *The stable `--json` failure shape shared by every project command (ADR-167, ADR-172).*
 - `def print_guidelines(project)` - *The project's own rules, with their rank, in every cold-start report (PRINCIPLE-004 R2).*
@@ -297,7 +298,7 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `160` lines (`7759` bytes)
+**Size**: `161` lines (`7870` bytes)
 
 **Classes:**
 - `class LicenseState`
@@ -666,7 +667,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7541` lines (`428871` bytes)
+**Size**: `7556` lines (`429922` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1077,6 +1078,7 @@
   - Method `.test_restrict_without_a_commit_changes_nothing()`
   - Method `.test_restrict_appends_a_license_section_to_a_readme_without_one()`
   - Method `.test_cli_license_reports_then_restricts_with_a_checklist()`
+  - Method `.test_status_reports_the_license_tier()`
   - Method `.test_a_restricted_project_pushes_only_to_a_private_remote()`
   - Method `.test_check_push_refuses_a_restricted_project_with_a_public_origin()`
   - Method `.test_publish_public_refuses_a_restricted_project()`

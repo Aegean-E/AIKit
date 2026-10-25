@@ -1,47 +1,23 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "aegean-licensing-tiers",
+    "task_id": "aikit-license-status",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792955034.8407664,
+    "updated_at": 1792956805.4582243,
     "owner": "claude-code:c74fca42",
     "started_by": "claude-code:c74fca42",
     "continuations": [],
-    "completed_at": 1792956100.9213157
+    "impact_assessment": {
+      "why": "User asked for a review of AIKit's last push",
+      "benefits": "Restricted projects visible in status",
+      "risks": "contract: status output gains a line and JSON key; dependency: none; concurrency: none; state: none",
+      "mitigation": "Additive output; test pins both forms"
+    },
+    "completed_at": 1792956881.58742
   },
   "checkpoints": [
-    {
-      "task_id": "ownership-review-fixes",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] narrow checkpoint_command's ValueError catch to the agent name; record whose task a take-over supersedes; history names an unrecorded starter (ADR-210)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792863201.491605,
-      "timestamp_str": "2026-10-24 20:33:21",
-      "agent": "claude-code:850bdc47",
-      "impact_assessment": {
-        "why": "Review of 2683d1d: a broad ValueError catch could mislabel a future error as an invalid agent; replacing another agent's task left no record of whose it was; a pre-ADR-209 task's history named the wrong starter.",
-        "benefits": "Errors keep their own message; every take-over is traceable; history is not misleading.",
-        "risks": "contract: none beyond the extra key on a superseded entry; dependency: none; concurrency: inside the existing lock; state: superseded entries may gain continued_from.",
-        "mitigation": "Failing-first tests; Phase 4; verify_commit."
-      },
-      "handoff": {
-        "next": "tests in TestAgentOwnership, then scripts/disruption_recovery.py"
-      }
-    },
-    {
-      "task_id": "ownership-review-fixes",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ownership-review-fixes' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792863330.0773408,
-      "timestamp_str": "2026-10-24 20:35:30",
-      "agent": "claude-code:850bdc47"
-    },
     {
       "task_id": "ownership-history",
       "phase": "planning",
@@ -290,6 +266,33 @@
       "status": "completed",
       "timestamp": 1792956100.9213173,
       "timestamp_str": "2026-10-25 22:21:40",
+      "agent": "claude-code:c74fca42"
+    },
+    {
+      "task_id": "aikit-license-status",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/1] Review of last push: status License line and status --json project.license; non-GitHub remote guidance in the private-remote refusal; ADR-214 item 7; failing-first test; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792956805.4582243,
+      "timestamp_str": "2026-10-25 22:33:25",
+      "agent": "claude-code:c74fca42",
+      "impact_assessment": {
+        "why": "User asked for a review of AIKit's last push",
+        "benefits": "Restricted projects visible in status",
+        "risks": "contract: status output gains a line and JSON key; dependency: none; concurrency: none; state: none",
+        "mitigation": "Additive output; test pins both forms"
+      }
+    },
+    {
+      "task_id": "aikit-license-status",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'aikit-license-status' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792956881.5874214,
+      "timestamp_str": "2026-10-25 22:34:41",
       "agent": "claude-code:c74fca42"
     }
   ]

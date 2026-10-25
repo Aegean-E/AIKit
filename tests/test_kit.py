@@ -4928,6 +4928,21 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("private", out, "the checklist names the steps AIKit cannot take")
         self.assertIn("stay under", out, "earlier releases keep their license")
 
+    def test_status_reports_the_license_tier(self):
+        # ADR-214: a restricted project must be recognisable from `status`, not only `license`.
+        from scripts.aikit_cli import license_summary, project_payload
+        folder = self.make_licensed_project()
+        project = find_project("vault", self.kit)
+        with mock.patch("scripts.aikit_cli.get_project_repo_url", return_value=None):
+            self.assertEqual(project_payload(project)["license"]["tier"], "personal")
+        self.assertEqual(license_summary(project), "personal (AL-1.0, free personal use)")
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        with mock.patch("scripts.aikit_cli.get_project_repo_url", return_value=None):
+            payload = project_payload(project)["license"]
+        self.assertEqual((payload["tier"], payload["since"]), ("restricted", "2026-10-25"))
+        self.assertEqual(license_summary(project),
+                         "restricted since 2026-10-25, cutoff 0123456789ab (All Rights Reserved)")
+
     def test_a_restricted_project_pushes_only_to_a_private_remote(self):
         # ADR-214: `check --push` and `publish` to an existing origin must not hand a restricted
         # project to a public repository, and an unknown visibility counts as public.

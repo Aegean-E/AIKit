@@ -105,9 +105,22 @@ def project_is_clean(audit: Dict[str, object], open_ui_task: bool) -> bool:
     return not (audit.get("git_missing") or audit.get("ledger_error") or dirty or open_ui_task)
 
 
+def license_summary(project: Project) -> str:
+    """One line on the project's license tier for `status` (ADR-214)."""
+    state = license_state(project.path)
+    if state.tier == TIER_RESTRICTED:
+        return (f"restricted since {state.since}, cutoff {(state.since_commit or '')[:12]} "
+                "(All Rights Reserved)")
+    if state.tier == "personal":
+        return "personal (AL-1.0, free personal use)"
+    return "unrecorded (the project's own LICENSE applies)"
+
+
 def project_payload(project: Project) -> Dict[str, object]:
     """The project half of a `--json` report: what `status` prints as its header lines."""
+    state = license_state(project.path)
     return {
+        "license": {"tier": state.tier, "since": state.since, "since_commit": state.since_commit},
         "name": project.name,
         "path": str(project.path),
         "repo_url": get_project_repo_url(project.path),
@@ -238,6 +251,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Project:   {project.name}  ({project.path})")
     print(f"Repo:      {repo_url or f'none (local only; publish with python aikit.py publish {project.name})'}")
     print(f"Stacks:    {stacks}")
+    print(f"License:   {license_summary(project)}")
     print(f"Tests:     {project.test_command or 'none; set one with .aikit/project.json test_command'}")
     print(f"Decision:  {latest_decision(project.path) or 'none recorded yet'}")
     print_guidelines(project)

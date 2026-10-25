@@ -102,7 +102,8 @@ def public_remote_refusal(project_root: Path, name: str,
         "a restricted project is All Rights Reserved and may be pushed only to a private repository.",
         "make the repository private (`gh repo edit --visibility private "
         "--accept-visibility-change-consequences`), or log in with `gh auth login` so AIKit can "
-        "confirm it is private, then push again.",
+        "confirm it is private, then push again. A remote outside GitHub cannot be confirmed: "
+        "check that it is private, then push with git yourself.",
         exit_code=2,
     )
 
