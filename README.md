@@ -51,6 +51,7 @@
 portable_agent_kit/
 ├── README.md                     <- This Integration & Setup Guide
 ├── LICENSE                       <- GNU AGPL-3.0 License
+├── COMMERCIAL.md                 <- Enterprise commercial licensing terms
 ├── aikit.py                      <- Project CLI
 ├── .gitignore                    <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                     <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
@@ -225,9 +226,9 @@ If electricity cuts out, battery dies, or the computer crashes mid-task:
    ```bash
    python scripts/disruption_recovery.py --resume
    ```
-   It prints every `--audit` finding, then the interrupted task, its plan and the phase to resume at. With no interrupted task it says "Ready" only when no uncommitted files exist.
+   It prints `--audit` findings, the active task, plan and resumption phase; with none it confirms a clean working tree.
 2. **Everything else** (`--audit`, `--checkpoint`, `--complete`, `--reset`, `--clean`) is in the command matrix above.
-3. **Atomic File Safety**: state files are written to a temp file, fsynced and renamed (PRINCIPLE-013); a corrupt ledger is moved to `*.corrupt_*` and restored from its `.bak`.
+3. **Atomic File Safety**: state files use temp write, fsync and atomic rename (PRINCIPLE-013); corrupt ledgers auto-recover from `.bak`.
 
 ---
 

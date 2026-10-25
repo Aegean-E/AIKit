@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `93`
-- **Total Top-Level Functions**: `327`
-- **Total Class Methods**: `632`
-- **Total Source Lines**: `18093`
+- **Total Top-Level Functions**: `328`
+- **Total Class Methods**: `633`
+- **Total Source Lines**: `18131`
 
 ---
 
@@ -317,7 +317,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `763` lines (`34176` bytes)
+**Size**: `788` lines (`35430` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -332,6 +332,7 @@
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
 - `def seed_license(project_root)` - *Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199).*
+- `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
 - `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
 - `def _python_test(root)`
@@ -646,7 +647,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7341` lines (`416382` bytes)
+**Size**: `7354` lines (`417150` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1043,6 +1044,7 @@
   - Method `.test_new_project_without_description_keeps_a_fill_marker()`
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
   - Method `.test_first_commit_holds_the_license()`
+  - Method `.test_first_commit_holds_commercial_md()`
   - Method `.test_cli_new_takes_a_description_and_topics()`
   - Method `.test_new_project_ignores_bytecode_and_has_a_clean_adr_template()`
   - Method `.test_git_identity_failure_is_an_error_not_a_warning()`

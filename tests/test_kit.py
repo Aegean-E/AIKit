@@ -4682,7 +4682,11 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("Built with AIKit", readme)
         self.assertIn(f"\n{description}\n", readme)
         self.assertIn("├── LICENSE", readme)
+        self.assertIn("├── COMMERCIAL.md", readme)
         self.assertIn("GNU Affero General Public License v3.0", readme)
+        self.assertIn("COMMERCIAL.md", readme)
+        self.assertEqual((folder / "COMMERCIAL.md").read_text(encoding="utf-8"),
+                         (ROOT_DIR / "COMMERCIAL.md").read_text(encoding="utf-8"))
         self.assertEqual(extract_readme_description(folder), description, "publish reads it back")
         config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
         self.assertNotIn("description", config, "the README is its one source (ADR-202)")
@@ -4763,6 +4767,15 @@ class TestProjectRegistry(unittest.TestCase):
             _git_start(self.make_folder())
         added = next(c.args for c in run.call_args_list if c.args[1] == "add")
         self.assertNotIn("LICENSE", added, "a missing file would make `git add` fail")
+
+    def test_first_commit_holds_commercial_md(self):
+        from scripts.project_registry import _git_start
+        folder = self.make_folder(("COMMERCIAL.md", "# Aegean-E Portfolio Commercial Licensing\n"))
+        ok = mock.Mock(returncode=0, stderr="")
+        with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
+            _git_start(folder)
+        added = next(c.args for c in run.call_args_list if c.args[1] == "add")
+        self.assertIn("COMMERCIAL.md", added)
 
     def test_cli_new_takes_a_description_and_topics(self):
         with mock.patch("scripts.project_registry._git_start"):

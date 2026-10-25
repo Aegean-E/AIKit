@@ -2485,3 +2485,17 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The active task stores `started_by`, carried forward while the same task stays in progress, and `continuations`, one `{agent, from, at}` per take-over, appended by `record_checkpoint`, `mark_task_completed` and `reset_active_task`; `agent_history` reads them first and falls back to the checkpoints for a task written before this change. The warning is printed only after the write succeeded.
 - **Consequences**: The ownership chain survives any pruning: a test takes over a task, writes 30 more checkpoints, confirms the take-over entry is gone, and still reads `Owner: b (started by a; continued by b)`. A task already in progress when this change arrived has no `started_by` and reads "started by an unrecorded agent" until it ends.
 - Cross-principle check: no principle section changed. The change serves PRINCIPLE-006 R7 (who continued stays recorded), PRINCIPLE-004 R2 (the cold-start report stays true) and PRINCIPLE-014 R1 (failing-first tests).
+
+
+### ADR-212: Portfolio-Wide Dual-Licensing and Commercial Framework
+- **Date**: 2026-10-25
+- **Status**: Accepted
+- **Context**: The portfolio spans multiple domains (developer tooling, AI engines, games, and clinical templates). While AGPL-3.0 provides strong copyleft protection against closed-source forks, it does not prohibit third parties from selling copies, nor does it provide a path for commercial organizations to adopt portfolio code in proprietary closed-source applications. Creative and domain assets also required clear non-commercial protection.
+- **Decision**:
+  1. Append the Aegean-E Dual-Licensing Notice to `LICENSE`, directing commercial and proprietary inquiries to `aegean-licensing@proton.me` and `COMMERCIAL.md`.
+  2. Create `COMMERCIAL.md` establishing the Aegean-E Commercial License (AECL) framework, waiving AGPL-3.0 copyleft obligations for enterprise licensees and safeguarding non-code assets against commercial exploitation.
+  3. Update `scripts/project_registry.py` (`seed_commercial`, `render_project_readme`, `_git_start`, `create_project`) so that new projects created via `aikit new` automatically seed `COMMERCIAL.md` and reference dual-licensing in their README tree and license section.
+  4. Update `tests/test_kit.py` to assert that new projects are generated with `COMMERCIAL.md` alongside `LICENSE`.
+  5. Update `README.md` tree to list `COMMERCIAL.md` while remaining within the 22,500-character ceiling.
+- **Consequences**: Enables commercial enterprise licensing across the entire portfolio while preserving open-source community adoption and full regression gate compliance.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-000, PRINCIPLE-005 (README tree completeness and size ceiling), PRINCIPLE-011 (instant usability), PRINCIPLE-014 (100% test pass gate), PRINCIPLE-016 (ADR consecutive ordering) and PRINCIPLE-018 (git integrity).

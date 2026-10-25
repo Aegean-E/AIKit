@@ -83,9 +83,13 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
     is the description `publish` uploads; `agpl` lists the LICENSE `new` copies (ADR-199), and
     `integrated` marks a project AIKit was attached to rather than one it built (ADR-202).
     """
-    license_line = "├── LICENSE                   <- GNU AGPL-3.0\n" if agpl else ""
+    license_line = (
+        "├── LICENSE                   <- GNU AGPL-3.0\n"
+        "├── COMMERCIAL.md             <- Commercial licensing terms\n"
+    ) if agpl else ""
     license_section = ("\n## 📜 License\n\n"
-                       "GNU Affero General Public License v3.0; see [LICENSE](LICENSE).\n") if agpl else ""
+                       "GNU Affero General Public License v3.0; see [LICENSE](LICENSE). "
+                       "For commercial licensing and proprietary rights, see [COMMERCIAL.md](COMMERCIAL.md).\n") if agpl else ""
     return (
         f"# {name}\n\n"
         f"{AIKIT_INTEGRATED_BADGE if integrated else AIKIT_BADGE}\n\n"
@@ -217,6 +221,26 @@ def seed_license(project_root: Path) -> None:
             "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
         )
     write_generated_file(project_root / "LICENSE", text)
+
+
+def seed_commercial(project_root: Path) -> None:
+    """Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212)."""
+    source = ROOT_DIR / "COMMERCIAL.md"
+    try:
+        text = source.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ProjectError(
+            f"Cannot read {source}: {exc}",
+            "a new project starts with the Aegean-E commercial terms AIKit ships.",
+            "restore COMMERCIAL.md in the AIKit folder from git (`git checkout -- COMMERCIAL.md`), then retry.",
+        ) from exc
+    if not text.lstrip().startswith("# Aegean-E Portfolio Commercial Licensing"):
+        raise ProjectError(
+            f"{source} is not the Aegean-E commercial licensing text.",
+            "a new project starts with the Aegean-E commercial terms AIKit ships.",
+            "restore COMMERCIAL.md in the AIKit folder from git (`git checkout -- COMMERCIAL.md`), then retry.",
+        )
+    write_generated_file(project_root / "COMMERCIAL.md", text)
 
 
 def _tree_entry_name(line: str) -> Optional[str]:
@@ -571,7 +595,7 @@ def _git_start(project_root: Path) -> None:
             "fix the git error above, then run the command again.",
         )
     # LICENSE only when present: `git add` of a missing path fails the whole call.
-    stage_items = [item for item in (".gitignore", "LICENSE", "README.md", PROJECT_MEMORY_DIRNAME)
+    stage_items = [item for item in (".gitignore", "LICENSE", "COMMERCIAL.md", "README.md", PROJECT_MEMORY_DIRNAME)
                    if (project_root / item).exists()]
     _run_git(project_root, "add", "--", *stage_items)
     result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
@@ -618,6 +642,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     try:
         write_memory(project_root, name, test_command, topics)
         seed_license(project_root)
+        seed_commercial(project_root)
         seed_readme(project_root, name, test_command, description, agpl=True)
         git_start(project_root)
     except BaseException:

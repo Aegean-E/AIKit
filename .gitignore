@@ -51,3 +51,7 @@ references/
 /lattice.db
 /lattice.db-wal
 /lattice.db-shm
+
+# Transient workspace scratch and build artifacts
+scratch/
+.vite/
