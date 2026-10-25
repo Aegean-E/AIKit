@@ -91,26 +91,27 @@ portable_agent_kit/
 │   ├── sync_principles.py        <- Generates 8 Tier 1 files from GUIDELINES.md
 │   ├── disruption_recovery.py    <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py  <- Codebase AST symbol extractor & validator
-│   ├── dogfood.py                <- Operational dogfood runner (sandbox jail + chaos tracks)
+│   ├── dogfood.py                <- Dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py     <- Invariant reachability shield (anti-dead-capability)
 │   ├── check_test_budgets.py     <- Test tier budget gate (per-test ceilings)
 │   ├── project_registry.py       <- Project discovery, stack detection, .aikit/ memory
-│   ├── project_gates.py          <- A project's gates: detection, overrides, runs
+│   ├── project_license.py        <- License tiers; `aikit license --restrict`
+│   ├── project_gates.py          <- A project's gates: detection, overrides
 │   ├── check_project_hygiene.py  <- Project source, asset & artifact hygiene scan
 │   ├── ui_contract.py            <- Bounded UI-surface guard (opt-in .aikit/ui.json)
 │   ├── ui_proof.py               <- UI proofs: inventory diff + style drift lint (pure)
 │   ├── aikit_cli.py              <- `aikit.py` commands
 │   ├── aikit_parser.py           <- `aikit.py` grammar, alone for --help
 │   ├── subagent_delegate.py      <- `aikit delegate`: bounded OpenCode sub-agent runs
-│   ├── project_publish.py        <- Uploads a project to its own GitHub repository
+│   ├── project_publish.py        <- Uploads a project to its own GitHub repo
 │   ├── check_secrets.py          <- Secret & sensitive data scanner (pre-commit gate)
 │   └── verify_commit.py          <- Verifies a commit alone in a throwaway worktree
 ├── tests/
-│   ├── test_kit.py               <- Unit tier: in-process regression shield (<=10ms per test)
-│   └── test_integration.py       <- Integration tier: concurrency, CLI contracts & dogfooding
+│   ├── test_kit.py               <- Unit tier (<=10ms per test)
+│   └── test_integration.py       <- Integration tier: concurrency, CLI contracts
 └── knowledge/
     ├── INDEX.md                  <- Knowledge base table of contents & architecture map
-    ├── architecture.md           <- High-level system architecture and component boundaries
+    ├── architecture.md           <- System architecture and component boundaries
     ├── services.md               <- Core services, API contracts, and business logic
     ├── data_models.md            <- Data structures, schemas, and persistence models
     ├── state_and_ui.md           <- Presentation layer, UI state, and event loops
