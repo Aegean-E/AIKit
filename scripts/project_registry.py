@@ -34,7 +34,7 @@ PROJECTS_DIRNAME = "projects"
 ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
 # Every project AIKit seeds names where it came from; the badge links to AIKit's page (ADR-199).
-AIKIT_URL = "https://github.com/Aegean-E/AIKit"
+AIKIT_URL = "https://github.com/AegeanWorks/AIKit"
 AIKIT_BADGE = f"[![Built with AIKit](https://img.shields.io/badge/built%20with-AIKit-6f42c1)]({AIKIT_URL})"
 # A project AIKit is attached to, or copied into, was not built by it: it is integrated (ADR-202).
 AIKIT_INTEGRATED_BADGE = f"[![AIKit Integrated](https://img.shields.io/badge/AIKit-integrated-6f42c1)]({AIKIT_URL})"
