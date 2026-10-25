@@ -4770,7 +4770,7 @@ class TestProjectRegistry(unittest.TestCase):
 
     def test_first_commit_holds_commercial_md(self):
         from scripts.project_registry import _git_start
-        folder = self.make_folder(("COMMERCIAL.md", "# Aegean-E Portfolio Commercial Licensing\n"))
+        folder = self.make_folder(("COMMERCIAL.md", "# Aegean-E Commercial License\n"))
         ok = mock.Mock(returncode=0, stderr="")
         with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
             _git_start(folder)

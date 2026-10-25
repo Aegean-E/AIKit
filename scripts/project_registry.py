@@ -234,7 +234,7 @@ def seed_commercial(project_root: Path) -> None:
             "a new project starts with the Aegean-E commercial terms AIKit ships.",
             "restore COMMERCIAL.md in the AIKit folder from git (`git checkout -- COMMERCIAL.md`), then retry.",
         ) from exc
-    if not text.lstrip().startswith("# Aegean-E Portfolio Commercial Licensing"):
+    if not text.lstrip().startswith("# Aegean-E Commercial License"):
         raise ProjectError(
             f"{source} is not the Aegean-E commercial licensing text.",
             "a new project starts with the Aegean-E commercial terms AIKit ships.",
