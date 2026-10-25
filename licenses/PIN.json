@@ -5,6 +5,8 @@
   "sha256": {
     "AL-1.0.md": "6241e559761caf7545d40d9f2f1a8d6d846c51e5e0bbcb8dbb7d375c933dd705",
     "ACL-1.0.md": "b71ca9bc69e7c3b27b644739c6bf8b206764c5080b3cba75fd75ee9e9e219d5c",
+    "AGL-1.0.md": "cee1682f8380a7d26a7a723e586d5b16d6e91a8cb7ff1f0af2d2be084d0377ed",
+    "ASL-1.0.md": "f8b8fbe0360d5011a8347ff7339dc453a62fb0f7adb9372a1db0cd6a8669fbd0",
     "RESTRICTED-NOTICE.md": "eefa83152ac42b30e8746b2b1a5e70c001c3379a33950c7875fa8483113f8a45"
   }
 }

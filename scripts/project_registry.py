@@ -43,6 +43,16 @@ AIKIT_INTEGRATED_BADGE = f"[![AIKit Integrated](https://img.shields.io/badge/AIK
 DESCRIPTION_MIN, DESCRIPTION_MAX = 10, 350
 DESCRIPTION_FILL = (f"<FILL: one sentence on what this project does and for whom, "
                     f"{DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters>")
+# A title (a project name or README heading) is title-cased: every significant word starts with
+# a capital, small joining words stay lower unless first or last, and known acronyms keep their
+# spelling ("muse-ai" is "Muse AI", not "Muse Ai"). Descriptions keep the author's case.
+_TITLE_SMALL = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "of",
+                "on", "or", "the", "to", "via", "vs", "with"}
+_TITLE_ACRONYMS = {"ai": "AI", "aikit": "AIKit", "api": "API", "cli": "CLI", "cpu": "CPU",
+                   "css": "CSS", "db": "DB", "drm": "DRM", "gpu": "GPU", "gui": "GUI",
+                   "html": "HTML", "http": "HTTP", "json": "JSON", "llm": "LLM", "ml": "ML",
+                   "os": "OS", "pdf": "PDF", "sdk": "SDK", "sql": "SQL", "ui": "UI", "ux": "UX",
+                   "vr": "VR", "ar": "AR", "xr": "XR", "2d": "2D", "3d": "3D"}
 # GitHub's topic rules: lowercase letters, digits and '-', at most 50 characters, 20 per repository.
 TOPIC_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
 MAX_TOPICS = 20
@@ -57,6 +67,65 @@ PERSONAL_LICENSE_SECTION = (
     "Free for personal use under the Aegean License 1.0 (AL-1.0); see [LICENSE](LICENSE). "
     "Any commercial use needs the Aegean Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
 )
+# One catalog for the three personal-use licenses AIKit can seed (ADR-218). `key` is the SPDX
+# fragment, `header` the first line that identifies the file, `source` the pinned text in
+# licenses/, and `tree`/`section` the README lines that name it. Commercial use of all three
+# moves to ACL-1.0; the differences are the free-use domain each one grants.
+LICENSE_CHOICES = {
+    "software": {
+        "key": "AL-1.0",
+        "name": "Aegean License 1.0 (AL-1.0)",
+        "header": PERSONAL_LICENSE_HEADER,
+        "source": "AL-1.0.md",
+        "summary": "AL-1.0, free personal use",
+        "tree": "├── LICENSE                   <- Aegean License 1.0 (AL-1.0): free personal use\n",
+        "section": PERSONAL_LICENSE_SECTION,
+    },
+    "game": {
+        "key": "AGL-1.0",
+        "name": "Aegean Game License 1.0 (AGL-1.0)",
+        "header": "# Aegean Game License 1.0 (AGL-1.0)",
+        "source": "AGL-1.0.md",
+        "summary": "AGL-1.0, DRM-free personal play",
+        "tree": "├── LICENSE                   <- Aegean Game License 1.0 (AGL-1.0): DRM-free personal play\n",
+        "section": (
+            f"{LICENSE_HEADING}\n\n"
+            "Free for personal play under the Aegean Game License 1.0 (AGL-1.0); see [LICENSE](LICENSE). "
+            "It is DRM-free: Licensor ships no DRM and a distributor may not add it. Streaming, modding "
+            "and free mods are allowed. Commercial use, paid mods and AI training need the Aegean "
+            "Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
+        ),
+    },
+    "science": {
+        "key": "ASL-1.0",
+        "name": "Aegean Science License 1.0 (ASL-1.0)",
+        "header": "# Aegean Science License 1.0 (ASL-1.0)",
+        "source": "ASL-1.0.md",
+        "summary": "ASL-1.0, non-commercial research",
+        "tree": "├── LICENSE                   <- Aegean Science License 1.0 (ASL-1.0): free non-commercial research\n",
+        "section": (
+            f"{LICENSE_HEADING}\n\n"
+            "Free for non-commercial research and teaching under the Aegean Science License 1.0 "
+            "(ASL-1.0); see [LICENSE](LICENSE). It allows publication, reproducibility sharing, "
+            "text/data mining and non-commercial ML training. Commercial or industry-sponsored use "
+            "needs the Aegean Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
+        ),
+    },
+}
+DEFAULT_LICENSE_KIND = "software"
+# Markers that show a project's domain. A strong marker is enough for high confidence; a weak
+# one only suggests. The same analysis selects the license and the domain topic (ADR-218).
+LICENSE_MARKERS = {
+    "game": {
+        "strong": ("project.godot", "*.uproject", "ProjectSettings/ProjectVersion.txt",
+                   "*.unity", "*.tscn", "*.gd"),
+        "weak": ("Assets", "Content", "game", "engine", "levels", "sprites"),
+    },
+    "science": {
+        "strong": ("*.ipynb", "paper.tex", "CITATION.cff", "*.bib"),
+        "weak": ("notebooks", "experiments", "research", "datasets", "data", "figures"),
+    },
+}
 DECISIONS_FILENAME = "decisions.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
 GUIDELINES_FILENAME = "guidelines.md"
@@ -85,25 +154,95 @@ DECISIONS_TEMPLATE = (
     "-->\n"
 )
 
+def title_case(text: str) -> str:
+    """
+    A display title from a project name: words capitalised, small joining words left lower unless
+    first or last, and known acronyms preserved (`muse-ai-music` -> `Muse AI Music`). Only the
+    author-facing title is changed; folder names, repository names and descriptions keep their
+    spelling (ADR-218).
+    """
+    words = [word for word in re.split(r"[-_\s]+", text) if word]
+    title = []
+    for index, word in enumerate(words):
+        lower = word.lower()
+        if lower in _TITLE_ACRONYMS:
+            word = _TITLE_ACRONYMS[lower]
+        elif not (0 < index < len(words) - 1 and lower in _TITLE_SMALL):
+            word = word[:1].upper() + word[1:]
+        title.append(word)
+    return " ".join(title) or text
+
+
+def license_choice(kind: str) -> dict:
+    """The catalog entry for `kind`, or a ProjectError naming the three choices."""
+    choice = LICENSE_CHOICES.get(kind)
+    if choice is None:
+        raise ProjectError(
+            f"Unknown license kind '{kind}'.",
+            "a project carries one personal-use license: software, game or science.",
+            f"pick one of {', '.join(sorted(LICENSE_CHOICES))}.",
+            exit_code=2,
+        )
+    return choice
+
+
+def detect_license_kind(project_root: Path) -> dict:
+    """
+    The domain an AI should pick a license for, from the project's own markers. Strong markers
+    (Godot/Unity/Unreal, notebooks, a paper, CITATION.cff) decide; weak directory names only add
+    evidence. Returns `{kind, confidence, reasons, alternatives}`; software is the fallback.
+    """
+    scores = {kind: 0 for kind in ("game", "science")}
+    reasons: Dict[str, List[str]] = {kind: [] for kind in scores}
+    for kind, groups in LICENSE_MARKERS.items():
+        for pattern in groups["strong"]:
+            hit = next(iter(project_root.glob(pattern)), None)
+            if hit is not None:
+                scores[kind] += 3
+                reasons[kind].append(f"strong marker: {hit.name}")
+        for name in groups["weak"]:
+            if (project_root / name).exists():
+                scores[kind] += 1
+                reasons[kind].append(f"weak marker: {name}/")
+    ranking = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    kind, top = ranking[0]
+    if top == 0 or top == ranking[1][1]:
+        return {"kind": DEFAULT_LICENSE_KIND, "confidence": "low", "reasons": [],
+                "alternatives": [k for k, score in ranking if score]}
+    strong = any(reason.startswith("strong") for reason in reasons[kind])
+    if not strong and top < 2:
+        # One weak directory name ("data/", "game/") is not evidence: it is common in software
+        # projects too. A recommendation needs one strong marker, or at least two agreeing weak
+        # ones (ADR-218).
+        return {"kind": DEFAULT_LICENSE_KIND, "confidence": "low", "reasons": [],
+                "alternatives": [k for k, score in ranking if score]}
+    confidence = "high" if strong or top >= 3 else "medium"
+    alternatives = [other for other, score in ranking
+                    if score and other != kind and score >= top - 1]
+    return {"kind": kind, "confidence": confidence, "reasons": reasons[kind],
+            "alternatives": alternatives}
+
+
 def render_project_readme(name: str, test_command: Optional[str] = None,
                           description: Optional[str] = None, licensed: bool = False,
-                          integrated: bool = False) -> str:
+                          integrated: bool = False,
+                          license_kind: str = DEFAULT_LICENSE_KIND) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
     every tracked top-level entry; `.aikit/` is listed without children, so a new memory file never
     makes the tree incomplete. A badge under the title links to AIKit, and the paragraph after it
     is the description `publish` uploads; `licensed` lists the LICENSE and COMMERCIAL.md `new`
-    copies (ADR-199, ADR-214), and
-    `integrated` marks a project AIKit was attached to rather than one it built (ADR-202).
+    copies (ADR-199, ADR-214), the heading is title-cased, and `license_kind` selects the personal
+    license (ADR-218); `integrated` marks a project AIKit was attached to rather than one it built
+    (ADR-202).
     """
-    license_line = (
-        "├── LICENSE                   <- Aegean License 1.0 (AL-1.0): free personal use\n"
-        "├── COMMERCIAL.md             <- Commercial licensing terms\n"
-    ) if licensed else ""
-    license_section = f"\n{PERSONAL_LICENSE_SECTION}" if licensed else ""
+    choice = license_choice(license_kind)
+    license_line = (f"{choice['tree']}"
+                    "├── COMMERCIAL.md             <- Commercial licensing terms\n") if licensed else ""
+    license_section = f"\n{choice['section']}" if licensed else ""
     return (
-        f"# {name}\n\n"
+        f"# {title_case(name)}\n\n"
         f"{AIKIT_INTEGRATED_BADGE if integrated else AIKIT_BADGE}\n\n"
         f"{description or DESCRIPTION_FILL}\n\n"
         "## ⚡ 30-Second Cold-Start Quick Reference\n\n"
@@ -131,18 +270,36 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
     )
 
 
+def license_kind_from_header(first_line: str) -> Optional[str]:
+    """The personal license kind a LICENSE first line names, or None for an unknown license."""
+    stripped = first_line.strip()
+    for kind, choice in LICENSE_CHOICES.items():
+        if stripped == choice["header"]:
+            return kind
+    return None
+
+
 def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None,
                 description: Optional[str] = None, licensed: bool = False,
-                integrated: bool = False) -> bool:
+                integrated: bool = False, license_kind: Optional[str] = None) -> bool:
     """
     Write the template README when the project has none; returns whether it did. `new` and `fix`
     call it, `attach` never does: attaching leaves an existing folder's files alone. Only `new`
-    passes `licensed`, since only it writes the LICENSE; `fix` passes `integrated` for an attached one.
+    passes `licensed`, since only it writes the LICENSE; `fix` passes `integrated` for an attached
+    one. Without an explicit `license_kind`, the project's LICENSE header decides, else the
+    markers do (ADR-218).
     """
     readme = project_root / "README.md"
     if readme.exists():
         return False
-    write_generated_file(readme, render_project_readme(name, test_command, description, licensed, integrated))
+    if license_kind is None:
+        try:
+            first = (project_root / "LICENSE").read_text(encoding="utf-8").lstrip().split("\n", 1)[0]
+        except OSError:
+            first = ""
+        license_kind = license_kind_from_header(first) or detect_license_kind(project_root)["kind"]
+    write_generated_file(readme, render_project_readme(
+        name, test_command, description, licensed, integrated, license_kind))
     return True
 
 
@@ -238,22 +395,23 @@ def normalize_topics(topics: Optional[List[str]]) -> List[str]:
     return result
 
 
-def seed_license(project_root: Path) -> None:
-    """Copy AIKit's own Aegean License 1.0 into a new project (ADR-199, ADR-214)."""
-    source = ROOT_DIR / "LICENSE"
+def seed_license(project_root: Path, kind: str = DEFAULT_LICENSE_KIND) -> None:
+    """Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218)."""
+    choice = license_choice(kind)
+    source = LICENSES_DIR / choice["source"]
     try:
         text = source.read_text(encoding="utf-8")
     except OSError as exc:
         raise ProjectError(
             f"Cannot read {source}: {exc}",
-            "a new project starts with the Aegean License 1.0 text AIKit ships.",
-            "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
+            f"a new project starts with the {choice['name']} text AIKit ships.",
+            f"restore {source.name} in the AIKit licenses/ folder from git, then retry.",
         ) from exc
-    if not text.lstrip().startswith(PERSONAL_LICENSE_HEADER):
+    if not text.lstrip().startswith(choice["header"]):
         raise ProjectError(
-            f"{source} is not the Aegean License 1.0 text.",
-            "a new project starts with the Aegean License 1.0 text AIKit ships.",
-            "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
+            f"{source} is not the {choice['name']} text.",
+            f"a new project starts with the {choice['name']} text AIKit ships.",
+            f"restore {source.name} in the AIKit licenses/ folder from git, then retry.",
         )
     write_generated_file(project_root / "LICENSE", text)
 
@@ -648,18 +806,20 @@ def _git_start(project_root: Path) -> None:
 
 def create_project(name: str, test_command: Optional[str] = None, workspace: Path = ROOT_DIR,
                    git_start: Optional[Callable[[Path], None]] = None,
-                   description: Optional[str] = None, topics: Optional[List[str]] = None
-                   ) -> Path:
+                   description: Optional[str] = None, topics: Optional[List[str]] = None,
+                   license_kind: str = DEFAULT_LICENSE_KIND) -> Path:
     """
     Create `projects/<name>/` as a new git repository whose first commit holds the project's
     `.aikit/` memory and return the folder. `git_start` defaults to the real git calls
     (PRINCIPLE-009 R4: a test injects a double) and raises when it cannot commit a baseline.
+    `license_kind` selects software (AL-1.0), game (AGL-1.0) or science (ASL-1.0) (ADR-218).
     """
     git_start = git_start or _git_start
     validate_name(name)
     # Checked before the folder exists, so a refused value leaves nothing behind (ADR-199).
     description = validate_description(description)
     topics = normalize_topics(topics)
+    license_choice(license_kind)
     if name in _registered_names(workspace):
         raise ProjectError(
             f"A project named '{name}' already exists.",
@@ -676,9 +836,10 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     project_root.mkdir(parents=True)
     try:
         write_memory(project_root, name, test_command, topics)
-        seed_license(project_root)
+        seed_license(project_root, license_kind)
         seed_commercial(project_root)
-        seed_readme(project_root, name, test_command, description, licensed=True)
+        seed_readme(project_root, name, test_command, description, licensed=True,
+                    license_kind=license_kind)
         git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.

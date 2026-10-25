@@ -927,13 +927,14 @@ def mark_task_completed(task_id: str, ledger_file: Optional[Path] = None, agent:
 def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional[Path] = None,
                       agent: Optional[str] = None, take_over: bool = False) -> Optional[Dict[str, Any]]:
     """
-    Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006). Another
-    identified agent's task needs `take_over` (LedgerOwnershipError, ADR-209).
+    Abandon or reset the active in-progress or suspended task in the ledger (locked,
+    PRINCIPLE-006). Another identified agent's task needs `take_over` (LedgerOwnershipError,
+    ADR-209).
     """
     agent = agent or resolve_agent()
     with locked_ledger(ledger_file) as ledger:
         active = ledger.get("active_task")
-        if not active or active.get("status") != "in_progress":
+        if not active or active.get("status") not in ("in_progress", "suspended"):
             return None
         continued_from = _claim(active, agent, take_over)
         if continued_from:
@@ -957,6 +958,93 @@ def reset_active_task(reason: str = "Reset by user/agent", ledger_file: Optional
         })
         ledger["active_task"] = None
     return active
+
+
+def suspend_active_task(reason: str = "Suspended by user/agent",
+                        ledger_file: Optional[Path] = None, agent: Optional[str] = None,
+                        take_over: bool = False) -> Optional[Dict[str, Any]]:
+    """
+    Pause the active task without abandoning it (ADR-219). The plan, phase and handoff stay in the
+    ledger, `active_task` keeps status `suspended`, and `--resume-task <id>` can reactivate it.
+    Another identified agent's in-progress task needs `take_over`, exactly like `--reset`.
+    """
+    agent = agent or resolve_agent()
+    with locked_ledger(ledger_file) as ledger:
+        active = ledger.get("active_task")
+        if not active or active.get("status") != "in_progress":
+            return None
+        continued_from = _claim(active, agent, take_over)
+        if continued_from:
+            active.setdefault("continuations", []).append(
+                {"agent": agent, "from": continued_from, "at": time.time()})
+        task_id = active.get("task_id", "unknown")
+        active["status"] = "suspended"
+        active["suspended_reason"] = reason
+        active["suspended_at"] = time.time()
+        ledger.setdefault("checkpoints", []).append({
+            "task_id": task_id,
+            "phase": "suspended",
+            "phase_num": resolve_active_phase(active),
+            "description": f"Task '{task_id}' suspended: {reason}",
+            "status": "suspended",
+            "timestamp": time.time(),
+            "timestamp_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "agent": agent,
+            **({"continued_from": continued_from} if continued_from else {}),
+        })
+    return active
+
+
+def resumable_tasks(ledger: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Tasks whose latest checkpoint is `suspended` or `superseded`, newest first (ADR-219)."""
+    checkpoints = ledger.get("checkpoints", [])
+    active = ledger.get("active_task") or {}
+    active_id = active.get("task_id")
+    latest: Dict[str, Dict[str, Any]] = {}
+    for checkpoint in checkpoints:
+        task_id = checkpoint.get("task_id")
+        if task_id:
+            latest[task_id] = checkpoint
+    tasks = []
+    for task_id, checkpoint in latest.items():
+        if task_id == active_id and active.get("status") != "suspended":
+            continue
+        if checkpoint.get("status") not in ("suspended", "superseded"):
+            continue
+        own = [c for c in checkpoints if c.get("task_id") == task_id]
+        plan = task_plan_checkpoint(own)
+        handoff = next((c["handoff"] for c in reversed(own)
+                        if isinstance(c.get("handoff"), dict) and c["handoff"]), {})
+        tasks.append({
+            "task_id": task_id,
+            "phase": checkpoint.get("phase"),
+            "phase_num": checkpoint.get("phase_num"),
+            "status": checkpoint.get("status"),
+            "plan": (plan or {}).get("description", ""),
+            "handoff": handoff,
+            "updated_at": checkpoint.get("timestamp", 0),
+        })
+    return sorted(tasks, key=lambda task: task["updated_at"], reverse=True)
+
+
+def resume_task(task_id: str, ledger_file: Optional[Path] = None,
+                agent: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Reactivate a suspended or superseded task at its recorded phase (ADR-219). A checkpoint is
+    written, so the switch is visible and the previous active task becomes resumable too. A
+    completed or abandoned task is refused: resuming it would resurrect a closed decision.
+    """
+    agent = agent or resolve_agent()
+    ledger = load_ledger(ledger_file)
+    own = [c for c in ledger.get("checkpoints", []) if c.get("task_id") == task_id]
+    if not own:
+        raise ValueError(f"Task '{task_id}' has no checkpoint to resume.")
+    last = own[-1]
+    if last.get("status") in ("completed", "abandoned"):
+        raise ValueError(f"Task '{task_id}' is {last.get('status')}; it cannot be resumed.")
+    return record_checkpoint(task_id, "resumed", f"Resumed '{task_id}' after a pause",
+                             phase_num=last.get("phase_num") or 2, ledger_file=ledger_file,
+                             agent=agent)
 
 
 TEMP_STALE_SECONDS = 60
@@ -1093,6 +1181,8 @@ def run_disruption_audit(
         if active and active.get("status") == "in_progress":
             audit["interrupted_task"] = active
             audit["clean_shutdown"] = False
+        if active and active.get("status") == "suspended":
+            audit["suspended_task"] = active
 
         checkpoints = ledger.get("checkpoints", [])
         if checkpoints:
@@ -1110,6 +1200,7 @@ def run_disruption_audit(
                     if isinstance(cp.get("handoff"), dict) and cp["handoff"]:
                         audit["handoff"] = cp["handoff"]
                         break
+        audit["resumable_tasks"] = resumable_tasks(ledger)
 
     # 3. Check for Quarantined Corrupted Artifacts (.corrupt_ files)
     try:
@@ -1239,6 +1330,12 @@ def format_resume_report(audit: Dict[str, Any]) -> str:
 
     interrupted = audit.get("interrupted_task")
     if not interrupted:
+        resumable = audit.get("resumable_tasks") or []
+        if resumable:
+            lines.append("⏸️  PAUSED TASKS (resume one with `--resume-task <id>`):")
+            for task in resumable[:5]:
+                plan = f" — {task['plan'][:90]}" if task.get("plan") else ""
+                lines.append(f"   • {task['task_id']} (phase {task['phase_num']}, {task['status']}){plan}")
         if audit.get("modified_files") or audit.get("untracked_files") or audit.get("dangling_temp_files"):
             lines.append("🟡 No interrupted task, but the files above are uncommitted: inspect them before a new task and never overwrite them.")
         elif not audit.get("conflicted_files"):
@@ -1457,7 +1554,7 @@ def collect_working_changes(workspace: Path) -> List[Tuple[str, Optional[str], O
 VALUE_FLAGS = {
     "--validate-commit", "--checkpoint", "--phase", "--phase-num", "--desc",
     "--why", "--benefits", "--benefit", "--risks", "--mitigation", "--handoff",
-    "--complete", "--reset", "--workspace", "--agent",
+    "--complete", "--reset", "--workspace", "--agent", "--suspend", "--resume-task",
 }
 # Standalone action flags.
 ACTION_FLAGS = {"--clean", "--resume", "--audit", "--track", "--help", "-h"}
@@ -1482,6 +1579,9 @@ Actions (default: --audit):
                              a task reaching Phase 3+ with no assessment gets a warning
   --complete <task_id>       Mark a task as completed
   --reset [reason]           Abandon and clear the active task
+  --suspend <reason>         Pause the active task without abandoning it; --resume-task <id>
+                             reactivates it at its recorded phase (ADR-219)
+  --resume-task <task_id>    Reactivate a suspended or superseded task
   --validate-commit <msg>    Validate a Conventional Commit message (PRINCIPLE-018)
   --track                    Print the lifecycle track (A/B/C) of the current changes (PRINCIPLE-002 R3)
 
@@ -1904,6 +2004,40 @@ if __name__ == "__main__":
             print(f"[OK] Active task '{res.get('task_id')}' abandoned and reset: {reason}")
         else:
             print("[OK] No active task was in progress.")
+    elif "--suspend" in sys.argv:
+        idx = sys.argv.index("--suspend")
+        reason = sys.argv[idx + 1]  # argv_value_errors guarantees a value
+        try:
+            _writer = resolve_agent(_agent_arg)
+        except ValueError as error:
+            print(f"[INVALID AGENT] {error}", file=sys.stderr)
+            sys.exit(2)
+        try:
+            res = suspend_active_task(reason=reason, ledger_file=_ledger, agent=_writer,
+                                      take_over=_take_over)
+        except LedgerOwnershipError as error:
+            sys.exit(report_ownership(error))
+        if res:
+            print(f"[OK] Active task '{res.get('task_id')}' suspended: {reason}")
+            print(f"Resume it with `--resume-task {res.get('task_id')}`.")
+        else:
+            print("[OK] No active in-progress task to suspend.")
+    elif "--resume-task" in sys.argv:
+        idx = sys.argv.index("--resume-task")
+        tid = sys.argv[idx + 1]
+        try:
+            _writer = resolve_agent(_agent_arg)
+        except ValueError as error:
+            print(f"[INVALID AGENT] {error}", file=sys.stderr)
+            sys.exit(2)
+        try:
+            checkpoint = resume_task(tid, ledger_file=_ledger, agent=_writer)
+        except ValueError as error:
+            print(f"[NOT RESUMED] {error}", file=sys.stderr)
+            sys.exit(1)
+        except LedgerOwnershipError as error:
+            sys.exit(report_ownership(error))
+        print(f"[OK] Task '{tid}' resumed at Phase {checkpoint.get('phase_num')}.")
     elif "--clean" in sys.argv:
         purged = clean_dangling_temp_files(workspace_dir=_audit_root)
         if purged:

@@ -16,8 +16,10 @@ from scripts.aikit_parser import TriadArgumentParser, build_parser, report_error
 from scripts.disruption_recovery import (
     UnsupportedLedgerVersion,
     LedgerOwnershipError,
+    atomic_write_json,
     checkpoint_command,
     clean_dangling_temp_files,
+    file_lock,
     format_resume_report,
     mark_task_completed,
     report_ownership,
@@ -27,23 +29,33 @@ from scripts.disruption_recovery import (
 )
 from scripts.project_license import (
     TIER_RESTRICTED,
+    apply_license_kind,
     license_state,
     public_remote_refusal,
     restrict_project,
+    suggest_license,
 )
 from scripts.project_publish import (
     auto_push_project,
+    extract_readme_description,
     get_project_repo_url,
     publish_project,
 )
 
 from scripts.project_registry import (
+    DEFAULT_LICENSE_KIND,
+    DESCRIPTION_MAX,
+    DESCRIPTION_MIN,
+    LICENSE_CHOICES,
+    MAX_TOPICS,
     Project,
     ProjectError,
     add_aikit_badge,
     add_guideline,
     attach_project,
+    config_path,
     create_project,
+    detect_stacks,
     find_project,
     latest_decision,
     list_projects,
@@ -105,14 +117,90 @@ def project_is_clean(audit: Dict[str, object], open_ui_task: bool) -> bool:
     return not (audit.get("git_missing") or audit.get("ledger_error") or dirty or open_ui_task)
 
 
+# GitHub topic per detected stack (ADR-215); java-maven and java-gradle are both `java`.
+STACK_TOPICS = {"python": "python", "node": "javascript", "rust": "rust", "go": "golang",
+                "java-maven": "java", "java-gradle": "java", "dotnet": "dotnet"}
+# A brand-new project has no marker files for `detect_stacks`, so the test command the user gave
+# supplies the one language signal available at the first push (ADR-216).
+TEST_RUNNER_TOPICS = (
+    (("python", "pytest", "unittest"), "python"),
+    (("npm ", "npm test", "yarn", "pnpm", "jest", "vitest", "node "), "javascript"),
+    (("cargo",), "rust"),
+    (("go test",), "golang"),
+    (("mvn", "gradle"), "java"),
+    (("dotnet",), "dotnet"),
+)
+
+
+def test_command_topic(test_command: Optional[str]) -> Optional[str]:
+    """The language topic a known test runner implies, or None for a custom command."""
+    command = (test_command or "").lower()
+    for runners, topic in TEST_RUNNER_TOPICS:
+        if any(runner in command for runner in runners):
+            return topic
+    return None
+
+
+def is_typescript_project(project_root: Path) -> bool:
+    """Whether a Node project writes TypeScript: a tsconfig, or `typescript` in package.json."""
+    if (project_root / "tsconfig.json").is_file():
+        return True
+    package = project_root / "package.json"
+    if not package.is_file():
+        return False
+    try:
+        data = json.loads(package.read_text(encoding="utf-8"))
+    except (OSError, ValueError):  # hygiene: allow a broken package.json is not a stack signal; publish still runs
+        return False
+    if not isinstance(data, dict):
+        return False
+    dependencies = {}
+    for key in ("dependencies", "devDependencies", "peerDependencies"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            dependencies.update(value)
+    return "typescript" in dependencies
+
+
+def publish_topics(project_root: Path, recorded: List[str]) -> List[str]:
+    """
+    The topics `publish` sets: the recorded ones, then one per detected stack, then
+    `source-available` for a personal-tier project, without repeats (ADR-215). A restricted
+    project names no license topic: it is not offered under one.
+    """
+    topics = list(recorded)
+    extra = []
+    for stack in detect_stacks(project_root):
+        if stack.name in STACK_TOPICS:
+            extra.append(STACK_TOPICS[stack.name])
+        if stack.name == "node" and is_typescript_project(project_root):
+            extra.append("typescript")
+    state = license_state(project_root)
+    if state.tier == "personal":
+        extra.append("source-available")
+    kind = state.kind
+    if kind == "game":
+        extra.extend(("game", "drm-free"))
+    elif kind == "science":
+        extra.extend(("science", "research"))
+    for topic in extra:
+        if topic not in topics:
+            topics.append(topic)
+    return topics[:MAX_TOPICS]
+
+
 def license_summary(project: Project) -> str:
     """One line on the project's license tier for `status` (ADR-214)."""
     state = license_state(project.path)
     if state.tier == TIER_RESTRICTED:
-        return (f"restricted since {state.since}, cutoff {(state.since_commit or '')[:12]} "
-                "(All Rights Reserved)")
+        # A hand-edited project.json can record the tier without its cutoff; say so rather than
+        # print "since None, cutoff  (All Rights Reserved)".
+        since = state.since or "an unrecorded date"
+        cutoff = state.since_commit[:12] if state.since_commit else "an unrecorded commit"
+        return f"restricted since {since}, cutoff {cutoff} (All Rights Reserved)"
     if state.tier == "personal":
-        return "personal (AL-1.0, free personal use)"
+        choice = LICENSE_CHOICES.get(state.kind)
+        return f"personal ({choice['summary']})" if choice else "personal (AL-1.0, free personal use)"
     return "unrecorded (the project's own LICENSE applies)"
 
 
@@ -170,13 +258,25 @@ def cmd_new(args: argparse.Namespace) -> int:
             f"`python aikit.py publish {args.name}` once its README is filled.",
             exit_code=2,
         ))
+    license_kind = getattr(args, "license_kind", "auto")
+    if license_kind == "auto":
+        license_kind = DEFAULT_LICENSE_KIND
     root = create_project(args.name, args.test, workspace=args.workspace,
-                          description=args.description, topics=args.topic)
-    print(f"[OK] Created project '{args.name}' at {root}")
+                          description=args.description, topics=args.topic,
+                          license_kind=license_kind)
+    print(f"[OK] Created project '{args.name}' at {root} "
+          f"with the {LICENSE_CHOICES[license_kind]['name']}")
     if getattr(args, "publish", False):
         print(f"Publishing '{args.name}' to GitHub:")
+        # The created project is empty, so `detect_stacks` has nothing to read; the topics it can
+        # know now are the user's, `aikit`, the license tier, and the language of the test runner
+        # the user named (ADR-216). A later publish adds the rest from marker files.
+        first_topics = normalize_topics(args.topic)
+        runner_topic = test_command_topic(getattr(args, "test", None))
+        if runner_topic and runner_topic not in first_topics:
+            first_topics.append(runner_topic)
         code, report = publish_project(root, args.name, public=getattr(args, "public", False),
-                                       topics=normalize_topics(args.topic))
+                                       topics=publish_topics(root, first_topics))
         print(report, file=sys.stdout if code == 0 else sys.stderr)
         if code != 0:
             print(f"[WARN] Project created locally at {root}, but GitHub publication failed.", file=sys.stderr)
@@ -504,6 +604,42 @@ def cmd_publish(args: argparse.Namespace) -> int:
         refusal = public_remote_refusal(project.path, project.name)
         if refusal:
             return report_error(refusal)
+    # The README's first paragraph is the one description source (ADR-202), so a publish without
+    # a usable one would create an undescribed repository (ADR-216). Long text is cut at GitHub's
+    # 350-character limit by extraction; too little is refused before any gate runs.
+    description = extract_readme_description(project.path)
+    if len(description) < DESCRIPTION_MIN:
+        return report_error(ProjectError(
+            f"'{project.name}' has no usable README description ({len(description)} characters).",
+            "the GitHub repository takes its description from the README's first paragraph, and "
+            f"a repository description is one line of {DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters.",
+            f"write one sentence of {DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters under the README "
+            'title, e.g. "A tool that turns X into Y for Z", then publish again.',
+            exit_code=2,
+        ))
+    # The AI chooses the personal license from the project's own markers (ADR-218). `--license
+    # auto` applies a high-confidence change and stops: publish uploads commits, so the new
+    # LICENSE must be reviewed and committed before the next publish.
+    requested_license = getattr(args, "license", "keep")
+    suggestion = suggest_license(project.path)
+    current = license_state(project.path)
+    if requested_license in LICENSE_CHOICES and current.kind != requested_license:
+        apply_license_kind(project.path, project.name, requested_license)
+        print(f"[LICENSE] '{project.name}' now carries "
+              f"{LICENSE_CHOICES[requested_license]['name']}.")
+        print("Commit LICENSE and README.md, then publish again; nothing was uploaded.")
+        return 1
+    if (requested_license == "auto" and suggestion["change_needed"]
+            and suggestion["confidence"] == "high"):
+        apply_license_kind(project.path, project.name, suggestion["kind"])
+        print(f"[LICENSE] The markers select {LICENSE_CHOICES[suggestion['kind']]['name']} "
+              f"({'; '.join(suggestion['reasons'])}).")
+        print("Commit LICENSE and README.md, then publish again; nothing was uploaded.")
+        return 1
+    if suggestion["change_needed"]:
+        print(f"[LICENSE] Suggested {LICENSE_CHOICES[suggestion['kind']]['key']} "
+              f"({suggestion['confidence']} confidence); run `python aikit.py license "
+              f"{project.name} --set {suggestion['kind']}` to switch.")
     audit = run_disruption_audit(workspace_dir=project.path)
     errors = project_baseline_errors(project, audit)
     if errors:
@@ -540,17 +676,72 @@ def cmd_publish(args: argparse.Namespace) -> int:
     # `new` records the topics; a project.json from before ADR-199 has none (ADR-200).
     config = load_config(project.path)
     code, report = publish_project(project.path, project.name, public=args.public,
-                                   topics=config.get("topics") or ["aikit"])
+                                   topics=publish_topics(project.path,
+                                                         config.get("topics") or ["aikit"]),
+                                   owner=getattr(args, "owner", None), description=description)
     print(report, file=sys.stdout if code == 0 else sys.stderr)
     return code
 
 
 def cmd_license(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
-    already = license_state(project.path).tier == TIER_RESTRICTED
-    state = restrict_project(project.path, project.name) if args.restrict else license_state(project.path)
+    state = license_state(project.path)
+    if getattr(args, "json", False) and not getattr(args, "suggest", False):
+        return report_error(ProjectError(
+            "--json is only meaningful with --suggest.",
+            "the tier and --set outputs are human text; an agent needs the suggestion payload.",
+            f"run `python aikit.py license {project.name} --suggest --json`.",
+            exit_code=2,
+        ))
+    if getattr(args, "set_kind", None):
+        state = apply_license_kind(project.path, project.name, args.set_kind)
+        print(f"[OK] '{project.name}' now carries the {LICENSE_CHOICES[state.kind]['name']}.")
+        print(f"     Review and commit LICENSE and README.md in {project.path}, then publish.")
+        return 0
+    suggestion = suggest_license(project.path)
+    if getattr(args, "suggest", False):
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": True, "result": {
+                "project": project.name,
+                "current": state.kind or "unrecorded",
+                "suggested": suggestion["kind"],
+                "current_key": suggestion["current_key"],
+                "recommended_key": suggestion["recommended_key"],
+                "confidence": suggestion["confidence"],
+                "reasons": suggestion["reasons"],
+                "alternatives": suggestion["alternatives"],
+                "change_needed": suggestion["change_needed"],
+                "adoptable": suggestion["adoptable"],
+            }}, indent=2, default=str))
+            return 0
+        print(f"Project: {project.name}")
+        print(f"Current: {state.kind or 'unrecorded'}")
+        print(f"Suggest: {LICENSE_CHOICES[suggestion['kind']]['key']} "
+              f"({suggestion['confidence']} confidence)")
+        for reason in suggestion["reasons"]:
+            print(f"  - {reason}")
+        if suggestion["change_needed"]:
+            print(f"Switch with `python aikit.py license {project.name} --set {suggestion['kind']}`.")
+        elif state.tier == "unrecorded" and suggestion["kind"] != DEFAULT_LICENSE_KIND:
+            print(f"This project's own LICENSE is not an Aegean one; adopt "
+                  f"{LICENSE_CHOICES[suggestion['kind']]['key']} with "
+                  f"`python aikit.py license {project.name} --set {suggestion['kind']}`.")
+        else:
+            print("No license change is needed.")
+        return 0
+    already = state.tier == TIER_RESTRICTED
+    state = restrict_project(project.path, project.name) if args.restrict else state
     print(f"License tier of '{project.name}': {state.tier}")
     if state.tier != TIER_RESTRICTED:
+        print(f"     Kind:    {state.kind or 'unrecorded'}")
+        print(f"     Suggest: {LICENSE_CHOICES[suggestion['kind']]['key']} "
+              f"({suggestion['confidence']} confidence)")
+        if suggestion["change_needed"]:
+            print(f"     Apply with `python aikit.py license {project.name} --set {suggestion['kind']}`.")
+        elif state.tier == "unrecorded" and suggestion["kind"] != DEFAULT_LICENSE_KIND:
+            print(f"     This project's own LICENSE is not an Aegean one; adopt "
+                  f"{LICENSE_CHOICES[suggestion['kind']]['key']} with "
+                  f"`python aikit.py license {project.name} --set {suggestion['kind']}`.")
         if not args.restrict:
             print(f"     Restrict it with `python aikit.py license {project.name} --restrict`.")
         return 0
@@ -563,6 +754,72 @@ def cmd_license(args: argparse.Namespace) -> int:
               "--accept-visibility-change-consequences`.")
         print("  3. Remove public releases, packages and download links of later versions.")
         print("  4. Tell Aegean Commercial License (ACL-1.0) holders whether later versions are covered.")
+    return 0
+
+
+def cmd_topics(args: argparse.Namespace) -> int:
+    """Show or set the GitHub topics AIKit records and derives for a project (ADR-218)."""
+    project = present_project(args.name, args.workspace)
+    config = load_config(project.path)
+    if args.set_topics is not None and (args.add or args.remove):
+        return report_error(ProjectError(
+            "--set replaces the list; --add and --remove edit it.",
+            "one mode per call keeps the resulting list predictable.",
+            f"use `python aikit.py topics {project.name} --set ...` or "
+            f"`--add`/`--remove`, not both.",
+            exit_code=2,
+        ))
+    if args.suggest and (args.set_topics is not None or args.add or args.remove):
+        return report_error(ProjectError(
+            "--suggest is read-only and cannot be combined with a change.",
+            "an agent reads the suggestion, then writes a separate deliberate choice.",
+            f"run `python aikit.py topics {project.name} --suggest` first.",
+            exit_code=2,
+        ))
+    if args.suggest:
+        suggestion = suggest_license(project.path)
+        topics = publish_topics(project.path, config.get("topics") or ["aikit"])
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": True, "result": {
+                "project": project.name,
+                "topics": topics,
+                "domain": suggestion["kind"],
+                "confidence": suggestion["confidence"],
+                "reasons": suggestion["reasons"],
+                "recommended_key": suggestion["recommended_key"],
+            }}, indent=2, default=str))
+            return 0
+        print(f"Project: {project.name}")
+        print(f"Topics:  {', '.join(topics)}")
+        print(f"Domain:  {suggestion['kind']} ({suggestion['confidence']} confidence)")
+        for reason in suggestion["reasons"]:
+            print(f"  - {reason}")
+        print("Set the recorded ones with "
+              f"`python aikit.py topics {project.name} --set <topic>...`; publish adds the rest.")
+        return 0
+    if args.set_topics is not None:
+        topics = normalize_topics(args.set_topics)
+    else:
+        topics = list(config.get("topics") or ["aikit"])
+        for topic in args.add or []:
+            candidate = topic.strip().lower()
+            if candidate and candidate not in topics:
+                topics.append(candidate)
+        for topic in args.remove or []:
+            candidate = topic.strip().lower()
+            topics = [item for item in topics if item != candidate]
+        topics = normalize_topics(topics)
+    path = config_path(project.path)
+    with file_lock(path):
+        config = load_config(project.path)
+        config["topics"] = topics
+        atomic_write_json(path, config)
+    if getattr(args, "json", False):
+        print(json.dumps({"ok": True, "result": {"project": project.name,
+                                                 "topics": topics}}, indent=2))
+        return 0
+    print(f"[OK] Topics for '{project.name}': {', '.join(topics)}")
+    print("Review and commit .aikit/project.json; publish still adds detected stack and domain topics.")
     return 0
 
 
@@ -695,6 +952,7 @@ HANDLERS = {
     "fix": cmd_fix,
     "publish": cmd_publish,
     "license": cmd_license,
+    "topics": cmd_topics,
     "delegate": cmd_delegate,
     "ui": cmd_ui,
 }

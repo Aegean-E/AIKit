@@ -97,6 +97,9 @@ from scripts.disruption_recovery import (
     format_audit_report,
     format_resume_report,
     reset_active_task,
+    suspend_active_task,
+    resumable_tasks,
+    resume_task,
     clean_dangling_temp_files,
     file_lock,
     locked_ledger,
@@ -134,7 +137,13 @@ from scripts.project_publish import (
 
 
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
-from scripts.project_license import license_state, public_remote_refusal, restrict_project
+from scripts.project_license import (
+    apply_license_kind,
+    license_state,
+    public_remote_refusal,
+    restrict_project,
+    suggest_license,
+)
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
     _run_git,
@@ -4229,6 +4238,41 @@ class TestDisruptionRecovery(unittest.TestCase):
             record_checkpoint("second", "implementation", "same task", phase_num=3, ledger_file=ledger_file)
         self.assertEqual(quiet.getvalue(), "")
 
+    def test_suspend_and_resume_task_keeps_the_plan_and_phase(self):
+        # ADR-219: a concurrent session's task must be resumable, not lost.
+        ledger_file = self.ledger_file
+        record_checkpoint("muse", "implementation", "[1/2] plan the music pipeline", phase_num=3,
+                          ledger_file=ledger_file, agent="a")
+        active = suspend_active_task("another session needs the ledger", ledger_file=ledger_file,
+                                     agent="a")
+        self.assertEqual(active["status"], "suspended")
+        self.assertEqual(load_ledger(ledger_file)["active_task"]["status"], "suspended")
+        paused = resumable_tasks(load_ledger(ledger_file))
+        self.assertEqual([task["task_id"] for task in paused], ["muse"])
+        checkpoint = resume_task("muse", ledger_file=ledger_file, agent="a")
+        self.assertEqual(checkpoint["phase_num"], 3)
+        self.assertEqual(load_ledger(ledger_file)["active_task"]["task_id"], "muse")
+        self.assertEqual(load_ledger(ledger_file)["active_task"]["status"], "in_progress")
+
+    def test_a_suspended_task_can_be_reset_without_resuming_it(self):
+        ledger_file = self.ledger_file
+        record_checkpoint("muse", "implementation", "build it", phase_num=3,
+                          ledger_file=ledger_file, agent="a")
+        suspend_active_task("paused", ledger_file=ledger_file, agent="a")
+        reset = reset_active_task("abandon the paused task", ledger_file=ledger_file, agent="a")
+        self.assertEqual(reset["status"], "abandoned")
+        self.assertIsNone(load_ledger(ledger_file)["active_task"])
+        self.assertEqual(resumable_tasks(load_ledger(ledger_file)), [])
+
+    def test_a_superseded_task_is_offered_for_resumption(self):
+        ledger_file = self.ledger_file
+        with contextlib.redirect_stderr(io.StringIO()):
+            record_checkpoint("muse", "planning", "[1/2] plan", phase_num=2, ledger_file=ledger_file)
+            record_checkpoint("other", "planning", "[1/1] other", phase_num=2, ledger_file=ledger_file)
+        paused = resumable_tasks(load_ledger(ledger_file))
+        self.assertEqual([task["task_id"] for task in paused], ["muse"])
+        self.assertEqual(paused[0]["plan"], "[1/2] plan")
+
 
 class TestKnowledgeBase(unittest.TestCase):
     """Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016)."""
@@ -4816,7 +4860,116 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(caught.exception.exit_code, 2)
             self.assertFalse((self.kit / "projects" / "checked").exists())
 
-    def test_first_commit_holds_the_license(self):
+    def test_titles_are_title_cased_and_descriptions_keep_their_case(self):
+        # ADR-218 supersedes ADR-216's sentence casing: the capital rule is for titles.
+        from scripts.project_registry import title_case
+        self.assertEqual(title_case("muse-ai-music-creator"), "Muse AI Music Creator")
+        self.assertEqual(title_case("the-vault_of-doom"), "The Vault of Doom")
+        self.assertEqual(title_case("aikit-api-cli"), "AIKit API CLI")
+        self.assertEqual(title_case("my_app"), "My App")
+        folder = create_project("cased", workspace=self.kit, git_start=lambda project_root: None,
+                                description="a small tool. it keeps notes in sync")
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertTrue(readme.startswith("# Cased\n"), "the README title is title-cased")
+        self.assertIn("\na small tool. it keeps notes in sync\n", readme,
+                      "the description keeps its own case")
+        self.assertEqual(extract_readme_description(folder),
+                         "a small tool. it keeps notes in sync")
+
+    def test_game_and_science_projects_seed_their_own_license(self):
+        # ADR-218: one catalog, three personal licenses; the README names the chosen one.
+        game = create_project("space-quest", workspace=self.kit, git_start=lambda root: None,
+                              description="A small space game about repairing a broken moon.",
+                              license_kind="game")
+        game_license = (game / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(game_license.startswith("# Aegean Game License 1.0 (AGL-1.0)"))
+        game_readme = (game / "README.md").read_text(encoding="utf-8")
+        self.assertTrue(game_readme.startswith("# Space Quest\n"))
+        self.assertIn("Aegean Game License 1.0 (AGL-1.0)", game_readme)
+        self.assertIn("DRM-free", game_readme)
+        self.assertEqual(suggest_license(game)["kind"], "game",
+                         "an empty game project never recommends a downgrade to software")
+        science = create_project("moon-study", workspace=self.kit, git_start=lambda root: None,
+                                 description="A notebook study of lunar dust transport.",
+                                 license_kind="science")
+        self.assertTrue((science / "LICENSE").read_text(encoding="utf-8").startswith(
+            "# Aegean Science License 1.0 (ASL-1.0)"))
+        self.assertIn("non-commercial research", (science / "README.md").read_text(encoding="utf-8"))
+        with self.assertRaises(ProjectError):
+            create_project("bad-kind", workspace=self.kit, git_start=lambda root: None,
+                           license_kind="cartoon")
+
+    def test_license_suggestion_reads_markers_and_switches_the_pinned_text(self):
+        folder = create_project("field-notes", workspace=self.kit, git_start=lambda root: None,
+                                description="A small tool for field observations and notes.")
+        self.assertEqual(license_state(folder).kind, "software")
+        (folder / "data").mkdir()
+        self.assertEqual(suggest_license(folder)["confidence"], "low",
+                         "one weak marker is not enough to recommend a domain license")
+        (folder / "paper.tex").write_text("\\documentclass{article}\n", encoding="utf-8")
+        (folder / "CITATION.cff").write_text("cff-version: 1.2.0\n", encoding="utf-8")
+        suggestion = suggest_license(folder)
+        self.assertEqual((suggestion["kind"], suggestion["confidence"]), ("science", "high"))
+        self.assertTrue(suggestion["change_needed"])
+        code, out, err = self.run_cli("license", "field-notes", "--suggest", "--json")
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)["result"]
+        self.assertEqual((payload["suggested"], payload["recommended_key"]),
+                         ("science", "ASL-1.0"))
+        self.assertEqual(payload["reasons"], suggestion["reasons"])
+        code, _, err = self.run_cli("license", "field-notes", "--json")
+        self.assertEqual(code, 2)
+        self.assertIn("only meaningful with --suggest", err)
+        state = apply_license_kind(folder, "field-notes", "science")
+        self.assertEqual(state.kind, "science")
+        self.assertTrue((folder / "LICENSE").read_text(encoding="utf-8").startswith(
+            "# Aegean Science License 1.0 (ASL-1.0)"))
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Aegean Science License 1.0 (ASL-1.0)", readme)
+        self.assertNotIn("Aegean License 1.0 (AL-1.0); see", readme)
+        self.assertEqual(license_state(folder).kind, "science")
+        restrict_project(folder, "field-notes", today="2026-10-26", runner=self.git_head())
+        with self.assertRaises(ProjectError):
+            apply_license_kind(folder, "field-notes", "game")
+
+    def test_topics_command_records_what_the_ai_chooses(self):
+        folder = create_project("tagger", workspace=self.kit, git_start=lambda root: None,
+                                description="A small tool that needs a deliberate topic list.")
+        code, out, err = self.run_cli("topics", "tagger", "--set", "cli", "notes")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(load_config(folder)["topics"], ["aikit", "cli", "notes"])
+        code, out, err = self.run_cli("topics", "tagger", "--add", "Research")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(load_config(folder)["topics"], ["aikit", "cli", "notes", "research"])
+        code, out, err = self.run_cli("topics", "tagger", "--remove", "cli")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(load_config(folder)["topics"], ["aikit", "notes", "research"])
+        code, out, err = self.run_cli("topics", "tagger", "--suggest", "--json")
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)["result"]
+        self.assertEqual(payload["project"], "tagger")
+        self.assertIn("aikit", payload["topics"])
+        self.assertEqual(payload["domain"], "software")
+        code, _, err = self.run_cli("topics", "tagger", "--set", "cli", "--add", "extra")
+        self.assertEqual(code, 2)
+        self.assertIn("--set replaces", err)
+        code, _, err = self.run_cli("topics", "tagger", "--suggest", "--set", "cli")
+        self.assertEqual(code, 2)
+        self.assertIn("read-only", err)
+
+    def test_publish_license_auto_applies_and_stops_before_upload(self):
+        folder = create_project("game-jam", workspace=self.kit, git_start=lambda root: None,
+                                description="A tiny game prototype made for a weekend jam.")
+        (folder / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+        with mock.patch("scripts.aikit_cli.publish_project") as publish:
+            code, out, err = self.run_cli("publish", "game-jam", "--license", "auto")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("[LICENSE]", out)
+        publish.assert_not_called()
+        self.assertTrue((folder / "LICENSE").read_text(encoding="utf-8").startswith(
+            "# Aegean Game License 1.0 (AGL-1.0)"))
+
+
         from scripts.project_registry import _git_start
         folder = self.make_folder(("LICENSE", "AEGEAN-E PERSONAL USE LICENSE\n"))
         ok = mock.Mock(returncode=0, stderr="")
@@ -4841,7 +4994,8 @@ class TestProjectRegistry(unittest.TestCase):
     def test_pinned_license_texts_match_their_recorded_digests(self):
         # ADR-214: licenses/ copies aegean-licensing; a hand edit here breaks the pin.
         pin = json.loads((ROOT_DIR / "licenses" / "PIN.json").read_text(encoding="utf-8"))
-        self.assertEqual(sorted(pin["sha256"]), ["ACL-1.0.md", "AL-1.0.md", "RESTRICTED-NOTICE.md"])
+        self.assertEqual(sorted(pin["sha256"]), ["ACL-1.0.md", "AGL-1.0.md", "AL-1.0.md",
+                                                 "ASL-1.0.md", "RESTRICTED-NOTICE.md"])
         for name, digest in pin["sha256"].items():
             text = (ROOT_DIR / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n")
             with self.subTest(name=name):
@@ -4850,6 +5004,26 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual((ROOT_DIR / "LICENSE").read_text(encoding="utf-8"),
                          (ROOT_DIR / "licenses" / "AL-1.0.md").read_text(encoding="utf-8"),
                          "AIKit's LICENSE is the pinned AL-1.0 text verbatim")
+
+    def test_every_personal_license_has_a_patent_grant_notice_and_catalog_entry(self):
+        # ADR-218: a domain license without a patent grant or a catalog entry is an unfinished license.
+        from scripts.project_registry import LICENSE_CHOICES
+        catalog = (ROOT_DIR / "licenses" / "CATALOG.md").read_text(encoding="utf-8")
+        self.assertIn("not open source", catalog)
+        self.assertIn("ASSET_POLICY.md", catalog)
+        for kind, choice in LICENSE_CHOICES.items():
+            text = (ROOT_DIR / "licenses" / choice["source"]).read_text(encoding="utf-8")
+            with self.subTest(kind=kind):
+                self.assertIn("Required Notice:", text)
+                self.assertIn("Patent License", text)
+                self.assertIn("End of the Aegean", text)
+                self.assertIn(choice["key"], catalog)
+        game = (ROOT_DIR / "licenses" / "AGL-1.0.md").read_text(encoding="utf-8")
+        self.assertIn("mandatory client", game)
+        self.assertIn("DRM-free", game)
+        science = (ROOT_DIR / "licenses" / "ASL-1.0.md").read_text(encoding="utf-8")
+        self.assertIn("data mining", science)
+        self.assertIn("Project Data", science)
 
     def make_licensed_project(self, name="vault"):
         # What `new` leaves that the license tier reads, without `new`'s cost (PRINCIPLE-014 R4).
@@ -4915,6 +5089,19 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue(readme.startswith("# Tool\n\nWhat it does.\n"))
         self.assertIn("## 📜 License", readme)
 
+    def test_restrict_rewrites_a_license_entry_that_is_last_in_the_tree(self):
+        # A tree's last entry uses `└──`; matching only `├──` left that LICENSE line describing AL-1.0.
+        folder = self.make_licensed_project()
+        readme_path = folder / "README.md"
+        text = readme_path.read_text(encoding="utf-8")
+        triggered = text.replace("├── LICENSE", "└── LICENSE")
+        self.assertNotEqual(triggered, text, "the generated tree lists LICENSE")
+        readme_path.write_text(triggered, encoding="utf-8")
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        readme = readme_path.read_text(encoding="utf-8")
+        self.assertIn("└── LICENSE                   <- All Rights Reserved (restricted tier)", readme)
+        self.assertNotIn("Aegean License 1.0", readme)
+
     def test_cli_license_reports_then_restricts_with_a_checklist(self):
         self.make_licensed_project()
         code, out, _ = self.run_cli("license", "vault")
@@ -4927,6 +5114,30 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("0123456789ab", out)
         self.assertIn("private", out, "the checklist names the steps AIKit cannot take")
         self.assertIn("stay under", out, "earlier releases keep their license")
+
+    def test_published_topics_add_the_stack_and_the_license(self):
+        # ADR-215: recorded topics, then one per detected stack, then source-available for a
+        # personal-tier project; a restricted project announces no license topic.
+        from scripts.aikit_cli import publish_topics, test_command_topic
+        self.assertEqual(test_command_topic("python -m unittest"), "python")
+        self.assertEqual(test_command_topic("npm test"), "javascript")
+        self.assertEqual(test_command_topic("cargo test"), "rust")
+        self.assertEqual(test_command_topic("go test ./..."), "golang")
+        self.assertEqual(test_command_topic("./gradlew test"), "java")
+        self.assertIsNone(test_command_topic("make test"), "a custom runner names no language")
+        folder = self.make_licensed_project()
+        (folder / "pyproject.toml").write_text("[project]\nname = 'vault'\n", encoding="utf-8")
+        (folder / "package.json").write_text("{}", encoding="utf-8")
+        project = find_project("vault", self.kit)
+        self.assertEqual(publish_topics(project.path, ["aikit", "licensing", "python"]),
+                         ["aikit", "licensing", "python", "javascript", "source-available"])
+        (folder / "tsconfig.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(publish_topics(project.path, ["aikit"]),
+                         ["aikit", "python", "javascript", "typescript", "source-available"],
+                         "a tsconfig marks the Node stack as TypeScript too")
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        self.assertEqual(publish_topics(project.path, ["aikit"]),
+                         ["aikit", "python", "javascript", "typescript"])
 
     def test_status_reports_the_license_tier(self):
         # ADR-214: a restricted project must be recognisable from `status`, not only `license`.
@@ -4942,6 +5153,14 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual((payload["tier"], payload["since"]), ("restricted", "2026-10-25"))
         self.assertEqual(license_summary(project),
                          "restricted since 2026-10-25, cutoff 0123456789ab (All Rights Reserved)")
+        # A hand-edited project.json can name the tier without its cutoff; status says so.
+        config_path = folder / ".aikit" / "project.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["license"] = {"tier": "restricted"}
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        self.assertEqual(license_summary(project),
+                         "restricted since an unrecorded date, cutoff an unrecorded commit "
+                         "(All Rights Reserved)")
 
     def test_a_restricted_project_pushes_only_to_a_private_remote(self):
         # ADR-214: `check --push` and `publish` to an existing origin must not hand a restricted
@@ -5201,16 +5420,23 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertNotIn("ghost", out)
 
     def test_new_with_publish_flag_calls_publish_project(self):
-        with mock.patch("scripts.aikit_cli.create_project", return_value=self.kit / "projects" / "publishedapp"), \
+        created = self.kit / "projects" / "publishedapp"
+        (created / ".aikit").mkdir(parents=True)
+        (created / ".aikit" / "project.json").write_text(
+            json.dumps({"schema": 1, "name": "publishedapp"}), encoding="utf-8")
+        shutil.copyfile(ROOT_DIR / "LICENSE", created / "LICENSE")
+        with mock.patch("scripts.aikit_cli.create_project", return_value=created), \
              mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "[OK] Published to GitHub")) as mock_pub:
-            code, out, _ = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest",
+            code, out, err = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest",
                                         "--description", "A tool that publishes itself on creation.",
                                         "--topic", "Demo")
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 0, out + err)
             mock_pub.assert_called_once()
             # ADR-200: the new project's description and topics reach the repository it creates.
             self.assertNotIn("description", mock_pub.call_args.kwargs, "publish reads the README (ADR-202)")
-            self.assertEqual(mock_pub.call_args.kwargs["topics"], ["aikit", "demo"])
+            self.assertEqual(mock_pub.call_args.kwargs["topics"],
+                             ["aikit", "demo", "python", "source-available"],
+                             "the first push carries the test runner's language and the license topic")
             self.assertIn("Publishing 'publishedapp' to GitHub:", out)
             self.assertIn("[OK] Published to GitHub", out)
 
@@ -5522,6 +5748,8 @@ class TestProjectRegistry(unittest.TestCase):
     def test_ui_required_blocks_strict_and_publish_without_a_contract(self):
         folder = self.make_folder()
         attach_project(folder, "uiapp", workspace=self.kit)
+        (folder / "README.md").write_text(
+            "# uiapp\n\nA UI app that proves its delivery gates before it publishes.\n", encoding="utf-8")
         config_path = folder / ".aikit" / "project.json"
         config = json.loads(config_path.read_text(encoding="utf-8"))
         config["ui_required"] = True
@@ -5564,8 +5792,10 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(code, 0)
         publish.assert_called_once()
         # ADR-200: a project.json without topics, from before ADR-199, still gets `aikit`.
-        self.assertEqual(publish.call_args.kwargs["topics"], ["aikit"])
-        self.assertNotIn("description", publish.call_args.kwargs)
+        self.assertEqual(publish.call_args.kwargs["topics"], ["aikit"],
+                         "an attached project's own license is not reinterpreted")
+        self.assertEqual(publish.call_args.kwargs["description"],
+                         "A UI app that proves its delivery gates before it publishes.")
 
         failed = self._gate_result()
         failed.passed = False
@@ -5600,6 +5830,34 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("ui_required is true but the UI contract is unusable", err)
         publish.assert_not_called()
+
+    def test_publish_requires_a_usable_sentence_cased_readme_description(self):
+        # ADR-216: a repository is never created undescribed, and the README's first paragraph is
+        # the one description, sentence-cased before GitHub sees it.
+        folder = self.make_folder()
+        attach_project(folder, "nodescapp", workspace=self.kit)
+        with mock.patch("scripts.aikit_cli.publish_project") as publish:
+            code, _, err = self.run_cli("publish", "nodescapp")
+        self.assertEqual(code, 2)
+        self.assertIn("no usable README description", err)
+        self.assertIn("Why:", err)
+        self.assertIn("Fix:", err)
+        publish.assert_not_called()
+
+        (folder / "README.md").write_text(
+            "# nodescapp\n\nit turns raw notes into a searchable library\n", encoding="utf-8")
+        clean = {"modified_files": [], "untracked_files": [], "ledger_error": None,
+                 "git_missing": False, "conflicted_files": []}
+        with mock.patch("scripts.aikit_cli.run_gates", return_value=[self._gate_result()]), \
+             mock.patch("scripts.aikit_cli.resolve_gates",
+                        return_value=[Gate("test", "dummy", "detected")]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.publish_project",
+                        return_value=(0, "[OK] Published")) as publish:
+            code, _, err = self.run_cli("publish", "nodescapp")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(publish.call_args.kwargs["description"],
+                         "it turns raw notes into a searchable library")
 
     def test_ui_verify_json_emits_stable_codes(self):
         folder = self.make_folder()
@@ -7089,12 +7347,13 @@ class TestProjectPublish(unittest.TestCase):
             (root / "README.md").write_text("# my-app\n\n> **A lightweight CLI app.**\n\n## Quick Start\n", encoding="utf-8")
             self.assertEqual(extract_readme_description(root), "A lightweight CLI app.")
             # Cut at GitHub's 350-character limit; it was 200, which cut a description that
-            # `new --description` accepts (ADR-202).
+            # `new --description` accepts (ADR-202). Case is the author's (ADR-218).
             (root / "README.md").write_text(f"# my-app\n\n{'x' * 300}\n", encoding="utf-8")
             self.assertEqual(extract_readme_description(root), "x" * 300)
             (root / "README.md").write_text(f"# my-app\n\n{'x' * 400}\n", encoding="utf-8")
             extracted = extract_readme_description(root)
             self.assertEqual(len(extracted), 350)
+            self.assertTrue(extracted.startswith("x"))
             self.assertTrue(extracted.endswith("..."))
 
             # Badges and images are stripped, finding the real description
@@ -7210,6 +7469,17 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(code, 0, report)
         self.assertIn(["gh", "repo", "edit", "--description", description], self.calls)
         self.assertIn(["gh", "repo", "edit", "--add-topic", "aikit"], self.calls)
+
+    def test_publish_can_create_the_repository_inside_an_organization(self):
+        # ADR-215: `publish --owner ORG` creates ORG/name; without it gh uses the logged-in user.
+        root = Path(tempfile.mkdtemp(prefix="test_publish_owner_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "README.md").write_text("# app\n\nA tool that does one thing well for its users.\n",
+                                        encoding="utf-8")
+        code, report = publish_project(root, "app", runner=self.runner(), topics=["aikit"],
+                                       owner="AegeanWorks")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(self.made("create")[0][3], "AegeanWorks/app")
 
     def test_a_topic_failure_after_upload_is_a_note(self):
         base = self.runner()

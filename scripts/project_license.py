@@ -19,12 +19,15 @@ from typing import Callable, Optional
 from scripts.disruption_recovery import atomic_write_json, file_lock
 from scripts.project_publish import run_command
 from scripts.project_registry import (
+    LICENSE_CHOICES,
     LICENSE_HEADING,
     LICENSES_DIR,
-    PERSONAL_LICENSE_HEADER,
     ProjectError,
     _run_git,
     config_path,
+    detect_license_kind,
+    license_choice,
+    license_kind_from_header,
     load_config,
 )
 from scripts.update_knowledge_base import write_generated_file
@@ -36,6 +39,11 @@ TIER_UNRECORDED = "unrecorded"
 RESTRICTED_NOTICE_PATH = LICENSES_DIR / "RESTRICTED-NOTICE.md"
 RESTRICTED_LICENSE_HEADER = "AEGEAN RESTRICTED SOFTWARE NOTICE"
 RESTRICTED_TREE_LINE = "├── LICENSE                   <- All Rights Reserved (restricted tier)"
+# A tree entry is `├──` or `└──` depending on its position, so keep whichever prefix the README
+# already uses instead of matching one spelling only (a LICENSE listed last uses `└──`).
+_TREE_ENTRY = r"^([├└]──) {} .*$"
+_TREE_LICENSE = re.compile(_TREE_ENTRY.format("LICENSE"))
+_TREE_COMMERCIAL = re.compile(_TREE_ENTRY.format(r"COMMERCIAL\.md"))
 RESTRICTED_LICENSE_SECTION = (
     f"{LICENSE_HEADING}\n\n"
     "All Rights Reserved. This project is in the Aegean restricted tier and is not licensed for "
@@ -49,6 +57,7 @@ class LicenseState:
     tier: str
     since: Optional[str] = None
     since_commit: Optional[str] = None
+    kind: Optional[str] = None
 
 
 def render_restricted_license(name: str, since: str, since_commit: str) -> str:
@@ -71,15 +80,98 @@ def render_restricted_license(name: str, since: str, since_commit: str) -> str:
 
 
 def license_state(project_root: Path) -> LicenseState:
-    """The project's tier: the recorded restriction, else what its LICENSE file says."""
+    """The project's tier and personal-license kind: the restriction, else what LICENSE says."""
     recorded = load_config(project_root).get("license")
     if isinstance(recorded, dict) and recorded.get("tier") == TIER_RESTRICTED:
-        return LicenseState(TIER_RESTRICTED, recorded.get("since"), recorded.get("since_commit"))
+        return LicenseState(TIER_RESTRICTED, recorded.get("since"), recorded.get("since_commit"),
+                            recorded.get("kind"))
     try:
         first = (project_root / "LICENSE").read_text(encoding="utf-8").lstrip().split("\n", 1)[0]
     except OSError:
         return LicenseState(TIER_UNRECORDED)
-    return LicenseState(TIER_PERSONAL if first.strip() == PERSONAL_LICENSE_HEADER else TIER_UNRECORDED)
+    kind = license_kind_from_header(first)
+    return LicenseState(TIER_PERSONAL if kind else TIER_UNRECORDED, kind=kind)
+
+
+def suggest_license(project_root: Path) -> dict:
+    """What an AI should choose for this project, with the current file and the evidence."""
+    current = license_state(project_root)
+    detected = detect_license_kind(project_root)
+    # An empty project (or one whose markers are not in this checkout) still has its LICENSE as
+    # evidence: never recommend downgrading a deliberate game or science choice to software.
+    if detected["kind"] == "software" and current.kind in ("game", "science"):
+        detected = {"kind": current.kind, "confidence": "medium",
+                    "reasons": [f"current license: {LICENSE_CHOICES[current.kind]['key']}"],
+                    "alternatives": ["software"]}
+    detected["current"] = current.kind
+    detected["recommended_key"] = LICENSE_CHOICES[detected["kind"]]["key"]
+    detected["current_key"] = (LICENSE_CHOICES[current.kind]["key"]
+                               if current.kind in LICENSE_CHOICES else None)
+    detected["change_needed"] = current.tier == TIER_PERSONAL and current.kind != detected["kind"]
+    detected["adoptable"] = (current.tier == TIER_UNRECORDED
+                             and detected["kind"] != "software")
+    return detected
+
+
+def _licensed_readme(text: str, newline: str, kind: str) -> str:
+    """`text` with its tree's LICENSE line and License section naming the chosen personal license."""
+    choice = license_choice(kind)
+
+    def licensed(line: str) -> str:
+        match = _TREE_LICENSE.match(line)
+        return f"{match.group(1)}{choice['tree'][3:]}" if match else line
+
+    lines = [licensed(line) for line in text.split(newline)]
+    text = "\n".join(lines)
+    section = re.search(rf"^{re.escape(LICENSE_HEADING)}\n.*?(?=^## |\Z)", text, re.M | re.S)
+    if section is None:
+        text = text.rstrip("\n") + "\n\n" + choice["section"]
+    else:
+        tail = "\n" if section.end() < len(text) else ""
+        text = text[:section.start()] + choice["section"] + tail + text[section.end():]
+    return text.replace("\n", newline)
+
+
+def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState:
+    """
+    Switch a personal-tier project to software (AL-1.0), game (AGL-1.0) or science (ASL-1.0)
+    (ADR-218). The canonical text, the README tree line and its License section change together;
+    the change is left uncommitted for review. A restricted project is refused: its later
+    versions are All Rights Reserved and cannot be relicensed by this command.
+    """
+    choice = license_choice(kind)
+    current = license_state(project_root)
+    if current.tier == TIER_RESTRICTED:
+        raise ProjectError(
+            f"'{name}' is in the restricted tier.",
+            "a restricted project's later versions are All Rights Reserved; a personal license "
+            "would revoke that decision without a new agreement.",
+            "use a separate written agreement for a restricted project, or start a new project.",
+            exit_code=2,
+        )
+    source = LICENSES_DIR / choice["source"]
+    try:
+        text = source.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ProjectError(
+            f"Cannot read {source}: {exc}",
+            f"the {choice['name']} text is pinned in AIKit's licenses/.",
+            f"restore {source.name} from git, then retry.",
+        ) from exc
+    if not text.lstrip().startswith(choice["header"]):
+        raise ProjectError(
+            f"{source} is not the {choice['name']} text.",
+            f"the {choice['name']} text is pinned in AIKit's licenses/.",
+            f"restore {source.name} from git, then retry.",
+        )
+    write_generated_file(project_root / "LICENSE", text)
+    readme = project_root / "README.md"
+    if readme.is_file():
+        with open(readme, encoding="utf-8", newline="") as handle:
+            original = handle.read()
+        newline = "\r\n" if "\r\n" in original else "\n"
+        write_generated_file(readme, _licensed_readme(original, newline, kind), newline="")
+    return LicenseState(TIER_PERSONAL, kind=kind)
 
 
 def public_remote_refusal(project_root: Path, name: str,
@@ -110,8 +202,11 @@ def public_remote_refusal(project_root: Path, name: str,
 
 def _restricted_readme(text: str, newline: str) -> str:
     """`text` with its tree's licensing lines and its License section switched to the restricted tier."""
-    lines = [RESTRICTED_TREE_LINE if line.startswith("├── LICENSE ") else line
-             for line in text.split(newline) if not line.startswith("├── COMMERCIAL.md")]
+    def licensed(line: str) -> str:
+        match = _TREE_LICENSE.match(line)
+        return (f"{match.group(1)}{RESTRICTED_TREE_LINE[3:]}" if match else line)
+
+    lines = [licensed(line) for line in text.split(newline) if not _TREE_COMMERCIAL.match(line)]
     text = "\n".join(lines)
     section = re.search(rf"^{re.escape(LICENSE_HEADING)}\n.*?(?=^## |\Z)", text, re.M | re.S)
     if section is None:
@@ -142,7 +237,7 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
             "is clear which versions keep that license.",
             "commit the project's current state, then run the command again.",
         )
-    state = LicenseState(TIER_RESTRICTED, today or time.strftime("%Y-%m-%d"), commit)
+    state = LicenseState(TIER_RESTRICTED, today or time.strftime("%Y-%m-%d"), commit, current.kind)
     write_generated_file(project_root / "LICENSE",
                          render_restricted_license(name, state.since, state.since_commit))
     (project_root / "COMMERCIAL.md").unlink(missing_ok=True)
@@ -156,6 +251,6 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
     with file_lock(path):
         config = load_config(project_root)
         config["license"] = {"tier": state.tier, "since": state.since,
-                             "since_commit": state.since_commit}
+                             "since_commit": state.since_commit, "kind": state.kind}
         atomic_write_json(path, config)
     return state

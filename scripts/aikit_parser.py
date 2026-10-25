@@ -69,6 +69,10 @@ def build_parser() -> argparse.ArgumentParser:
                           "GitHub description")
     new.add_argument("--topic", action="append", metavar="TOPIC",
                      help="a GitHub topic, repeatable; 'aikit' is always added")
+    new.add_argument("--kind", dest="license_kind", choices=("auto", "software", "game", "science"),
+                     default="auto",
+                     help="personal license: software (AL-1.0), game (AGL-1.0), science (ASL-1.0); "
+                          "auto starts with software and publish can switch later")
     new.add_argument("--publish", action="store_true",
                      help="upload the starter files to GitHub at creation (needs --description); later "
                           "uploads go through `publish` and its gates")
@@ -133,11 +137,36 @@ def build_parser() -> argparse.ArgumentParser:
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
     publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
+    publish.add_argument("--owner", metavar="ORG", help="create the repository under this organization "
+                         "or user instead of your own account (ADR-215)")
+    publish.add_argument("--license", choices=("keep", "auto", "software", "game", "science"),
+                         default="auto",
+                         help="with auto (default), apply the high-confidence license the project's "
+                              "markers select and stop so it can be committed; keep leaves LICENSE unchanged")
 
-    license_cmd = project_command("license", "show the project's license tier, or restrict it (ADR-214)")
-    license_cmd.add_argument("--restrict", action="store_true",
-                             help="make later versions All Rights Reserved from the current commit; "
-                                  "earlier releases keep their license")
+    license_cmd = project_command("license", "show or choose the project's license (ADR-214, ADR-218)")
+    license_mode = license_cmd.add_mutually_exclusive_group()
+    license_mode.add_argument("--restrict", action="store_true",
+                              help="make later versions All Rights Reserved from the current commit; "
+                                   "earlier releases keep their license")
+    license_mode.add_argument("--suggest", action="store_true",
+                              help="show the license the project's markers recommend")
+    license_mode.add_argument("--set", dest="set_kind", choices=("software", "game", "science"),
+                              help="switch the personal license: software (AL-1.0), game (AGL-1.0), "
+                                   "science (ASL-1.0)")
+    license_cmd.add_argument("--json", action="store_true",
+                             help="with --suggest, print one machine-readable suggestion object")
+
+    topics_cmd = project_command("topics", "show or set the GitHub topics a project records")
+    topics_cmd.add_argument("--suggest", action="store_true",
+                            help="show the recorded and detected topics, with the domain evidence")
+    topics_cmd.add_argument("--set", dest="set_topics", nargs="*", metavar="TOPIC",
+                            help="replace the recorded topics; 'aikit' is always added")
+    topics_cmd.add_argument("--add", action="append", metavar="TOPIC", help="add a recorded topic")
+    topics_cmd.add_argument("--remove", action="append", metavar="TOPIC",
+                            help="remove a recorded topic")
+    topics_cmd.add_argument("--json", action="store_true",
+                            help="print one machine-readable object instead of text")
 
     ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
     ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)

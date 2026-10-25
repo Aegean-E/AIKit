@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `21`
 - **Total Classes**: `94`
-- **Total Top-Level Functions**: `336`
-- **Total Class Methods**: `650`
-- **Total Source Lines**: `18603`
+- **Total Top-Level Functions**: `350`
+- **Total Class Methods**: `662`
+- **Total Source Lines**: `19556`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `718` lines (`35300` bytes)
+**Size**: `976` lines (`48444` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -34,6 +34,9 @@
 - `def run_gates(path, gates)`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree and ledger are delivery-ready, decided once for every surface.*
+- `def test_command_topic(test_command)` - *The language topic a known test runner implies, or None for a custom command.*
+- `def is_typescript_project(project_root)` - *Whether a Node project writes TypeScript: a tsconfig, or `typescript` in package.json.*
+- `def publish_topics(project_root, recorded)` - *The topics `publish` sets: the recorded ones, then one per detected stack, then*
 - `def license_summary(project)` - *One line on the project's license tier for `status` (ADR-214).*
 - `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
 - `def error_envelope(error)` - *The stable `--json` failure shape shared by every project command (ADR-167, ADR-172).*
@@ -52,6 +55,7 @@
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_publish(args)`
 - `def cmd_license(args)`
+- `def cmd_topics(args)` - *Show or set the GitHub topics AIKit records and derives for a project (ADR-218).*
 - `def cmd_delegate(args)`
 - `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
@@ -61,7 +65,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `190` lines (`12086` bytes)
+**Size**: `219` lines (`14373` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -186,7 +190,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `1941` lines (`91653` bytes)
+**Size**: `2075` lines (`98219` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -224,7 +228,10 @@
 - `def _claim(active, agent, take_over)` - *Check that `agent` may write the in-progress task `active`; returns the previous owner when the*
 - `def record_checkpoint(task_id, phase, description, files_affected, status, ledger_file, phase_num, why, benefits, risks, mitigation, handoff, agent, take_over)` - *Record an atomic micro-checkpoint in the task ledger (PRINCIPLE-002, PRINCIPLE-006, PRINCIPLE-007).*
 - `def mark_task_completed(task_id, ledger_file, agent, take_over)` - *Mark the active task completed (locked, PRINCIPLE-013 R3). Returns False, changing nothing,*
-- `def reset_active_task(reason, ledger_file, agent, take_over)` - *Abandon or reset the active in-progress task in the ledger (locked, PRINCIPLE-006). Another*
+- `def reset_active_task(reason, ledger_file, agent, take_over)` - *Abandon or reset the active in-progress or suspended task in the ledger (locked,*
+- `def suspend_active_task(reason, ledger_file, agent, take_over)` - *Pause the active task without abandoning it (ADR-219). The plan, phase and handoff stay in the*
+- `def resumable_tasks(ledger)` - *Tasks whose latest checkpoint is `suspended` or `superseded`, newest first (ADR-219).*
+- `def resume_task(task_id, ledger_file, agent)` - *Reactivate a suspended or superseded task at its recorded phase (ADR-219). A checkpoint is*
 - `def _reraise(error)`
 - `def sweep_files(workspace_dir, pattern)` - *Files under `workspace_dir` matching `pattern`, pruning `SWEEP_PRUNED_DIRS` while walking, so a*
 - `def clean_dangling_temp_files(workspace_dir, min_age_seconds)` - *Purge orphaned *.tmp_* files left by interrupted writes (PRINCIPLE-006 R6, PRINCIPLE-013).*
@@ -298,14 +305,17 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `161` lines (`7870` bytes)
+**Size**: `256` lines (`12582` bytes)
 
 **Classes:**
 - `class LicenseState`
 
 **Functions:**
 - `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
-- `def license_state(project_root)` - *The project's tier: the recorded restriction, else what its LICENSE file says.*
+- `def license_state(project_root)` - *The project's tier and personal-license kind: the restriction, else what LICENSE says.*
+- `def suggest_license(project_root)` - *What an AI should choose for this project, with the current file and the evidence.*
+- `def _licensed_readme(text, newline, kind)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
+- `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.0), game (AGL-1.0) or science (ASL-1.0)*
 - `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
 - `def _restricted_readme(text, newline)` - *`text` with its tree's licensing lines and its License section switched to the restricted tier.*
 - `def restrict_project(project_root, name, today, runner)` - *Move a project to the restricted tier at its current commit; returns the recorded state. A*
@@ -315,13 +325,13 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `300` lines (`14435` bytes)
+**Size**: `306` lines (`14890` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
 - `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
-- `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for the GitHub description.*
+- `def extract_readme_description(project_root)` - *Extract a single-line, sentence-cased summary from the project's README.md for GitHub.*
 - `def hide_url_credentials(text)` - *`text` with the user-info of every URL in it replaced by `***` (PRINCIPLE-019 R4).*
 - `def config_value(raw)` - *A git config value as git reads it: quotes removed, and a `;` or `#` outside quotes ends it.*
 - `def get_project_repo_url(project_root, runner)` - *The URL of the project's 'origin' remote with any credential in it hidden, or None.*
@@ -329,14 +339,14 @@
 - `def scan_refusal(project_root, rev_range, run)` - *Scan every line the commits in `rev_range` add, the exact content a push uploads; returns the*
 - `def auto_push_project(project_root, name, runner)` - *Push unpushed commits of a published project to its remote origin (PRINCIPLE-018: adaptive push).*
 - `def apply_topics(project_root, topics, run)` - *Set `topics` on the project's repository; returns the report lines. The repository already*
-- `def publish_project(project_root, name, public, runner, topics)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
+- `def publish_project(project_root, name, public, runner, topics, owner, description)` - *Upload the project's commits to its own GitHub repository; returns (exit code, report).*
 
 ---
 
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `823` lines (`37146` bytes)
+**Size**: `984` lines (`45579` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -345,13 +355,17 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command, description, licensed, integrated)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
-- `def seed_readme(project_root, name, test_command, description, licensed, integrated)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
+- `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
+- `def detect_license_kind(project_root)` - *The domain an AI should pick a license for, from the project's own markers. Strong markers*
+- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def license_kind_from_header(first_line)` - *The personal license kind a LICENSE first line names, or None for an unknown license.*
+- `def seed_readme(project_root, name, test_command, description, licensed, integrated, license_kind)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
 - `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
-- `def seed_license(project_root)` - *Copy AIKit's own Aegean License 1.0 into a new project (ADR-199, ADR-214).*
+- `def seed_license(project_root, kind)` - *Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218).*
 - `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
 - `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
@@ -373,7 +387,7 @@
 - `def _registered_names(workspace, attached)` - *Name to folder for every project; `attached` spares a second read of `attached.json`.*
 - `def _run_git(project_root, *args)`
 - `def _git_start(project_root)` - *`git init`, then commit the project's memory and instructions so a new project starts clean.*
-- `def create_project(name, test_command, workspace, git_start, description, topics)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
+- `def create_project(name, test_command, workspace, git_start, description, topics, license_kind)` - *Create `projects/<name>/` as a new git repository whose first commit holds the project's*
 - `def attach_project(folder, name, test_command, workspace)` - *Register an existing folder as a project; returns (name, folder, memory_created). The folder's*
 - `def _build_project(name, path, attached)`
 - `def list_projects(workspace)` - *Every registered project, sorted by name; a vanished attached folder is reported, not dropped.*
@@ -667,7 +681,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7556` lines (`429922` bytes)
+**Size**: `7826` lines (`447120` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1011,6 +1025,9 @@
   - Method `.test_ledger_stores_repository_relative_paths()`
   - Method `.test_lock_retries_through_windows_delete_pending_permission_error()`
   - Method `.test_switching_from_an_in_progress_task_records_it_as_superseded()`
+  - Method `.test_suspend_and_resume_task_keeps_the_plan_and_phase()`
+  - Method `.test_a_suspended_task_can_be_reset_without_resuming_it()`
+  - Method `.test_a_superseded_task_is_offered_for_resumption()`
 - `class TestKnowledgeBase` - *Verifies AST parsing and documentation completeness (PRINCIPLE-003, PRINCIPLE-016).*
   - Method `.test_core_docs_exist()`
   - Method `.test_update_and_validate_runs()`
@@ -1068,16 +1085,23 @@
   - Method `.test_fix_seeds_an_attached_projects_readme_with_the_integrated_badge()`
   - Method `.test_new_project_without_description_keeps_a_fill_marker()`
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
-  - Method `.test_first_commit_holds_the_license()`
+  - Method `.test_titles_are_title_cased_and_descriptions_keep_their_case()`
+  - Method `.test_game_and_science_projects_seed_their_own_license()`
+  - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
+  - Method `.test_topics_command_records_what_the_ai_chooses()`
+  - Method `.test_publish_license_auto_applies_and_stops_before_upload()`
   - Method `.test_first_commit_holds_commercial_md()`
   - Method `.test_pinned_license_texts_match_their_recorded_digests()`
+  - Method `.test_every_personal_license_has_a_patent_grant_notice_and_catalog_entry()`
   - Method `.make_licensed_project(name)`
   - Method `.git_head(commit, returncode)`
   - Method `.test_restrict_swaps_the_license_records_the_cutoff_and_drops_commercial_terms()`
   - Method `.test_restrict_twice_keeps_the_first_cutoff()`
   - Method `.test_restrict_without_a_commit_changes_nothing()`
   - Method `.test_restrict_appends_a_license_section_to_a_readme_without_one()`
+  - Method `.test_restrict_rewrites_a_license_entry_that_is_last_in_the_tree()`
   - Method `.test_cli_license_reports_then_restricts_with_a_checklist()`
+  - Method `.test_published_topics_add_the_stack_and_the_license()`
   - Method `.test_status_reports_the_license_tier()`
   - Method `.test_a_restricted_project_pushes_only_to_a_private_remote()`
   - Method `.test_check_push_refuses_a_restricted_project_with_a_public_origin()`
@@ -1115,6 +1139,7 @@
   - Method `.test_open_ui_task_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
   - Method `.test_ui_required_blocks_strict_and_publish_without_a_contract()`
+  - Method `.test_publish_requires_a_usable_sentence_cased_readme_description()`
   - Method `.test_ui_verify_json_emits_stable_codes()`
   - Method `.test_ui_init_writes_the_react_vite_pilot_contract()`
   - Method `.test_ui_evidence_and_json_error_paths()`
@@ -1263,6 +1288,7 @@
   - Method `.test_repo_url_never_shows_credentials()`
   - Method `.test_push_reports_never_show_credentials()`
   - Method `.test_publish_sets_the_readme_description_and_recorded_topics()`
+  - Method `.test_publish_can_create_the_repository_inside_an_organization()`
   - Method `.test_a_topic_failure_after_upload_is_a_note()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`

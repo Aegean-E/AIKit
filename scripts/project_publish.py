@@ -61,7 +61,7 @@ def _clean_markdown_line(raw: str) -> str:
 
 
 def extract_readme_description(project_root: Path) -> str:
-    """Extract a single-line summary from the project's README.md for the GitHub description."""
+    """Extract a single-line, sentence-cased summary from the project's README.md for GitHub."""
     readme = project_root / "README.md"
     if not readme.is_file():
         return ""
@@ -243,12 +243,17 @@ def apply_topics(project_root: Path, topics: Optional[List[str]], run: Runner) -
 
 def publish_project(project_root: Path, name: str, public: bool = False,
                     runner: Optional[Runner] = None,
-                    topics: Optional[List[str]] = None) -> Tuple[int, str]:
+                    topics: Optional[List[str]] = None,
+                    owner: Optional[str] = None,
+                    description: Optional[str] = None) -> Tuple[int, str]:
     """
     Upload the project's commits to its own GitHub repository; returns (exit code, report).
     The description is the README's first paragraph, the one copy kept (ADR-202); `topics` are
     those `new` recorded in project.json (ADR-199, ADR-200).
     `runner` defaults to real git, gh and Python calls (PRINCIPLE-009 R4: tests inject a fake).
+    `owner` creates the repository under that organization or user instead of the logged-in
+    account (ADR-215). `description`, when given, is the already-read README paragraph, so the
+    caller can refuse an unusable one before any gate runs.
     """
     run = runner or run_command
     if run(["git", "rev-parse", "--verify", "HEAD"], project_root)[0] != 0:
@@ -265,7 +270,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
     if run(["git", "status", "--porcelain"], project_root)[1].strip():
         notes.append("Note: uncommitted changes stay local; commit them and publish again to upload them.")
 
-    desc = extract_readme_description(project_root)
+    desc = description if description is not None else extract_readme_description(project_root)
 
     if has_origin:
         code, output = run(["git", "push", "-u", "origin", "HEAD"], project_root)
@@ -285,7 +290,8 @@ def publish_project(project_root: Path, name: str, public: bool = False,
                          "install GitHub CLI, run `gh auth login`, then publish again.")
     visibility = "--public" if public else "--private"
     desc_args = ["--description", desc] if desc else []
-    code, output = run(["gh", "repo", "create", name, visibility, "--source", str(project_root),
+    repository = f"{owner}/{name}" if owner else name
+    code, output = run(["gh", "repo", "create", repository, visibility, "--source", str(project_root),
                         "--remote", "origin", "--push", *desc_args], project_root)
     if code != 0:
         return 1, _triad(f"creating the GitHub repository '{name}' failed.\n{output[-800:]}",
