@@ -42,6 +42,7 @@ from scripts.project_registry import (
     latest_decision,
     list_projects,
     load_config,
+    migrate_aikit_links,
     normalize_topics,
     project_guidelines,
     reconcile_readme_tree,
@@ -174,7 +175,9 @@ def cmd_attach(args: argparse.Namespace) -> int:
     print("     Note: check, fix and publish run this project's own commands under your account, "
           "unsandboxed; attach only repositories you trust.")
     # An integrated project says so and links to AIKit; the edit is the user's to commit (ADR-202).
-    if add_aikit_badge(folder):
+    if migrate_aikit_links(folder):
+        print("     Updated the README's pre-move AIKit link (uncommitted; review and commit it).")
+    elif add_aikit_badge(folder):
         print("     Added the AIKit Integrated badge under the README title (uncommitted; review and "
               "commit it).")
     elif not (folder / "README.md").is_file():
@@ -447,6 +450,8 @@ def cmd_fix(args: argparse.Namespace) -> int:
     fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
     if seed_readme(project.path, project.name, project.test_command, integrated=project.attached):
         fixes.append("seeded README.md from the project template (complete it by hand)")
+    if migrate_aikit_links(project.path):
+        fixes.append("updated the README's pre-move AIKit link")
     fixes += reconcile_readme_tree(project.path)
     fixes += [f"removed stale buffer {rel}" for rel in clean_dangling_temp_files(project.path)]
     if find_python_files(project.path):

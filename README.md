@@ -128,7 +128,7 @@ Open this folder in any AI host and describe what to build. Each project gets it
 
 ```bash
 python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AGPL-3.0 LICENSE, AIKit badge
-python aikit.py attach ../existing  # register a folder elsewhere; adds .aikit/, .gitignore lines, AIKit Integrated badge
+python aikit.py attach ../existing  # register a folder elsewhere; adds .aikit/, .gitignore lines, AIKit badge (migrates a pre-move link)
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked, --json for CI
 python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets; --push to push (exit 1 if it cannot)
@@ -141,7 +141,7 @@ python aikit.py ui verify my-app --json  # stable finding codes for CI
 python aikit.py ui allow my-app "Btn*" --reason "<why>"  # record intended inventory removals
 python aikit.py ui finish my-app --reviewed  # close after review; evidence in .aikit/ui_history.json
 python aikit.py ui abort my-app        # restore only the surface; keep unrelated work
-python aikit.py fix my-app          # restore memory/README, refresh map, then check
+python aikit.py fix my-app          # restore memory/README, migrate the AIKit link, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo + its description/topics, scanned first
 ```

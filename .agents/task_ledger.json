@@ -1,58 +1,23 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "commercial-licensing-rollout",
+    "task_id": "legacy-aikit-url-migration",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792920460.467841,
-    "owner": "unidentified",
+    "updated_at": 1792939683.397236,
+    "owner": "kilo:main",
     "started_by": "unidentified",
-    "continuations": [],
-    "completed_at": 1792920464.4698136
+    "continuations": [
+      {
+        "agent": "kilo:main",
+        "from": "unidentified",
+        "at": 1792939683.397236
+      }
+    ],
+    "completed_at": 1792939689.6652672
   },
   "checkpoints": [
-    {
-      "task_id": "publish-and-readonly",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[2/2] done: OpenCode explorer and architect deny every shell command, confirmed by opencode debug agents; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792859449.4098134,
-      "timestamp_str": "2026-10-24 19:30:49",
-      "handoff": {
-        "next": "user decides on the external review's open items"
-      }
-    },
-    {
-      "task_id": "publish-and-readonly",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'publish-and-readonly' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792859450.9130144,
-      "timestamp_str": "2026-10-24 19:30:50"
-    },
-    {
-      "task_id": "trust-boundary",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] README and attach state that check, fix and publish run a project's own commands under the user's account, unsandboxed (ADR-207)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792860011.6628008,
-      "timestamp_str": "2026-10-24 19:40:11",
-      "impact_assessment": {
-        "why": "External review: running an attached repository's gates executes its code as the user, and nothing said so.",
-        "benefits": "Users attach only repositories they trust, knowing the gates are no isolation.",
-        "risks": "contract: attach prints one more line; dependency: none; concurrency: another agent may commit, HEAD checked before commit; state: none.",
-        "mitigation": "Failing-first test of the attach note; README gate; Phase 4 and verify_commit."
-      },
-      "handoff": {
-        "next": "test in tests/test_kit.py, note in scripts/aikit_cli.py cmd_attach, README sentence"
-      }
-    },
     {
       "task_id": "trust-boundary",
       "phase": "delivery",
@@ -279,6 +244,50 @@
       "timestamp": 1792920464.4698148,
       "timestamp_str": "2026-10-25 12:27:44",
       "agent": "unidentified"
+    },
+    {
+      "task_id": "legacy-aikit-url-migration",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Finish the pre-move AIKit URL migration: factor migrate_aikit_links, keep attach/ add_aikit_badge honest, cover both URLs and fix.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792939294.9939187,
+      "timestamp_str": "2026-10-25 17:41:34",
+      "agent": "unidentified",
+      "impact_assessment": {
+        "why": "Every legacy README would keep a stale link, and attach's success message claims a badge was added when only a URL was rewritten.",
+        "benefits": "One link migration path for attach and fix; no stale or duplicated badges; honest CLI output.",
+        "risks": "contract: add_aikit_badge returns bool and attach asserts its message; dependency: none; concurrency: atomic writer unchanged; state: README bytes only.",
+        "mitigation": "Keep the bool contract, add a helper, cover both-URL and idempotency cases with tests, keep line endings."
+      }
+    },
+    {
+      "task_id": "legacy-aikit-url-migration",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/3]-[3/3] done: migrate_aikit_links() is the one migration path (line endings kept, idempotent); add_aikit_badge migrates before the current-URL check so a mixed README loses the stale link and never gains a second badge; cmd_attach reports migration separately from badge insertion; cmd_fix migrates every project it refreshes. README documents both. ADR-213 updated. Tests: 556 passed; budgets 7.93ms/267.32ms; sync, map, secrets, reachability and dogfood 5/5 clean; checklists: passed.",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792939683.397236,
+      "timestamp_str": "2026-10-25 17:48:03",
+      "agent": "kilo:main",
+      "handoff": {
+        "state": "complete and green",
+        "next": "commit and push",
+        "open": "27 portfolio READMEs still carry the pre-move link until each is refreshed"
+      },
+      "continued_from": "unidentified"
+    },
+    {
+      "task_id": "legacy-aikit-url-migration",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'legacy-aikit-url-migration' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792939689.6652687,
+      "timestamp_str": "2026-10-25 17:48:09",
+      "agent": "kilo:main"
     }
   ]
 }

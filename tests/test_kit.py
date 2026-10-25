@@ -151,7 +151,9 @@ from scripts.project_registry import (
     AIKIT_BADGE,
     AIKIT_INTEGRATED_BADGE,
     AIKIT_URL,
+    LEGACY_AIKIT_URL,
     add_aikit_badge,
+    migrate_aikit_links,
     render_project_readme,
     validate_name,
 )
@@ -4727,6 +4729,52 @@ class TestProjectRegistry(unittest.TestCase):
         built = self.make_folder(("README.md", f"# x\n\n{AIKIT_BADGE}\n"))
         self.assertFalse(add_aikit_badge(built), "a Built with AIKit badge already links to AIKit")
         self.assertFalse(add_aikit_badge(self.make_folder()), "no README is created")
+
+    def test_a_legacy_badge_link_is_rewritten_instead_of_duplicated(self):
+        legacy = AIKIT_INTEGRATED_BADGE.replace(AIKIT_URL, LEGACY_AIKIT_URL)
+        folder = self.make_folder(
+            ("README.md", f"# x\n\n{legacy}\n\ntext that mentions {LEGACY_AIKIT_URL}.\n"))
+        self.assertTrue(add_aikit_badge(folder), "a legacy link is migrated, not left alone")
+        text = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn(AIKIT_INTEGRATED_BADGE, text)
+        self.assertNotIn(LEGACY_AIKIT_URL, text, "no stale AIKit URL survives the migration")
+        self.assertEqual(text.count("[![AIKit Integrated]"), 1,
+                         "the migration must not append a second badge")
+        self.assertFalse(add_aikit_badge(folder), "a migrated README is left alone afterwards")
+
+    def test_a_readme_holding_both_urls_loses_the_legacy_one(self):
+        # ADR-213: checking the current URL first left a mixed pair when both appeared, so the
+        # stale link survived every refresh.
+        folder = self.make_folder((
+            "README.md",
+            f"# x\n\n{AIKIT_INTEGRATED_BADGE}\n\nForked from {LEGACY_AIKIT_URL}.\n",
+        ))
+        self.assertTrue(add_aikit_badge(folder))
+        text = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn(LEGACY_AIKIT_URL, text)
+        self.assertEqual(text.count("[![AIKit Integrated]"), 1, "no second badge is appended")
+
+    def test_migrate_aikit_links_keeps_line_endings_and_is_idempotent(self):
+        folder = self.make_folder()
+        (folder / "README.md").write_bytes(f"# x\r\n\r\nSee {LEGACY_AIKIT_URL}.\r\n".encode())
+        self.assertTrue(migrate_aikit_links(folder))
+        self.assertEqual((folder / "README.md").read_bytes(),
+                         f"# x\r\n\r\nSee {AIKIT_URL}.\r\n".encode())
+        self.assertFalse(migrate_aikit_links(folder), "a migrated README is left alone")
+        self.assertFalse(migrate_aikit_links(self.make_folder()), "no README is created")
+
+    def test_fix_migrates_a_pre_move_badge_link(self):
+        folder = self.make_folder(
+            ("README.md", f"# app\n\n{AIKIT_INTEGRATED_BADGE.replace(AIKIT_URL, LEGACY_AIKIT_URL)}\n"))
+        attach_project(folder, "myapp", workspace=self.kit)
+        with mock.patch("scripts.aikit_cli.cmd_check", return_value=0):
+            code, out, _ = self.run_cli("fix", "myapp")
+        self.assertEqual(code, 0)
+        self.assertIn("updated the README's pre-move AIKit link", out)
+        text = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertIn(AIKIT_INTEGRATED_BADGE, text)
+        self.assertNotIn(LEGACY_AIKIT_URL, text)
+        self.assertEqual(text.count("[![AIKit Integrated]"), 1, "fix never appends a second badge")
 
     def test_fix_seeds_an_attached_projects_readme_with_the_integrated_badge(self):
         self.assertIn(AIKIT_INTEGRATED_BADGE, render_project_readme("app", integrated=True))

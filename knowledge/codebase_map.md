@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `20`
 - **Total Classes**: `93`
-- **Total Top-Level Functions**: `328`
-- **Total Class Methods**: `633`
-- **Total Source Lines**: `18131`
+- **Total Top-Level Functions**: `329`
+- **Total Class Methods**: `637`
+- **Total Source Lines**: `18209`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `652` lines (`31859` bytes)
+**Size**: `657` lines (`32129` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -317,7 +317,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `788` lines (`35418` bytes)
+**Size**: `813` lines (`36613` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -328,6 +328,7 @@
 **Functions:**
 - `def render_project_readme(name, test_command, description, agpl, integrated)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def seed_readme(project_root, name, test_command, description, agpl, integrated)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
 - `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
@@ -647,7 +648,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7354` lines (`417138` bytes)
+**Size**: `7402` lines (`419956` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1040,6 +1041,10 @@
   - Method `.test_attach_adds_the_integrated_badge_under_the_title()`
   - Method `.test_a_folder_is_attached_under_one_name_only()`
   - Method `.test_the_badge_is_added_once_and_only_to_a_readme()`
+  - Method `.test_a_legacy_badge_link_is_rewritten_instead_of_duplicated()`
+  - Method `.test_a_readme_holding_both_urls_loses_the_legacy_one()`
+  - Method `.test_migrate_aikit_links_keeps_line_endings_and_is_idempotent()`
+  - Method `.test_fix_migrates_a_pre_move_badge_link()`
   - Method `.test_fix_seeds_an_attached_projects_readme_with_the_integrated_badge()`
   - Method `.test_new_project_without_description_keeps_a_fill_marker()`
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`

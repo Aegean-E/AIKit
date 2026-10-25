@@ -35,6 +35,8 @@ ATTACHED_FILENAME = "attached.json"
 CONFIG_FILENAME = "project.json"
 # Every project AIKit seeds names where it came from; the badge links to AIKit's page (ADR-199).
 AIKIT_URL = "https://github.com/AegeanWorks/AIKit"
+# READMEs seeded before the repository moved still link here; a badge refresh migrates them (ADR-213).
+LEGACY_AIKIT_URL = "https://github.com/Aegean-E/AIKit"
 AIKIT_BADGE = f"[![Built with AIKit](https://img.shields.io/badge/built%20with-AIKit-6f42c1)]({AIKIT_URL})"
 # A project AIKit is attached to, or copied into, was not built by it: it is integrated (ADR-202).
 AIKIT_INTEGRATED_BADGE = f"[![AIKit Integrated](https://img.shields.io/badge/AIKit-integrated-6f42c1)]({AIKIT_URL})"
@@ -134,12 +136,35 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
     return True
 
 
+def migrate_aikit_links(project_root: Path) -> bool:
+    """
+    Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run
+    for every project AIKit refreshes, built or attached, so a repository that moved with the
+    organization does not keep a dead link (ADR-213). The file's own line endings are kept.
+    """
+    readme = project_root / "README.md"
+    try:
+        with open(readme, encoding="utf-8", newline="") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return False
+    if LEGACY_AIKIT_URL not in text:
+        return False
+    write_generated_file(readme, text.replace(LEGACY_AIKIT_URL, AIKIT_URL), newline="")
+    return True
+
+
 def add_aikit_badge(project_root: Path) -> bool:
     """
     Put the AIKit Integrated badge under the README's title, or at its top without one; returns
-    whether it did. A README that already links to AIKit, or no README, is left alone. The file's
-    own line endings are kept, so the only change in its diff is the badge (ADR-202).
+    whether it changed the README. A README that already links to AIKit, or no README, is left
+    alone. A README that still links to the pre-move repository has that URL rewritten first (even
+    when the current URL also appears), so a refresh never adds a second badge beside a stale one
+    and never leaves a mixed pair behind. The file's own line endings are kept, so the only change
+    in its diff is the badge (ADR-202, ADR-213).
     """
+    if migrate_aikit_links(project_root):
+        return True
     readme = project_root / "README.md"
     try:
         with open(readme, encoding="utf-8", newline="") as handle:
