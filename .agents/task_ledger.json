@@ -1,116 +1,17 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "legacy-aikit-url-migration",
+    "task_id": "aegean-licensing-tiers",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792939683.397236,
-    "owner": "kilo:main",
-    "started_by": "unidentified",
-    "continuations": [
-      {
-        "agent": "kilo:main",
-        "from": "unidentified",
-        "at": 1792939683.397236
-      }
-    ],
-    "completed_at": 1792939689.6652672
+    "updated_at": 1792955034.8407664,
+    "owner": "claude-code:c74fca42",
+    "started_by": "claude-code:c74fca42",
+    "continuations": [],
+    "completed_at": 1792956100.9213157
   },
   "checkpoints": [
-    {
-      "task_id": "trust-boundary",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[1/1] done: attach and README state the unsandboxed trust boundary; GitHub description and topics corrected; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792860106.6116881,
-      "timestamp_str": "2026-10-24 19:41:46",
-      "handoff": {
-        "next": "analyze and verify every commit since 14726ab, push, then step 4 review log"
-      }
-    },
-    {
-      "task_id": "trust-boundary",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'trust-boundary' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792860107.43491,
-      "timestamp_str": "2026-10-24 19:41:47"
-    },
-    {
-      "task_id": "review-index",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] knowledge/INDEX.md lists the review, correction and incident ADRs; their text stays in the register (ADR-208)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792860311.9825494,
-      "timestamp_str": "2026-10-24 19:45:11",
-      "impact_assessment": {
-        "why": "External review: the 483 KB register mixes decisions with review records and is hard to navigate; moving committed ADR text out would break PRINCIPLE-016 R3.",
-        "benefits": "Review records are found from the index without reading the register; no ADR text changes.",
-        "risks": "contract: none, documentation only; dependency: none; concurrency: HEAD checked before commit; state: none.",
-        "mitigation": "INDEX link check, register audit, Phase 4 and verify_commit."
-      },
-      "handoff": {
-        "next": "Phase 4, commit, verify, push"
-      }
-    },
-    {
-      "task_id": "review-index",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[1/1] done: INDEX.md lists review, correction and incident ADRs; Phase 4 green",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792860369.9471016,
-      "timestamp_str": "2026-10-24 19:46:09",
-      "handoff": {
-        "next": "talk with the user about the tamper-evident ledger (item 6)"
-      }
-    },
-    {
-      "task_id": "review-index",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-index' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792860370.821492,
-      "timestamp_str": "2026-10-24 19:46:10"
-    },
-    {
-      "task_id": "agent-ownership",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/1] every ledger write names its agent; another agent's task needs --take-over; --resume shows owner and who continued; PRINCIPLE-006 R7 (ADR-209). Recorded late: the edits preceded this checkpoint",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792861532.0417097,
-      "timestamp_str": "2026-10-24 20:05:32",
-      "agent": "claude-code:850bdc47",
-      "impact_assessment": {
-        "why": "User request after another agent finished, committed and pushed this session's task: each agent records who did what and who continued.",
-        "benefits": "No agent silently continues, completes or replaces another's task; resume shows the chain.",
-        "risks": "contract: ledger writes by a different identified agent exit 1 without --take-over; dependency: none; concurrency: the check runs inside the existing ledger lock; state: entries gain agent/continued_from, the active task gains owner, no version bump.",
-        "mitigation": "Failing-first tests; Phase 4 green; verify_commit before push."
-      },
-      "handoff": {
-        "next": "commit, verify alone, report to the user"
-      }
-    },
-    {
-      "task_id": "agent-ownership",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'agent-ownership' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792861544.469368,
-      "timestamp_str": "2026-10-24 20:05:44",
-      "agent": "claude-code:850bdc47"
-    },
     {
       "task_id": "ownership-review-fixes",
       "phase": "planning",
@@ -288,6 +189,108 @@
       "timestamp": 1792939689.6652687,
       "timestamp_str": "2026-10-25 17:48:09",
       "agent": "kilo:main"
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] Plan: (1) Aegean-E Personal Use License replaces AGPL in LICENSE, COMMERCIAL.md rewritten; (2) scripts/project_license.py: tiers personal/restricted, restrict_project swaps LICENSE to All Rights Reserved with cutoff commit, edits README, drops COMMERCIAL.md, records tier in project.json; publish --public refused when restricted; (3) aikit license <name> [--restrict] + failing-first tests; (4) README, SKILL, ADR-213, codebase map",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792951552.725145,
+      "timestamp_str": "2026-10-25 21:05:52",
+      "agent": "claude-code:c74fca42",
+      "impact_assessment": {
+        "why": "User wants free personal use and paid commercial use by default, and a way to withdraw valuable projects from free distribution; AGPL allows free commercial use",
+        "benefits": "Commercial use needs a paid AECL; restricted tier records a forward-only cutoff and blocks public publish",
+        "risks": "contract: new and seed_license header check change from AGPL to APUL, README license section text changes; dependency: none, stdlib only; concurrency: project.json write under file_lock; state: project.json gains optional license key, schema stays 1",
+        "mitigation": "Failing-first tests for seed, restrict, publish refusal; restrict leaves changes uncommitted for review; past releases explicitly stay under their license"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] APUL-1.0 LICENSE, COMMERCIAL.md tiers, project_license.py, aikit license --restrict, publish --public refusal, README/SKILL/ADR-214 done; Phase 4 green (505 unit 7.96ms, 57 integ, kb, sync, secrets, reachability, dogfood 5/5); checklists: passed; awaiting user authorization to commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792952103.995994,
+      "timestamp_str": "2026-10-25 21:15:03",
+      "agent": "claude-code:c74fca42",
+      "handoff": {
+        "state": "uncommitted",
+        "next": "commit on user approval as feat(licensing): personal-use default and restricted tier"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] Re-done on canonical texts: licenses/ pinned copies of AL-1.0, ACL-1.0, RESTRICTED-NOTICE + PIN.json digest test, LICENSE = AL-1.0, COMMERCIAL.md ACL tiers + Exhibit A, restrict fills canonical notice, ADR-214 rewritten; Phase 4 green (506 unit, 57 integ, kb, sync, secrets, reachability, dogfood 5/5); checklists: passed; awaiting user authorization to commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792953191.2172017,
+      "timestamp_str": "2026-10-25 21:33:11",
+      "agent": "claude-code:c74fca42",
+      "handoff": {
+        "state": "uncommitted",
+        "next": "commit on user approval"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] Re-pinned AL-1.0/ACL-1.0 after aegean-licensing ADR-013; COMMERCIAL.md summary: termination ends deployed rights, certificate-level AI/hosting exceptions, public register; Phase 4 green (506 unit, 57 integ, kb, sync, secrets, reachability, dogfood 5/5); checklists: passed; awaiting user authorization to commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792954017.8944883,
+      "timestamp_str": "2026-10-25 21:46:57",
+      "agent": "claude-code:c74fca42",
+      "handoff": {
+        "state": "uncommitted",
+        "next": "commit on user approval"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] Re-pinned licenses after aegean-licensing ADR-014; COMMERCIAL.md Exhibit A: Competing Product, allowances, customers; Phase 4 green (506 unit, 57 integ, kb, sync, secrets, reachability, dogfood 5/5); checklists: passed; awaiting user authorization to commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792954674.0549088,
+      "timestamp_str": "2026-10-25 21:57:54",
+      "agent": "claude-code:c74fca42",
+      "handoff": {
+        "state": "uncommitted",
+        "next": "commit on user approval"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] Re-pinned licenses after aegean-licensing ADR-015 (company evaluation); COMMERCIAL.md trial + KVKK lines; seeded project audits clean; Phase 4 green (506 unit, 57 integ, kb, sync, secrets, reachability, dogfood 5/5); checklists: passed; awaiting user authorization to commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792955034.8407664,
+      "timestamp_str": "2026-10-25 22:03:54",
+      "agent": "claude-code:c74fca42",
+      "handoff": {
+        "state": "uncommitted",
+        "next": "commit on user approval"
+      }
+    },
+    {
+      "task_id": "aegean-licensing-tiers",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'aegean-licensing-tiers' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792956100.9213173,
+      "timestamp_str": "2026-10-25 22:21:40",
+      "agent": "claude-code:c74fca42"
     }
   ]
 }

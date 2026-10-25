@@ -27,12 +27,13 @@ This operational runbook provides the unified command matrix for driving AIKit a
 The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
-python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]...  # projects/<name>/: own repo, .aikit/ memory, AGPL-3.0 LICENSE, Built with AIKit badge; topic aikit always added; --publish (needs --description) uploads only these starter files, only when the user asks
+python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]...  # projects/<name>/: own repo, .aikit/ memory, Aegean License 1.0 (AL-1.0) LICENSE + COMMERCIAL.md (ACL-1.0), Built with AIKit badge; topic aikit always added; --publish (needs --description) uploads only these starter files, only when the user asks
 python aikit.py attach <path>        # an existing folder: adds .aikit/ memory and an AIKit Integrated badge under its README title (uncommitted)
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit; never pushes, add --push only when push delivery is authorized (PRINCIPLE-018 R4)
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
 python aikit.py publish <name> [--public]   # its own GitHub repo with project.json's description and topics; only when the user asks
+python aikit.py license <name> [--restrict]  # its license tier; --restrict, only when the user asks, makes later versions All Rights Reserved from HEAD (earlier releases keep their license), drops COMMERCIAL.md, blocks publish --public, and allows check --push or publish only to a repository gh reports private (ADR-214)
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger; --agent <host>:<session> names you
 python aikit.py resume <name>        # disruption resume on the project

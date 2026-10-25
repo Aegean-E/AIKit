@@ -1,75 +1,70 @@
-# Aegean-E Commercial License (AECL) & Dual-Licensing Terms 💼
+# Aegean Commercial License (ACL-1.0) & Licensing Tiers 💼
 
-> **Dual-Licensing Framework**: Software and assets published by **Aegean-E** are dual-licensed. Users may choose between the open-source **GNU Affero General Public License v3.0 (AGPL-3.0)** and the commercial **Aegean-E Commercial License (AECL)**.
+> **Licensing model**: AegeanWorks software is free for personal use under the **Aegean License 1.0 (AL-1.0)** in [LICENSE](LICENSE). Every commercial or organizational use needs the paid **Aegean Commercial License 1.0 (ACL-1.0)**. A project may later move to the **Restricted** tier, after which it is no longer distributed. AegeanWorks makes no new release under AGPL-3.0.
 
 ---
 
-## 1. Dual-Licensing Overview
+## 1. The Three Tiers
 
-Aegean-E offers two distinct licensing pathways:
+| Tier | Who it is for | Terms | Cost |
+|---|---|---|---|
+| **Personal** (default) | One individual, for their own private, non-commercial use: learning, coursework, hobby projects, personal research | [AL-1.0](LICENSE) | **Free** |
+| **Commercial** | Companies and every other organization (non-profits included), freelancers, employees at work, and anything sold, hosted or offered to others | ACL-1.0, evidenced by a License Grant Certificate | **Paid, quoted**; one free 28-day non-production evaluation per company group first (AL-1.0 Section 4.3) |
+| **Restricted** | Projects withdrawn from distribution | All Rights Reserved notice from a recorded cutoff commit | Not offered publicly |
 
-### Pathway A — Open-Source Community Track (GNU AGPL-3.0)
-* **License:** [GNU AGPL-3.0](LICENSE).
-* **Permissions:** You are legally free to inspect, run, modify, and use the software for any purpose—**including commercial purposes**—free of charge.
-* **Conditions:** You must comply with all AGPL-3.0 conditions. Specifically, if you convey the software or if you modify a network-interactive version and make it available over a computer network (Section 13), you must provide the complete corresponding source code of the covered work under AGPL-3.0.
+### What the personal license does not allow
+Use for or on behalf of any organization, paid or client work, hosting it as a service, redistributing it, training or benchmarking AI models on it, and bypassing its license checks. The binding text is Sections 4 and 5 of [LICENSE](LICENSE).
 
-### Pathway B — Proprietary Commercial Track (Aegean-E Commercial License)
-* **License:** Aegean-E Commercial License (AECL).
-* **Purpose:** For individuals, startups, and enterprises that wish to integrate, embed, modify, or host the software in **closed-source proprietary applications, commercial SaaS products, or confidential client deliverables without AGPL-3.0 copyleft or source-disclosure obligations**.
-* **Effect:** Provides an explicit, binding contractual waiver from all AGPL-3.0 copyleft requirements, allowing your proprietary code and modifications to remain completely confidential.
+### Restricted projects and earlier releases
+When a project moves to the Restricted tier, its LICENSE becomes an All Rights Reserved notice naming the cutoff commit, and later versions are no longer published. **Versions released before the cutoff stay under the license they were released with**, including GNU AGPL-3.0 for versions once released under it: a license already granted cannot be taken back.
 
 ---
 
 ## 2. Scope: Code vs. Assets
 
-* **Source Code:** Covered by AGPL-3.0 by default, with the AECL providing a commercial, closed-source alternative.
-* **Creative & Domain Assets:** In repositories containing specialized creative or domain material (such as 2D/3D art, audio, textures, proprietary game lore, or clinical datasets), commercial exploitation, standalone resale, or retail distribution of those assets requires an AECL.
-* **Trademarks & Branding:** Copyright licenses grant no trademark rights. The names "Aegean-E" and associated project titles, logos, and emblems remain the exclusive property of Aegean-E.
+* **Source Code:** Free for personal use under AL-1.0; commercial use needs ACL-1.0.
+* **Creative & Domain Assets:** Art, audio, textures, game lore and domain datasets are not covered by ACL-1.0 and need a separate written asset grant for any commercial use.
+* **Trademarks & Branding:** No license grants trademark rights. The names "AegeanWorks", "Aegean-E" and associated project titles, logos and emblems remain the exclusive property of AegeanWorks.
 
 ---
 
-## 3. Commercial Licensing Tiers
+## 3. Commercial License Options
 
-| Dimension | Community Track | Commercial Project License | Portfolio Commercial License | OEM / Retail Distribution |
-|---|---|---|---|---|
-| **Governing Terms** | GNU AGPL-3.0 | AECL (Single Project) | AECL (All Portfolio Projects) | Custom AECL (OEM) |
-| **Cost** | **Free ($0)** | **Negotiated Quote** | **Negotiated Quote** | **Custom Royalty / Fee** |
-| **Source Disclosure** | Mandatory under AGPL-3.0 | **Completely Waived** | **Completely Waived** | **Completely Waived** |
-| **Proprietary SaaS / Hosting** | Must disclose backend source | **Allowed (Closed Source)** | **Allowed (Closed Source)** | **Allowed (Closed Source)** |
-| **Proprietary Client Deliverables**| Source must be shared | **Allowed (Confidential)** | **Allowed (Confidential)** | **Allowed (Confidential)** |
-| **Warranty & Indemnity** | None (AS-IS) | None (AS-IS) | None (AS-IS) | None (AS-IS) |
-| **Technical Support** | Community / Issues | None (Pure License Grant) | None (Pure License Grant) | None (Pure License Grant) |
-
----
-
-## 4. Operational Boundaries (What is NOT Included)
-
-The Aegean-E Commercial License is a **pure copyright and copyleft-waiver grant**. To keep licensing straightforward and affordable:
-
-* **No Technical Support or SLA:** The license does not include bug-fixing, consulting, code audits, or ongoing technical support obligations. Software is licensed as self-service tooling.
-* **No Warranty or Indemnification:** The software is provided **"AS IS"** without warranties of any kind. Aegean-E assumes no liability or indemnification obligations for downstream deployment.
-* **No Procurement Bureaucracy:** We do not negotiate lengthy custom corporate Master Service Agreements (MSAs), provide vendor tax withholding certifications, or offer Net-30/60 post-payment invoicing.
+| Dimension | Commercial Project License | Portfolio Commercial License | OEM / Retail Distribution |
+|---|---|---|---|
+| **Covers** | One named project | All portfolio projects in the Commercial tier | Redistribution inside your product |
+| **Cost** | Negotiated quote | Negotiated quote | Custom royalty / fee |
+| **Closed-source use, SaaS, client work** | Allowed within scope | Allowed within scope | Allowed within scope |
+| **Source disclosure** | Not required | Not required | Not required |
+| **AI model training** | Only if the certificate says so | Only if the certificate says so | Only if the certificate says so |
+| **Warranty & Indemnity** | None (AS-IS) | None (AS-IS) | None (AS-IS) |
+| **Technical Support** | None (pure license grant) | None (pure license grant) | None (pure license grant) |
 
 ---
 
-## 5. How to Obtain a Commercial License
+## 4. How to Obtain a Commercial License
 
-1. **Inquire:** Send an email to **`aegean-licensing@proton.me`** specifying:
-   * Target repository/project name.
-   * Licensee name (individual, studio, or corporate entity).
-   * Brief description of the intended commercial deployment.
-2. **Quote & Direct Payment:** Aegean-E will provide a tailored quote and direct payment arrangement (credit card / electronic transfer).
-3. **License Issuance:** Upon receipt of payment, Aegean-E issues a countersigned digital **AECL Certificate of License Grant** defining the licensee, covered repository, and effective date.
+1. **Inquire:** Email **`aegean-licensing@proton.me`** with the project name, the licensee (individual, studio or company) and a short description of the intended use. AegeanWorks processes the personal data you send as its KVKK privacy notice describes; ask the same address for it.
+2. **Quote & Payment:** AegeanWorks replies with a quote and an Order Form. Terms and payment are arranged privately; nothing is paid through GitHub or this repository.
+3. **License Issuance:** After payment is confirmed, AegeanWorks issues a signed **License Grant Certificate** naming the licensee, project(s), scope, term and effective date. The certificate incorporates the full ACL-1.0 text, which is sent with it, and is listed (without personal data) in AegeanWorks' public register of issued certificates, where anyone can check it is valid and not revoked.
+
+The use is licensed only from the certificate's effective date. Contacting AegeanWorks, or receiving no reply, is not authorization.
 
 ---
 
-## 6. Standard AECL Terms of Agreement (Exhibit A)
+## 5. Exhibit A: Standard ACL Terms (Summary)
 
-When an AECL Certificate is issued by Aegean-E to a designated Licensee, the following terms govern:
+The full Aegean Commercial License 1.0 controls; this summary does not change it.
 
-1. **Grant of License:** Aegean-E grants the Licensee a non-exclusive, worldwide, perpetual license to use, reproduce, modify, display, and distribute the covered software and its modifications in binary or source form within proprietary commercial applications, services, and products.
-2. **Copyleft Waiver:** Licensee is expressly exempt from any requirement to disclose, publish, or license its proprietary source code, modifications, or network-interactive services under the GNU AGPL-3.0 or any other copyleft license.
-3. **Perpetual Version Rights:** The license applies perpetually to all versions and updates of the covered work released by Aegean-E up to the expiration date of the Licensee's agreement term.
-4. **Reservation of Rights:** All copyrights, patents, and trademarks not expressly granted herein remain with Aegean-E. Licensee shall not redistribute the unmodified raw repository as a standalone competing code kit.
-5. **DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY:** THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL AEGEAN-E OR ITS CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-6. **Governing Terms:** This Agreement constitutes the complete understanding between Aegean-E and Licensee regarding commercial licensing of the designated work.
+1. **Grant:** non-exclusive, worldwide use, modification, hosting and distribution of the Licensed Software inside the Licensee's own products, within the certificate's scope and term.
+2. **Deployed versions:** versions deployed in production during the term may stay in production after the term expires. This does not apply after termination for breach.
+3. **Boundaries:** no standalone resale, no Competing Product, no circumvention of license checks, and no AI training or hosted resale of the software's own features unless the certificate lists that allowance; all notices kept. Customers may use the software only inside the licensee's product.
+4. **Termination:** 30 days to cure a first material breach; a later breach may end the license at once. Termination ends every right, including deployed versions, and the certificate is revoked in the public register.
+5. **AS-IS:** no warranty, indemnity or support; liability capped at the fees paid.
+6. **Law:** Republic of Türkiye; courts of Istanbul.
+
+---
+
+## 6. Contributions
+
+AegeanWorks sells commercial licenses, so it must hold the rights to all code it licenses. Contributions are accepted only under the AegeanWorks Contributor License Agreement, which lets AegeanWorks license them under any terms (AL-1.0 Section 7).

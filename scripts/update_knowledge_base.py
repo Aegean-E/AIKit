@@ -761,6 +761,9 @@ def audit_readme(
     listed = {p.rstrip("/") for p in tree}
     errors += [f"README.md tree lists '{p}', which does not exist (R5)" for p in tree if not exists(p.rstrip("/"))]
     if tree and tracked is not None:
+        # A tracked file deleted in the working copy is on its way out; the tree describes what
+        # exists, the same rule the dead-path check above applies (ADR-214).
+        tracked = [t for t in tracked if exists(t)]
         required = {t.split("/")[0] for t in tracked}
         for directory in (p.rstrip("/") for p in tree if p.endswith("/") and any(q != p and q.startswith(p) for q in tree)):
             prefix = directory + "/"

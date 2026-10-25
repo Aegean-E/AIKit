@@ -134,6 +134,11 @@ def build_parser() -> argparse.ArgumentParser:
     publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
 
+    license_cmd = project_command("license", "show the project's license tier, or restrict it (ADR-214)")
+    license_cmd.add_argument("--restrict", action="store_true",
+                             help="make later versions All Rights Reserved from the current commit; "
+                                  "earlier releases keep their license")
+
     ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
     ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)
     for action, text in (("init", "write a UI contract (React/Vite auto, or --fast/--paths)"),

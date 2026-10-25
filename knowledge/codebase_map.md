@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `20`
-- **Total Classes**: `93`
-- **Total Top-Level Functions**: `329`
-- **Total Class Methods**: `637`
-- **Total Source Lines**: `18209`
+- **Total Python Modules**: `21`
+- **Total Classes**: `94`
+- **Total Top-Level Functions**: `335`
+- **Total Class Methods**: `649`
+- **Total Source Lines**: `18573`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `657` lines (`32129` bytes)
+**Size**: `704` lines (`34629` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -50,6 +50,7 @@
 - `def cmd_check(args)`
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_publish(args)`
+- `def cmd_license(args)`
 - `def cmd_delegate(args)`
 - `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
@@ -59,7 +60,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `185` lines (`11740` bytes)
+**Size**: `190` lines (`12086` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -293,6 +294,23 @@
 
 ---
 
+### [`scripts/project_license.py`](scripts/project_license.py)
+> *Project license tiers (ADR-214).*
+
+**Size**: `160` lines (`7759` bytes)
+
+**Classes:**
+- `class LicenseState`
+
+**Functions:**
+- `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
+- `def license_state(project_root)` - *The project's tier: the recorded restriction, else what its LICENSE file says.*
+- `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
+- `def _restricted_readme(text, newline)` - *`text` with its tree's licensing lines and its License section switched to the restricted tier.*
+- `def restrict_project(project_root, name, today, runner)` - *Move a project to the restricted tier at its current commit; returns the recorded state. A*
+
+---
+
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
@@ -317,7 +335,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `813` lines (`36613` bytes)
+**Size**: `823` lines (`37146` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -326,14 +344,14 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
-- `def render_project_readme(name, test_command, description, agpl, integrated)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
-- `def seed_readme(project_root, name, test_command, description, agpl, integrated)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
+- `def render_project_readme(name, test_command, description, licensed, integrated)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def seed_readme(project_root, name, test_command, description, licensed, integrated)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
 - `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
-- `def seed_license(project_root)` - *Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199).*
-- `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212).*
+- `def seed_license(project_root)` - *Copy AIKit's own Aegean License 1.0 into a new project (ADR-199, ADR-214).*
+- `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
 - `def reconcile_readme_tree(project_root, runner)` - *Auto-reconcile top-level tracked files omitted from the README tree block (PRINCIPLE-005 R5).*
 - `def _python_test(root)`
@@ -480,7 +498,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1048` lines (`49293` bytes)
+**Size**: `1051` lines (`49518` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -648,7 +666,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7402` lines (`419956` bytes)
+**Size**: `7541` lines (`428871` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -689,6 +707,7 @@
   - Method `.test_tree_paths_and_directories()`
   - Method `.test_a_dead_tree_path_fails()`
   - Method `.test_a_missing_top_level_entry_fails()`
+  - Method `.test_a_tracked_file_deleted_in_the_working_copy_need_not_be_listed()`
   - Method `.test_an_expanded_directory_must_be_complete_and_a_collapsed_one_need_not()`
   - Method `.test_documented_commands_must_exist()`
   - Method `.test_size_labels_and_tree_are_required()`
@@ -1050,6 +1069,17 @@
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
   - Method `.test_first_commit_holds_the_license()`
   - Method `.test_first_commit_holds_commercial_md()`
+  - Method `.test_pinned_license_texts_match_their_recorded_digests()`
+  - Method `.make_licensed_project(name)`
+  - Method `.git_head(commit, returncode)`
+  - Method `.test_restrict_swaps_the_license_records_the_cutoff_and_drops_commercial_terms()`
+  - Method `.test_restrict_twice_keeps_the_first_cutoff()`
+  - Method `.test_restrict_without_a_commit_changes_nothing()`
+  - Method `.test_restrict_appends_a_license_section_to_a_readme_without_one()`
+  - Method `.test_cli_license_reports_then_restricts_with_a_checklist()`
+  - Method `.test_a_restricted_project_pushes_only_to_a_private_remote()`
+  - Method `.test_check_push_refuses_a_restricted_project_with_a_public_origin()`
+  - Method `.test_publish_public_refuses_a_restricted_project()`
   - Method `.test_cli_new_takes_a_description_and_topics()`
   - Method `.test_new_project_ignores_bytecode_and_has_a_clean_adr_template()`
   - Method `.test_git_identity_failure_is_an_error_not_a_warning()`

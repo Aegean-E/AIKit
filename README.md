@@ -50,27 +50,28 @@
 ```text
 portable_agent_kit/
 ├── README.md                     <- This Integration & Setup Guide
-├── LICENSE                       <- GNU AGPL-3.0 License
-├── COMMERCIAL.md                 <- Enterprise commercial licensing terms
+├── LICENSE                       <- Aegean License 1.0 (AL-1.0)
+├── COMMERCIAL.md                 <- Paid commercial terms (ACL-1.0)
+├── licenses/                     <- Pinned Aegean license texts + PIN.json
 ├── aikit.py                      <- Project CLI
 ├── .gitignore                    <- Credential & local-state baseline (PRINCIPLE-019 R3)
-├── AGENTS.md                     <- Generated Tier 1 capsules (auto-loaded by AGENTS.md-convention agents)
-├── GUIDELINES.md                 <- Single source of truth: every principle, rule & checklist (Tier 2)
+├── AGENTS.md                     <- Generated Tier 1 capsules (AGENTS.md-convention hosts)
+├── GUIDELINES.md                 <- Source of truth: every principle and rule (Tier 2)
 ├── GEMINI.md                     <- Google Gemini & Antigravity IDE rules
-├── CLAUDE.md                     <- Anthropic Claude Code configuration
+├── CLAUDE.md                     <- Claude Code configuration
 ├── .cursorrules                  <- Cursor IDE instructions
 ├── .windsurfrules                <- Codeium Windsurf IDE instructions
 ├── .clinerules                   <- Cline / Roo Code IDE instructions
 ├── .github/
 │   ├── copilot-instructions.md   <- GitHub Copilot instructions
 │   └── workflows/
-│       └── ci.yml                <- Continuous verification gate (both tiers + freshness)
+│       └── ci.yml                <- CI gate (both tiers + freshness)
 ├── .claude/
 │   ├── agents/                   <- Claude sub-agents (generated)
 │   ├── settings.json             <- no agent may edit a task ledger
 │   └── skills/
 │       └── aikit/
-│           └── SKILL.md          <- Claude Code operational runbook (native skill)
+│           └── SKILL.md          <- Claude Code runbook (native skill)
 ├── .agents/
 │   ├── rules/
 │   │   ├── principles.md         <- Antigravity / Agent IDE workspace rules
@@ -127,7 +128,7 @@ portable_agent_kit/
 Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it.
 
 ```bash
-python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AGPL-3.0 LICENSE, AIKit badge
+python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AL-1.0 LICENSE, AIKit badge
 python aikit.py attach ../existing  # register a folder elsewhere; adds .aikit/, .gitignore lines, AIKit badge (migrates a pre-move link)
 python aikit.py list                # every project, its stack and test command
 python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked, --json for CI
@@ -144,8 +145,9 @@ python aikit.py ui abort my-app        # restore only the surface; keep unrelate
 python aikit.py fix my-app          # restore memory/README, migrate the AIKit link, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app      # own private GitHub repo + its description/topics, scanned first
+python aikit.py license my-app --restrict  # restricted: All Rights Reserved
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line or the one directly above it. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output, an untracked root README and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command, an optional `snapshot` inventory command and optional `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost inventory entries (unless `ui allow <pattern> --reason <why>` records them, and `finish` prints each one) and hardcoded color/font literals outside the theme, except a font value that is a `var()` theme token; `finish` needs `--reviewed` (optionally `--reviewer <name>`) and appends the task's evidence to `.aikit/ui_history.json`; an open UI task blocks `status --exit-code`, `check --strict` and `check --push` (ADR-160, ADR-161, ADR-163). Set `ui_required: true` in `.aikit/project.json` to make `check --strict` and `publish` require `.aikit/ui.json`; a missing or invalid contract or open task blocks delivery. With `ui_required`, each declared surface must also match a finished task's recorded digest, and `ui verify --json` returns stable codes plus a `ui.error` envelope on operational errors. `status --json` and `resume --json` report the project, its guidelines, the disruption audit and `clean` (the same verdict `--exit-code` uses), with a `project.error` envelope on failure. `publish` also runs the project's gates and test gate before uploading. `new --publish` needs `--description` and uploads only AIKit's starter files. `check`/`fix`/`publish` run a project's own commands as you, unsandboxed: attach only trusted repositories.
+A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack and test command are detected from its files (Python, Node, Rust, Go, Java, .NET); `--test "<cmd>"` overrides. Before a project commit, `check` asks you to record `checklists: passed` or the failed IDs in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line or the one above. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output, an untracked root README and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with named surfaces, protected paths, a fast proof command, an optional `snapshot` inventory command and optional `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost inventory entries (unless `ui allow <pattern> --reason <why>` records them, and `finish` prints each one) and hardcoded color/font literals outside the theme, except a font value that is a `var()` theme token; `finish` needs `--reviewed` (optionally `--reviewer <name>`) and appends the task's evidence to `.aikit/ui_history.json`; an open UI task blocks `status --exit-code`, `check --strict` and `check --push` (ADR-160, ADR-161, ADR-163). Set `ui_required: true` in `.aikit/project.json` to make `check --strict` and `publish` require `.aikit/ui.json`; a missing or invalid contract or open task blocks delivery. With `ui_required`, each declared surface must also match a finished task's recorded digest, and `ui verify --json` returns stable codes plus a `ui.error` envelope on operational errors. `status --json`/`resume --json` report project, guidelines, audit and `clean` (the `--exit-code` verdict), with a `project.error` envelope on failure. `publish` runs the project's gates and test gate first. `new --publish` needs `--description` and uploads only AIKit's starter files. `check`/`fix`/`publish` run a project's commands unsandboxed: attach only trusted repositories.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 

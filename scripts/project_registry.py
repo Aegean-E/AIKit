@@ -46,6 +46,17 @@ DESCRIPTION_FILL = (f"<FILL: one sentence on what this project does and for whom
 # GitHub's topic rules: lowercase letters, digits and '-', at most 50 characters, 20 per repository.
 TOPIC_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
 MAX_TOPICS = 20
+# The first line of the LICENSE `new` seeds, and the README section that describes it (ADR-214).
+PERSONAL_LICENSE_HEADER = "# Aegean License 1.0 (AL-1.0)"
+COMMERCIAL_HEADER = "# Aegean Commercial License (ACL-1.0)"
+# The canonical license texts, pinned copies of aegean-licensing's licenses/ (ADR-214).
+LICENSES_DIR = ROOT_DIR / "licenses"
+LICENSE_HEADING = "## 📜 License"
+PERSONAL_LICENSE_SECTION = (
+    f"{LICENSE_HEADING}\n\n"
+    "Free for personal use under the Aegean License 1.0 (AL-1.0); see [LICENSE](LICENSE). "
+    "Any commercial use needs the Aegean Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
+)
 DECISIONS_FILENAME = "decisions.md"
 # The project's decision register; entries follow the same format as AIKit's knowledge/decisions.md.
 GUIDELINES_FILENAME = "guidelines.md"
@@ -75,23 +86,22 @@ DECISIONS_TEMPLATE = (
 )
 
 def render_project_readme(name: str, test_command: Optional[str] = None,
-                          description: Optional[str] = None, agpl: bool = False,
+                          description: Optional[str] = None, licensed: bool = False,
                           integrated: bool = False) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
     every tracked top-level entry; `.aikit/` is listed without children, so a new memory file never
     makes the tree incomplete. A badge under the title links to AIKit, and the paragraph after it
-    is the description `publish` uploads; `agpl` lists the LICENSE `new` copies (ADR-199), and
+    is the description `publish` uploads; `licensed` lists the LICENSE and COMMERCIAL.md `new`
+    copies (ADR-199, ADR-214), and
     `integrated` marks a project AIKit was attached to rather than one it built (ADR-202).
     """
     license_line = (
-        "├── LICENSE                   <- GNU AGPL-3.0\n"
+        "├── LICENSE                   <- Aegean License 1.0 (AL-1.0): free personal use\n"
         "├── COMMERCIAL.md             <- Commercial licensing terms\n"
-    ) if agpl else ""
-    license_section = ("\n## 📜 License\n\n"
-                       "GNU Affero General Public License v3.0; see [LICENSE](LICENSE). "
-                       "For commercial licensing and proprietary rights, see [COMMERCIAL.md](COMMERCIAL.md).\n") if agpl else ""
+    ) if licensed else ""
+    license_section = f"\n{PERSONAL_LICENSE_SECTION}" if licensed else ""
     return (
         f"# {name}\n\n"
         f"{AIKIT_INTEGRATED_BADGE if integrated else AIKIT_BADGE}\n\n"
@@ -122,17 +132,17 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
 
 
 def seed_readme(project_root: Path, name: str, test_command: Optional[str] = None,
-                description: Optional[str] = None, agpl: bool = False,
+                description: Optional[str] = None, licensed: bool = False,
                 integrated: bool = False) -> bool:
     """
     Write the template README when the project has none; returns whether it did. `new` and `fix`
     call it, `attach` never does: attaching leaves an existing folder's files alone. Only `new`
-    passes `agpl`, since only it writes the LICENSE; `fix` passes `integrated` for an attached one.
+    passes `licensed`, since only it writes the LICENSE; `fix` passes `integrated` for an attached one.
     """
     readme = project_root / "README.md"
     if readme.exists():
         return False
-    write_generated_file(readme, render_project_readme(name, test_command, description, agpl, integrated))
+    write_generated_file(readme, render_project_readme(name, test_command, description, licensed, integrated))
     return True
 
 
@@ -229,40 +239,40 @@ def normalize_topics(topics: Optional[List[str]]) -> List[str]:
 
 
 def seed_license(project_root: Path) -> None:
-    """Copy AIKit's own AGPL-3.0 LICENSE into a new project (ADR-199)."""
+    """Copy AIKit's own Aegean License 1.0 into a new project (ADR-199, ADR-214)."""
     source = ROOT_DIR / "LICENSE"
     try:
         text = source.read_text(encoding="utf-8")
     except OSError as exc:
         raise ProjectError(
             f"Cannot read {source}: {exc}",
-            "a new project starts with the GNU AGPL-3.0 license text AIKit ships.",
+            "a new project starts with the Aegean License 1.0 text AIKit ships.",
             "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
         ) from exc
-    if not text.lstrip().startswith("GNU AFFERO GENERAL PUBLIC LICENSE"):
+    if not text.lstrip().startswith(PERSONAL_LICENSE_HEADER):
         raise ProjectError(
-            f"{source} is not the GNU AGPL-3.0 text.",
-            "a new project starts with the GNU AGPL-3.0 license text AIKit ships.",
+            f"{source} is not the Aegean License 1.0 text.",
+            "a new project starts with the Aegean License 1.0 text AIKit ships.",
             "restore LICENSE in the AIKit folder from git (`git checkout -- LICENSE`), then retry.",
         )
     write_generated_file(project_root / "LICENSE", text)
 
 
 def seed_commercial(project_root: Path) -> None:
-    """Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212)."""
+    """Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214)."""
     source = ROOT_DIR / "COMMERCIAL.md"
     try:
         text = source.read_text(encoding="utf-8")
     except OSError as exc:
         raise ProjectError(
             f"Cannot read {source}: {exc}",
-            "a new project starts with the Aegean-E commercial terms AIKit ships.",
+            "a new project starts with the Aegean commercial terms AIKit ships.",
             "restore COMMERCIAL.md in the AIKit folder from git (`git checkout -- COMMERCIAL.md`), then retry.",
         ) from exc
-    if not text.lstrip().startswith("# Aegean-E Commercial License"):
+    if not text.lstrip().startswith(COMMERCIAL_HEADER):
         raise ProjectError(
-            f"{source} is not the Aegean-E commercial licensing text.",
-            "a new project starts with the Aegean-E commercial terms AIKit ships.",
+            f"{source} is not the Aegean commercial licensing text.",
+            "a new project starts with the Aegean commercial terms AIKit ships.",
             "restore COMMERCIAL.md in the AIKit folder from git (`git checkout -- COMMERCIAL.md`), then retry.",
         )
     write_generated_file(project_root / "COMMERCIAL.md", text)
@@ -668,7 +678,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
         write_memory(project_root, name, test_command, topics)
         seed_license(project_root)
         seed_commercial(project_root)
-        seed_readme(project_root, name, test_command, description, agpl=True)
+        seed_readme(project_root, name, test_command, description, licensed=True)
         git_start(project_root)
     except BaseException:
         # Only this call created the folder, so removing it leaves no half-made project behind.

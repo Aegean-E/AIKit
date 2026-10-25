@@ -6,6 +6,7 @@ knowledge base AST generation, and operational dogfooding.
 
 import ast
 import contextlib
+import hashlib
 import io
 import os
 import re
@@ -133,6 +134,7 @@ from scripts.project_publish import (
 
 
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
+from scripts.project_license import license_state, public_remote_refusal, restrict_project
 from scripts.project_registry import (
     GUIDELINES_TEMPLATE,
     _run_git,
@@ -723,12 +725,19 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         self.assertIn("README.md tree lists 'scripts/gone.py', which does not exist (R5)", errors)
 
     def test_a_missing_top_level_entry_fails(self):
-        errors = self.audit(self.TREE, tracked=self.TRACKED + [".gitignore"])
+        on_disk = set(self.TRACKED) | {"scripts", "docs", "docs/deep", ".gitignore"}
+        errors = self.audit(self.TREE, tracked=self.TRACKED + [".gitignore"], exists=on_disk.__contains__)
         self.assertEqual(errors, ["README.md tree omits tracked '.gitignore' (R5)"])
+
+    def test_a_tracked_file_deleted_in_the_working_copy_need_not_be_listed(self):
+        # ADR-214: `license --restrict` deletes COMMERCIAL.md; until that deletion is committed
+        # it is still tracked, and requiring it in the tree blocked the check that must pass first.
+        self.assertEqual(self.audit(self.TREE, tracked=self.TRACKED + ["COMMERCIAL.md"]), [])
 
     def test_an_expanded_directory_must_be_complete_and_a_collapsed_one_need_not(self):
         # scripts/ shows children, so every tracked child must be listed; docs/ shows none.
-        errors = self.audit(self.TREE, tracked=self.TRACKED + ["scripts/new.py"])
+        on_disk = set(self.TRACKED) | {"scripts", "docs", "docs/deep", "scripts/new.py"}
+        errors = self.audit(self.TREE, tracked=self.TRACKED + ["scripts/new.py"], exists=on_disk.__contains__)
         self.assertEqual(errors, ["README.md tree omits tracked 'scripts/new.py' (R5)"])
 
     def test_documented_commands_must_exist(self):
@@ -4670,22 +4679,26 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertFalse((self.kit / "projects" / "app").exists())
 
     def test_new_project_starts_licensed_described_tagged_and_linked_to_aikit(self):
-        # ADR-199: a new project is AGPL-3.0 licensed, says what it is, carries GitHub topics and
-        # its README links back to AIKit.
+        # ADR-199, ADR-214: a new project is free for personal use under AL-1.0, says what it
+        # is, carries GitHub topics and its README links back to AIKit.
         description = "A command-line tool that keeps a reading list in sync across devices."
         folder = create_project("reader", workspace=self.kit, git_start=lambda project_root: None,
                                 description=description, topics=["Python", "cli", "python"])
         self.assertEqual((folder / "LICENSE").read_text(encoding="utf-8"),
                          (ROOT_DIR / "LICENSE").read_text(encoding="utf-8"))
         self.assertTrue((folder / "LICENSE").read_text(encoding="utf-8").lstrip()
-                        .startswith("GNU AFFERO GENERAL PUBLIC LICENSE"))
+                        .startswith("# Aegean License 1.0 (AL-1.0)"))
+        self.assertEqual(license_state(folder).tier, "personal")
         readme = (folder / "README.md").read_text(encoding="utf-8")
         self.assertIn(f"]({AIKIT_URL})", readme, "the badge links to AIKit")
         self.assertIn("Built with AIKit", readme)
         self.assertIn(f"\n{description}\n", readme)
         self.assertIn("├── LICENSE", readme)
         self.assertIn("├── COMMERCIAL.md", readme)
-        self.assertIn("GNU Affero General Public License v3.0", readme)
+        self.assertIn("Aegean License 1.0 (AL-1.0)", readme)
+        self.assertIn("Aegean Commercial License 1.0 (ACL-1.0)", readme)
+        self.assertNotIn("Affero", readme)
+        self.assertNotIn("Aegean-E", readme, "the licenses are named Aegean, not Aegean-E")
         self.assertIn("COMMERCIAL.md", readme)
         self.assertEqual((folder / "COMMERCIAL.md").read_text(encoding="utf-8"),
                          (ROOT_DIR / "COMMERCIAL.md").read_text(encoding="utf-8"))
@@ -4805,7 +4818,7 @@ class TestProjectRegistry(unittest.TestCase):
 
     def test_first_commit_holds_the_license(self):
         from scripts.project_registry import _git_start
-        folder = self.make_folder(("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE\n"))
+        folder = self.make_folder(("LICENSE", "AEGEAN-E PERSONAL USE LICENSE\n"))
         ok = mock.Mock(returncode=0, stderr="")
         with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
             _git_start(folder)
@@ -4818,12 +4831,138 @@ class TestProjectRegistry(unittest.TestCase):
 
     def test_first_commit_holds_commercial_md(self):
         from scripts.project_registry import _git_start
-        folder = self.make_folder(("COMMERCIAL.md", "# Aegean-E Commercial License\n"))
+        folder = self.make_folder(("COMMERCIAL.md", "# Aegean Commercial License (ACL-1.0)\n"))
         ok = mock.Mock(returncode=0, stderr="")
         with mock.patch("scripts.project_registry._run_git", return_value=ok) as run:
             _git_start(folder)
         added = next(c.args for c in run.call_args_list if c.args[1] == "add")
         self.assertIn("COMMERCIAL.md", added)
+
+    def test_pinned_license_texts_match_their_recorded_digests(self):
+        # ADR-214: licenses/ copies aegean-licensing; a hand edit here breaks the pin.
+        pin = json.loads((ROOT_DIR / "licenses" / "PIN.json").read_text(encoding="utf-8"))
+        self.assertEqual(sorted(pin["sha256"]), ["ACL-1.0.md", "AL-1.0.md", "RESTRICTED-NOTICE.md"])
+        for name, digest in pin["sha256"].items():
+            text = (ROOT_DIR / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n")
+            with self.subTest(name=name):
+                self.assertEqual(hashlib.sha256(text.encode("utf-8")).hexdigest(), digest,
+                                 "copy it from aegean-licensing and refresh licenses/PIN.json")
+        self.assertEqual((ROOT_DIR / "LICENSE").read_text(encoding="utf-8"),
+                         (ROOT_DIR / "licenses" / "AL-1.0.md").read_text(encoding="utf-8"),
+                         "AIKit's LICENSE is the pinned AL-1.0 text verbatim")
+
+    def make_licensed_project(self, name="vault"):
+        # What `new` leaves that the license tier reads, without `new`'s cost (PRINCIPLE-014 R4).
+        folder = self.kit / "projects" / name
+        (folder / ".aikit").mkdir(parents=True)
+        (folder / ".aikit" / "project.json").write_text(json.dumps({"schema": 1, "name": name}),
+                                                        encoding="utf-8")
+        for license_file in ("LICENSE", "COMMERCIAL.md"):
+            shutil.copyfile(ROOT_DIR / license_file, folder / license_file)
+        (folder / "README.md").write_text(render_project_readme(name, licensed=True), encoding="utf-8")
+        return folder
+
+    @staticmethod
+    def git_head(commit="0123456789abcdef0123456789abcdef01234567", returncode=0):
+        return mock.Mock(return_value=mock.Mock(returncode=returncode, stdout=commit + "\n",
+                                                stderr="fatal: no commits"))
+
+    def test_restrict_swaps_the_license_records_the_cutoff_and_drops_commercial_terms(self):
+        # ADR-214: a restricted project is All Rights Reserved from a recorded cutoff commit on.
+        folder = self.make_licensed_project()
+        state = restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        self.assertEqual((state.tier, state.since, state.since_commit[:7]),
+                         ("restricted", "2026-10-25", "0123456"))
+        license_text = (folder / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(license_text.startswith("AEGEAN RESTRICTED SOFTWARE NOTICE"))
+        self.assertIn("ALL RIGHTS RESERVED", license_text)
+        self.assertIn("Project: vault.", license_text)
+        self.assertIn("0123456789abcdef0123456789abcdef01234567", license_text,
+                      "the notice names the last commit released under the earlier license")
+        self.assertNotIn("{", license_text, "the canonical template is filled completely")
+        self.assertFalse((folder / "COMMERCIAL.md").exists(), "no public commercial offer remains")
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("COMMERCIAL.md", readme)
+        self.assertNotIn("Aegean License 1.0", readme)
+        self.assertIn("All Rights Reserved", readme)
+        self.assertEqual(readme.count("## 📜 License"), 1)
+        config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["license"]["since_commit"], state.since_commit)
+        self.assertEqual(license_state(folder), state, "the state reads back from disk")
+
+    def test_restrict_twice_keeps_the_first_cutoff(self):
+        folder = self.make_licensed_project()
+        first = restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        again = restrict_project(folder, "vault", today="2027-01-01",
+                                 runner=self.git_head("f" * 40))
+        self.assertEqual(again, first)
+
+    def test_restrict_without_a_commit_changes_nothing(self):
+        folder = self.make_licensed_project()
+        before = (folder / "LICENSE").read_text(encoding="utf-8")
+        with self.assertRaises(ProjectError) as caught:
+            restrict_project(folder, "vault", runner=self.git_head("", returncode=128))
+        self.assertIn("commit", caught.exception.fix)
+        self.assertEqual((folder / "LICENSE").read_text(encoding="utf-8"), before)
+        self.assertTrue((folder / "COMMERCIAL.md").exists())
+
+    def test_restrict_appends_a_license_section_to_a_readme_without_one(self):
+        folder = self.make_folder(("README.md", "# Tool\n\nWhat it does.\n"))
+        attach_project(folder, "tool", workspace=self.kit)
+        self.assertEqual(license_state(folder).tier, "unrecorded", "its own license is not ours to read")
+        restrict_project(folder, "tool", today="2026-10-25", runner=self.git_head())
+        readme = (folder / "README.md").read_text(encoding="utf-8")
+        self.assertTrue(readme.startswith("# Tool\n\nWhat it does.\n"))
+        self.assertIn("## 📜 License", readme)
+
+    def test_cli_license_reports_then_restricts_with_a_checklist(self):
+        self.make_licensed_project()
+        code, out, _ = self.run_cli("license", "vault")
+        self.assertEqual(code, 0)
+        self.assertIn("personal", out)
+        with mock.patch("scripts.project_license._run_git", self.git_head()):
+            code, out, _ = self.run_cli("license", "vault", "--restrict")
+        self.assertEqual(code, 0)
+        self.assertIn("restricted", out)
+        self.assertIn("0123456789ab", out)
+        self.assertIn("private", out, "the checklist names the steps AIKit cannot take")
+        self.assertIn("stay under", out, "earlier releases keep their license")
+
+    def test_a_restricted_project_pushes_only_to_a_private_remote(self):
+        # ADR-214: `check --push` and `publish` to an existing origin must not hand a restricted
+        # project to a public repository, and an unknown visibility counts as public.
+        folder = self.make_licensed_project()
+        self.assertIsNone(public_remote_refusal(folder, "vault", runner=lambda argv, cwd: (0, "PUBLIC")),
+                          "a personal-tier project is not checked")
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        self.assertIsNone(public_remote_refusal(folder, "vault", runner=lambda argv, cwd: (0, "PRIVATE\n")))
+        for answer in ((0, "PUBLIC"), (0, "INTERNAL"), (1, "gh: not logged in"), (-1, "")):
+            with self.subTest(answer=answer):
+                error = public_remote_refusal(folder, "vault", runner=lambda argv, cwd, a=answer: a)
+                self.assertIsInstance(error, ProjectError)
+                self.assertIn("private", error.fix)
+
+    def test_check_push_refuses_a_restricted_project_with_a_public_origin(self):
+        folder = self.make_licensed_project()
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        with mock.patch("scripts.project_license.run_command", return_value=(0, "PUBLIC")), \
+             mock.patch("scripts.aikit_cli.run_gates") as gates, \
+             mock.patch("scripts.aikit_cli.auto_push_project") as push:
+            code, _, err = self.run_cli("check", "vault", "--push")
+        self.assertEqual(code, 2)
+        self.assertIn("restricted", err)
+        gates.assert_not_called()
+        push.assert_not_called()
+
+    def test_publish_public_refuses_a_restricted_project(self):
+        folder = self.make_licensed_project()
+        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
+        with mock.patch("scripts.aikit_cli.publish_project") as publish:
+            code, _, err = self.run_cli("publish", "vault", "--public")
+        self.assertEqual(code, 2)
+        self.assertIn("restricted", err)
+        self.assertIn("Why:", err)
+        publish.assert_not_called()
 
     def test_cli_new_takes_a_description_and_topics(self):
         with mock.patch("scripts.project_registry._git_start"):

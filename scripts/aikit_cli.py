@@ -25,6 +25,12 @@ from scripts.disruption_recovery import (
     run_disruption_audit,
     workspace_ledger_path,
 )
+from scripts.project_license import (
+    TIER_RESTRICTED,
+    license_state,
+    public_remote_refusal,
+    restrict_project,
+)
 from scripts.project_publish import (
     auto_push_project,
     get_project_repo_url,
@@ -354,6 +360,12 @@ def project_baseline_errors(project: Project, audit: dict) -> List[str]:
 
 def cmd_check(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
+    # A restricted project may be pushed only to a private repository (ADR-214); checked before the
+    # gates so a refused push costs nothing.
+    if getattr(args, "push", False):
+        refusal = public_remote_refusal(project.path, project.name)
+        if refusal:
+            return report_error(refusal)
     results = run_gates(project.path, resolve_gates(project))
     for result in results:
         mark = "PASS" if result.passed else "FAIL"
@@ -465,6 +477,19 @@ def cmd_fix(args: argparse.Namespace) -> int:
 
 def cmd_publish(args: argparse.Namespace) -> int:
     project = present_project(args.name, args.workspace)
+    # A restricted project is not distributed: a public repository would hand it out (ADR-214).
+    if args.public and license_state(project.path).tier == TIER_RESTRICTED:
+        return report_error(ProjectError(
+            f"'{project.name}' is in the restricted tier; publish --public is refused.",
+            "a restricted project is All Rights Reserved and must not be made available to the public.",
+            "publish it without --public to a private repository, or keep it local.",
+            exit_code=2,
+        ))
+    # An existing origin is pushed as it is, so its visibility must be private too.
+    if get_project_repo_url(project.path):
+        refusal = public_remote_refusal(project.path, project.name)
+        if refusal:
+            return report_error(refusal)
     audit = run_disruption_audit(workspace_dir=project.path)
     errors = project_baseline_errors(project, audit)
     if errors:
@@ -504,6 +529,27 @@ def cmd_publish(args: argparse.Namespace) -> int:
                                    topics=config.get("topics") or ["aikit"])
     print(report, file=sys.stdout if code == 0 else sys.stderr)
     return code
+
+
+def cmd_license(args: argparse.Namespace) -> int:
+    project = present_project(args.name, args.workspace)
+    already = license_state(project.path).tier == TIER_RESTRICTED
+    state = restrict_project(project.path, project.name) if args.restrict else license_state(project.path)
+    print(f"License tier of '{project.name}': {state.tier}")
+    if state.tier != TIER_RESTRICTED:
+        if not args.restrict:
+            print(f"     Restrict it with `python aikit.py license {project.name} --restrict`.")
+        return 0
+    print(f"     Cutoff: commit {state.since_commit[:12]} on {state.since}.")
+    print("     Versions up to that commit stay under the license they were released with.")
+    if args.restrict and not already:
+        print("Next, outside AIKit:")
+        print(f"  1. Review and commit LICENSE, README.md and the removed COMMERCIAL.md in {project.path}.")
+        print("  2. Make the GitHub repository private: `gh repo edit --visibility private "
+              "--accept-visibility-change-consequences`.")
+        print("  3. Remove public releases, packages and download links of later versions.")
+        print("  4. Tell Aegean Commercial License (ACL-1.0) holders whether later versions are covered.")
+    return 0
 
 
 def cmd_delegate(args: argparse.Namespace) -> int:
@@ -634,6 +680,7 @@ HANDLERS = {
     "check": cmd_check,
     "fix": cmd_fix,
     "publish": cmd_publish,
+    "license": cmd_license,
     "delegate": cmd_delegate,
     "ui": cmd_ui,
 }
