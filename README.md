@@ -89,22 +89,23 @@ portable_agent_kit/
 ├── opencode.jsonc                <- OpenCode provider, model & permission config
 ├── scripts/
 │   ├── sync_principles.py        <- Generates 8 Tier 1 files from GUIDELINES.md
+│   ├── sync_licenses.py          <- Pinned license/catalog sync and drift check
 │   ├── disruption_recovery.py    <- Power-loss audit, atomic checkpointing & ledger CLI
 │   ├── update_knowledge_base.py  <- Codebase AST symbol extractor & validator
 │   ├── dogfood.py                <- Dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py     <- Invariant reachability shield (anti-dead-capability)
 │   ├── check_test_budgets.py     <- Test tier budget gate (per-test ceilings)
-│   ├── project_registry.py       <- Project discovery, stack detection, .aikit/ memory
-│   ├── project_license.py        <- License tiers; `aikit license --restrict`
+│   ├── project_registry.py       <- Project discovery, stack detection, memory
+│   ├── project_license.py        <- License tiers and restrict
 │   ├── project_gates.py          <- A project's gates: detection, overrides
-│   ├── check_project_hygiene.py  <- Project source, asset & artifact hygiene scan
+│   ├── check_project_hygiene.py  <- Source, asset & artifact hygiene
 │   ├── ui_contract.py            <- Bounded UI-surface guard (opt-in .aikit/ui.json)
 │   ├── ui_proof.py               <- UI proofs: inventory diff + style drift lint (pure)
 │   ├── aikit_cli.py              <- `aikit.py` commands
 │   ├── aikit_parser.py           <- `aikit.py` grammar, alone for --help
-│   ├── subagent_delegate.py      <- `aikit delegate`: bounded OpenCode sub-agent runs
+│   ├── subagent_delegate.py      <- Bounded OpenCode sub-agent runs
 │   ├── project_publish.py        <- Uploads a project to its own GitHub repo
-│   ├── check_secrets.py          <- Secret & sensitive data scanner (pre-commit gate)
+│   ├── check_secrets.py          <- Secret/sensitive data scanner
 │   └── verify_commit.py          <- Verifies a commit alone in a throwaway worktree
 ├── tests/
 │   ├── test_kit.py               <- Unit tier (<=10ms per test)
