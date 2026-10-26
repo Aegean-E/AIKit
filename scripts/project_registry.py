@@ -88,7 +88,7 @@ LICENSE_CHOICES = {
         "name": "Aegean Game License 1.1 (AGL-1.1)",
         "header": "# Aegean Game License 1.1 (AGL-1.1)",
         "version": "1.1",
-        "legacy_headers": {"# Aegean Game License 1.1 (AGL-1.1)": "1.0"},
+        "legacy_headers": {"# Aegean Game License 1.0 (AGL-1.0)": "1.0"},
         "source": "AGL-1.1.md",
         "summary": "AGL-1.1, DRM-free personal play",
         "tree": "├── LICENSE                   <- Aegean Game License 1.1 (AGL-1.1): DRM-free personal play\n",
@@ -105,7 +105,7 @@ LICENSE_CHOICES = {
         "name": "Aegean Science License 1.1 (ASL-1.1)",
         "header": "# Aegean Science License 1.1 (ASL-1.1)",
         "version": "1.1",
-        "legacy_headers": {"# Aegean Science License 1.1 (ASL-1.1)": "1.0"},
+        "legacy_headers": {"# Aegean Science License 1.0 (ASL-1.0)": "1.0"},
         "source": "ASL-1.1.md",
         "summary": "ASL-1.1, non-commercial research",
         "tree": "├── LICENSE                   <- Aegean Science License 1.1 (ASL-1.1): free non-commercial research\n",
@@ -233,7 +233,8 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
                           description: Optional[str] = None, licensed: bool = False,
                           integrated: bool = False,
                           license_kind: str = DEFAULT_LICENSE_KIND,
-                          license_version: Optional[str] = None) -> str:
+                          license_version: Optional[str] = None,
+                          assets_manifest: bool = False) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
@@ -251,6 +252,8 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
 
     license_line = (f"{versioned(choice['tree'])}"
                     "├── COMMERCIAL.md             <- Commercial licensing terms\n") if licensed else ""
+    assets_line = ("├── ASSETS.md                 <- Asset/data manifest: what the license covers\n"
+                   if licensed and assets_manifest else "")
     license_section = f"\n{versioned(choice['section'])}" if licensed else ""
     return (
         f"# {title_case(name)}\n\n"
@@ -274,6 +277,7 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
         f"{name}/\n"
         "├── .gitignore                <- transient AIKit state excluded\n"
         f"{license_line}"
+        f"{assets_line}"
         "├── README.md\n"
         "└── .aikit/                   <- this project's memory: record, ledger, decisions\n"
         "```\n"
@@ -283,7 +287,7 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
 
 def license_header_match(first_line: str) -> Optional[Tuple[str, str]]:
     """The `(kind, version)` a LICENSE first line names, including an archived legacy header."""
-    stripped = first_line.strip()
+    stripped = first_line.lstrip("\ufeff").strip()
     for kind, choice in LICENSE_CHOICES.items():
         if stripped == choice["header"]:
             return kind, choice["version"]
@@ -318,7 +322,8 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
         else:
             license_kind = detect_license_kind(project_root)["kind"]
     write_generated_file(readme, render_project_readme(
-        name, test_command, description, licensed, integrated, license_kind, license_version))
+        name, test_command, description, licensed, integrated, license_kind, license_version,
+        assets_manifest=(project_root / ASSETS_MANIFEST_NAME).exists()))
     return True
 
 
@@ -412,6 +417,45 @@ def normalize_topics(topics: Optional[List[str]]) -> List[str]:
             exit_code=2,
         )
     return result
+
+
+ASSETS_MANIFEST_NAME = "ASSETS.md"
+GAME_ASSETS_MANIFEST = """# Asset Manifest
+
+Assets listed here are offered under the Aegean Game License 1.1 (AGL-1.1) as part of the game.
+Assets not listed remain proprietary: they may be used only to play the game and may not be
+extracted, redistributed or included in a mod without a grant.
+
+| Path or pattern | Type | Rights holder | License | Notes |
+|---|---|---|---|---|
+| `assets/` | art, audio, level data | AegeanWorks | AGL-1.1 | Replace with the real inventory |
+"""
+SCIENCE_ASSETS_MANIFEST = """# Data and Asset Manifest
+
+Project Data listed here is offered under the Aegean Science License 1.1 (ASL-1.1) for
+non-commercial research. Third-party data and model weights keep their own licenses. Personal data
+must have a lawful basis and a dataset-specific notice.
+
+| Path or pattern | Type | Rights holder | License | Personal data | Notes |
+|---|---|---|---|---|---|
+| `data/` | dataset | AegeanWorks | ASL-1.1 | no | Replace with the real inventory |
+"""
+
+
+def seed_assets_manifest(project_root: Path, kind: str) -> bool:
+    """
+    Write the asset/data manifest `new --kind game|science` needs, so the license boundary has a
+    concrete inventory from the first commit (ADR-223). A software project gets no manifest, and
+    an existing file is never overwritten.
+    """
+    if kind not in ("game", "science"):
+        return False
+    path = project_root / ASSETS_MANIFEST_NAME
+    if path.exists():
+        return False
+    text = GAME_ASSETS_MANIFEST if kind == "game" else SCIENCE_ASSETS_MANIFEST
+    write_generated_file(path, text)
+    return True
 
 
 def seed_license(project_root: Path, kind: str = DEFAULT_LICENSE_KIND) -> None:
@@ -856,6 +900,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     try:
         write_memory(project_root, name, test_command, topics)
         seed_license(project_root, license_kind)
+        seed_assets_manifest(project_root, license_kind)
         seed_commercial(project_root)
         seed_readme(project_root, name, test_command, description, licensed=True,
                     license_kind=license_kind)

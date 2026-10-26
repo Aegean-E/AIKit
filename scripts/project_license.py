@@ -29,6 +29,7 @@ from scripts.project_registry import (
     license_choice,
     license_header_match,
     load_config,
+    seed_assets_manifest,
     seed_commercial,
 )
 from scripts.update_knowledge_base import write_generated_file
@@ -112,8 +113,12 @@ def suggest_license(project_root: Path) -> dict:
     detected["current_version"] = current.version
     detected["latest_version"] = LICENSE_CHOICES[detected["kind"]]["version"]
     detected["recommended_key"] = LICENSE_CHOICES[detected["kind"]]["key"]
-    detected["current_key"] = (LICENSE_CHOICES[current.kind]["key"]
-                               if current.kind in LICENSE_CHOICES else None)
+    if current.kind in LICENSE_CHOICES:
+        base = LICENSE_CHOICES[current.kind]["key"].rsplit("-", 1)[0]
+        version = current.version or LICENSE_CHOICES[current.kind]["version"]
+        detected["current_key"] = f"{base}-{version}"
+    else:
+        detected["current_key"] = None
     detected["change_needed"] = current.tier == TIER_PERSONAL and current.kind != detected["kind"]
     detected["upgrade_available"] = (current.tier == TIER_PERSONAL
                                      and current.version != detected["latest_version"])
@@ -122,7 +127,8 @@ def suggest_license(project_root: Path) -> dict:
     return detected
 
 
-def _licensed_readme(text: str, newline: str, kind: str) -> str:
+def _licensed_readme(text: str, newline: str, kind: str,
+                     assets_manifest: bool = False) -> str:
     """`text` with its tree's LICENSE line and License section naming the chosen personal license."""
     choice = license_choice(kind)
 
@@ -132,6 +138,12 @@ def _licensed_readme(text: str, newline: str, kind: str) -> str:
 
     lines = [licensed(line) for line in text.split(newline)]
     text = "\n".join(lines)
+    if assets_manifest and "ASSETS.md" not in text:
+        marker = re.search(r"(?m)^[├└]── LICENSE.*$", text)
+        if marker:
+            text = (text[:marker.end()] +
+                    "\n├── ASSETS.md                 <- Asset/data manifest: what the license covers" +
+                    text[marker.end():])
     section = re.search(rf"^{re.escape(LICENSE_HEADING)}\n.*?(?=^## |\Z)", text, re.M | re.S)
     if section is None:
         text = text.rstrip("\n") + "\n\n" + choice["section"]
@@ -177,13 +189,17 @@ def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState
     # Seed the canonical terms before changing anything, so a failure leaves the project intact.
     if not (project_root / "COMMERCIAL.md").exists():
         seed_commercial(project_root)
+    if kind in ("game", "science"):
+        seed_assets_manifest(project_root, kind)
     write_generated_file(project_root / "LICENSE", text)
     readme = project_root / "README.md"
     if readme.is_file():
         with open(readme, encoding="utf-8", newline="") as handle:
             original = handle.read()
         newline = "\r\n" if "\r\n" in original else "\n"
-        write_generated_file(readme, _licensed_readme(original, newline, kind), newline="")
+        write_generated_file(readme, _licensed_readme(
+            original, newline, kind,
+            assets_manifest=(project_root / "ASSETS.md").exists()), newline="")
     return LicenseState(TIER_PERSONAL, kind=kind, version=choice["version"])
 
 

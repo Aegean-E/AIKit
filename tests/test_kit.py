@@ -4873,6 +4873,7 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue(readme.startswith("# Cased\n"), "the README title is title-cased")
         self.assertIn("\na small tool. it keeps notes in sync\n", readme,
                       "the description keeps its own case")
+        self.assertFalse((folder / "ASSETS.md").exists(), "a software project gets no asset manifest")
         self.assertEqual(extract_readme_description(folder),
                          "a small tool. it keeps notes in sync")
 
@@ -4887,6 +4888,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue(game_readme.startswith("# Space Quest\n"))
         self.assertIn("Aegean Game License 1.1 (AGL-1.1)", game_readme)
         self.assertIn("DRM-free", game_readme)
+        self.assertTrue((game / "ASSETS.md").is_file(), "a game gets an asset manifest")
+        self.assertIn("ASSETS.md", game_readme)
         self.assertEqual(suggest_license(game)["kind"], "game",
                          "an empty game project never recommends a downgrade to software")
         science = create_project("moon-study", workspace=self.kit, git_start=lambda root: None,
@@ -4895,6 +4898,7 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue((science / "LICENSE").read_text(encoding="utf-8").startswith(
             "# Aegean Science License 1.1 (ASL-1.1)"))
         self.assertIn("non-commercial research", (science / "README.md").read_text(encoding="utf-8"))
+        self.assertTrue((science / "ASSETS.md").is_file(), "a science project gets a data manifest")
         with self.assertRaises(ProjectError):
             create_project("bad-kind", workspace=self.kit, git_start=lambda root: None,
                            license_kind="cartoon")
@@ -4929,6 +4933,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertNotIn("Aegean License 1.1 (AL-1.1); see", readme)
         self.assertEqual(license_state(folder).kind, "science")
         self.assertEqual(license_state(folder).version, "1.1")
+        self.assertTrue((folder / "ASSETS.md").is_file(), "switching to science seeds the manifest")
+        self.assertIn("ASSETS.md", readme)
         restrict_project(folder, "field-notes", today="2026-10-26", runner=self.git_head())
         with self.assertRaises(ProjectError):
             apply_license_kind(folder, "field-notes", "game")
@@ -4943,8 +4949,32 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(suggestion["current_version"], "1.0")
         self.assertEqual(suggestion["latest_version"], "1.1")
         self.assertTrue(suggestion["upgrade_available"])
+        self.assertEqual(suggestion["current_key"], "AL-1.0")
         from scripts.aikit_cli import license_summary
         self.assertIn("AL-1.0", license_summary(find_project("legacy-app", self.kit)))
+
+    def test_archived_game_and_science_headers_still_map_to_their_kind(self):
+        # The 1.1 bump must not rewrite the 1.0 legacy map; otherwise old game/science
+        # projects silently become "unrecorded" and lose their upgrade path.
+        from scripts.project_registry import license_header_match
+        self.assertEqual(license_header_match("# Aegean Game License 1.0 (AGL-1.0)"),
+                         ("game", "1.0"))
+        self.assertEqual(license_header_match("# Aegean Science License 1.0 (ASL-1.0)"),
+                         ("science", "1.0"))
+        self.assertEqual(license_header_match("\ufeff# Aegean Game License 1.1 (AGL-1.1)"),
+                         ("game", "1.1"), "a UTF-8 BOM does not hide the license")
+        for kind, key, source in (("game", "AGL-1.0", "AGL-1.0.md"),
+                                  ("science", "ASL-1.0", "ASL-1.0.md")):
+            folder = create_project(f"legacy-{kind}", workspace=self.kit,
+                                    git_start=lambda root: None,
+                                    description=f"A legacy {kind} project kept for compatibility.",
+                                    license_kind=kind)
+            shutil.copyfile(ROOT_DIR / "licenses" / source, folder / "LICENSE")
+            state = license_state(folder)
+            self.assertEqual((state.kind, state.version), (kind, "1.0"))
+            suggestion = suggest_license(folder)
+            self.assertEqual(suggestion["current_key"], key)
+            self.assertTrue(suggestion["upgrade_available"])
 
     def test_topics_command_records_what_the_ai_chooses(self):
         folder = create_project("tagger", workspace=self.kit, git_start=lambda root: None,
@@ -6691,7 +6721,7 @@ class TestUiContract(unittest.TestCase):
         allowed = parser.parse_args(["ui", "allow", "app", "Button*", "--reason", "replaced"])
         self.assertEqual((allowed.ui_action, allowed.name, allowed.pattern, allowed.reason),
                          ("allow", "app", "Button*", "replaced"))
-        with self.assertRaises(SystemExit) as caught:
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stderr(io.StringIO()):
             parser.parse_args(["ui", "allow", "app", "Button*"])
         self.assertEqual(caught.exception.code, 2)
         finished = parser.parse_args(["ui", "finish", "app", "--reviewed"])
@@ -7688,10 +7718,10 @@ class TestTestTierBudgetGate(unittest.TestCase):
     def ok(self, tests, seconds):
         return 0, f"...\nRan {tests} tests in {seconds}s\n\nOK\n"
 
-    def gate(self, table):
+    def gate(self, table, retry_delay=0):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = run_budget_check(runner=self.fake_runner(table))
+            code = run_budget_check(runner=self.fake_runner(table), retry_delay=retry_delay)
         return code, buf.getvalue()
 
     def test_parse_reads_the_count_and_duration_unittest_prints(self):
@@ -7705,6 +7735,44 @@ class TestTestTierBudgetGate(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn(self.UNIT, out)
         self.assertIn("90.00ms", out)
+
+    def test_a_load_skewed_first_run_is_measured_once_more(self):
+        # ADR-222: host load is additive, so a green over-budget run gets one complete retry and
+        # the faster run is used. A real regression is slow in both runs.
+        calls = {"unit": 0}
+
+        def runner(module, timeout):
+            if module == self.UNIT:
+                calls["unit"] += 1
+                return self.ok(100, 1.05 if calls["unit"] == 1 else 0.9)
+            return self.ok(45, 1.0)
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = run_budget_check(runner=runner, retry_delay=0)
+        self.assertEqual(code, 0, buf.getvalue())
+        self.assertEqual(calls["unit"], 2)
+        self.assertIn("best of 2", buf.getvalue())
+
+    def test_a_real_regression_fails_both_runs_and_reports_both(self):
+        code, out = self.gate({self.UNIT: self.ok(100, 1.05), self.INTEG: self.ok(45, 1.0)})
+        self.assertEqual(code, 1)
+        self.assertIn("runs 10.50ms, 10.50ms", out)
+
+    def test_a_red_tier_is_not_retried(self):
+        calls = {"unit": 0}
+
+        def runner(module, timeout):
+            if module == self.UNIT:
+                calls["unit"] += 1
+                return 1, "Ran 10 tests in 0.010s\n\nFAILED (failures=1)\n"
+            return self.ok(45, 1.0)
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = run_budget_check(runner=runner, retry_delay=0)
+        self.assertEqual(code, 1)
+        self.assertEqual(calls["unit"], 1, "a failing tier must not be retried as load noise")
 
     def test_both_tiers_inside_budget_pass_and_report_the_average(self):
         code, out = self.gate({self.UNIT: self.ok(317, 1.139), self.INTEG: self.ok(45, 7.631)})

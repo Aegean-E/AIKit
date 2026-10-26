@@ -1,34 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "license-1-1",
-    "last_phase": "delivery",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792972131.7969153,
+    "task_id": "gaps-closure",
+    "last_phase": "planning",
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793003295.1381273,
     "owner": "kilo:main",
     "started_by": "kilo:main",
     "continuations": [],
-    "completed_at": 1792972131.9550517
+    "impact_assessment": {
+      "why": "The remaining gaps were process and commercial-document gaps, and the tree needs a clean delivered state",
+      "benefits": "A manifest from the first commit, resilient timing gates, and reviewable commercial templates",
+      "risks": "contract: templates and README tree; dependency: none; concurrency: host load; state: ledger, maps",
+      "mitigation": "Failing-first tests, full gates, clean-tree dogfood"
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "aikit-topics",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] (1) publish --owner ORG creates ORG/name; publish adds stack-derived topics (python, javascript, typescript, rust, go, java, dotnet) to the recorded ones; failing-first tests; (2) review the three repos' recent changes, fix findings, set correct topics on AegeanWorks repos (drop agpl from AIKit)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792957131.793842,
-      "timestamp_str": "2026-10-25 22:38:51",
-      "agent": "claude-code:c74fca42",
-      "impact_assessment": {
-        "why": "User asked why projects do not get proper tags; ops repo had none, AIKit still tagged agpl",
-        "benefits": "Repos are discoverable and tagged consistently",
-        "risks": "contract: publish gains --owner; dependency: gh; concurrency: none; state: none",
-        "mitigation": "Topics are additive; tests with fake runner"
-      }
-    },
     {
       "task_id": "aikit-topics",
       "phase": "delivery",
@@ -290,6 +278,23 @@
       "timestamp": 1792972131.9550533,
       "timestamp_str": "2026-10-26 02:48:51",
       "agent": "kilo:main"
+    },
+    {
+      "task_id": "gaps-closure",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Close remaining gaps: retry load-skewed help budget, seed ASSETS.md for game/science, add permissive-grant and security-SLA templates, governance docs, and commit/push the verified batch",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793003295.1381273,
+      "timestamp_str": "2026-10-26 11:28:15",
+      "agent": "kilo:main",
+      "impact_assessment": {
+        "why": "The remaining gaps were process and commercial-document gaps, and the tree needs a clean delivered state",
+        "benefits": "A manifest from the first commit, resilient timing gates, and reviewable commercial templates",
+        "risks": "contract: templates and README tree; dependency: none; concurrency: host load; state: ledger, maps",
+        "mitigation": "Failing-first tests, full gates, clean-tree dogfood"
+      }
     }
   ]
 }

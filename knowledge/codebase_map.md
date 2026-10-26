@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `21`
 - **Total Classes**: `94`
-- **Total Top-Level Functions**: `350`
-- **Total Class Methods**: `667`
-- **Total Source Lines**: `19734`
+- **Total Top-Level Functions**: `351`
+- **Total Class Methods**: `671`
+- **Total Source Lines**: `19915`
 
 ---
 
@@ -170,7 +170,7 @@
 ### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
 > *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
 
-**Size**: `186` lines (`7154` bytes)
+**Size**: `225` lines (`9128` bytes)
 
 **Classes:**
 - `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
@@ -181,9 +181,9 @@
 **Functions:**
 - `def parse_tier_output(output)` - *The count and duration unittest prints, or None when it never got that far.*
 - `def default_runner(module, timeout)` - *Run one tier the way the runbook documents it, so the gate measures the real command.*
-- `def run_tier(module, runner)` - *Measure one tier, or None when its output carried no summary to measure.*
+- `def run_tier(module, runner, attempts, retry_delay)` - *Measure one tier, or None when its output carried no summary. A green run over the ceiling is*
 - `def budget_errors(results)` - *One line per tier that is over its ceiling; empty when every tier fits.*
-- `def run_check(runner, verbose)`
+- `def run_check(runner, verbose, retry_delay)`
 
 ---
 
@@ -261,7 +261,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `510` lines (`23363` bytes)
+**Size**: `523` lines (`23841` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -305,7 +305,7 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `271` lines (`13434` bytes)
+**Size**: `287` lines (`14155` bytes)
 
 **Classes:**
 - `class LicenseState`
@@ -314,7 +314,7 @@
 - `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
 - `def license_state(project_root)` - *The project's tier, personal-license kind and version: the restriction, else what LICENSE says.*
 - `def suggest_license(project_root)` - *What an AI should choose for this project, with the current file and the evidence.*
-- `def _licensed_readme(text, newline, kind)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
+- `def _licensed_readme(text, newline, kind, assets_manifest)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
 - `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.1), game (AGL-1.1) or science (ASL-1.1)*
 - `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
 - `def _restricted_readme(text, newline)` - *`text` with its tree's licensing lines and its License section switched to the restricted tier.*
@@ -346,7 +346,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1003` lines (`46448` bytes)
+**Size**: `1048` lines (`48454` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -358,13 +358,14 @@
 - `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
 - `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
 - `def detect_license_kind(project_root)` - *The domain an AI should pick a license for, from the project's own markers. Strong markers*
-- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version, assets_manifest)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def license_header_match(first_line)` - *The `(kind, version)` a LICENSE first line names, including an archived legacy header.*
 - `def seed_readme(project_root, name, test_command, description, licensed, integrated, license_kind)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
 - `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
+- `def seed_assets_manifest(project_root, kind)` - *Write the asset/data manifest `new --kind game|science` needs, so the license boundary has a*
 - `def seed_license(project_root, kind)` - *Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218).*
 - `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
@@ -681,7 +682,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7902` lines (`451625` bytes)
+**Size**: `7970` lines (`455389` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1089,6 +1090,7 @@
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
   - Method `.test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade()`
+  - Method `.test_archived_game_and_science_headers_still_map_to_their_kind()`
   - Method `.test_topics_command_records_what_the_ai_chooses()`
   - Method `.test_publish_license_auto_applies_and_stops_before_upload()`
   - Method `.test_first_commit_holds_commercial_md()`
@@ -1300,9 +1302,12 @@
 - `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*
   - Method `.fake_runner(table)`
   - Method `.ok(tests, seconds)`
-  - Method `.gate(table)`
+  - Method `.gate(table, retry_delay)`
   - Method `.test_parse_reads_the_count_and_duration_unittest_prints()`
   - Method `.test_a_tier_over_its_per_test_average_fails_and_names_the_tier()`
+  - Method `.test_a_load_skewed_first_run_is_measured_once_more()`
+  - Method `.test_a_real_regression_fails_both_runs_and_reports_both()`
+  - Method `.test_a_red_tier_is_not_retried()`
   - Method `.test_both_tiers_inside_budget_pass_and_report_the_average()`
   - Method `.test_a_failing_tier_fails_the_gate_whatever_its_speed()`
   - Method `.test_unparseable_tier_output_fails_instead_of_reporting_zero()`

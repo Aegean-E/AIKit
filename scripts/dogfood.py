@@ -356,22 +356,35 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     # module to print help, so a single 200ms sample failed on ordinary process-start jitter. The
     # 47-71ms medians ADR-083 recorded predate aikit.py joining this loop (ADR-119).
     budget_ms = 250
+    attempts = 2
     failures = []
     slowest = 0.0
     for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI, AIKIT_CLI):
-        start = time.perf_counter()
-        code, out, err = run_cli(script, ["--help"], jail)
-        elapsed = (time.perf_counter() - start) * 1000
-        slowest = max(slowest, elapsed)
-        log.append(f"[help:{script.name}] rc={code} {elapsed:.0f}ms")
-        if code != 0:
-            failures.append(f"{script.name} --help rc={code}")
-        if err.strip():
-            failures.append(f"{script.name} --help wrote to stderr")
-        if "usage:" not in out.lower():
-            failures.append(f"{script.name} --help printed no usage block")
-        if elapsed > budget_ms:
-            failures.append(f"{script.name} --help took {elapsed:.0f}ms > {budget_ms}ms")
+        measurements = []
+        problem = ""
+        for attempt in range(attempts):
+            start = time.perf_counter()
+            code, out, err = run_cli(script, ["--help"], jail)
+            elapsed = (time.perf_counter() - start) * 1000
+            measurements.append(elapsed)
+            if code != 0:
+                problem = f"{script.name} --help rc={code}"
+            elif err.strip():
+                problem = f"{script.name} --help wrote to stderr"
+            elif "usage:" not in out.lower():
+                problem = f"{script.name} --help printed no usage block"
+            if problem or elapsed <= budget_ms:
+                break
+            if attempt + 1 < attempts:
+                time.sleep(0.25)
+        best = min(measurements)
+        slowest = max(slowest, best)
+        suffix = f" (best of {len(measurements)})" if len(measurements) > 1 else ""
+        log.append(f"[help:{script.name}] rc={code} {best:.0f}ms{suffix}")
+        if problem:
+            failures.append(problem)
+        elif best > budget_ms:
+            failures.append(f"{script.name} --help took {best:.0f}ms > {budget_ms}ms")
     if failures:
         return False, "; ".join(failures[:3])
     return True, f"all entrypoints safe, slowest --help {slowest:.0f}ms"

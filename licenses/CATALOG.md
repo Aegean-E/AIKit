@@ -129,17 +129,51 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
   access after a store shutdown), not a license. AGL-1.1 turns the same promise into a condition
   on the licensor and on anyone who distributes a permitted mod or patch.
 
+## Drafted instruments
+
+These close the structural gaps without pretending to be operative before counsel review:
+
+1. [Trademark Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/TRADEMARK-POLICY.md) — names, badges and nominative use.
+2. [Game Asset Addendum](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/GAME-ASSET-ADDENDUM-DRAFT.md) — commercial art/audio grant.
+3. [Data and Model Weights Addendum](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/DATA-WEIGHTS-ADDENDUM-DRAFT.md) — commercial datasets and trained weights.
+4. [Security Disclosure Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SECURITY-DISCLOSURE.md)
+   and [Support Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SUPPORT-POLICY.md).
+5. [Provenance Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/PROVENANCE-POLICY.md)
+   for assets, data and model weights.
+6. [OpenRAIL-style Attachment](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/OPENRAIL-ATTACHMENT-DRAFT.md) for sensitive models or datasets.
+7. [Dual-License Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/DUAL-LICENSE-POLICY.md)
+   for a written permissive or GPL-compatible grant.
+8. [Permissive Grant Template](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/PERMISSIVE-GRANT-TEMPLATE.md)
+   for a named MIT/Apache-2.0 grant.
+9. [Security SLA Exhibit](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/SECURITY-SLA-EXHIBIT-DRAFT.md)
+   for a commercial response commitment.
+
 ## What is still missing
 
-1. **Trademark and brand policy** (currently one paragraph inside AL-1.1).
-2. **A data/model-weights license** for ASL projects that ship datasets or trained weights.
-3. **A game asset-pack license** for art/audio sold separately from AGL-1.1 code.
-4. **A security disclosure policy** and a **support/update policy** per tier.
-5. **Counsel review** of AL-1.1, AGL-1.1 and ASL-1.1 before the first paid issuance.
-6. **An optional OpenRAIL attachment** for model weights or datasets that need a prohibited-use
-   list.
-7. **A contribution and provenance policy** for third-party assets and data, not only code.
-8. **A dual-license or permissive option** for projects that must combine with GPL-3.0/AGPL-3.0.
+1. **Counsel review** of AL-1.1, AGL-1.1 and ASL-1.1 and of every draft above; see the
+   [Legal Review Checklist](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/LEGAL-REVIEW-CHECKLIST.md).
+2. **Operative adoption**: the asset, data/weights and OpenRAIL attachments become binding only when
+   an Order Form or a project LICENSE names them; the policy documents are statements of practice,
+   not a grant.
+3. **A standard permissive license text** for a granted dual-license request; today the policy
+   allows MIT or Apache-2.0 by written agreement, but no pre-approved template is included.
+4. **A trademark registration and watch strategy** if the marks are used commercially outside
+   Türkiye.
+5. **A public security-response SLA** if a commercial customer requires one; today the response
+   targets are best-effort.
+
+## Archived drafts
+
+`AL-PU-1.0-DRAFT.md`, `AECL-1.0.md` and `COMMERCIAL-LICENSE-TEMPLATE-DRAFT.md` are superseded
+drafts kept for history. They are not operative and must never be copied into a project. The
+operative texts are AL-1.1, AGL-1.1, ASL-1.1, ACL-1.0 and the restricted notice.
+
+## Legal review
+
+Before the first paid issuance, counsel reviews the operative texts against
+[LEGAL-REVIEW-CHECKLIST.md](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/LEGAL-REVIEW-CHECKLIST.md).
+The checklist is a hand-off, not legal advice; a version is release-ready only after counsel signs
+the applicable items.
 
 ## Verification
 
