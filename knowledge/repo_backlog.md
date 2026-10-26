@@ -2,19 +2,16 @@
 
 Projects left out of the 2026-10-26 normalization pass: capitalized GitHub names, curated topics,
 descriptions within GitHub's 350-character limit, and new versions under the Aegean 1.1
-licenses. A project qualified only with a clean working tree and no open ledger task. Each one
-below gets the same pass once its in-flight work is committed or reset. AegeanWorks makes no
-release under AGPL-3.0, so the first three still carry an AGPL LICENSE that the pass replaces.
+licenses. A project qualified only with a clean working tree and no open ledger task.
 
 | Project | Why it was skipped | Pass still needed |
 |---|---|---|
-| `MemoryReconstruction` | 163 uncommitted files; open task `living-sanctuary` | topics (drop `agpl`), description, license |
-| `voidfarer` | 8 uncommitted files; open task `postpush-polish-verify` | rename, topics (drop `agpl`), description, license |
-| `fluid-universe` | 56 uncommitted files, 1 unpushed commit; open task `z3-koide-core` | rename, topics, description, license |
 | `AegeanWorks` | uncommitted `docs/styles.css` | none beyond committing that change |
 
-`ui-sandbox` (now `UI-Sandbox`) finished its task and completed the pass. `idea-catcher` is a
-new restricted project with no GitHub repository and is out of scope.
+`MemoryReconstruction`, `voidfarer` (now `Voidfarer`), `fluid-universe` (now `Fluid-Universe`) and
+`ui-sandbox` (now `UI-Sandbox`) finished their tasks and completed the pass on 2026-10-26; no
+project carries an AGPL LICENSE any more. `idea-catcher` is a restricted project with no GitHub
+repository and is out of scope.
 
 ## Follow-ups found during the pass
 

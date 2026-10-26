@@ -5,22 +5,12 @@
     "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1793042724.7191832,
+    "updated_at": 1793043925.6379673,
     "owner": "claude-code:240bc3b7",
     "started_by": "claude-code:240bc3b7",
     "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "license-model-218",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'license-model-218' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792967471.034642,
-      "timestamp_str": "2026-10-26 01:31:11",
-      "agent": "kilo:main"
-    },
     {
       "task_id": "license-hardening-2026",
       "phase": "planning",
@@ -271,6 +261,17 @@
       "status": "in_progress",
       "timestamp": 1793042724.7191832,
       "timestamp_str": "2026-10-26 22:25:24",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2b/3] MemoryReconstruction, Voidfarer, Fluid-Universe relicensed (AGL/AGL/ASL-1.1) with no AGPL tag or note, renamed, described, topics set, checks pass, pushed; AIKit description now says AL-1.1; checklists: passed. Tag deletion still needs the user",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793043925.6379673,
+      "timestamp_str": "2026-10-26 22:45:25",
       "agent": "claude-code:240bc3b7"
     }
   ]
