@@ -16,6 +16,7 @@
 | **[`codebase_map.md`](codebase_map.md)** | Auto-generated AST symbol map of all modules, classes, and exported functions. |
 | **[`model_benchmarks.md`](model_benchmarks.md)** | Subagent model benchmark database, online empirical metrics, and selection tree. |
 | **[`host_clients.md`](host_clients.md)** | Agent host clients, multi-environment portability architecture, and Claude parity. |
+| **[`repo_backlog.md`](repo_backlog.md)** | Projects skipped by the repository normalization pass, with the reason and the work left. |
 | **[`principles_audit_ledger.md`](principles_audit_ledger.md)** | Snapshot audit of the 20 principles at ADR-107, not kept current; its cross-model lines are predictions, not measurements (ADR-117). |
 
 ---

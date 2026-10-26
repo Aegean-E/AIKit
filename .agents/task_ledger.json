@@ -1,60 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "license-sync",
-    "last_phase": "delivery",
+    "task_id": "repo-normalize",
+    "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1793011918.987821,
-    "owner": "kilo:main",
-    "started_by": "kilo:main",
+    "updated_at": 1793037335.6257615,
+    "owner": "claude-code:240bc3b7",
+    "started_by": "claude-code:240bc3b7",
     "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "project-creation-metadata",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] (1) new --publish sets derived topics (aikit, user topics, source-available) at first push; (2) descriptions are normalized to sentence case and enforced at 10-350 chars for new and publish; (3) review last 8 commits of AIKit, aegean-licensing and aegean-licensing-ops, fix findings (register status validation, license summary guard), tests and gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792961427.2467842,
-      "timestamp_str": "2026-10-25 23:50:27",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "Project creation must deliver the same metadata quality as publish, and the last commits need an independent defect review",
-        "benefits": "First push is discoverable and described; malformed registers cannot report a revoked certificate as valid",
-        "risks": "contract: publish requires a usable README description (10-350 chars), new --publish topics gain source-available, description text is sentence-cased; dependency: none; concurrency: none; state: README text on creation only",
-        "mitigation": "Failing-first tests for each behavior; publish still reads the README as the one description source"
-      }
-    },
-    {
-      "task_id": "project-creation-metadata",
-      "phase": "abandoned",
-      "phase_num": 2,
-      "description": "Task 'project-creation-metadata' abandoned: Superseded by new user request: build AI music generation project 'muse'; prior task's uncommitted files left untouched for owner",
-      "status": "abandoned",
-      "timestamp": 1792962751.6134324,
-      "timestamp_str": "2026-10-26 00:12:31",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "muse-ai-music-creator",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Plan Muse: pluggable AI music generation (Replicate) + Gemini audio judge, CLI and Python library, offline-testable",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792962760.2807517,
-      "timestamp_str": "2026-10-26 00:12:40",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "Projects need on-demand original music matched to a theme, with an automated listener that verifies the audio actually fits before it ships",
-        "benefits": "One command produces a themed track plus a scored verdict and reusable Python API; providers are swappable and tests run offline",
-        "risks": "contract: new public CLI/API surface; dependency: Replicate and Gemini HTTP APIs via stdlib urllib, no pip deps; concurrency: none; state: artifacts written under the project output dir, no secrets logged",
-        "mitigation": "Protocol-based adapters with mock backends in tests; schema-checked judge JSON; secrets read from env only; failing-first tests per behaviour"
-      }
-    },
     {
       "task_id": "muse-ai-music-creator",
       "phase": "superseded",
@@ -287,6 +243,45 @@
       "timestamp": 1793011918.987821,
       "timestamp_str": "2026-10-26 13:51:58",
       "agent": "kilo:main"
+    },
+    {
+      "task_id": "license-sync",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'license-sync' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793036221.4932046,
+      "timestamp_str": "2026-10-26 20:37:01",
+      "agent": "claude-code:240bc3b7",
+      "continued_from": "kilo:main"
+    },
+    {
+      "task_id": "repo-normalize",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] Plan: (1) later-list file knowledge/repo_backlog.md; (2) relicense 24 clean projects to AL/AGL/ASL-1.1 locally with -<old>-final or v<ver>-<old> tags, fix pilot link/wording; (3) rename 22 lowercase GitHub repos and update remotes; (4) topics and <=350-char descriptions; (5) push commits and tags",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793036823.520571,
+      "timestamp_str": "2026-10-26 20:47:03",
+      "agent": "claude-code:240bc3b7",
+      "impact_assessment": {
+        "why": "User asked to normalize repo names, topics, descriptions and move clean repos to Aegean 1.1 licenses",
+        "benefits": "Consistent public catalog under the current licenses; skipped repos recorded for later",
+        "risks": "contract: public repo names, license terms of new versions; dependency: gh CLI; concurrency: none; state: project git history, tags, remotes",
+        "mitigation": "Clean-only scope, per-repo aikit check, tag last pre-change commit, GitHub redirects old names, no force pushes"
+      }
+    },
+    {
+      "task_id": "repo-normalize",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/5] knowledge/repo_backlog.md lists 5 skipped projects and 2 follow-ups; KB, sync and secret gates pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793037335.6257615,
+      "timestamp_str": "2026-10-26 20:55:35",
+      "agent": "claude-code:240bc3b7"
     }
   ]
 }
