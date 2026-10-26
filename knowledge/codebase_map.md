@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `22`
 - **Total Classes**: `95`
-- **Total Top-Level Functions**: `361`
-- **Total Class Methods**: `674`
-- **Total Source Lines**: `20231`
+- **Total Top-Level Functions**: `363`
+- **Total Class Methods**: `680`
+- **Total Source Lines**: `20320`
 
 ---
 
@@ -305,7 +305,7 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `305` lines (`14934` bytes)
+**Size**: `311` lines (`15393` bytes)
 
 **Classes:**
 - `class LicenseState`
@@ -314,6 +314,7 @@
 - `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
 - `def license_state(project_root)` - *The project's tier, personal-license kind and version: the restriction, else what LICENSE says.*
 - `def suggest_license(project_root)` - *What an AI should choose for this project, with the current file and the evidence.*
+- `def _with_license_section(text, section)` - *`text` (LF) with its first License section replaced by `section` and any later one removed.*
 - `def _licensed_readme(text, newline, kind, assets_manifest)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
 - `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.1), game (AGL-1.1) or science (ASL-1.1)*
 - `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
@@ -325,13 +326,14 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `306` lines (`14899` bytes)
+**Size**: `328` lines (`15729` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
 - `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
 - `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for GitHub (author case kept).*
+- `def _fit_description(text)` - *`text` within GitHub's 350 characters; the 200 used before cut what `new --description`*
 - `def hide_url_credentials(text)` - *`text` with the user-info of every URL in it replaced by `***` (PRINCIPLE-019 R4).*
 - `def config_value(raw)` - *A git config value as git reads it: quotes removed, and a `;` or `#` outside quotes ends it.*
 - `def get_project_repo_url(project_root, runner)` - *The URL of the project's 'origin' remote with any credential in it hidden, or None.*
@@ -701,7 +703,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8035` lines (`459302` bytes)
+**Size**: `8096` lines (`463229` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1108,6 +1110,9 @@
   - Method `.test_titles_are_title_cased_and_descriptions_keep_their_case()`
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
+  - Method `.test_license_switch_keeps_the_readme_tree_contiguous()`
+  - Method `.test_license_switch_labels_a_bare_license_tree_line()`
+  - Method `.test_license_switch_replaces_a_differently_titled_license_section()`
   - Method `.test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade()`
   - Method `.test_archived_game_and_science_headers_still_map_to_their_kind()`
   - Method `.test_topics_command_records_what_the_ai_chooses()`
@@ -1309,6 +1314,9 @@
   - Method `.test_refusals_upload_nothing()`
   - Method `.test_uncommitted_work_is_named_in_the_report()`
   - Method `.test_extract_readme_description_finds_first_paragraph_and_truncates()`
+  - Method `.test_extract_readme_description_survives_a_byte_order_mark()`
+  - Method `.test_extract_readme_description_skips_a_url_only_paragraph()`
+  - Method `.test_extract_readme_description_cuts_at_a_sentence_or_word_boundary()`
   - Method `.test_get_project_repo_url()`
   - Method `.test_repo_url_reads_the_config_as_git_does()`
   - Method `.test_repo_url_never_shows_credentials()`

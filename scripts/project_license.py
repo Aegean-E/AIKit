@@ -45,10 +45,15 @@ RESTRICTED_NOTICE_PATH = LICENSES_DIR / "RESTRICTED-NOTICE.md"
 RESTRICTED_LICENSE_HEADER = "AEGEAN RESTRICTED SOFTWARE NOTICE"
 RESTRICTED_TREE_LINE = "├── LICENSE                   <- All Rights Reserved (restricted tier)"
 # A tree entry is `├──` or `└──` depending on its position, so keep whichever prefix the README
-# already uses instead of matching one spelling only (a LICENSE listed last uses `└──`).
-_TREE_ENTRY = r"^([├└]──) {} .*$"
+# already uses instead of matching one spelling only (a LICENSE listed last uses `└──`). The
+# comment is optional: a bare `├── LICENSE` line is relabelled too.
+_TREE_ENTRY = r"^([├└]──) {}(?: .*)?$"
 _TREE_LICENSE = re.compile(_TREE_ENTRY.format("LICENSE"))
 _TREE_COMMERCIAL = re.compile(_TREE_ENTRY.format(r"COMMERCIAL\.md"))
+# Any plain License heading (`## License`, `## Licence`, `## 📄 License`), so a README written
+# before AIKit is switched in place instead of gaining a second section; `## Commercial
+# Licensing` and other titled sections are left alone.
+_LICENSE_SECTION = re.compile(r"^## (?:[^\w\s]+\s+)?Licen[cs]e[ \t]*\n.*?(?=^## |\Z)", re.M | re.S)
 RESTRICTED_LICENSE_SECTION = (
     f"{LICENSE_HEADING}\n\n"
     "All Rights Reserved. This project is in the Aegean restricted tier and is not licensed for "
@@ -130,14 +135,28 @@ def suggest_license(project_root: Path) -> dict:
     return detected
 
 
+def _with_license_section(text: str, section: str) -> str:
+    """`text` (LF) with its first License section replaced by `section` and any later one removed."""
+    found = list(_LICENSE_SECTION.finditer(text))
+    if not found:
+        return text.rstrip("\n") + "\n\n" + section
+    for match in reversed(found[1:]):
+        text = text[:match.start()] + text[match.end():]
+    first = found[0]
+    tail = "\n" if first.end() < len(text) else ""
+    return text[:first.start()] + section + tail + text[first.end():]
+
+
 def _licensed_readme(text: str, newline: str, kind: str,
                      assets_manifest: bool = False) -> str:
     """`text` with its tree's LICENSE line and License section naming the chosen personal license."""
     choice = license_choice(kind)
+    # The tree template ends in a newline for `new`; a rewritten line must not keep it.
+    tree_line = choice["tree"][3:].rstrip("\n")
 
     def licensed(line: str) -> str:
         match = _TREE_LICENSE.match(line)
-        return f"{match.group(1)}{choice['tree'][3:]}" if match else line
+        return f"{match.group(1)}{tree_line}" if match else line
 
     lines = [licensed(line) for line in text.split(newline)]
     text = "\n".join(lines)
@@ -147,13 +166,7 @@ def _licensed_readme(text: str, newline: str, kind: str,
             text = (text[:marker.end()] +
                     "\n├── ASSETS.md                 <- Asset/data manifest: what the license covers" +
                     text[marker.end():])
-    section = re.search(rf"^{re.escape(LICENSE_HEADING)}\n.*?(?=^## |\Z)", text, re.M | re.S)
-    if section is None:
-        text = text.rstrip("\n") + "\n\n" + choice["section"]
-    else:
-        tail = "\n" if section.end() < len(text) else ""
-        text = text[:section.start()] + choice["section"] + tail + text[section.end():]
-    return text.replace("\n", newline)
+    return _with_license_section(text, choice["section"]).replace("\n", newline)
 
 
 def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState:
@@ -247,14 +260,7 @@ def _restricted_readme(text: str, newline: str) -> str:
         return (f"{match.group(1)}{RESTRICTED_TREE_LINE[3:]}" if match else line)
 
     lines = [licensed(line) for line in text.split(newline) if not _TREE_COMMERCIAL.match(line)]
-    text = "\n".join(lines)
-    section = re.search(rf"^{re.escape(LICENSE_HEADING)}\n.*?(?=^## |\Z)", text, re.M | re.S)
-    if section is None:
-        text = text.rstrip("\n") + "\n\n" + RESTRICTED_LICENSE_SECTION
-    else:
-        tail = "\n" if section.end() < len(text) else ""
-        text = text[:section.start()] + RESTRICTED_LICENSE_SECTION + tail + text[section.end():]
-    return text.replace("\n", newline)
+    return _with_license_section("\n".join(lines), RESTRICTED_LICENSE_SECTION).replace("\n", newline)
 
 
 def restrict_project(project_root: Path, name: str, today: Optional[str] = None,

@@ -71,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
                      help="a GitHub topic, repeatable; 'aikit' is always added")
     new.add_argument("--kind", dest="license_kind", choices=("auto", "software", "game", "science"),
                      default="auto",
-                     help="personal license: software (AL-1.0), game (AGL-1.0), science (ASL-1.0); "
+                     help="personal license: software (AL-1.1), game (AGL-1.1), science (ASL-1.1); "
                           "auto starts with software and publish can switch later")
     new.add_argument("--publish", action="store_true",
                      help="upload the starter files to GitHub at creation (needs --description); later "
@@ -152,8 +152,8 @@ def build_parser() -> argparse.ArgumentParser:
     license_mode.add_argument("--suggest", action="store_true",
                               help="show the license the project's markers recommend")
     license_mode.add_argument("--set", dest="set_kind", choices=("software", "game", "science"),
-                              help="switch the personal license: software (AL-1.0), game (AGL-1.0), "
-                                   "science (ASL-1.0)")
+                              help="switch the personal license: software (AL-1.1), game (AGL-1.1), "
+                                   "science (ASL-1.1)")
     license_cmd.add_argument("--json", action="store_true",
                              help="with --suggest, print one machine-readable suggestion object")
 

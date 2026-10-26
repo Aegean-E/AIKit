@@ -1,44 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "agpl-cleanup",
+    "task_id": "license-tooling-fixes",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793044259.2705846,
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1793044980.3284113,
     "owner": "claude-code:240bc3b7",
     "started_by": "claude-code:240bc3b7",
-    "continuations": [],
-    "completed_at": 1793044259.4209797
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "license-hardening-2026",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'license-hardening-2026' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792969654.932118,
-      "timestamp_str": "2026-10-26 02:07:34",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "license-1-1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Compare at least 20 licenses, harden AL/AGL/ASL, add security-research, moral-rights, data-protection and GPL/AGPL terms, create 1.1 texts, keep 1.0 recognized, pin both, update docs and tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792972131.6433098,
-      "timestamp_str": "2026-10-26 02:48:51",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "The 1.0 texts lacked explicit security-research, moral-rights/data-protection and compatibility terms",
-        "benefits": "A complete 1.1 family with backward-compatible detection and an explicit upgrade path",
-        "risks": "contract: license version, pins, headers, READMEs; dependency: none; concurrency: none; state: PIN, project.json license, catalog",
-        "mitigation": "Dual-version pinning, failing-first tests, full gates"
-      }
-    },
     {
       "task_id": "license-1-1",
       "phase": "delivery",
@@ -260,6 +232,34 @@
       "status": "completed",
       "timestamp": 1793044259.4209812,
       "timestamp_str": "2026-10-26 22:50:59",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "license-tooling-fixes",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Plan: (1) license README rewrite: no blank tree line, bare LICENSE line, any '## <emoji> License' heading replaced not duplicated (personal and restricted), 1.1 help text; (2) publish description: strip BOM, skip URL-only paragraph, cut at sentence or word boundary; (3) CATALOG blob/main links fixed at source and resynced, backlog and ADR updated; push",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793044783.708394,
+      "timestamp_str": "2026-10-26 22:59:43",
+      "agent": "claude-code:240bc3b7",
+      "impact_assessment": {
+        "why": "The repo passes hit five tooling defects that needed hand repair in 30 projects",
+        "benefits": "aikit license --set and publish produce correct READMEs and descriptions without manual cleanup",
+        "risks": "contract: README rewrite and description extraction; dependency: none; concurrency: none; state: pinned licenses/CATALOG.md digest",
+        "mitigation": "Failing-first unit tests per defect, existing tests unchanged, full Phase 4, sync_licenses --check"
+      }
+    },
+    {
+      "task_id": "license-tooling-fixes",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/2] license README rewrite (tree newline, bare LICENSE, any plain License heading in personal and restricted switch), publish description (BOM, URL-only, sentence/word cut), 1.1 help, ADR-227; 6 failing-first tests; budgets, sync, KB, licenses, secrets, reachability, dogfood pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793044980.3284113,
+      "timestamp_str": "2026-10-26 23:03:00",
       "agent": "claude-code:240bc3b7"
     }
   ]

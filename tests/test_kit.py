@@ -140,6 +140,8 @@ from scripts.project_publish import (
 
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
 from scripts.project_license import (
+    _licensed_readme,
+    _restricted_readme,
     apply_license_kind,
     license_state,
     public_remote_refusal,
@@ -4958,6 +4960,34 @@ class TestProjectRegistry(unittest.TestCase):
         with self.assertRaises(ProjectError):
             apply_license_kind(folder, "field-notes", "game")
 
+    def test_license_switch_keeps_the_readme_tree_contiguous(self):
+        # The template tree line ended in a newline, so every switch left a blank line in the tree.
+        readme = ("# app\n\n```text\napp/\n├── LICENSE                   <- old license\n"
+                  "├── README.md\n└── src/\n```\n")
+        out = _licensed_readme(readme, "\n", "game", assets_manifest=True)
+        self.assertNotIn("\n\n├──", out)
+        self.assertIn("├── LICENSE                   <- Aegean Game License 1.1 (AGL-1.1)", out)
+        self.assertIn("├── ASSETS.md", out)
+
+    def test_license_switch_labels_a_bare_license_tree_line(self):
+        readme = "# app\n\n```text\napp/\n├── LICENSE\n└── README.md\n```\n"
+        out = _licensed_readme(readme, "\n", "software")
+        self.assertIn("├── LICENSE                   <- Aegean License 1.1 (AL-1.1)", out)
+        self.assertNotIn("├── LICENSES", out, "LICENSES/ is a different entry")
+
+    def test_license_switch_replaces_a_differently_titled_license_section(self):
+        # `## License` or `## 📄 License` got a second, canonical section appended beside it.
+        for heading in ("## License", "## 📄 License", "## Licence"):
+            readme = f"# app\n\nIntro.\n\n{heading}\n\nGNU AGPL-3.0; see LICENSE.\n\n## Credits\n\nMe.\n"
+            out = _licensed_readme(readme, "\n", "software")
+            self.assertEqual(len(re.findall(r"(?m)^## .*Licen[cs]e\s*$", out)), 1, heading)
+            self.assertNotIn("AGPL", out, heading)
+            self.assertIn("## Credits", out, heading)
+            restricted = _restricted_readme(readme, "\n")
+            self.assertEqual(len(re.findall(r"(?m)^## .*Licen[cs]e\s*$", restricted)), 1, heading)
+        kept = _licensed_readme("# app\n\n## Commercial Licensing\n\nTiers.\n", "\n", "software")
+        self.assertIn("## Commercial Licensing", kept, "only a plain License heading is replaced")
+
     def test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade(self):
         folder = create_project("legacy-app", workspace=self.kit, git_start=lambda root: None,
                                 description="A small tool created before the 1.1 texts.")
@@ -7506,6 +7536,37 @@ class TestProjectPublish(unittest.TestCase):
             no_header_md = "A standalone tool with no top heading.\n\nMore details later.\n"
             (root / "README.md").write_text(no_header_md, encoding="utf-8")
             self.assertEqual(extract_readme_description(root), "A standalone tool with no top heading.")
+
+    def test_extract_readme_description_survives_a_byte_order_mark(self):
+        # A README saved with a UTF-8 BOM hid its title, so publish sent a later table instead.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text(
+                "﻿# my-app\n\nThe real summary.\n\n## Files\n\n| a | b |\n|---|---|\n",
+                encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "The real summary.")
+
+    def test_extract_readme_description_skips_a_url_only_paragraph(self):
+        # A centred demo link above the summary became the whole repository description.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text(
+                "# my-app\n\n<p align=\"center\">https://my-app.example.app/</p>\n\n"
+                "My app plans duty rosters.\n", encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "My app plans duty rosters.")
+
+    def test_extract_readme_description_cuts_at_a_sentence_or_word_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = "A " + "long " * 60 + "first sentence."
+            (root / "README.md").write_text(f"# my-app\n\n{first} {'More words here. ' * 10}\n",
+                                            encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), first + " More words here.",
+                             "the whole sentences within 350 characters beat a cut mid-word")
+            (root / "README.md").write_text(f"# my-app\n\n{'word ' * 100}\n", encoding="utf-8")
+            extracted = extract_readme_description(root)
+            self.assertLessEqual(len(extracted), 350)
+            self.assertTrue(extracted.endswith("word..."), "no sentence end: cut between words")
 
     def test_get_project_repo_url(self):
         root = Path("/p/app")

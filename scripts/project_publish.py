@@ -43,6 +43,9 @@ def _triad(what: str, why: str, fix: str) -> str:
     return hide_url_credentials(f"Error: {what}\nWhy: {why}\nFix: {fix}")
 
 
+_URL_ONLY = re.compile(r"https?://\S+")
+
+
 def _clean_markdown_line(raw: str) -> str:
     """Strip markdown formatting, badges, and html tags from a single line."""
     line = re.sub(r"<!--.*?-->", "", raw)
@@ -66,7 +69,8 @@ def extract_readme_description(project_root: Path) -> str:
     if not readme.is_file():
         return ""
     try:
-        content = readme.read_text(encoding="utf-8", errors="replace")
+        # utf-8-sig: a byte-order mark hid the title, so a later table became the description.
+        content = readme.read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return ""
     desc_lines: List[str] = []
@@ -79,6 +83,9 @@ def extract_readme_description(project_root: Path) -> str:
                 past_header = True
             continue
         if not stripped:
+            # A paragraph that is only a link (a centred demo URL) is not a description.
+            if desc_lines and _URL_ONLY.fullmatch(" ".join(desc_lines)):
+                desc_lines = []
             if desc_lines:
                 break
             continue
@@ -88,8 +95,23 @@ def extract_readme_description(project_root: Path) -> str:
         if clean:
             desc_lines.append(clean)
     text = " ".join(desc_lines).strip()
-    # GitHub holds 350 characters; the 200 used before cut what `new --description` accepts (ADR-202).
-    return (text[:347].rstrip() + "...") if len(text) > 350 else text
+    return "" if _URL_ONLY.fullmatch(text) else _fit_description(text)
+
+
+def _fit_description(text: str) -> str:
+    """
+    `text` within GitHub's 350 characters; the 200 used before cut what `new --description`
+    accepts (ADR-202). A longer one ends at its last whole sentence, else between words, so the
+    published description is never cut mid-word.
+    """
+    if len(text) <= 350:
+        return text
+    ends = [m.end() for m in re.finditer(r"[.!?](?=\s)", text) if m.end() <= 350]
+    if ends:
+        return text[:ends[-1]]
+    cut = text.rfind(" ", 0, 348)
+    head = text[:cut].rstrip(" ,;:") if cut > 0 else text[:347].rstrip()
+    return head + "..."
 
 
 def hide_url_credentials(text: str) -> str:
