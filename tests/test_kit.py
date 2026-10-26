@@ -20,6 +20,8 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
+from scripts.sync_licenses import SYNC_FILES, check_licenses, sync_licenses
+
 # The unit tier must never start a process (PRINCIPLE-014 R3), directly or indirectly. While this
 # module's tests run, any attempt fails the offending test immediately and names the command.
 _REAL_POPEN_INIT = subprocess.Popen.__init__
@@ -7700,6 +7702,37 @@ class TestProjectPublish(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("Why:", msg)
 
+
+
+class TestLicenseSync(unittest.TestCase):
+    """The pinned license copies must not drift from the canonical texts or the catalog."""
+
+    def _source(self, source: Path) -> None:
+        for name in SYNC_FILES:
+            (source / name).write_text(f"# {name}\n", encoding="utf-8")
+        (source / "CATALOG.md").write_text("# Catalog\n", encoding="utf-8")
+
+    def test_sync_records_text_and_catalog_digests_and_check_detects_drift(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source, target = Path(one), Path(two)
+            self._source(source)
+            sync_licenses(source, target)
+            self.assertEqual(check_licenses(source, target), [])
+            pin = json.loads((target / "PIN.json").read_text(encoding="utf-8"))
+            self.assertIn("catalog_sha256", pin)
+            self.assertEqual(len(pin["sha256"]), len(SYNC_FILES) - 1)
+
+            (source / "AL-1.1.md").write_text("# changed\n", encoding="utf-8")
+            errors = check_licenses(source, target)
+            self.assertTrue(any("differs from" in error for error in errors), errors)
+            self.assertEqual(check_licenses(None, target), [],
+                             "the target is still internally consistent with its own PIN")
+
+            sync_licenses(source, target)
+            self.assertEqual(check_licenses(source, target), [])
+            (target / "CATALOG.md").write_text("# tampered\n", encoding="utf-8")
+            self.assertTrue(any("CATALOG.md" in error and "PIN.json" in error
+                                for error in check_licenses(None, target)))
 
 
 class TestTestTierBudgetGate(unittest.TestCase):

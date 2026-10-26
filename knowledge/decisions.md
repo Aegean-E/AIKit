@@ -2614,3 +2614,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: Measure a green over-budget help run once more and use the faster sample; a nonzero exit, stderr output or missing usage block still fails immediately. The 250ms budget and the entrypoint list do not change. The log names the best-of-two result.
 - **Consequences**: A load spike no longer fails delivery, while a real startup regression is slow in both samples and still fails. The help track costs one extra process launch per over-budget entrypoint.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-010 R5 (measured startup budget) and PRINCIPLE-015 (a dogfood gate that reports the real command).
+
+### ADR-225: License Copies Have a Checked Sync Tool
+- **Date**: 2026-10-26
+- **Status**: Accepted
+- **Context**: AIKit pins the Aegean license texts and catalog, but the copy was manual. The audit found the public catalog had gained the fair-source/model/hardware comparison while the AIKit copy had not, so the two documents disagreed and no test noticed. `PIN.json` also covered the eight license texts but not `CATALOG.md`.
+- **Decision**: Add `scripts/sync_licenses.py`: `--check` compares the canonical checkout with AIKit's copies and verifies both the texts and the catalog against `PIN.json`; `--write` copies the nine files and rewrites the pin. The pin gains a `catalog_sha256` field. The read-only check joins the dogfood gates and the Phase 4 skill list. Without a canonical checkout, `--check` still detects local drift against the pin.
+- **Consequences**: A catalog or license edit in aegean-licensing cannot silently leave AIKit on stale text; the gate names the file and asks for `--write`. A standalone AIKit still detects a tampered local copy. Updating a license now requires `sync_licenses --write`, review and commit instead of a manual copy.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (pinned facts), PRINCIPLE-005 (living docs), PRINCIPLE-013 (atomic generated file writes) and PRINCIPLE-016 (code and docs together).

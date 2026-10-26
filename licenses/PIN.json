@@ -1,7 +1,7 @@
 {
   "source": "https://github.com/AegeanWorks/aegean-licensing",
   "path": "licenses/",
-  "note": "Copies of the canonical Aegean license texts. Update by copying them from aegean-licensing and refreshing these digests (ADR-214).",
+  "note": "Copies of the canonical Aegean license texts. Update with `python scripts/sync_licenses.py --write` after changing aegean-licensing (ADR-225).",
   "sha256": {
     "AL-1.0.md": "6241e559761caf7545d40d9f2f1a8d6d846c51e5e0bbcb8dbb7d375c933dd705",
     "AL-1.1.md": "a758eb930f3b8ce75c0dd39e257983121e9650b0d6f1795b115043cd0ece69be",
@@ -11,5 +11,6 @@
     "ASL-1.0.md": "f8b8fbe0360d5011a8347ff7339dc453a62fb0f7adb9372a1db0cd6a8669fbd0",
     "ASL-1.1.md": "0d90a6e6d2fd4e6412201695aa67186fb568165251b5e99efff6cf642b9056f6",
     "RESTRICTED-NOTICE.md": "eefa83152ac42b30e8746b2b1a5e70c001c3379a33950c7875fa8483113f8a45"
-  }
+  },
+  "catalog_sha256": "59ba90dd17bbc56e4973da214cd2ff6393521ad847d41fa0081376058d0b87e2"
 }

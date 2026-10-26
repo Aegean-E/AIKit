@@ -170,6 +170,9 @@ python scripts/sync_principles.py --check
 # AST and knowledge base check
 python scripts/update_knowledge_base.py --check
 
+# Pinned license/catalog drift check
+python scripts/sync_licenses.py --check
+
 # Secret and credential scan
 python scripts/check_secrets.py --all
 

@@ -51,6 +51,7 @@ SYNC_CLI = ROOT_DIR / "scripts" / "sync_principles.py"
 KB_CLI = ROOT_DIR / "scripts" / "update_knowledge_base.py"
 REACH_CLI = ROOT_DIR / "scripts" / "check_reachability.py"
 SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
+SYNC_LICENSES_CLI = ROOT_DIR / "scripts" / "sync_licenses.py"
 AIKIT_CLI = ROOT_DIR / "aikit.py"
 LOG_PATH = ROOT_DIR / ".agents" / "dogfood_last_run.log"
 
@@ -328,6 +329,7 @@ def track_readonly_gates(jail: Path, log: List[str]) -> Tuple[bool, str]:
         ("kb", KB_CLI, ["--check"]),
         ("reach", REACH_CLI, []),
         ("secrets", SECRETS_CLI, ["--all"]),
+        ("licenses", SYNC_LICENSES_CLI, ["--check"]),
     )
     # The gates are independent read-only processes, so they run concurrently: run one after
     # another they took ~1s and pushed the integration tier past its 5s budget (ADR-080).
@@ -359,7 +361,8 @@ def track_help_startup_budget(jail: Path, log: List[str]) -> Tuple[bool, str]:
     attempts = 2
     failures = []
     slowest = 0.0
-    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI, AIKIT_CLI):
+    for script in (LEDGER_CLI, SYNC_CLI, KB_CLI, REACH_CLI, SECRETS_CLI, SYNC_LICENSES_CLI,
+                   AIKIT_CLI):
         measurements = []
         problem = ""
         for attempt in range(attempts):

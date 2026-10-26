@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `21`
-- **Total Classes**: `94`
-- **Total Top-Level Functions**: `351`
-- **Total Class Methods**: `671`
-- **Total Source Lines**: `19915`
+- **Total Python Modules**: `22`
+- **Total Classes**: `95`
+- **Total Top-Level Functions**: `358`
+- **Total Class Methods**: `673`
+- **Total Source Lines**: `20122`
 
 ---
 
@@ -261,7 +261,7 @@
 ### [`scripts/dogfood.py`](scripts/dogfood.py)
 > *Operational Dogfooding Runner (PRINCIPLE-015)*
 
-**Size**: `523` lines (`23841` bytes)
+**Size**: `526` lines (`23995` bytes)
 
 **Functions:**
 - `def terminate_process_tree(proc)` - *Kill a process and all of its children (PRINCIPLE-015 Rule 2).*
@@ -414,6 +414,22 @@
 - `def _run_supervised(cmd, cwd, timeout)`
 - `def delegate_subagent(role, prompt, file, project_name, model, timeout, output_format, runner, workspace)` - *Run `role` on `prompt` in AIKit or in project `project_name`; returns (exit code, report).*
 - `def answer_text(stdout)` - *The sub-agent's own words from OpenCode's `--format json` event stream: the `text` parts in*
+
+---
+
+### [`scripts/sync_licenses.py`](scripts/sync_licenses.py)
+> *Synchronize AIKit's pinned license copies with the canonical aegean-licensing repository.*
+
+**Size**: `171` lines (`6959` bytes)
+
+**Functions:**
+- `def _normalize(text)`
+- `def _digest(path)`
+- `def _write_text(path, text)` - *Atomic write with a same-directory temp file and os.replace (PRINCIPLE-013).*
+- `def expected_pin(source)` - *The PIN.json content the source tree should produce.*
+- `def check_licenses(source, target)` - *Return every drift or tamper finding; empty means the pinned copies are consistent. When*
+- `def sync_licenses(source, target)` - *Copy every canonical text into the target and rewrite PIN.json.*
+- `def main(argv)`
 
 ---
 
@@ -682,7 +698,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7970` lines (`455389` bytes)
+**Size**: `8003` lines (`457104` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1299,6 +1315,9 @@
   - Method `.test_a_topic_failure_after_upload_is_a_note()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`
+- `class TestLicenseSync` - *The pinned license copies must not drift from the canonical texts or the catalog.*
+  - Method `._source(source)`
+  - Method `.test_sync_records_text_and_catalog_digests_and_check_detects_drift()`
 - `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*
   - Method `.fake_runner(table)`
   - Method `.ok(tests, seconds)`

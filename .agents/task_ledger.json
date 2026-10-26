@@ -1,50 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "gaps-closure",
-    "last_phase": "planning",
-    "active_phase": 2,
+    "task_id": "license-sync",
+    "last_phase": "delivery",
+    "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1793003295.1381273,
+    "updated_at": 1793011918.987821,
     "owner": "kilo:main",
     "started_by": "kilo:main",
-    "continuations": [],
-    "impact_assessment": {
-      "why": "The remaining gaps were process and commercial-document gaps, and the tree needs a clean delivered state",
-      "benefits": "A manifest from the first commit, resilient timing gates, and reviewable commercial templates",
-      "risks": "contract: templates and README tree; dependency: none; concurrency: host load; state: ledger, maps",
-      "mitigation": "Failing-first tests, full gates, clean-tree dogfood"
-    }
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "aikit-topics",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[2/2] done: TypeScript stack topic, robust tree rewrite, ops KVKK file erasure, verify --json ok flag, UI --json URL, public verifier non-object JSON fix; tests 513/98/48; all repo gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792960437.1199808,
-      "timestamp_str": "2026-10-25 23:33:57",
-      "agent": "kilo:main",
-      "handoff": {
-        "state": "uncommitted and green",
-        "next": "commit and push on user approval",
-        "open": "27 portfolio READMEs still carry the pre-move AIKit link",
-        "evidence": "AIKit 513 unit and 57 integration, ops 98, public 48, budgets and all gates green"
-      },
-      "continued_from": "claude-code:c74fca42"
-    },
-    {
-      "task_id": "aikit-topics",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-topics' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792961416.6629558,
-      "timestamp_str": "2026-10-25 23:50:16",
-      "agent": "kilo:main"
-    },
     {
       "task_id": "project-creation-metadata",
       "phase": "planning",
@@ -295,6 +261,32 @@
         "risks": "contract: templates and README tree; dependency: none; concurrency: host load; state: ledger, maps",
         "mitigation": "Failing-first tests, full gates, clean-tree dogfood"
       }
+    },
+    {
+      "task_id": "license-sync",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[2/2] add sync_licenses --check/--write, catalog digest in PIN, dogfood gate, tests and ADR-225; 532 unit tests and sync check pass; budget/dogfood blocked by concurrent host load, not code",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793011918.987821,
+      "timestamp_str": "2026-10-26 13:51:58",
+      "agent": "kilo:main",
+      "handoff": {
+        "state": "feature verified by unit tests and sync check",
+        "next": "rerun budget and dogfood on an idle host",
+        "evidence": "532 tests OK"
+      }
+    },
+    {
+      "task_id": "gaps-closure",
+      "phase": "superseded",
+      "phase_num": 2,
+      "description": "Superseded by 'license-sync' without --complete or --reset",
+      "status": "superseded",
+      "timestamp": 1793011918.987821,
+      "timestamp_str": "2026-10-26 13:51:58",
+      "agent": "kilo:main"
     }
   ]
 }
