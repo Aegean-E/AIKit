@@ -27,13 +27,13 @@ This operational runbook provides the unified command matrix for driving AIKit a
 The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
-python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]... [--kind software|game|science]  # projects/<name>/: own repo, .aikit/ memory, AL-1.0/AGL-1.0/ASL-1.0 LICENSE + COMMERCIAL.md (ACL-1.0), Built with AIKit badge; topic aikit always added, title title-cased, description keeps its case; --publish (needs --description) uploads only these starter files with derived topics, only when the user asks
+python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]... [--kind software|game|science]  # projects/<name>/: own repo, .aikit/ memory, AL-1.1/AGL-1.1/ASL-1.1 LICENSE + COMMERCIAL.md (ACL-1.0), Built with AIKit badge; topic aikit always added, title title-cased, description keeps its case; --publish (needs --description) uploads only these starter files with derived topics, only when the user asks
 python aikit.py attach <path>        # an existing folder: adds .aikit/ memory and an AIKit Integrated badge under its README title (uncommitted)
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit; never pushes, add --push only when push delivery is authorized (PRINCIPLE-018 R4)
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
 python aikit.py publish <name> [--public] [--owner <org>] [--license auto]  # its own GitHub repo with the README's description, stack/license topics and an AI-chosen license; needs a 10-350 char README paragraph; only when the user asks
-python aikit.py license <name> [--suggest [--json]|--set software|game|science|--restrict]  # AL-1.0, AGL-1.0 (DRM-free games) or ASL-1.0 (science); --restrict, only when the user asks, makes later versions All Rights Reserved from HEAD (earlier releases keep their license), drops COMMERCIAL.md, blocks publish --public, and allows check --push or publish only to a repository gh reports private (ADR-214)
+python aikit.py license <name> [--suggest [--json]|--set software|game|science|--restrict]  # AL-1.1, AGL-1.1 (DRM-free games) or ASL-1.1 (science); --restrict, only when the user asks, makes later versions All Rights Reserved from HEAD (earlier releases keep their license), drops COMMERCIAL.md, blocks publish --public, and allows check --push or publish only to a repository gh reports private (ADR-214)
 python aikit.py topics <name> [--suggest [--json]|--set <t>...]  # AI-chosen GitHub tags, recorded in project.json
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger; --agent <host>:<session> names you

@@ -178,11 +178,11 @@ def publish_topics(project_root: Path, recorded: List[str]) -> List[str]:
     state = license_state(project_root)
     if state.tier == "personal":
         extra.append("source-available")
-    kind = state.kind
-    if kind == "game":
-        extra.extend(("game", "drm-free"))
-    elif kind == "science":
-        extra.extend(("science", "research"))
+        kind = state.kind
+        if kind == "game":
+            extra.extend(("game", "drm-free"))
+        elif kind == "science":
+            extra.extend(("science", "research"))
     for topic in extra:
         if topic not in topics:
             topics.append(topic)
@@ -200,7 +200,12 @@ def license_summary(project: Project) -> str:
         return f"restricted since {since}, cutoff {cutoff} (All Rights Reserved)"
     if state.tier == "personal":
         choice = LICENSE_CHOICES.get(state.kind)
-        return f"personal ({choice['summary']})" if choice else "personal (AL-1.0, free personal use)"
+        if not choice:
+            return "personal (AL-1.1, free personal use)"
+        version = state.version or choice["version"]
+        key = f"{choice['key'].rsplit('-', 1)[0]}-{version}"
+        summary = choice["summary"].split(", ", 1)[1]
+        return f"personal ({key}, {summary})"
     return "unrecorded (the project's own LICENSE applies)"
 
 
@@ -607,6 +612,20 @@ def cmd_publish(args: argparse.Namespace) -> int:
     # The README's first paragraph is the one description source (ADR-202), so a publish without
     # a usable one would create an undescribed repository (ADR-216). Long text is cut at GitHub's
     # 350-character limit by extraction; too little is refused before any gate runs.
+    readme_path = project.path / "README.md"
+    try:
+        readme_text = readme_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        readme_text = ""
+    if "<FILL:" in readme_text:
+        return report_error(ProjectError(
+            f"'{project.name}' README still holds the template description placeholder.",
+            "the GitHub description comes from the README's first paragraph, and a placeholder "
+            "is not a description.",
+            "replace the <FILL: ...> paragraph with one sentence of "
+            f"{DESCRIPTION_MIN}-{DESCRIPTION_MAX} characters, then publish again.",
+            exit_code=2,
+        ))
     description = extract_readme_description(project.path)
     if len(description) < DESCRIPTION_MIN:
         return report_error(ProjectError(
@@ -623,7 +642,9 @@ def cmd_publish(args: argparse.Namespace) -> int:
     requested_license = getattr(args, "license", "keep")
     suggestion = suggest_license(project.path)
     current = license_state(project.path)
-    if requested_license in LICENSE_CHOICES and current.kind != requested_license:
+    if requested_license in LICENSE_CHOICES and (
+            current.kind != requested_license
+            or (current.version and current.version != LICENSE_CHOICES[requested_license]["version"])):
         apply_license_kind(project.path, project.name, requested_license)
         print(f"[LICENSE] '{project.name}' now carries "
               f"{LICENSE_CHOICES[requested_license]['name']}.")
@@ -640,6 +661,10 @@ def cmd_publish(args: argparse.Namespace) -> int:
         print(f"[LICENSE] Suggested {LICENSE_CHOICES[suggestion['kind']]['key']} "
               f"({suggestion['confidence']} confidence); run `python aikit.py license "
               f"{project.name} --set {suggestion['kind']}` to switch.")
+    elif suggestion["upgrade_available"]:
+        print(f"[LICENSE] {suggestion['current_version']} -> {suggestion['latest_version']} "
+              f"available; run `python aikit.py license {project.name} --set "
+              f"{suggestion['kind']}` to upgrade.")
     audit = run_disruption_audit(workspace_dir=project.path)
     errors = project_baseline_errors(project, audit)
     if errors:
@@ -699,10 +724,35 @@ def cmd_license(args: argparse.Namespace) -> int:
         print(f"     Review and commit LICENSE and README.md in {project.path}, then publish.")
         return 0
     suggestion = suggest_license(project.path)
+    restricted = state.tier == TIER_RESTRICTED
     if getattr(args, "suggest", False):
+        if restricted:
+            if getattr(args, "json", False):
+                print(json.dumps({"ok": True, "result": {
+                    "project": project.name,
+                    "tier": state.tier,
+                    "set_allowed": False,
+                    "current": "restricted",
+                    "suggested": None,
+                    "current_key": None,
+                    "recommended_key": None,
+                    "confidence": "n/a",
+                    "reasons": [],
+                    "alternatives": [],
+                    "change_needed": False,
+                    "adoptable": False,
+                }}, indent=2))
+                return 0
+            print(f"Project: {project.name}")
+            print("Tier:    restricted (All Rights Reserved)")
+            print("A restricted project cannot switch to a personal license; use a separate "
+                  "written agreement or start a new project.")
+            return 0
         if getattr(args, "json", False):
             print(json.dumps({"ok": True, "result": {
                 "project": project.name,
+                "tier": state.tier,
+                "set_allowed": True,
                 "current": state.kind or "unrecorded",
                 "suggested": suggestion["kind"],
                 "current_key": suggestion["current_key"],
@@ -711,17 +761,23 @@ def cmd_license(args: argparse.Namespace) -> int:
                 "reasons": suggestion["reasons"],
                 "alternatives": suggestion["alternatives"],
                 "change_needed": suggestion["change_needed"],
+                "upgrade_available": suggestion["upgrade_available"],
                 "adoptable": suggestion["adoptable"],
+                "current_version": suggestion["current_version"],
+                "latest_version": suggestion["latest_version"],
             }}, indent=2, default=str))
             return 0
         print(f"Project: {project.name}")
-        print(f"Current: {state.kind or 'unrecorded'}")
+        print(f"Current: {state.kind or 'unrecorded'} {state.version or ''}".rstrip())
         print(f"Suggest: {LICENSE_CHOICES[suggestion['kind']]['key']} "
               f"({suggestion['confidence']} confidence)")
         for reason in suggestion["reasons"]:
             print(f"  - {reason}")
         if suggestion["change_needed"]:
             print(f"Switch with `python aikit.py license {project.name} --set {suggestion['kind']}`.")
+        elif suggestion["upgrade_available"]:
+            print(f"Upgrade with `python aikit.py license {project.name} --set {suggestion['kind']}` "
+                  f"({suggestion['current_version']} -> {suggestion['latest_version']}).")
         elif state.tier == "unrecorded" and suggestion["kind"] != DEFAULT_LICENSE_KIND:
             print(f"This project's own LICENSE is not an Aegean one; adopt "
                   f"{LICENSE_CHOICES[suggestion['kind']]['key']} with "
@@ -733,11 +789,15 @@ def cmd_license(args: argparse.Namespace) -> int:
     state = restrict_project(project.path, project.name) if args.restrict else state
     print(f"License tier of '{project.name}': {state.tier}")
     if state.tier != TIER_RESTRICTED:
-        print(f"     Kind:    {state.kind or 'unrecorded'}")
+        print(f"     Kind:    {state.kind or 'unrecorded'} {state.version or ''}".rstrip())
         print(f"     Suggest: {LICENSE_CHOICES[suggestion['kind']]['key']} "
               f"({suggestion['confidence']} confidence)")
         if suggestion["change_needed"]:
             print(f"     Apply with `python aikit.py license {project.name} --set {suggestion['kind']}`.")
+        elif suggestion["upgrade_available"]:
+            print(f"     Upgrade with `python aikit.py license {project.name} --set "
+                  f"{suggestion['kind']}` ({suggestion['current_version']} -> "
+                  f"{suggestion['latest_version']}).")
         elif state.tier == "unrecorded" and suggestion["kind"] != DEFAULT_LICENSE_KIND:
             print(f"     This project's own LICENSE is not an Aegean one; adopt "
                   f"{LICENSE_CHOICES[suggestion['kind']]['key']} with "
@@ -745,7 +805,8 @@ def cmd_license(args: argparse.Namespace) -> int:
         if not args.restrict:
             print(f"     Restrict it with `python aikit.py license {project.name} --restrict`.")
         return 0
-    print(f"     Cutoff: commit {state.since_commit[:12]} on {state.since}.")
+    cutoff = state.since_commit[:12] if state.since_commit else "an unrecorded commit"
+    print(f"     Cutoff: commit {cutoff} on {state.since or 'an unrecorded date'}.")
     print("     Versions up to that commit stay under the license they were released with.")
     if args.restrict and not already:
         print("Next, outside AIKit:")
@@ -778,22 +839,29 @@ def cmd_topics(args: argparse.Namespace) -> int:
         ))
     if args.suggest:
         suggestion = suggest_license(project.path)
+        state = license_state(project.path)
+        restricted = state.tier == TIER_RESTRICTED
         topics = publish_topics(project.path, config.get("topics") or ["aikit"])
         if getattr(args, "json", False):
             print(json.dumps({"ok": True, "result": {
                 "project": project.name,
+                "tier": state.tier,
+                "set_allowed": not restricted,
                 "topics": topics,
-                "domain": suggestion["kind"],
-                "confidence": suggestion["confidence"],
-                "reasons": suggestion["reasons"],
-                "recommended_key": suggestion["recommended_key"],
+                "domain": None if restricted else suggestion["kind"],
+                "confidence": "n/a" if restricted else suggestion["confidence"],
+                "reasons": [] if restricted else suggestion["reasons"],
+                "recommended_key": None if restricted else suggestion["recommended_key"],
             }}, indent=2, default=str))
             return 0
         print(f"Project: {project.name}")
         print(f"Topics:  {', '.join(topics)}")
-        print(f"Domain:  {suggestion['kind']} ({suggestion['confidence']} confidence)")
-        for reason in suggestion["reasons"]:
-            print(f"  - {reason}")
+        if restricted:
+            print("Domain:  restricted (no personal license topic; All Rights Reserved)")
+        else:
+            print(f"Domain:  {suggestion['kind']} ({suggestion['confidence']} confidence)")
+            for reason in suggestion["reasons"]:
+                print(f"  - {reason}")
         print("Set the recorded ones with "
               f"`python aikit.py topics {project.name} --set <topic>...`; publish adds the rest.")
         return 0

@@ -9,8 +9,8 @@
 - **Total Python Modules**: `21`
 - **Total Classes**: `94`
 - **Total Top-Level Functions**: `350`
-- **Total Class Methods**: `662`
-- **Total Source Lines**: `19556`
+- **Total Class Methods**: `667`
+- **Total Source Lines**: `19734`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `976` lines (`48444` bytes)
+**Size**: `1044` lines (`52068` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -305,17 +305,17 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `256` lines (`12582` bytes)
+**Size**: `271` lines (`13434` bytes)
 
 **Classes:**
 - `class LicenseState`
 
 **Functions:**
 - `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
-- `def license_state(project_root)` - *The project's tier and personal-license kind: the restriction, else what LICENSE says.*
+- `def license_state(project_root)` - *The project's tier, personal-license kind and version: the restriction, else what LICENSE says.*
 - `def suggest_license(project_root)` - *What an AI should choose for this project, with the current file and the evidence.*
 - `def _licensed_readme(text, newline, kind)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
-- `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.0), game (AGL-1.0) or science (ASL-1.0)*
+- `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.1), game (AGL-1.1) or science (ASL-1.1)*
 - `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
 - `def _restricted_readme(text, newline)` - *`text` with its tree's licensing lines and its License section switched to the restricted tier.*
 - `def restrict_project(project_root, name, today, runner)` - *Move a project to the restricted tier at its current commit; returns the recorded state. A*
@@ -325,13 +325,13 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `306` lines (`14890` bytes)
+**Size**: `306` lines (`14899` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
 - `def _triad(what, why, fix)`
 - `def _clean_markdown_line(raw)` - *Strip markdown formatting, badges, and html tags from a single line.*
-- `def extract_readme_description(project_root)` - *Extract a single-line, sentence-cased summary from the project's README.md for GitHub.*
+- `def extract_readme_description(project_root)` - *Extract a single-line summary from the project's README.md for GitHub (author case kept).*
 - `def hide_url_credentials(text)` - *`text` with the user-info of every URL in it replaced by `***` (PRINCIPLE-019 R4).*
 - `def config_value(raw)` - *A git config value as git reads it: quotes removed, and a `;` or `#` outside quotes ends it.*
 - `def get_project_repo_url(project_root, runner)` - *The URL of the project's 'origin' remote with any credential in it hidden, or None.*
@@ -346,7 +346,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `984` lines (`45579` bytes)
+**Size**: `1003` lines (`46448` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -358,8 +358,8 @@
 - `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
 - `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
 - `def detect_license_kind(project_root)` - *The domain an AI should pick a license for, from the project's own markers. Strong markers*
-- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
-- `def license_kind_from_header(first_line)` - *The personal license kind a LICENSE first line names, or None for an unknown license.*
+- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def license_header_match(first_line)` - *The `(kind, version)` a LICENSE first line names, including an archived legacy header.*
 - `def seed_readme(project_root, name, test_command, description, licensed, integrated, license_kind)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
 - `def add_aikit_badge(project_root)` - *Put the AIKit Integrated badge under the README's title, or at its top without one; returns*
@@ -681,7 +681,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `7826` lines (`447120` bytes)
+**Size**: `7902` lines (`451625` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1088,6 +1088,7 @@
   - Method `.test_titles_are_title_cased_and_descriptions_keep_their_case()`
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
+  - Method `.test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade()`
   - Method `.test_topics_command_records_what_the_ai_chooses()`
   - Method `.test_publish_license_auto_applies_and_stops_before_upload()`
   - Method `.test_first_commit_holds_commercial_md()`
@@ -1102,6 +1103,10 @@
   - Method `.test_restrict_rewrites_a_license_entry_that_is_last_in_the_tree()`
   - Method `.test_cli_license_reports_then_restricts_with_a_checklist()`
   - Method `.test_published_topics_add_the_stack_and_the_license()`
+  - Method `.test_a_restricted_game_project_announces_no_license_topics()`
+  - Method `.test_license_suggest_on_a_restricted_project_is_read_only()`
+  - Method `.test_switching_a_license_seeds_missing_commercial_terms()`
+  - Method `.test_publish_refuses_the_template_description_placeholder()`
   - Method `.test_status_reports_the_license_tier()`
   - Method `.test_a_restricted_project_pushes_only_to_a_private_remote()`
   - Method `.test_check_push_refuses_a_restricted_project_with_a_public_origin()`

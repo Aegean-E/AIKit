@@ -57,14 +57,14 @@ _TITLE_ACRONYMS = {"ai": "AI", "aikit": "AIKit", "api": "API", "cli": "CLI", "cp
 TOPIC_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
 MAX_TOPICS = 20
 # The first line of the LICENSE `new` seeds, and the README section that describes it (ADR-214).
-PERSONAL_LICENSE_HEADER = "# Aegean License 1.0 (AL-1.0)"
+PERSONAL_LICENSE_HEADER = "# Aegean License 1.1 (AL-1.1)"
 COMMERCIAL_HEADER = "# Aegean Commercial License (ACL-1.0)"
 # The canonical license texts, pinned copies of aegean-licensing's licenses/ (ADR-214).
 LICENSES_DIR = ROOT_DIR / "licenses"
 LICENSE_HEADING = "## 📜 License"
 PERSONAL_LICENSE_SECTION = (
     f"{LICENSE_HEADING}\n\n"
-    "Free for personal use under the Aegean License 1.0 (AL-1.0); see [LICENSE](LICENSE). "
+    "Free for personal use under the Aegean License 1.1 (AL-1.1); see [LICENSE](LICENSE). "
     "Any commercial use needs the Aegean Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
 )
 # One catalog for the three personal-use licenses AIKit can seed (ADR-218). `key` is the SPDX
@@ -73,40 +73,46 @@ PERSONAL_LICENSE_SECTION = (
 # moves to ACL-1.0; the differences are the free-use domain each one grants.
 LICENSE_CHOICES = {
     "software": {
-        "key": "AL-1.0",
-        "name": "Aegean License 1.0 (AL-1.0)",
+        "key": "AL-1.1",
+        "name": "Aegean License 1.1 (AL-1.1)",
         "header": PERSONAL_LICENSE_HEADER,
-        "source": "AL-1.0.md",
-        "summary": "AL-1.0, free personal use",
-        "tree": "├── LICENSE                   <- Aegean License 1.0 (AL-1.0): free personal use\n",
+        "version": "1.1",
+        "legacy_headers": {"# Aegean License 1.0 (AL-1.0)": "1.0"},
+        "source": "AL-1.1.md",
+        "summary": "AL-1.1, free personal use",
+        "tree": "├── LICENSE                   <- Aegean License 1.1 (AL-1.1): free personal use\n",
         "section": PERSONAL_LICENSE_SECTION,
     },
     "game": {
-        "key": "AGL-1.0",
-        "name": "Aegean Game License 1.0 (AGL-1.0)",
-        "header": "# Aegean Game License 1.0 (AGL-1.0)",
-        "source": "AGL-1.0.md",
-        "summary": "AGL-1.0, DRM-free personal play",
-        "tree": "├── LICENSE                   <- Aegean Game License 1.0 (AGL-1.0): DRM-free personal play\n",
+        "key": "AGL-1.1",
+        "name": "Aegean Game License 1.1 (AGL-1.1)",
+        "header": "# Aegean Game License 1.1 (AGL-1.1)",
+        "version": "1.1",
+        "legacy_headers": {"# Aegean Game License 1.1 (AGL-1.1)": "1.0"},
+        "source": "AGL-1.1.md",
+        "summary": "AGL-1.1, DRM-free personal play",
+        "tree": "├── LICENSE                   <- Aegean Game License 1.1 (AGL-1.1): DRM-free personal play\n",
         "section": (
             f"{LICENSE_HEADING}\n\n"
-            "Free for personal play under the Aegean Game License 1.0 (AGL-1.0); see [LICENSE](LICENSE). "
+            "Free for personal play under the Aegean Game License 1.1 (AGL-1.1); see [LICENSE](LICENSE). "
             "It is DRM-free: Licensor ships no DRM and a distributor may not add it. Streaming, modding "
             "and free mods are allowed. Commercial use, paid mods and AI training need the Aegean "
             "Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
         ),
     },
     "science": {
-        "key": "ASL-1.0",
-        "name": "Aegean Science License 1.0 (ASL-1.0)",
-        "header": "# Aegean Science License 1.0 (ASL-1.0)",
-        "source": "ASL-1.0.md",
-        "summary": "ASL-1.0, non-commercial research",
-        "tree": "├── LICENSE                   <- Aegean Science License 1.0 (ASL-1.0): free non-commercial research\n",
+        "key": "ASL-1.1",
+        "name": "Aegean Science License 1.1 (ASL-1.1)",
+        "header": "# Aegean Science License 1.1 (ASL-1.1)",
+        "version": "1.1",
+        "legacy_headers": {"# Aegean Science License 1.1 (ASL-1.1)": "1.0"},
+        "source": "ASL-1.1.md",
+        "summary": "ASL-1.1, non-commercial research",
+        "tree": "├── LICENSE                   <- Aegean Science License 1.1 (ASL-1.1): free non-commercial research\n",
         "section": (
             f"{LICENSE_HEADING}\n\n"
-            "Free for non-commercial research and teaching under the Aegean Science License 1.0 "
-            "(ASL-1.0); see [LICENSE](LICENSE). It allows publication, reproducibility sharing, "
+            "Free for non-commercial research and teaching under the Aegean Science License 1.1 "
+            "(ASL-1.1); see [LICENSE](LICENSE). It allows publication, reproducibility sharing, "
             "text/data mining and non-commercial ML training. Commercial or industry-sponsored use "
             "needs the Aegean Commercial License 1.0 (ACL-1.0); see [COMMERCIAL.md](COMMERCIAL.md).\n"
         ),
@@ -226,7 +232,8 @@ def detect_license_kind(project_root: Path) -> dict:
 def render_project_readme(name: str, test_command: Optional[str] = None,
                           description: Optional[str] = None, licensed: bool = False,
                           integrated: bool = False,
-                          license_kind: str = DEFAULT_LICENSE_KIND) -> str:
+                          license_kind: str = DEFAULT_LICENSE_KIND,
+                          license_version: Optional[str] = None) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
@@ -238,9 +245,13 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
     (ADR-202).
     """
     choice = license_choice(license_kind)
-    license_line = (f"{choice['tree']}"
+    version = license_version or choice["version"]
+    def versioned(text: str) -> str:
+        return text.replace(choice["version"], version)
+
+    license_line = (f"{versioned(choice['tree'])}"
                     "├── COMMERCIAL.md             <- Commercial licensing terms\n") if licensed else ""
-    license_section = f"\n{choice['section']}" if licensed else ""
+    license_section = f"\n{versioned(choice['section'])}" if licensed else ""
     return (
         f"# {title_case(name)}\n\n"
         f"{AIKIT_INTEGRATED_BADGE if integrated else AIKIT_BADGE}\n\n"
@@ -270,12 +281,15 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
     )
 
 
-def license_kind_from_header(first_line: str) -> Optional[str]:
-    """The personal license kind a LICENSE first line names, or None for an unknown license."""
+def license_header_match(first_line: str) -> Optional[Tuple[str, str]]:
+    """The `(kind, version)` a LICENSE first line names, including an archived legacy header."""
     stripped = first_line.strip()
     for kind, choice in LICENSE_CHOICES.items():
         if stripped == choice["header"]:
-            return kind
+            return kind, choice["version"]
+        for legacy_header, legacy_version in choice.get("legacy_headers", {}).items():
+            if stripped == legacy_header:
+                return kind, legacy_version
     return None
 
 
@@ -292,14 +306,19 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
     readme = project_root / "README.md"
     if readme.exists():
         return False
+    license_version = None
     if license_kind is None:
         try:
             first = (project_root / "LICENSE").read_text(encoding="utf-8").lstrip().split("\n", 1)[0]
         except OSError:
             first = ""
-        license_kind = license_kind_from_header(first) or detect_license_kind(project_root)["kind"]
+        match = license_header_match(first)
+        if match:
+            license_kind, license_version = match
+        else:
+            license_kind = detect_license_kind(project_root)["kind"]
     write_generated_file(readme, render_project_readme(
-        name, test_command, description, licensed, integrated, license_kind))
+        name, test_command, description, licensed, integrated, license_kind, license_version))
     return True
 
 
@@ -812,7 +831,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     Create `projects/<name>/` as a new git repository whose first commit holds the project's
     `.aikit/` memory and return the folder. `git_start` defaults to the real git calls
     (PRINCIPLE-009 R4: a test injects a double) and raises when it cannot commit a baseline.
-    `license_kind` selects software (AL-1.0), game (AGL-1.0) or science (ASL-1.0) (ADR-218).
+    `license_kind` selects software (AL-1.1), game (AGL-1.1) or science (ASL-1.1) (ADR-218).
     """
     git_start = git_start or _git_start
     validate_name(name)

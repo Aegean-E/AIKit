@@ -1,54 +1,17 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "license-hardening-2026",
+    "task_id": "license-1-1",
     "last_phase": "delivery",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792969654.77427,
+    "updated_at": 1792972131.7969153,
     "owner": "kilo:main",
     "started_by": "kilo:main",
     "continuations": [],
-    "completed_at": 1792969654.9321163
+    "completed_at": 1792972131.9550517
   },
   "checkpoints": [
-    {
-      "task_id": "aegean-licensing-tiers",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aegean-licensing-tiers' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792956100.9213173,
-      "timestamp_str": "2026-10-25 22:21:40",
-      "agent": "claude-code:c74fca42"
-    },
-    {
-      "task_id": "aikit-license-status",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Review of last push: status License line and status --json project.license; non-GitHub remote guidance in the private-remote refusal; ADR-214 item 7; failing-first test; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792956805.4582243,
-      "timestamp_str": "2026-10-25 22:33:25",
-      "agent": "claude-code:c74fca42",
-      "impact_assessment": {
-        "why": "User asked for a review of AIKit's last push",
-        "benefits": "Restricted projects visible in status",
-        "risks": "contract: status output gains a line and JSON key; dependency: none; concurrency: none; state: none",
-        "mitigation": "Additive output; test pins both forms"
-      }
-    },
-    {
-      "task_id": "aikit-license-status",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-license-status' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792956881.5874214,
-      "timestamp_str": "2026-10-25 22:34:41",
-      "agent": "claude-code:c74fca42"
-    },
     {
       "task_id": "aikit-topics",
       "phase": "in_progress",
@@ -282,6 +245,50 @@
       "status": "completed",
       "timestamp": 1792969654.932118,
       "timestamp_str": "2026-10-26 02:07:34",
+      "agent": "kilo:main"
+    },
+    {
+      "task_id": "license-1-1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Compare at least 20 licenses, harden AL/AGL/ASL, add security-research, moral-rights, data-protection and GPL/AGPL terms, create 1.1 texts, keep 1.0 recognized, pin both, update docs and tests",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792972131.6433098,
+      "timestamp_str": "2026-10-26 02:48:51",
+      "agent": "kilo:main",
+      "impact_assessment": {
+        "why": "The 1.0 texts lacked explicit security-research, moral-rights/data-protection and compatibility terms",
+        "benefits": "A complete 1.1 family with backward-compatible detection and an explicit upgrade path",
+        "risks": "contract: license version, pins, headers, READMEs; dependency: none; concurrency: none; state: PIN, project.json license, catalog",
+        "mitigation": "Dual-version pinning, failing-first tests, full gates"
+      }
+    },
+    {
+      "task_id": "license-1-1",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[2/2] done: 1.1 texts, 1.0 archives, 8 pinned files, legacy detection and upgrade prompt; 527/57 tests, public 50, ops 98, all gates and budgets pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792972131.7969153,
+      "timestamp_str": "2026-10-26 02:48:51",
+      "agent": "kilo:main",
+      "handoff": {
+        "state": "uncommitted and green",
+        "next": "commit and push on user approval",
+        "open": "counsel review and asset/data grant templates",
+        "evidence": "527 unit, 57 integration, 50 public, 98 ops"
+      }
+    },
+    {
+      "task_id": "license-1-1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'license-1-1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792972131.9550533,
+      "timestamp_str": "2026-10-26 02:48:51",
       "agent": "kilo:main"
     }
   ]

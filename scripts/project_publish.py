@@ -61,7 +61,7 @@ def _clean_markdown_line(raw: str) -> str:
 
 
 def extract_readme_description(project_root: Path) -> str:
-    """Extract a single-line, sentence-cased summary from the project's README.md for GitHub."""
+    """Extract a single-line summary from the project's README.md for GitHub (author case kept)."""
     readme = project_root / "README.md"
     if not readme.is_file():
         return ""
@@ -294,7 +294,7 @@ def publish_project(project_root: Path, name: str, public: bool = False,
     code, output = run(["gh", "repo", "create", repository, visibility, "--source", str(project_root),
                         "--remote", "origin", "--push", *desc_args], project_root)
     if code != 0:
-        return 1, _triad(f"creating the GitHub repository '{name}' failed.\n{output[-800:]}",
+        return 1, _triad(f"creating the GitHub repository '{repository}' failed.\n{output[-800:]}",
                          "GitHub refused the repository, for example because the name is taken.",
                          "rename or delete the existing repository on GitHub, or add a remote yourself with "
                          "`git remote add origin <url>` in the project, then publish again.")

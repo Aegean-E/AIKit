@@ -2,7 +2,7 @@
 Project license tiers (ADR-214).
 
 A project `aikit new` creates is in the personal tier: free for personal use under the Aegean
-License 1.0 (AL-1.0), with commercial use sold under the Aegean Commercial License 1.0 (ACL-1.0)
+License 1.1 (AL-1.1), with commercial use sold under the Aegean Commercial License 1.0 (ACL-1.0)
 in COMMERCIAL.md. A project whose value outgrows free distribution moves to the restricted tier:
 its LICENSE becomes the canonical All Rights Reserved notice (`licenses/RESTRICTED-NOTICE.md`)
 naming the cutoff commit, COMMERCIAL.md (a public offer) is removed, and
@@ -27,8 +27,9 @@ from scripts.project_registry import (
     config_path,
     detect_license_kind,
     license_choice,
-    license_kind_from_header,
+    license_header_match,
     load_config,
+    seed_commercial,
 )
 from scripts.update_knowledge_base import write_generated_file
 
@@ -58,6 +59,7 @@ class LicenseState:
     since: Optional[str] = None
     since_commit: Optional[str] = None
     kind: Optional[str] = None
+    version: Optional[str] = None
 
 
 def render_restricted_license(name: str, since: str, since_commit: str) -> str:
@@ -80,17 +82,20 @@ def render_restricted_license(name: str, since: str, since_commit: str) -> str:
 
 
 def license_state(project_root: Path) -> LicenseState:
-    """The project's tier and personal-license kind: the restriction, else what LICENSE says."""
+    """The project's tier, personal-license kind and version: the restriction, else what LICENSE says."""
     recorded = load_config(project_root).get("license")
     if isinstance(recorded, dict) and recorded.get("tier") == TIER_RESTRICTED:
         return LicenseState(TIER_RESTRICTED, recorded.get("since"), recorded.get("since_commit"),
-                            recorded.get("kind"))
+                            recorded.get("kind"), recorded.get("version"))
     try:
         first = (project_root / "LICENSE").read_text(encoding="utf-8").lstrip().split("\n", 1)[0]
     except OSError:
         return LicenseState(TIER_UNRECORDED)
-    kind = license_kind_from_header(first)
-    return LicenseState(TIER_PERSONAL if kind else TIER_UNRECORDED, kind=kind)
+    match = license_header_match(first)
+    if not match:
+        return LicenseState(TIER_UNRECORDED)
+    kind, version = match
+    return LicenseState(TIER_PERSONAL, kind=kind, version=version)
 
 
 def suggest_license(project_root: Path) -> dict:
@@ -104,10 +109,14 @@ def suggest_license(project_root: Path) -> dict:
                     "reasons": [f"current license: {LICENSE_CHOICES[current.kind]['key']}"],
                     "alternatives": ["software"]}
     detected["current"] = current.kind
+    detected["current_version"] = current.version
+    detected["latest_version"] = LICENSE_CHOICES[detected["kind"]]["version"]
     detected["recommended_key"] = LICENSE_CHOICES[detected["kind"]]["key"]
     detected["current_key"] = (LICENSE_CHOICES[current.kind]["key"]
                                if current.kind in LICENSE_CHOICES else None)
     detected["change_needed"] = current.tier == TIER_PERSONAL and current.kind != detected["kind"]
+    detected["upgrade_available"] = (current.tier == TIER_PERSONAL
+                                     and current.version != detected["latest_version"])
     detected["adoptable"] = (current.tier == TIER_UNRECORDED
                              and detected["kind"] != "software")
     return detected
@@ -134,7 +143,7 @@ def _licensed_readme(text: str, newline: str, kind: str) -> str:
 
 def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState:
     """
-    Switch a personal-tier project to software (AL-1.0), game (AGL-1.0) or science (ASL-1.0)
+    Switch a personal-tier project to software (AL-1.1), game (AGL-1.1) or science (ASL-1.1)
     (ADR-218). The canonical text, the README tree line and its License section change together;
     the change is left uncommitted for review. A restricted project is refused: its later
     versions are All Rights Reserved and cannot be relicensed by this command.
@@ -164,6 +173,10 @@ def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState
             f"the {choice['name']} text is pinned in AIKit's licenses/.",
             f"restore {source.name} from git, then retry.",
         )
+    # The README's License section links to COMMERCIAL.md; an attached project may not have one.
+    # Seed the canonical terms before changing anything, so a failure leaves the project intact.
+    if not (project_root / "COMMERCIAL.md").exists():
+        seed_commercial(project_root)
     write_generated_file(project_root / "LICENSE", text)
     readme = project_root / "README.md"
     if readme.is_file():
@@ -171,7 +184,7 @@ def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState
             original = handle.read()
         newline = "\r\n" if "\r\n" in original else "\n"
         write_generated_file(readme, _licensed_readme(original, newline, kind), newline="")
-    return LicenseState(TIER_PERSONAL, kind=kind)
+    return LicenseState(TIER_PERSONAL, kind=kind, version=choice["version"])
 
 
 def public_remote_refusal(project_root: Path, name: str,
@@ -237,7 +250,8 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
             "is clear which versions keep that license.",
             "commit the project's current state, then run the command again.",
         )
-    state = LicenseState(TIER_RESTRICTED, today or time.strftime("%Y-%m-%d"), commit, current.kind)
+    state = LicenseState(TIER_RESTRICTED, today or time.strftime("%Y-%m-%d"), commit,
+                         current.kind, current.version)
     write_generated_file(project_root / "LICENSE",
                          render_restricted_license(name, state.since, state.since_commit))
     (project_root / "COMMERCIAL.md").unlink(missing_ok=True)
@@ -251,6 +265,7 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
     with file_lock(path):
         config = load_config(project_root)
         config["license"] = {"tier": state.tier, "since": state.since,
-                             "since_commit": state.since_commit, "kind": state.kind}
+                             "since_commit": state.since_commit, "kind": state.kind,
+                             "version": state.version}
         atomic_write_json(path, config)
     return state

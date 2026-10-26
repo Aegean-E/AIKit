@@ -1,6 +1,6 @@
 # Aegean Commercial License (ACL-1.0) & Licensing Tiers 💼
 
-> **Licensing model**: AegeanWorks software is free for personal use under the **Aegean License 1.0 (AL-1.0)** in [LICENSE](LICENSE). Every commercial or organizational use needs the paid **Aegean Commercial License 1.0 (ACL-1.0)**. A project may later move to the **Restricted** tier, after which it is no longer distributed. AegeanWorks makes no new release under AGPL-3.0.
+> **Licensing model**: AegeanWorks software is free for personal use under the **Aegean License 1.1 (AL-1.1)** in [LICENSE](LICENSE). Every commercial or organizational use needs the paid **Aegean Commercial License 1.0 (ACL-1.0)**. A project may later move to the **Restricted** tier, after which it is no longer distributed. AegeanWorks makes no new release under AGPL-3.0.
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Tier | Who it is for | Terms | Cost |
 |---|---|---|---|
-| **Personal** (default) | One individual, for their own private, non-commercial use: learning, coursework, hobby projects, personal research | [AL-1.0](LICENSE) | **Free** |
-| **Commercial** | Companies and every other organization (non-profits included), freelancers, employees at work, and anything sold, hosted or offered to others | ACL-1.0, evidenced by a License Grant Certificate | **Paid, quoted**; one free 28-day non-production evaluation per company group first (AL-1.0 Section 4.3) |
+| **Personal** (default) | One individual, for their own private, non-commercial use: learning, coursework, hobby projects, personal research | [AL-1.1](LICENSE) | **Free** |
+| **Commercial** | Companies and every other organization (non-profits included), freelancers, employees at work, and anything sold, hosted or offered to others | ACL-1.0, evidenced by a License Grant Certificate | **Paid, quoted**; one free 28-day non-production evaluation per company group first (AL-1.1 Section 4.3) |
 | **Restricted** | Projects withdrawn from distribution | All Rights Reserved notice from a recorded cutoff commit | Not offered publicly |
 
 ### What the personal license does not allow
@@ -22,7 +22,7 @@ When a project moves to the Restricted tier, its LICENSE becomes an All Rights R
 
 ## 2. Scope: Code vs. Assets
 
-* **Source Code:** Free for personal use under AL-1.0; commercial use needs ACL-1.0.
+* **Source Code:** Free for personal use under AL-1.1; commercial use needs ACL-1.0.
 * **Creative & Domain Assets:** Art, audio, textures, game lore and domain datasets are not covered by ACL-1.0 and need a separate written asset grant for any commercial use.
 * **Trademarks & Branding:** No license grants trademark rights. The names "AegeanWorks", "Aegean-E" and associated project titles, logos and emblems remain the exclusive property of AegeanWorks.
 
@@ -67,4 +67,4 @@ The full Aegean Commercial License 1.0 controls; this summary does not change it
 
 ## 6. Contributions
 
-AegeanWorks sells commercial licenses, so it must hold the rights to all code it licenses. Contributions are accepted only under the AegeanWorks Contributor License Agreement, which lets AegeanWorks license them under any terms (AL-1.0 Section 7).
+AegeanWorks sells commercial licenses, so it must hold the rights to all code it licenses. Contributions are accepted only under the AegeanWorks Contributor License Agreement, which lets AegeanWorks license them under any terms (AL-1.1 Section 7).

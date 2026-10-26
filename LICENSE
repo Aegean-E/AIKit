@@ -1,13 +1,13 @@
-# Aegean License 1.0 (AL-1.0)
+# Aegean License 1.1 (AL-1.1)
 
-**Version 1.0 — October 2026**
+**Version 1.1 — October 2026**
 **Licensor**: AegeanWorks (`aegean-licensing@proton.me`), Türkiye
-**SPDX identifier**: `LicenseRef-AL-1.0`
+**SPDX identifier**: `LicenseRef-AL-1.1`
 
 > **Counsel note.** This is the operative personal-use license, but it should be reviewed by
 > qualified counsel in the Licensor's jurisdiction before it is relied on in a dispute.
 
-Required Notice: Copyright (c) AegeanWorks. Licensed under the Aegean License 1.0 (AL-1.0). Commercial use requires the Aegean Commercial License (ACL-1.0): aegean-licensing@proton.me
+Required Notice: Copyright (c) AegeanWorks. Licensed under the Aegean License 1.1 (AL-1.1). Commercial use requires the Aegean Commercial License (ACL-1.0): aegean-licensing@proton.me
 
 ---
 
@@ -169,6 +169,9 @@ immediately, and all Your other rights under this License end 30 days later.
 Covered Material is licensed, not sold. Licensor and its licensors keep every right this License
 does not expressly grant. No ownership of any intellectual property passes to You.
 
+Third-party components are not Covered Material. Their own licenses and notices govern, and this
+License grants no rights in them.
+
 Contributions to Licensor's repositories are accepted only under the **AegeanWorks Contributor
 License Agreement** (`licenses/CONTRIBUTING_CLA.md`), which lets Licensor license each
 contribution under this License, the Aegean Commercial License and any later terms.
@@ -240,6 +243,14 @@ Inquiries & licensing: **`aegean-licensing@proton.me`**
 This License does not limit any fair use, fair dealing or other right that applicable law grants
 You and does not allow a license to restrict.
 
+### 12.1 Security Research
+
+Good-faith security research on a copy You are licensed to use, and coordinated disclosure of a
+vulnerability, are permitted. Section 5.7 does not prohibit testing Your own copy, reverse
+engineering for interoperability or security analysis where law allows, or reporting a
+vulnerability to Licensor. This permission does not authorize bypassing a license check for
+unlicensed use or attacking a third party's system.
+
 ---
 
 ## 13. Disclaimer of Warranty
@@ -267,6 +278,15 @@ business or goodwill, arising from this License or the Covered Material.
 - **Trademarks.** No right to use the names "AegeanWorks" or "Aegean-E", any project name, logo or
   emblem, except to identify the Covered Material accurately.
 - **Export and sanctions.** You must comply with applicable export-control and sanctions laws.
+- **Moral rights.** Nothing in this License transfers or waives an author's moral rights. Where the
+  law grants them, they remain with the author; Licensor consents to the modifications this
+  License permits only to the extent necessary to exercise those permissions.
+- **Data protection and consumer law.** You must comply with applicable data-protection and
+  consumer-protection law. Nothing in this License limits a mandatory consumer right, including a
+  refund or conformity claim under the law of Your residence.
+- **License compatibility.** This License is not compatible with GPL-3.0 or AGPL-3.0. Do not combine
+  Covered Material with code under those licenses in a way that would require either license to be
+  replaced; ask Licensor for a separate permission.
 - **No waiver.** A failure or delay in enforcing a term is not a waiver of it.
 - **Severability.** If a term is held unenforceable, it is limited to the minimum extent needed and
   the remaining terms stay in effect. In particular, if Section 5.6 is held unenforceable, every
@@ -282,4 +302,4 @@ business or goodwill, arising from this License or the Covered Material.
 
 ---
 
-**End of the Aegean License 1.0 (AL-1.0)**
+**End of the Aegean License 1.1 (AL-1.1)**
