@@ -3,48 +3,15 @@
   "active_task": {
     "task_id": "agpl-cleanup",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1793043925.6379673,
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1793044259.2705846,
     "owner": "claude-code:240bc3b7",
     "started_by": "claude-code:240bc3b7",
-    "continuations": []
+    "continuations": [],
+    "completed_at": 1793044259.4209797
   },
   "checkpoints": [
-    {
-      "task_id": "license-hardening-2026",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Verify the uncommitted AIKit, aegean-licensing and ops changes; harden AGL/ASL after CC/PolyForm/OpenRAIL/GOG/OSI review; add patent, DRM, asset/data, ethics and catalog clauses; add JSON license/topic suggestions, weak-marker confidence, suspended reset; then commit and push",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792969589.4758701,
-      "timestamp_str": "2026-10-26 02:06:29",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "The new licenses lacked patent grants for their broader rights, the DRM/asset/data boundaries were implicit, and the three repos need a verified push",
-        "benefits": "Legally clearer game/science tiers and a fully tested delivery",
-        "risks": "contract: AGL/ASL text and titles; dependency: none; concurrency: ledger suspend/resume; state: pins, catalogs, topic JSON",
-        "mitigation": "Standards review, failing-first tests, pinned digests, full gates, explicit staging"
-      }
-    },
-    {
-      "task_id": "license-hardening-2026",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[2/2] done: AGL/ASL hardened (patent, DRM-free, asset/data, ethics), catalog standards matrix, JSON license/topics, weak-marker confidence, suspended reset; 522/57 unit/integration, budgets 8.96/315ms, all gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792969654.77427,
-      "timestamp_str": "2026-10-26 02:07:34",
-      "agent": "kilo:main",
-      "handoff": {
-        "state": "uncommitted and green",
-        "next": "commit and push",
-        "open": "counsel review and asset/data grant templates",
-        "evidence": "522 unit, 57 integration, public 50, ops 98"
-      }
-    },
     {
       "task_id": "license-hardening-2026",
       "phase": "completed",
@@ -272,6 +239,27 @@
       "status": "in_progress",
       "timestamp": 1793043925.6379673,
       "timestamp_str": "2026-10-26 22:45:25",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/3] 26 AGPL tags deleted on GitHub and locally; 11 older releases and their tags deleted (NeuralBeat x7, NeuralDeck 0.1, Primordia v1.0.0, UI-Sandbox v0.1.0-1); each repo keeps its newest release; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793044259.2705846,
+      "timestamp_str": "2026-10-26 22:50:59",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'agpl-cleanup' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793044259.4209812,
+      "timestamp_str": "2026-10-26 22:50:59",
       "agent": "claude-code:240bc3b7"
     }
   ]
