@@ -20,3 +20,8 @@ below gets the same pass once its in-flight work is committed or reset.
   (GitHub redirects that path if the branch is renamed later) or rename the branch to `main`.
 - `python aikit.py license --help` still describes `--set` as AL-1.0, AGL-1.0 and ASL-1.0;
   `apply_license_kind` writes the 1.1 texts.
+- `_licensed_readme` in `scripts/project_license.py` rewrites a commented `LICENSE` tree line with
+  the template's trailing newline, leaving a blank line inside the README tree (after `ASSETS.md`
+  for games and science). The pass removed those lines by hand in every project it touched.
+- `apply_license_kind` adds a `## 📜 License` section beside an existing differently named
+  License heading instead of replacing it; seven READMEs had two License sections.
