@@ -47,6 +47,8 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
   or an explicit asset manifest.
 - **Contributions** need the [AegeanWorks CLA](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/CONTRIBUTING_CLA.md)
   so the licensor can relicense them.
+- **ACL-1.0 definitions:** ACL-1.0 names AL-1.0 for its definitions; AL-1.1 keeps those definitions
+  unchanged, so an existing certificate still reads correctly.
 
 ## Strengths
 
