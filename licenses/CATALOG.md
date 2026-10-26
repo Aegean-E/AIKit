@@ -156,9 +156,9 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
 - **CC BY 4.0 / CC BY-SA 4.0.** Creative Commons is designed for content and documentation. The
   Aegean licenses cover a project's docs with its code; a docs-only corpus that should be reusable
   under CC BY needs a separate documentation notice.
-- **SPDX and REUSE.** An Aegean text is a custom `LicenseRef-*`, not an OSI identifier. A project
-  that needs machine-readable provenance should add SPDX headers and a REUSE manifest; the license
-  text still has to travel with the code.
+- **SPDX and REUSE.** An Aegean text is a custom `LicenseRef-*`, not an OSI identifier. New AIKit
+  projects get a `REUSE.toml` and `LICENSES/LicenseRef-*.txt`; add per-file headers for a tree that
+  mixes licenses. The license text still has to travel with the code.
 
 ## Gaps exposed by these comparisons
 
@@ -171,8 +171,8 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
 4. **No hardware license.** CERN-OHL covers designs; the family does not.
 5. **No data share-alike.** ODbL/CDLA-Sharing are not part of the family.
 6. **No docs-only CC option.** CC BY/BY-SA remain better for a standalone documentation corpus.
-7. **No REUSE/SPDX header policy.** A custom `LicenseRef` still needs file-level metadata for
-   automated compliance.
+7. **Per-file SPDX headers** are not added to existing source files; the generated `REUSE.toml`
+   and `LICENSES/` are the baseline, and a file copied from a third party needs its own header.
 
 ## Drafted instruments
 
@@ -192,6 +192,8 @@ These close the structural gaps without pretending to be operative before counse
    for a named MIT/Apache-2.0 grant.
 9. [Security SLA Exhibit](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/SECURITY-SLA-EXHIBIT-DRAFT.md)
    for a commercial response commitment.
+10. [SPDX and REUSE Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SPDX-REUSE-POLICY.md)
+   for machine-readable license metadata; new AIKit projects get `REUSE.toml` and `LICENSES/`.
 
 ## What is still missing
 

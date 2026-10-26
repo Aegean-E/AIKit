@@ -234,7 +234,7 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
                           integrated: bool = False,
                           license_kind: str = DEFAULT_LICENSE_KIND,
                           license_version: Optional[str] = None,
-                          assets_manifest: bool = False) -> str:
+                          assets_manifest: bool = False, reuse: bool = False) -> str:
     """
     A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the
     gate stays red until the agent states the project's own runtime facts (ADR-138). The tree lists
@@ -254,6 +254,9 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
                     "├── COMMERCIAL.md             <- Commercial licensing terms\n") if licensed else ""
     assets_line = ("├── ASSETS.md                 <- Asset/data manifest: what the license covers\n"
                    if licensed and assets_manifest else "")
+    reuse_line = ("├── LICENSES/                 <- REUSE license texts\n"
+                  "├── REUSE.toml                <- Machine-readable SPDX metadata\n"
+                  if licensed and reuse else "")
     license_section = f"\n{versioned(choice['section'])}" if licensed else ""
     return (
         f"# {title_case(name)}\n\n"
@@ -278,6 +281,7 @@ def render_project_readme(name: str, test_command: Optional[str] = None,
         "├── .gitignore                <- transient AIKit state excluded\n"
         f"{license_line}"
         f"{assets_line}"
+        f"{reuse_line}"
         "├── README.md\n"
         "└── .aikit/                   <- this project's memory: record, ledger, decisions\n"
         "```\n"
@@ -323,7 +327,8 @@ def seed_readme(project_root: Path, name: str, test_command: Optional[str] = Non
             license_kind = detect_license_kind(project_root)["kind"]
     write_generated_file(readme, render_project_readme(
         name, test_command, description, licensed, integrated, license_kind, license_version,
-        assets_manifest=(project_root / ASSETS_MANIFEST_NAME).exists()))
+        assets_manifest=(project_root / ASSETS_MANIFEST_NAME).exists(),
+        reuse=(project_root / REUSE_FILE).exists()))
     return True
 
 
@@ -420,6 +425,8 @@ def normalize_topics(topics: Optional[List[str]]) -> List[str]:
 
 
 ASSETS_MANIFEST_NAME = "ASSETS.md"
+REUSE_FILE = "REUSE.toml"
+REUSE_LICENSES_DIR = "LICENSES"
 GAME_ASSETS_MANIFEST = """# Asset Manifest
 
 Assets listed here are offered under the Aegean Game License 1.1 (AGL-1.1) as part of the game.
@@ -456,6 +463,42 @@ def seed_assets_manifest(project_root: Path, kind: str) -> bool:
     text = GAME_ASSETS_MANIFEST if kind == "game" else SCIENCE_ASSETS_MANIFEST
     write_generated_file(path, text)
     return True
+
+
+def write_reuse_metadata(project_root: Path, identifier: str,
+                         copyright_notice: str = "2026 AegeanWorks") -> bool:
+    """
+    Write `LICENSES/<identifier>.txt` and a `REUSE.toml` annotation for `identifier`. The caller
+    passes a complete SPDX expression such as `LicenseRef-AL-1.1` (ADR-226).
+    """
+    try:
+        license_text = (project_root / "LICENSE").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    licenses_dir = project_root / REUSE_LICENSES_DIR
+    write_generated_file(licenses_dir / f"{identifier}.txt", license_text)
+    metadata = (
+        "version = 1\n\n"
+        "[[annotations]]\n"
+        'path = ["**"]\n'
+        'precedence = "aggregate"\n'
+        f'SPDX-FileCopyrightText = "{copyright_notice}"\n'
+        f'SPDX-License-Identifier = "{identifier}"\n'
+    )
+    write_generated_file(project_root / REUSE_FILE, metadata)
+    return True
+
+
+def seed_reuse(project_root: Path, kind: str, version: Optional[str] = None) -> bool:
+    """
+    Write the machine-readable REUSE metadata for a project: a `LICENSES/LicenseRef-<key>.txt`
+    copy and a `REUSE.toml` annotation naming the current license expression (ADR-226). A project
+    that prefers per-file SPDX headers can keep them; this manifest is the baseline. `version`
+    keeps a legacy 1.0 project labelled 1.0 instead of the current 1.1.
+    """
+    choice = license_choice(kind)
+    base = choice["key"].rsplit("-", 1)[0]
+    return write_reuse_metadata(project_root, f"LicenseRef-{base}-{version or choice['version']}")
 
 
 def seed_license(project_root: Path, kind: str = DEFAULT_LICENSE_KIND) -> None:
@@ -851,7 +894,8 @@ def _git_start(project_root: Path) -> None:
             "fix the git error above, then run the command again.",
         )
     # LICENSE only when present: `git add` of a missing path fails the whole call.
-    stage_items = [item for item in (".gitignore", "LICENSE", "COMMERCIAL.md", "README.md", PROJECT_MEMORY_DIRNAME)
+    stage_items = [item for item in (".gitignore", "LICENSE", "COMMERCIAL.md", "ASSETS.md",
+                                     "REUSE.toml", "LICENSES", "README.md", PROJECT_MEMORY_DIRNAME)
                    if (project_root / item).exists()]
     _run_git(project_root, "add", "--", *stage_items)
     result = _run_git(project_root, "commit", "--quiet", "-m", "chore: start project with AIKit memory")
@@ -900,6 +944,7 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     try:
         write_memory(project_root, name, test_command, topics)
         seed_license(project_root, license_kind)
+        seed_reuse(project_root, license_kind)
         seed_assets_manifest(project_root, license_kind)
         seed_commercial(project_root)
         seed_readme(project_root, name, test_command, description, licensed=True,

@@ -4876,6 +4876,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("\na small tool. it keeps notes in sync\n", readme,
                       "the description keeps its own case")
         self.assertFalse((folder / "ASSETS.md").exists(), "a software project gets no asset manifest")
+        self.assertTrue((folder / "REUSE.toml").is_file(), "a software project gets REUSE metadata")
+        self.assertTrue((folder / "LICENSES" / "LicenseRef-AL-1.1.txt").is_file())
         self.assertEqual(extract_readme_description(folder),
                          "a small tool. it keeps notes in sync")
 
@@ -4892,6 +4894,9 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("DRM-free", game_readme)
         self.assertTrue((game / "ASSETS.md").is_file(), "a game gets an asset manifest")
         self.assertIn("ASSETS.md", game_readme)
+        self.assertTrue((game / "REUSE.toml").is_file(), "a game gets REUSE metadata")
+        self.assertTrue((game / "LICENSES" / "LicenseRef-AGL-1.1.txt").is_file())
+        self.assertIn("REUSE.toml", game_readme)
         self.assertEqual(suggest_license(game)["kind"], "game",
                          "an empty game project never recommends a downgrade to software")
         science = create_project("moon-study", workspace=self.kit, git_start=lambda root: None,
@@ -4901,6 +4906,8 @@ class TestProjectRegistry(unittest.TestCase):
             "# Aegean Science License 1.1 (ASL-1.1)"))
         self.assertIn("non-commercial research", (science / "README.md").read_text(encoding="utf-8"))
         self.assertTrue((science / "ASSETS.md").is_file(), "a science project gets a data manifest")
+        self.assertTrue((science / "REUSE.toml").is_file())
+        self.assertTrue((science / "LICENSES" / "LicenseRef-ASL-1.1.txt").is_file())
         with self.assertRaises(ProjectError):
             create_project("bad-kind", workspace=self.kit, git_start=lambda root: None,
                            license_kind="cartoon")
@@ -4937,7 +4944,17 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(license_state(folder).version, "1.1")
         self.assertTrue((folder / "ASSETS.md").is_file(), "switching to science seeds the manifest")
         self.assertIn("ASSETS.md", readme)
+        self.assertIn("LicenseRef-ASL-1.1", (folder / "REUSE.toml").read_text(encoding="utf-8"))
+        self.assertTrue((folder / "LICENSES" / "LicenseRef-ASL-1.1.txt").is_file())
+        self.assertFalse((folder / "LICENSES" / "LicenseRef-AL-1.1.txt").exists(),
+                         "the old REUSE license copy is removed")
+        self.assertIn("REUSE.toml", readme)
         restrict_project(folder, "field-notes", today="2026-10-26", runner=self.git_head())
+        self.assertIn("LicenseRef-Aegean-Restricted",
+                      (folder / "REUSE.toml").read_text(encoding="utf-8"))
+        self.assertTrue((folder / "LICENSES" / "LicenseRef-Aegean-Restricted.txt").is_file())
+        self.assertFalse((folder / "LICENSES" / "LicenseRef-ASL-1.1.txt").exists(),
+                         "restricting removes the old personal REUSE text")
         with self.assertRaises(ProjectError):
             apply_license_kind(folder, "field-notes", "game")
 
@@ -4952,6 +4969,11 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(suggestion["latest_version"], "1.1")
         self.assertTrue(suggestion["upgrade_available"])
         self.assertEqual(suggestion["current_key"], "AL-1.0")
+        from scripts.project_registry import seed_reuse
+        seed_reuse(folder, "software", "1.0")
+        self.assertIn("LicenseRef-AL-1.0", (folder / "REUSE.toml").read_text(encoding="utf-8"))
+        self.assertTrue((folder / "LICENSES" / "LicenseRef-AL-1.0.txt").is_file(),
+                        "a legacy project keeps its 1.0 SPDX identifier")
         from scripts.aikit_cli import license_summary
         self.assertIn("AL-1.0", license_summary(find_project("legacy-app", self.kit)))
 

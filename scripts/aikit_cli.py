@@ -65,6 +65,7 @@ from scripts.project_registry import (
     project_guidelines,
     reconcile_readme_tree,
     seed_readme,
+    seed_reuse,
     write_memory,
 )
 from scripts.subagent_delegate import delegate_subagent
@@ -579,6 +580,10 @@ def cmd_fix(args: argparse.Namespace) -> int:
     missing = [name for name in expected if not (memory / name).is_file()]
     write_memory(project.path, project.name, project.test_command)
     fixes += [f"restored .aikit/{name}" for name in missing if (memory / name).is_file()]
+    state = license_state(project.path)
+    if state.tier == "personal" and state.kind:
+        seed_reuse(project.path, state.kind, state.version)
+        fixes.append("refreshed REUSE.toml and LICENSES/ metadata")
     if seed_readme(project.path, project.name, project.test_command, integrated=project.attached):
         fixes.append("seeded README.md from the project template (complete it by hand)")
     if migrate_aikit_links(project.path):

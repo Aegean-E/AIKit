@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `22`
 - **Total Classes**: `95`
-- **Total Top-Level Functions**: `359`
+- **Total Top-Level Functions**: `361`
 - **Total Class Methods**: `674`
-- **Total Source Lines**: `20141`
+- **Total Source Lines**: `20231`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1044` lines (`52068` bytes)
+**Size**: `1049` lines (`52300` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -305,7 +305,7 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `287` lines (`14155` bytes)
+**Size**: `305` lines (`14934` bytes)
 
 **Classes:**
 - `class LicenseState`
@@ -346,7 +346,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1048` lines (`48454` bytes)
+**Size**: `1093` lines (`50513` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -358,7 +358,7 @@
 - `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
 - `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
 - `def detect_license_kind(project_root)` - *The domain an AI should pick a license for, from the project's own markers. Strong markers*
-- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version, assets_manifest)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
+- `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version, assets_manifest, reuse)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
 - `def license_header_match(first_line)` - *The `(kind, version)` a LICENSE first line names, including an archived legacy header.*
 - `def seed_readme(project_root, name, test_command, description, licensed, integrated, license_kind)` - *Write the template README when the project has none; returns whether it did. `new` and `fix`*
 - `def migrate_aikit_links(project_root)` - *Rewrite the pre-move AIKit URL in the README to the current one; returns whether it did. Run*
@@ -366,6 +366,8 @@
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
 - `def seed_assets_manifest(project_root, kind)` - *Write the asset/data manifest `new --kind game|science` needs, so the license boundary has a*
+- `def write_reuse_metadata(project_root, identifier, copyright_notice)` - *Write `LICENSES/<identifier>.txt` and a `REUSE.toml` annotation for `identifier`. The caller*
+- `def seed_reuse(project_root, kind, version)` - *Write the machine-readable REUSE metadata for a project: a `LICENSES/LicenseRef-<key>.txt`*
 - `def seed_license(project_root, kind)` - *Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218).*
 - `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214).*
 - `def _tree_entry_name(line)` - *The exact top-level name a README tree line lists, or None for a nested or prose line.*
@@ -699,7 +701,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8013` lines (`457643` bytes)
+**Size**: `8035` lines (`459302` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

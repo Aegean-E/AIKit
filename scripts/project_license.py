@@ -29,8 +29,11 @@ from scripts.project_registry import (
     license_choice,
     license_header_match,
     load_config,
+    reconcile_readme_tree,
     seed_assets_manifest,
     seed_commercial,
+    seed_reuse,
+    write_reuse_metadata,
 )
 from scripts.update_knowledge_base import write_generated_file
 
@@ -191,7 +194,14 @@ def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState
         seed_commercial(project_root)
     if kind in ("game", "science"):
         seed_assets_manifest(project_root, kind)
+    previous = LICENSE_CHOICES.get(current.kind)
+    old_key = previous["key"] if previous else None
     write_generated_file(project_root / "LICENSE", text)
+    seed_reuse(project_root, kind)
+    if old_key and old_key != choice["key"]:
+        old_reuse = project_root / "LICENSES" / f"LicenseRef-{old_key}.txt"
+        if old_reuse.is_file():
+            old_reuse.unlink()
     readme = project_root / "README.md"
     if readme.is_file():
         with open(readme, encoding="utf-8", newline="") as handle:
@@ -200,6 +210,7 @@ def apply_license_kind(project_root: Path, name: str, kind: str) -> LicenseState
         write_generated_file(readme, _licensed_readme(
             original, newline, kind,
             assets_manifest=(project_root / "ASSETS.md").exists()), newline="")
+        reconcile_readme_tree(project_root)
     return LicenseState(TIER_PERSONAL, kind=kind, version=choice["version"])
 
 
@@ -270,6 +281,12 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
                          current.kind, current.version)
     write_generated_file(project_root / "LICENSE",
                          render_restricted_license(name, state.since, state.since_commit))
+    write_reuse_metadata(project_root, "LicenseRef-Aegean-Restricted")
+    if current.kind in LICENSE_CHOICES:
+        old_reuse = (project_root / "LICENSES" /
+                     f"LicenseRef-{LICENSE_CHOICES[current.kind]['key']}.txt")
+        if old_reuse.is_file():
+            old_reuse.unlink()
     (project_root / "COMMERCIAL.md").unlink(missing_ok=True)
     readme = project_root / "README.md"
     if readme.is_file():
@@ -277,6 +294,7 @@ def restrict_project(project_root: Path, name: str, today: Optional[str] = None,
             text = handle.read()
         newline = "\r\n" if "\r\n" in text else "\n"
         write_generated_file(readme, _restricted_readme(text, newline), newline="")
+        reconcile_readme_tree(project_root)
     path = config_path(project_root)
     with file_lock(path):
         config = load_config(project_root)
