@@ -111,16 +111,16 @@ portable_agent_kit/
 │   ├── test_kit.py               <- Unit tier (<=10ms per test)
 │   └── test_integration.py       <- Integration tier: concurrency, CLI contracts
 └── knowledge/
-    ├── INDEX.md                  <- Knowledge base table of contents & architecture map
+    ├── INDEX.md                  <- Knowledge base table of contents
     ├── architecture.md           <- System architecture and component boundaries
-    ├── services.md               <- Core services, API contracts, and business logic
+    ├── services.md               <- Core services and API contracts
     ├── data_models.md            <- Data structures, schemas, and persistence models
     ├── state_and_ui.md           <- Presentation layer, UI state, and event loops
     ├── decisions.md              <- Architectural Decision Records (ADRs)
     ├── codebase_map.md           <- Auto-generated AST catalog of classes and functions
-    ├── model_benchmarks.md       <- Subagent model benchmark database & selection tree
-    ├── host_clients.md           <- Host client portability & cross-environment parity
-    ├── repo_backlog.md           <- Projects skipped by the repo normalization pass
+    ├── model_benchmarks.md       <- Subagent model benchmarks & selection tree
+    ├── host_clients.md           <- Host client portability & parity
+    ├── repo_backlog.md           <- Repos left for later
     └── principles_audit_ledger.md  <- Snapshot audit at ADR-107 (not kept current)
 ```
 

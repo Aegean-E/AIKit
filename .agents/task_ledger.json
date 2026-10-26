@@ -1,44 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "repo-normalize",
+    "task_id": "agpl-cleanup",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793038443.188454,
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1793042384.6541784,
     "owner": "claude-code:240bc3b7",
     "started_by": "claude-code:240bc3b7",
-    "continuations": [],
-    "completed_at": 1793038443.3501842
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "muse-ai-music-creator",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'muse-ai-music-creator' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792964449.5990741,
-      "timestamp_str": "2026-10-26 00:40:49",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "license-model-218",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] (1) add AGL-1.0 (no-DRM games) and ASL-1.0 (science) plus a license catalog; (2) title-case titles, keep descriptions as written; (3) AI selects license from markers and tags from stacks/domain; (4) suspend/resume-task mechanism for concurrent sessions",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792967461.4877582,
-      "timestamp_str": "2026-10-26 01:31:01",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "Games and science projects were forced into AL-1.0, title casing was applied to descriptions, and a concurrent session lost its superseded task",
-        "benefits": "A project can carry the right personal license, a correct title and AI-chosen tags, and a displaced task is one command from recovery",
-        "risks": "contract: new license texts, license switching, publish --license auto, title casing; dependency: none; concurrency: ledger suspend/resume; state: project.json topics and license kind",
-        "mitigation": "Failing-first tests for each path, pinned license digests, full gates"
-      }
-    },
     {
       "task_id": "license-model-218",
       "phase": "delivery",
@@ -277,6 +249,34 @@
       "status": "completed",
       "timestamp": 1793038443.3501854,
       "timestamp_str": "2026-10-26 21:14:03",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Plan: drop AGPL history notes, tags and release wording from clean repos; make README description paragraphs publish-safe; update later list; fix AIKit README size",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793042384.4964283,
+      "timestamp_str": "2026-10-26 22:19:44",
+      "agent": "claude-code:240bc3b7",
+      "impact_assessment": {
+        "why": "User: AegeanWorks has no business with AGPL; publish descriptions must fit GitHub",
+        "benefits": "No AGPL marketing in any clean repo; publish produces complete descriptions",
+        "risks": "contract: README/COMMERCIAL text, public tags; dependency: none; concurrency: none; state: tags, releases",
+        "mitigation": "Clean repos only, per-repo aikit check, no history rewrite, legal texts untouched"
+      }
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[1/3] AIKit README back under 22,500 with the backlog tree line; backlog lists in-flight AGPL repos and publish defects; KB, sync and secret gates pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793042384.6541784,
+      "timestamp_str": "2026-10-26 22:19:44",
       "agent": "claude-code:240bc3b7"
     }
   ]
