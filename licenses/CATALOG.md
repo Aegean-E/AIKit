@@ -131,6 +131,49 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
   access after a store shutdown), not a license. AGL-1.1 turns the same promise into a condition
   on the licensor and on anyone who distributes a permitted mod or patch.
 
+## Adjacent licenses and why they are not the family
+
+- **Fair Source / FSL-1.1 / BSL-1.1.** Functional Source License 1.1 grants source use except a
+  competing use and converts to MIT or Apache-2.0 after two years; BSL does the same with a
+  four-year default and a change date. AegeanWorks has no delayed open-source switch: AL-AGL-ASL
+  stay source-available and commercial use is paid from day one. A project that wants eventual
+  open source should choose FSL or BSL explicitly, not an Aegean text.
+- **PolyForm Internal Use / Perimeter.** PolyForm Internal Use permits internal business use;
+  Perimeter permits everything except a competing product. ACL-1.0 charges for internal business
+  use, which is a deliberate commercial choice; a customer that needs free internal use should be
+  offered PolyForm Internal Use or a negotiated ACL scope instead.
+- **Llama 3 Community / Gemma Terms / OpenRAIL-M / BLOOM RAIL.** Model licenses add
+  acceptable-use rules, monthly-active-user thresholds, naming and attribution, and output terms.
+  ASL-1.1 covers non-commercial research and the data/weights addendum covers commercial use, but
+  there is no MAU threshold or model-specific acceptable-use schedule; the OpenRAIL attachment is
+  the starting point for one.
+- **CERN-OHL-P/W/S 2.0.** The CERN Open Hardware Licence covers design files and manufactured
+  hardware. The Aegean family covers software, content and data, not hardware; a PCB, enclosure or
+  mechanical design needs CERN-OHL or another hardware license.
+- **ODbL 1.0 / CDLA-Permissive / CDLA-Sharing.** ODbL adds database share-alike; CDLA separates
+  data from software. ASL-1.1 and the data/weights addendum grant Project Data but do not impose a
+  database copyleft. A dataset that must stay open should use ODbL or CDLA-Sharing.
+- **CC BY 4.0 / CC BY-SA 4.0.** Creative Commons is designed for content and documentation. The
+  Aegean licenses cover a project's docs with its code; a docs-only corpus that should be reusable
+  under CC BY needs a separate documentation notice.
+- **SPDX and REUSE.** An Aegean text is a custom `LicenseRef-*`, not an OSI identifier. A project
+  that needs machine-readable provenance should add SPDX headers and a REUSE manifest; the license
+  text still has to travel with the code.
+
+## Gaps exposed by these comparisons
+
+1. **No delayed-open-source transition** like FSL/BSL. A user who wants eventual open source must
+   choose another license or negotiate a future grant.
+2. **Internal business use is paid.** PolyForm Internal Use is the standard free alternative; the
+   ACL evaluation is only 28 days and non-production.
+3. **No model-use schedule.** Llama/Gemma/OpenRAIL have acceptable-use and MAU terms; the OpenRAIL
+   attachment is a draft, not an operative model license.
+4. **No hardware license.** CERN-OHL covers designs; the family does not.
+5. **No data share-alike.** ODbL/CDLA-Sharing are not part of the family.
+6. **No docs-only CC option.** CC BY/BY-SA remain better for a standalone documentation corpus.
+7. **No REUSE/SPDX header policy.** A custom `LicenseRef` still needs file-level metadata for
+   automated compliance.
+
 ## Drafted instruments
 
 These close the structural gaps without pretending to be operative before counsel review:
