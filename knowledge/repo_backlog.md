@@ -15,22 +15,12 @@ repository and is out of scope.
 
 ## Follow-ups found during the pass
 
-- `licenses/CATALOG.md` links to `aegean-licensing/blob/main/...`, but that repository's
-  default branch is `master`, so those links return 404. Either rewrite them to `blob/master`
-  (GitHub redirects that path if the branch is renamed later) or rename the branch to `main`.
-- `python aikit.py license --help` still describes `--set` as AL-1.0, AGL-1.0 and ASL-1.0;
-  `apply_license_kind` writes the 1.1 texts.
-- `_licensed_readme` in `scripts/project_license.py` rewrites a commented `LICENSE` tree line with
-  the template's trailing newline, leaving a blank line inside the README tree (after `ASSETS.md`
-  for games and science). The pass removed those lines by hand in every project it touched.
-- `apply_license_kind` adds a `## 📜 License` section beside an existing differently named
-  License heading instead of replacing it; seven READMEs had two License sections.
-- `extract_readme_description` in `scripts/project_publish.py` does not strip a UTF-8 byte-order
-  mark, so a README that starts with one never finds its title and `publish` sends a later block
-  (a table, for `obezite-mekanizma-projesi`) as the description. That README's mark was removed.
-- `publish` takes the README's first paragraph and cuts it at 350 characters with "..."; aldervale,
-  cyberpulse, NeuroOptic and NobetWizard had a first paragraph that was too long, empty or a URL,
-  and were rewritten so the paragraph is one complete description.
+The tooling defects the pass found (catalog links to `blob/main`, 1.0 help text, the blank README
+tree line and duplicate License section after a license switch, and the publish description's
+byte-order mark, URL-only paragraph and mid-word cut) were fixed in ADR-227 and the
+Aegean-Licensing catalog. One item remains:
+
 - The Aegean-Licensing policy drafts still tell a maintainer to create a `vX.Y.Z-agpl` tag
-  (`policies/PORTFOLIO-MIGRATION-PLAN.md`, step 2); the license texts keep their non-retroactivity
-  and AGPL-incompatibility clauses, which protect the licensor and stay until counsel review.
+  (`policies/PORTFOLIO-MIGRATION-PLAN.md`, step 2), although AegeanWorks no longer tags or
+  mentions AGPL releases; the license texts keep their non-retroactivity and AGPL-incompatibility
+  clauses, which protect the licensor and stay until counsel review.

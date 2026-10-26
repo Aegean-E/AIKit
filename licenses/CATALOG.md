@@ -43,9 +43,9 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
 - **Forward-only restriction**: a later version may be All Rights Reserved; a copy already
   granted keeps its grant.
 - **Assets are separate**: code and logic are licensed; art, audio, datasets and model weights need
-  a grant under [ASSET_POLICY.md](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/ASSET_POLICY.md)
+  a grant under [ASSET_POLICY.md](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/ASSET_POLICY.md)
   or an explicit asset manifest.
-- **Contributions** need the [AegeanWorks CLA](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/CONTRIBUTING_CLA.md)
+- **Contributions** need the [AegeanWorks CLA](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/CONTRIBUTING_CLA.md)
   so the licensor can relicense them.
 - **ACL-1.0 definitions:** ACL-1.0 names AL-1.0 for its definitions; AL-1.1 keeps those definitions
   unchanged, so an existing certificate still reads correctly.
@@ -178,27 +178,27 @@ ASL-1.1 separately. Never stack two LICENSE files in one repository: one project
 
 These close the structural gaps without pretending to be operative before counsel review:
 
-1. [Trademark Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/TRADEMARK-POLICY.md) — names, badges and nominative use.
-2. [Game Asset Addendum](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/GAME-ASSET-ADDENDUM-DRAFT.md) — commercial art/audio grant.
-3. [Data and Model Weights Addendum](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/DATA-WEIGHTS-ADDENDUM-DRAFT.md) — commercial datasets and trained weights.
-4. [Security Disclosure Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SECURITY-DISCLOSURE.md)
-   and [Support Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SUPPORT-POLICY.md).
-5. [Provenance Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/PROVENANCE-POLICY.md)
+1. [Trademark Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/TRADEMARK-POLICY.md) — names, badges and nominative use.
+2. [Game Asset Addendum](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/commercial/GAME-ASSET-ADDENDUM-DRAFT.md) — commercial art/audio grant.
+3. [Data and Model Weights Addendum](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/commercial/DATA-WEIGHTS-ADDENDUM-DRAFT.md) — commercial datasets and trained weights.
+4. [Security Disclosure Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/policies/SECURITY-DISCLOSURE.md)
+   and [Support Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/policies/SUPPORT-POLICY.md).
+5. [Provenance Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/policies/PROVENANCE-POLICY.md)
    for assets, data and model weights.
-6. [OpenRAIL-style Attachment](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/OPENRAIL-ATTACHMENT-DRAFT.md) for sensitive models or datasets.
-7. [Dual-License Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/DUAL-LICENSE-POLICY.md)
+6. [OpenRAIL-style Attachment](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/OPENRAIL-ATTACHMENT-DRAFT.md) for sensitive models or datasets.
+7. [Dual-License Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/policies/DUAL-LICENSE-POLICY.md)
    for a written permissive or GPL-compatible grant.
-8. [Permissive Grant Template](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/PERMISSIVE-GRANT-TEMPLATE.md)
+8. [Permissive Grant Template](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/commercial/PERMISSIVE-GRANT-TEMPLATE.md)
    for a named MIT/Apache-2.0 grant.
-9. [Security SLA Exhibit](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/commercial/SECURITY-SLA-EXHIBIT-DRAFT.md)
+9. [Security SLA Exhibit](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/commercial/SECURITY-SLA-EXHIBIT-DRAFT.md)
    for a commercial response commitment.
-10. [SPDX and REUSE Policy](https://github.com/AegeanWorks/aegean-licensing/blob/main/policies/SPDX-REUSE-POLICY.md)
+10. [SPDX and REUSE Policy](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/policies/SPDX-REUSE-POLICY.md)
    for machine-readable license metadata; new AIKit projects get `REUSE.toml` and `LICENSES/`.
 
 ## What is still missing
 
 1. **Counsel review** of AL-1.1, AGL-1.1 and ASL-1.1 and of every draft above; see the
-   [Legal Review Checklist](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/LEGAL-REVIEW-CHECKLIST.md).
+   [Legal Review Checklist](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/LEGAL-REVIEW-CHECKLIST.md).
 2. **Operative adoption**: the asset, data/weights and OpenRAIL attachments become binding only when
    an Order Form or a project LICENSE names them; the policy documents are statements of practice,
    not a grant.
@@ -218,14 +218,14 @@ operative texts are AL-1.1, AGL-1.1, ASL-1.1, ACL-1.0 and the restricted notice.
 ## Legal review
 
 Before the first paid issuance, counsel reviews the operative texts against
-[LEGAL-REVIEW-CHECKLIST.md](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/LEGAL-REVIEW-CHECKLIST.md).
+[LEGAL-REVIEW-CHECKLIST.md](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/LEGAL-REVIEW-CHECKLIST.md).
 The checklist is a hand-off, not legal advice; a version is release-ready only after counsel signs
 the applicable items.
 
 ## Verification
 
 Every commercial certificate is checked against the public register
-([`licenses/issued.json`](https://github.com/AegeanWorks/aegean-licensing/blob/main/licenses/issued.json)).
+([`licenses/issued.json`](https://github.com/AegeanWorks/Aegean-Licensing/blob/master/licenses/issued.json)).
 The digest proves the record was not altered; only AegeanWorks' private signing key proves
 authenticity. Personal-use licenses (AL, AGL, ASL) need no certificate. Commercial use always does.
 
