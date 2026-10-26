@@ -5,29 +5,12 @@
     "last_phase": "in_progress",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1793042384.6541784,
+    "updated_at": 1793042724.7191832,
     "owner": "claude-code:240bc3b7",
     "started_by": "claude-code:240bc3b7",
     "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "license-model-218",
-      "phase": "delivery",
-      "phase_num": 4,
-      "description": "[3/3] done: AGL-1.0 and ASL-1.0 added with CATALOG and pins; new --kind, license --suggest/--set, topics, publish --license auto; titles title-cased and descriptions untouched; ADR-219 suspend/resume-task; 520/50/98 tests and all gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792967470.8772326,
-      "timestamp_str": "2026-10-26 01:31:10",
-      "agent": "kilo:main",
-      "handoff": {
-        "state": "uncommitted and green across three repos",
-        "next": "commit and push on user approval",
-        "open": "counsel review of AGL/ASL, asset and data grants",
-        "evidence": "AIKit 520 unit and 57 integration, public 50, ops 98, budgets green"
-      }
-    },
     {
       "task_id": "license-model-218",
       "phase": "completed",
@@ -277,6 +260,17 @@
       "status": "in_progress",
       "timestamp": 1793042384.6541784,
       "timestamp_str": "2026-10-26 22:19:44",
+      "agent": "claude-code:240bc3b7"
+    },
+    {
+      "task_id": "agpl-cleanup",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/3] 26 repos: AGPL notes removed, assay docs on AL-1.1, 5 README description paragraphs publish-safe; all aikit checks pass; pushed; Assay v0.1.0 release note edited; checklists: passed. [3/3] pending: AGPL tag deletion blocked by permission, needs the user",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793042724.7191832,
+      "timestamp_str": "2026-10-26 22:25:24",
       "agent": "claude-code:240bc3b7"
     }
   ]
