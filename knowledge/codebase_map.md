@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `22`
 - **Total Classes**: `95`
-- **Total Top-Level Functions**: `358`
-- **Total Class Methods**: `673`
-- **Total Source Lines**: `20122`
+- **Total Top-Level Functions**: `359`
+- **Total Class Methods**: `674`
+- **Total Source Lines**: `20141`
 
 ---
 
@@ -420,12 +420,13 @@
 ### [`scripts/sync_licenses.py`](scripts/sync_licenses.py)
 > *Synchronize AIKit's pinned license copies with the canonical aegean-licensing repository.*
 
-**Size**: `171` lines (`6959` bytes)
+**Size**: `180` lines (`7148` bytes)
 
 **Functions:**
 - `def _normalize(text)`
+- `def _read_text(path)`
 - `def _digest(path)`
-- `def _write_text(path, text)` - *Atomic write with a same-directory temp file and os.replace (PRINCIPLE-013).*
+- `def _write_text(path, text)` - *Atomic write with a same-directory temp file, fsync and replace (PRINCIPLE-013).*
 - `def expected_pin(source)` - *The PIN.json content the source tree should produce.*
 - `def check_licenses(source, target)` - *Return every drift or tamper finding; empty means the pinned copies are consistent. When*
 - `def sync_licenses(source, target)` - *Copy every canonical text into the target and rewrite PIN.json.*
@@ -698,7 +699,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8003` lines (`457104` bytes)
+**Size**: `8013` lines (`457643` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1318,6 +1319,7 @@
 - `class TestLicenseSync` - *The pinned license copies must not drift from the canonical texts or the catalog.*
   - Method `._source(source)`
   - Method `.test_sync_records_text_and_catalog_digests_and_check_detects_drift()`
+  - Method `.test_sync_preserves_crlf_line_endings()`
 - `class TestTestTierBudgetGate` - *PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed.*
   - Method `.fake_runner(table)`
   - Method `.ok(tests, seconds)`

@@ -7734,6 +7734,16 @@ class TestLicenseSync(unittest.TestCase):
             self.assertTrue(any("CATALOG.md" in error and "PIN.json" in error
                                 for error in check_licenses(None, target)))
 
+    def test_sync_preserves_crlf_line_endings(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source, target = Path(one), Path(two)
+            self._source(source)
+            (source / "AL-1.1.md").write_bytes(b"# AL\r\n\r\nBody\r\n")
+            sync_licenses(source, target)
+            raw = (target / "AL-1.1.md").read_bytes()
+            self.assertIn(b"\r\n", raw, "a canonical CRLF text must stay CRLF")
+            self.assertEqual(check_licenses(source, target), [])
+
 
 class TestTestTierBudgetGate(unittest.TestCase):
     """PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed."""

@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -46,15 +47,23 @@ def _normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def _read_text(path: Path) -> str:
+    with open(path, encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
 def _digest(path: Path) -> str:
-    return hashlib.sha256(_normalize(path.read_text(encoding="utf-8")).encode()).hexdigest()
+    return hashlib.sha256(_normalize(_read_text(path)).encode()).hexdigest()
 
 
 def _write_text(path: Path, text: str) -> None:
-    """Atomic write with a same-directory temp file and os.replace (PRINCIPLE-013)."""
+    """Atomic write with a same-directory temp file, fsync and replace (PRINCIPLE-013)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp_sync")
-    temp.write_text(text, encoding="utf-8", newline="")
+    with open(temp, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
     temp.replace(path)
 
 
@@ -123,7 +132,7 @@ def sync_licenses(source: Path = DEFAULT_SOURCE, target: Path = TARGET_DIR) -> N
             raise FileNotFoundError(f"canonical file not found: {source_path}")
     target.mkdir(parents=True, exist_ok=True)
     for name in SYNC_FILES:
-        text = _normalize((source / name).read_text(encoding="utf-8"))
+        text = _read_text(source / name)
         _write_text(target / name, text)
     pin = expected_pin(source)
     _write_text(target / "PIN.json",
