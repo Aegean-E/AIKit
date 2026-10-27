@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `22`
 - **Total Classes**: `95`
-- **Total Top-Level Functions**: `363`
-- **Total Class Methods**: `680`
-- **Total Source Lines**: `20320`
+- **Total Top-Level Functions**: `364`
+- **Total Class Methods**: `684`
+- **Total Source Lines**: `20387`
 
 ---
 
@@ -65,7 +65,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `219` lines (`14373` bytes)
+**Size**: `220` lines (`14446` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -326,7 +326,7 @@
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
-**Size**: `328` lines (`15729` bytes)
+**Size**: `333` lines (`16228` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *Default runner: the command's exit code and combined output; -1 when it cannot start.*
@@ -348,7 +348,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1093` lines (`50513` bytes)
+**Size**: `1106` lines (`51163` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -358,6 +358,7 @@
 
 **Functions:**
 - `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
+- `def repository_name(name)` - *The GitHub repository name for a project: each hyphen- or underscore-delimited word takes a*
 - `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
 - `def detect_license_kind(project_root)` - *The domain an AI should pick a license for, from the project's own markers. Strong markers*
 - `def render_project_readme(name, test_command, description, licensed, integrated, license_kind, license_version, assets_manifest, reuse)` - *A README whose structure passes PRINCIPLE-005's audit, with a `<FILL:` prerequisite marker: the*
@@ -703,7 +704,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8096` lines (`463229` bytes)
+**Size**: `8144` lines (`466045` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1108,6 +1109,7 @@
   - Method `.test_new_project_without_description_keeps_a_fill_marker()`
   - Method `.test_description_and_topics_are_checked_before_anything_is_created()`
   - Method `.test_titles_are_title_cased_and_descriptions_keep_their_case()`
+  - Method `.test_repository_names_capitalise_each_word()`
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
   - Method `.test_license_switch_keeps_the_readme_tree_contiguous()`
@@ -1316,6 +1318,8 @@
   - Method `.test_extract_readme_description_finds_first_paragraph_and_truncates()`
   - Method `.test_extract_readme_description_survives_a_byte_order_mark()`
   - Method `.test_extract_readme_description_skips_a_url_only_paragraph()`
+  - Method `.test_extract_readme_description_skips_a_paragraph_of_links()`
+  - Method `.test_a_short_first_sentence_does_not_shrink_a_long_description()`
   - Method `.test_extract_readme_description_cuts_at_a_sentence_or_word_boundary()`
   - Method `.test_get_project_repo_url()`
   - Method `.test_repo_url_reads_the_config_as_git_does()`
@@ -1323,6 +1327,7 @@
   - Method `.test_push_reports_never_show_credentials()`
   - Method `.test_publish_sets_the_readme_description_and_recorded_topics()`
   - Method `.test_publish_can_create_the_repository_inside_an_organization()`
+  - Method `.test_new_repository_takes_the_catalog_title_case()`
   - Method `.test_a_topic_failure_after_upload_is_a_note()`
   - Method `.test_publish_passes_extracted_description()`
   - Method `.test_auto_push_project()`

@@ -135,7 +135,8 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--strict", action="store_true",
                        help="require a clean non-bookkeeping tree and a codebase map before passing")
     project_command("fix", "restore missing project memory and README, refresh its map, then check")
-    publish = project_command("publish", "upload the project to its own GitHub repository (private by default)")
+    publish = project_command("publish", "upload the project to its own GitHub repository, named in "
+                                         "catalog title case (private by default)")
     publish.add_argument("--public", action="store_true", help="create the repository as public")
     publish.add_argument("--owner", metavar="ORG", help="create the repository under this organization "
                          "or user instead of your own account (ADR-215)")

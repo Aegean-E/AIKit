@@ -164,8 +164,8 @@ def title_case(text: str) -> str:
     """
     A display title from a project name: words capitalised, small joining words left lower unless
     first or last, and known acronyms preserved (`muse-ai-music` -> `Muse AI Music`). Only the
-    author-facing title is changed; folder names, repository names and descriptions keep their
-    spelling (ADR-218).
+    author-facing title is changed; folder names and descriptions keep their spelling, while
+    repository names use `repository_name` (ADR-218, ADR-228).
     """
     words = [word for word in re.split(r"[-_\s]+", text) if word]
     title = []
@@ -177,6 +177,19 @@ def title_case(text: str) -> str:
             word = word[:1].upper() + word[1:]
         title.append(word)
     return " ".join(title) or text
+
+
+def repository_name(name: str) -> str:
+    """
+    The GitHub repository name for a project: each hyphen- or underscore-delimited word takes a
+    capital first letter, and known acronyms keep their spelling (`tally` -> `Tally`,
+    `obezite-mekanizma-projesi` -> `Obezite-Mekanizma-Projesi`, `ui-sandbox` -> `UI-Sandbox`).
+    The portable folder and registry key stay lowercase (ADR-228).
+    """
+    def capitalise(match: "re.Match[str]") -> str:
+        word = match.group(0)
+        return _TITLE_ACRONYMS.get(word.lower(), word[:1].upper() + word[1:])
+    return re.sub(r"[A-Za-z0-9]+", capitalise, name)
 
 
 def license_choice(kind: str) -> dict:

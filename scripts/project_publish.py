@@ -1,12 +1,12 @@
 """
 Publish a project to its own GitHub repository (ADR-134).
 
-`python aikit.py publish <name>` creates a private repository named after the project with the
-GitHub CLI and pushes the project's committed history to it; a project that already has an
-`origin` is pushed there instead. Nothing is uploaded unless the project has a commit, `gh` is
-logged in, and a secret scan of every line the uploaded commits add is clean (PRINCIPLE-019,
-ADR-145). Pushes are never forced (PRINCIPLE-018 R4), and no report shows a credential that a
-remote URL carries (ADR-191).
+`python aikit.py publish <name>` creates a private repository named for the project in catalog
+title case (`tally` -> `Tally`) with the GitHub CLI and pushes the project's committed history to
+it; a project that already has an `origin` is pushed there instead. Nothing is uploaded unless the
+project has a commit, `gh` is logged in, and a secret scan of every line the uploaded commits add
+is clean (PRINCIPLE-019, ADR-145). Pushes are never forced (PRINCIPLE-018 R4), and no report shows
+a credential that a remote URL carries (ADR-191).
 """
 
 import re
@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 from scripts.disruption_recovery import ROOT_DIR
+from scripts.project_registry import DESCRIPTION_MIN, repository_name
 
 SECRETS_CLI = ROOT_DIR / "scripts" / "check_secrets.py"
 # Creating a repository and pushing a large history can take a while; past this, it is hung.
@@ -43,7 +44,7 @@ def _triad(what: str, why: str, fix: str) -> str:
     return hide_url_credentials(f"Error: {what}\nWhy: {why}\nFix: {fix}")
 
 
-_URL_ONLY = re.compile(r"https?://\S+")
+_URL_ONLY = re.compile(r"https?://\S+(?:\s+https?://\S+)*")
 
 
 def _clean_markdown_line(raw: str) -> str:
@@ -102,11 +103,13 @@ def _fit_description(text: str) -> str:
     """
     `text` within GitHub's 350 characters; the 200 used before cut what `new --description`
     accepts (ADR-202). A longer one ends at its last whole sentence, else between words, so the
-    published description is never cut mid-word.
+    published description is never cut mid-word. A sentence end before the 10-character minimum is
+    no description at all, so such a text falls back to the word boundary (ADR-229).
     """
     if len(text) <= 350:
         return text
-    ends = [m.end() for m in re.finditer(r"[.!?](?=\s)", text) if m.end() <= 350]
+    ends = [m.end() for m in re.finditer(r"[.!?](?=\s)", text)
+            if DESCRIPTION_MIN <= m.end() <= 350]
     if ends:
         return text[:ends[-1]]
     cut = text.rfind(" ", 0, 348)
@@ -312,12 +315,14 @@ def publish_project(project_root: Path, name: str, public: bool = False,
                          "install GitHub CLI, run `gh auth login`, then publish again.")
     visibility = "--public" if public else "--private"
     desc_args = ["--description", desc] if desc else []
-    repository = f"{owner}/{name}" if owner else name
+    repository = f"{owner}/{repository_name(name)}" if owner else repository_name(name)
     code, output = run(["gh", "repo", "create", repository, visibility, "--source", str(project_root),
                         "--remote", "origin", "--push", *desc_args], project_root)
     if code != 0:
         return 1, _triad(f"creating the GitHub repository '{repository}' failed.\n{output[-800:]}",
-                         "GitHub refused the repository, for example because the name is taken.",
+                         "GitHub refused the repository, for example because the name is taken. GitHub "
+                         "treats names case-insensitively, so an existing lowercase repository also "
+                         "blocks the catalog title case.",
                          "rename or delete the existing repository on GitHub, or add a remote yourself with "
                          "`git remote add origin <url>` in the project, then publish again.")
     url = hide_url_credentials(run(["git", "remote", "get-url", "origin"], project_root)[1].strip() or output)

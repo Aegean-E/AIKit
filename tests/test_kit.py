@@ -170,6 +170,7 @@ from scripts.project_registry import (
     add_aikit_badge,
     migrate_aikit_links,
     render_project_readme,
+    repository_name,
     validate_name,
 )
 from scripts.check_secrets import (
@@ -4883,6 +4884,18 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(extract_readme_description(folder),
                          "a small tool. it keeps notes in sync")
 
+    def test_repository_names_capitalise_each_word(self):
+        # ADR-228: the public catalog uses a capital first letter per word; a lowercase portable
+        # folder name still yields Tally, Obezite-Mekanizma-Projesi and UI-Sandbox.
+        for name, expected in (("tally", "Tally"),
+                               ("obezite-mekanizma-projesi", "Obezite-Mekanizma-Projesi"),
+                               ("ui-sandbox", "UI-Sandbox"),
+                               ("my_app", "My_App"),
+                               ("N1-Engine", "N1-Engine"),
+                               ("muse", "Muse")):
+            with self.subTest(name=name):
+                self.assertEqual(repository_name(name), expected)
+
     def test_game_and_science_projects_seed_their_own_license(self):
         # ADR-218: one catalog, three personal licenses; the README names the chosen one.
         game = create_project("space-quest", workspace=self.kit, git_start=lambda root: None,
@@ -7555,6 +7568,26 @@ class TestProjectPublish(unittest.TestCase):
                 "My app plans duty rosters.\n", encoding="utf-8")
             self.assertEqual(extract_readme_description(root), "My app plans duty rosters.")
 
+    def test_extract_readme_description_skips_a_paragraph_of_links(self):
+        # Two demo links are no more a description than one (ADR-229).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text(
+                "# my-app\n\nhttps://my-app.example.app/ https://demo.example.app/\n\n"
+                "My app plans duty rosters.\n", encoding="utf-8")
+            self.assertEqual(extract_readme_description(root), "My app plans duty rosters.")
+
+    def test_a_short_first_sentence_does_not_shrink_a_long_description(self):
+        # ADR-229: a 400-character paragraph starting "Hi." was cut to "Hi.", which publish
+        # refuses for being under the 10-character minimum.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text(f"# my-app\n\nHi. {'word ' * 80}\n", encoding="utf-8")
+            extracted = extract_readme_description(root)
+            self.assertGreaterEqual(len(extracted), 10)
+            self.assertLessEqual(len(extracted), 350)
+            self.assertTrue(extracted.startswith("Hi. word"))
+
     def test_extract_readme_description_cuts_at_a_sentence_or_word_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -7663,6 +7696,7 @@ class TestProjectPublish(unittest.TestCase):
 
     def test_publish_can_create_the_repository_inside_an_organization(self):
         # ADR-215: `publish --owner ORG` creates ORG/name; without it gh uses the logged-in user.
+        # ADR-228: the name is the catalog title case, so `app` becomes `App`.
         root = Path(tempfile.mkdtemp(prefix="test_publish_owner_"))
         self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         (root / "README.md").write_text("# app\n\nA tool that does one thing well for its users.\n",
@@ -7670,7 +7704,21 @@ class TestProjectPublish(unittest.TestCase):
         code, report = publish_project(root, "app", runner=self.runner(), topics=["aikit"],
                                        owner="AegeanWorks")
         self.assertEqual(code, 0, report)
-        self.assertEqual(self.made("create")[0][3], "AegeanWorks/app")
+        self.assertEqual(self.made("create")[0][3], "AegeanWorks/App")
+
+    def test_new_repository_takes_the_catalog_title_case(self):
+        # ADR-228: AIKit creates Tally, not tally; an existing origin is never renamed.
+        root = Path(tempfile.mkdtemp(prefix="test_publish_case_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "README.md").write_text("# tally\n\nA small tool that counts things for its users.\n",
+                                        encoding="utf-8")
+        code, report = publish_project(root, "tally", runner=self.runner())
+        self.assertEqual(code, 0, report)
+        self.assertEqual(self.made("create")[0][3], "Tally")
+
+        code, report = publish_project(root, "obezite-mekanizma-projesi", runner=self.runner())
+        self.assertEqual(code, 0, report)
+        self.assertEqual(self.made("create")[-1][3], "Obezite-Mekanizma-Projesi")
 
     def test_a_topic_failure_after_upload_is_a_note(self):
         base = self.runner()
