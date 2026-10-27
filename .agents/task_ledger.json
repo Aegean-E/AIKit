@@ -1,56 +1,17 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "repo-title-case",
-    "last_phase": "in_progress",
+    "task_id": "push-review",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793118312.4194791,
+    "updated_at": 1793119067.560309,
     "owner": "kilo:main",
     "started_by": "kilo:main",
     "continuations": [],
-    "completed_at": 1793118329.7807748
+    "completed_at": 1793119067.7008274
   },
   "checkpoints": [
-    {
-      "task_id": "repo-normalize",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Plan: (1) later-list file knowledge/repo_backlog.md; (2) relicense 24 clean projects to AL/AGL/ASL-1.1 locally with -<old>-final or v<ver>-<old> tags, fix pilot link/wording; (3) rename 22 lowercase GitHub repos and update remotes; (4) topics and <=350-char descriptions; (5) push commits and tags",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793036823.520571,
-      "timestamp_str": "2026-10-26 20:47:03",
-      "agent": "claude-code:240bc3b7",
-      "impact_assessment": {
-        "why": "User asked to normalize repo names, topics, descriptions and move clean repos to Aegean 1.1 licenses",
-        "benefits": "Consistent public catalog under the current licenses; skipped repos recorded for later",
-        "risks": "contract: public repo names, license terms of new versions; dependency: gh CLI; concurrency: none; state: project git history, tags, remotes",
-        "mitigation": "Clean-only scope, per-repo aikit check, tag last pre-change commit, GitHub redirects old names, no force pushes"
-      }
-    },
-    {
-      "task_id": "repo-normalize",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/5] knowledge/repo_backlog.md lists 5 skipped projects and 2 follow-ups; KB, sync and secret gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793037335.6257615,
-      "timestamp_str": "2026-10-26 20:55:35",
-      "agent": "claude-code:240bc3b7"
-    },
-    {
-      "task_id": "repo-normalize",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/5] 26 projects relicensed (20 AL-1.1, 4 AGL-1.1, 2 ASL-1.1) with last-version tags; pilots' history wording, ACL link and tree fixed; every project's aikit check passes; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793037975.4389617,
-      "timestamp_str": "2026-10-26 21:06:15",
-      "agent": "claude-code:240bc3b7"
-    },
     {
       "task_id": "repo-normalize",
       "phase": "in_progress",
@@ -261,6 +222,49 @@
       "status": "completed",
       "timestamp": 1793118329.7807763,
       "timestamp_str": "2026-10-27 19:25:29",
+      "agent": "kilo:main"
+    },
+    {
+      "task_id": "push-review",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Review of pushes 51-53 and the uncommitted repository-naming change: the catalog resync targets exist on master and a sample link resolves; found and fixed two publish-description defects (a paragraph of two links was sent as the description, and a 400-char paragraph starting 'Hi.' was cut to an unacceptably short stub) with failing-first tests and ADR-229; the fixes are pushed in 418aaec",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793119030.7370064,
+      "timestamp_str": "2026-10-27 19:37:10",
+      "agent": "kilo:main",
+      "impact_assessment": {
+        "why": "The user asked for a review of the last three pushes, their defects fixed, and the result pushed",
+        "benefits": "Two README paragraphs that produced unusable GitHub descriptions now publish correctly; the review record is in the ledger for cold start",
+        "risks": "contract: publish description extraction; dependency: none; concurrency: another AIKit session committed and pushed the same feature, so history is not rewritten; state: only the ledger changes now",
+        "mitigation": "Explicit staging of the ledger alone, verify_commit on the pushed commit, no amend or force push"
+      }
+    },
+    {
+      "task_id": "push-review",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/2] 543 unit + 57 integration within budget, principles, knowledge base, license pin, secrets, reachability and dogfood pass; verify_commit on pushed 418aaec passes every gate; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793119067.560309,
+      "timestamp_str": "2026-10-27 19:37:47",
+      "agent": "kilo:main",
+      "handoff": {
+        "state": "code pushed, tree clean apart from the ledger",
+        "next": "commit and push this ledger record",
+        "evidence": "verify_commit 418aaec all gates PASS"
+      }
+    },
+    {
+      "task_id": "push-review",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'push-review' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793119067.7008283,
+      "timestamp_str": "2026-10-27 19:37:47",
       "agent": "kilo:main"
     }
   ]
