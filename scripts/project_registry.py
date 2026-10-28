@@ -119,6 +119,28 @@ LICENSE_CHOICES = {
     },
 }
 DEFAULT_LICENSE_KIND = "software"
+# License metadata is part of discovery: GitHub cannot detect the custom Aegean licenses, so every
+# project carries explicit license topics. Restricted projects must not advertise a free tier.
+LICENSE_TOPIC_SETS = {
+    "software": ("source-available", "aegean-license", "commercial-license"),
+    "game": ("source-available", "aegean-game-license", "drm-free", "commercial-license"),
+    "science": ("source-available", "aegean-science-license", "research", "commercial-license"),
+}
+RESTRICTED_TOPICS = ("all-rights-reserved", "proprietary")
+# Every project is shipped through AIKit, so the integration tag is mandatory metadata like the
+# license tags; it is not an AI suggestion.
+INTEGRATION_TOPICS = ("aikit", "aikit-integrated")
+ALL_LICENSE_TOPICS = tuple(sorted({*sum((list(v) for v in LICENSE_TOPIC_SETS.values()), []),
+                                   *RESTRICTED_TOPICS}))
+
+
+def license_topics(kind: Optional[str], restricted: bool = False) -> List[str]:
+    """The GitHub topics that name a project's license tier, kept out of automatic AI choice."""
+    if restricted:
+        return list(RESTRICTED_TOPICS)
+    return list(LICENSE_TOPIC_SETS.get(kind or DEFAULT_LICENSE_KIND, LICENSE_TOPIC_SETS["software"]))
+
+
 # Markers that show a project's domain. A strong marker is enough for high confidence; a weak
 # one only suggests. The same analysis selects the license and the domain topic (ADR-218).
 LICENSE_MARKERS = {
@@ -940,6 +962,12 @@ def create_project(name: str, test_command: Optional[str] = None, workspace: Pat
     description = validate_description(description)
     topics = normalize_topics(topics)
     license_choice(license_kind)
+    # License tags are mandatory metadata, not AI suggestions; keep room for them under the
+    # 20-topic ceiling before user topics.
+    license_tags = license_topics(license_kind)
+    combined = [*INTEGRATION_TOPICS, *license_tags,
+                *[topic for topic in topics if topic not in INTEGRATION_TOPICS]]
+    topics = normalize_topics(combined[:MAX_TOPICS])
     if name in _registered_names(workspace):
         raise ProjectError(
             f"A project named '{name}' already exists.",

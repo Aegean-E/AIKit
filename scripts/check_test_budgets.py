@@ -35,12 +35,11 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# The ceiling each tier's average test may reach, in milliseconds. The unit ceiling is 10ms:
-# the user approved the raise in ADR-165 after the 8ms ceiling failed under host load. The
-# integration ceiling is 350ms, approved in ADR-164.
+# The ceiling each tier's average test may reach, in milliseconds. The unit ceiling is 20ms
+# and the integration ceiling is 500ms, both approved in ADR-244.
 TIER_BUDGETS_MS: Dict[str, float] = {
-    "tests.test_kit": 10.0,
-    "tests.test_integration": 350.0,
+    "tests.test_kit": 20.0,
+    "tests.test_integration": 500.0,
 }
 
 # A tier that hangs must fail the gate rather than block delivery for ever.

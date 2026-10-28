@@ -1,0 +1,183 @@
+"""Bounded Git reads used by the auditor, the repair review and delivery."""
+
+import re
+import subprocess
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+from reforge.model import CommitInfo
+
+GIT_TIMEOUT_SECONDS = 60
+FIELD = "\x1f"
+
+
+def run_git(repo: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> Tuple[int, str]:
+    """Run git with stdin closed and a timeout; returns (exit code, combined output)."""
+    try:
+        done = subprocess.run(
+            ["git", "-c", "core.quotePath=false", *args],
+            cwd=str(repo),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return -1, str(exc)
+    # Output is preserved exactly: `git status --porcelain` and `git show` start with significant
+    # whitespace, and stripping it silently renamed the first status path ("app.py" -> "pp.py").
+    return done.returncode, (done.stdout + done.stderr)
+
+
+def is_git_repo(repo: Path) -> bool:
+    code, _ = run_git(repo, "rev-parse", "--is-inside-work-tree")
+    return code == 0
+
+
+def head_sha(repo: Path) -> str:
+    code, out = run_git(repo, "rev-parse", "HEAD")
+    return out.strip() if code == 0 else ""
+
+
+def commit_window(repo: Path, limit: int) -> List[CommitInfo]:
+    """The newest `limit` commits, newest first."""
+    if limit < 1:
+        return []
+    code, out = run_git(repo, "log", f"-n{limit}", f"--format=%H{FIELD}%s{FIELD}%an{FIELD}%aI")
+    if code != 0:
+        return []
+    commits = []
+    for line in out.splitlines():
+        parts = line.split(FIELD)
+        if len(parts) == 4:
+            commits.append(CommitInfo(parts[0], parts[1], parts[2], parts[3]))
+    return commits
+
+
+def commit_info(repo: Path, sha: str) -> Optional[CommitInfo]:
+    code, out = run_git(repo, "show", "-s", f"--format=%H{FIELD}%s{FIELD}%an{FIELD}%aI", sha)
+    if code != 0:
+        return None
+    parts = out.strip().split(FIELD)
+    return CommitInfo(*parts) if len(parts) == 4 else None
+
+
+def commit_count(repo: Path) -> int:
+    code, out = run_git(repo, "rev-list", "--count", "HEAD")
+    out = out.strip()
+    return int(out) if code == 0 and out.isdigit() else 0
+
+
+def changed_files(repo: Path, sha: str) -> List[Tuple[str, str]]:
+    """(status, relative path) pairs a commit changed; root commits included."""
+    code, out = run_git(repo, "diff-tree", "--root", "--no-commit-id", "--name-status",
+                        "-r", "--no-renames", "-z", sha)
+    if code != 0:
+        return []
+    parts = out.split("\0")
+    pairs: List[Tuple[str, str]] = []
+    index = 0
+    while index + 1 < len(parts):
+        status, path = parts[index], parts[index + 1]
+        if status and path:
+            pairs.append((status[:1], path))
+        index += 2
+    return pairs
+
+
+def added_lines(repo: Path, sha: str, path: str) -> Set[int]:
+    """Line numbers a commit adds to `path`, from a zero-context diff."""
+    parent = parent_sha(repo, sha)
+    if not parent:
+        source = file_at(repo, sha, path)
+        return set(range(1, len(source.splitlines()) + 1)) if source else set()
+    code, out = run_git(repo, "diff", "--unified=0", parent, sha, "--", path)
+    if code != 0:
+        return set()
+    lines: Set[int] = set()
+    current = 0
+    hunk = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+    for line in out.splitlines():
+        match = hunk.match(line)
+        if match:
+            current = int(match.group(1))
+            continue
+        if line.startswith("+") and not line.startswith("+++"):
+            lines.add(current)
+            current += 1
+        elif line.startswith(" "):
+            current += 1
+    return lines
+
+
+def parent_sha(repo: Path, sha: str) -> str:
+    code, out = run_git(repo, "rev-parse", f"{sha}^")
+    return out.strip() if code == 0 else ""
+
+
+def file_at(repo: Path, sha: str, path: str) -> Optional[str]:
+    code, out = run_git(repo, "show", f"{sha}:{path}")
+    return out if code == 0 else None
+
+
+def worktree_diff(repo: Path, paths: Sequence[str]) -> str:
+    args = ["diff", "--unified=3", "--"] + list(paths)
+    code, out = run_git(repo, *args)
+    return out if code == 0 else ""
+
+
+def status_paths(repo: Path) -> List[str]:
+    code, out = run_git(repo, "status", "--porcelain", "--untracked-files=no")
+    if code != 0:
+        return []
+    return [line[3:].strip() for line in out.splitlines() if len(line) > 3]
+
+
+def untracked_paths(repo: Path) -> List[str]:
+    code, out = run_git(repo, "ls-files", "--others", "--exclude-standard")
+    return out.splitlines() if code == 0 else []
+
+
+def diff_paths(diff_text: str) -> List[str]:
+    """Paths in a unified diff, in first-seen order."""
+    paths: List[str] = []
+    for line in diff_text.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[6:].strip()
+            if path not in paths:
+                paths.append(path)
+    return paths
+
+
+def commit_paths(repo: Path, sha: str) -> List[str]:
+    code, out = run_git(repo, "show", "--pretty=format:", "--name-only", sha)
+    return [line.strip() for line in out.splitlines() if line.strip()] if code == 0 else []
+
+
+def stage_and_commit(repo: Path, paths: Sequence[str], message: str) -> Tuple[int, str]:
+    """Explicit `git add -- <paths>` then commit; never stages the whole tree."""
+    code, out = run_git(repo, "add", "--", *paths)
+    if code != 0:
+        return code, out
+    return run_git(repo, "commit", "-m", message)
+
+
+def push(repo: Path) -> Tuple[int, str]:
+    """Adaptive, never forced push: set the upstream once when origin exists."""
+    code, out = run_git(repo, "push", timeout=120)
+    if code == 0:
+        return 0, out
+    if "has no upstream branch" in out or "no upstream" in out.lower():
+        code, upstream = run_git(repo, "remote", "get-url", "origin")
+        if code == 0:
+            return run_git(repo, "push", "-u", "origin", "HEAD", timeout=120)
+    return code, out
+
+
+def dirty_paths(repo: Path) -> Dict[str, str]:
+    """Tracked and untracked paths that differ from HEAD, for delivery refusal."""
+    tracked = {path: "modified" for path in status_paths(repo)}
+    tracked.update({path: "untracked" for path in untracked_paths(repo)})
+    return tracked

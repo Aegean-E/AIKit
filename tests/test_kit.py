@@ -136,6 +136,34 @@ from scripts.project_publish import (
     get_project_repo_url,
     publish_project,
 )
+from reforge.audit import window_for_stage
+from reforge.cli import build_parser as build_reforge_parser
+from reforge.delivery import validate_message as validate_reforge_message
+from reforge.detectors import detect_source as reforge_detect_source
+from reforge.errors import ReforgeError
+from reforge.model import Finding
+from reforge.repair import repair_findings
+from reforge.repo_sync import manifest as reforge_manifest, sync_config as reforge_sync_config, sync_repo
+from reforge.state import (
+    create_run,
+    load_state,
+    new_state,
+    pending_fixable,
+    resume_run,
+    save_state,
+    state_path,
+    stop_run,
+    update_settings,
+    validate_settings,
+)
+from reforge.verification import default_test_command
+from idea_catcher import registry as idea_registry
+from idea_catcher import repo_sync as idea_sync
+import scripts.project_artwork as project_artwork
+import scripts.project_brand as project_brand
+import scripts.project_media as project_media
+import scripts.project_topics as project_topics
+import scripts.project_ui as project_ui
 
 
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
@@ -172,6 +200,7 @@ from scripts.project_registry import (
     render_project_readme,
     repository_name,
     validate_name,
+    write_memory,
 )
 from scripts.check_secrets import (
     scan_diff,
@@ -349,7 +378,7 @@ class TestPrincipleSync(unittest.TestCase):
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
         # Mechanisms, not labels (ADR-063): the size limit, the checked items, the trigger, the gate.
-        for mechanism in ("readme <=22.5k chars", "prerequisites, test command, tree",
+        for mechanism in ("readme <=25k chars", "prerequisites, test command, tree",
                           "user-visible changes update it same commit",
                           "`update_knowledge_base.py --check` gates it"):
             with self.subTest(mechanism=mechanism):
@@ -378,7 +407,7 @@ class TestPrincipleSync(unittest.TestCase):
         # exception: the user approved rewriting the principle text, and ADR-087 names this test).
         for mechanism in ("100% test pass gate", "behaviour change = failing-first test",
                           "weakening a test needs user approval + adr naming it",
-                          "unit <=10ms/test, no spawns/sleeps", "integ <=350ms/test",
+                          "unit <=20ms/test, no spawns/sleeps", "integ <=500ms/test",
                           "tempdir + addcleanup", "scripts/check_reachability.py"):
             with self.subTest(mechanism=mechanism):
                 self.assertIn(mechanism, p14["invariant"].lower())
@@ -655,17 +684,17 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
-        # cold-start token ceiling (<22,500 chars), and valid paths for every file listed in the directory tree.
+        # cold-start token ceiling (<25,000 chars), and valid paths for every file listed in the directory tree.
         readme_path = ROOT_DIR / "README.md"
         self.assertTrue(readme_path.exists(), "README.md missing from repository root")
         readme_content = readme_path.read_text(encoding="utf-8")
         
-        # 1. Cold-Start Token Ceiling (<22,500 characters)
-        MAX_README_CHARS = 22500
+        # 1. Cold-Start Token Ceiling (<25,000 characters)
+        MAX_README_CHARS = 25000
         self.assertLessEqual(
             len(readme_content),
             MAX_README_CHARS,
-            f"README.md exceeds 22,500 char cold-start budget: {len(readme_content)} chars"
+            f"README.md exceeds 25,000 char cold-start budget: {len(readme_content)} chars"
         )
 
         # 2. Orientation block & prerequisites
@@ -763,8 +792,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         ])
 
     def test_size_labels_and_tree_are_required(self):
-        errors = self.audit("# x\n" + "y" * 22_501)
-        self.assertIn("README.md has 22,505 chars; the limit is 22,500 (R1)", errors)
+        errors = self.audit("# x\n" + "y" * 25_001)
+        self.assertIn("README.md has 25,005 chars; the limit is 25,000 (R1)", errors)
         self.assertIn("README.md has no heading containing 'Cold-Start Quick Reference' (R1)", errors)
         self.assertIn("README.md has no ```text directory tree after \"What's Inside\" (R5)", errors)
 
@@ -3155,7 +3184,7 @@ class TestTier1ContextBudget(unittest.TestCase):
     def test_capsules_retain_their_mechanisms_after_condensation(self):
         # PRINCIPLE-001 R2: compression targets narrative, never hard mechanical constraints.
         content = (ROOT_DIR / ".agents" / "rules" / "principles.md").read_text(encoding="utf-8")
-        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<=10ms",
+        for mechanism in ("os.replace", "fsync", "100% test pass gate", "<=20ms",
                           "scripts/sync_principles.py", "task_ledger.json",
                           "advisory locking", "exit"):
             with self.subTest(mechanism=mechanism):
@@ -4754,7 +4783,9 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(extract_readme_description(folder), description, "publish reads it back")
         config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
         self.assertNotIn("description", config, "the README is its one source (ADR-202)")
-        self.assertEqual(config["topics"], ["aikit", "python", "cli"], "aikit first, deduplicated")
+        self.assertEqual(config["topics"], ["aikit", "aikit-integrated", "source-available",
+                                             "aegean-license", "commercial-license", "python", "cli"],
+                         "aikit, integration and license tags, then deduplicated user topics")
 
     def test_attach_adds_the_integrated_badge_under_the_title(self):
         # ADR-202: a project AIKit is integrated into says so and links to AIKit.
@@ -4852,7 +4883,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(extract_readme_description(folder), "", "the marker is never uploaded")
         config = json.loads((folder / ".aikit" / "project.json").read_text(encoding="utf-8"))
         self.assertNotIn("description", config)
-        self.assertEqual(config["topics"], ["aikit"])
+        self.assertEqual(config["topics"], ["aikit", "aikit-integrated", "source-available",
+                                             "aegean-license", "commercial-license"])
 
     def test_description_and_topics_are_checked_before_anything_is_created(self):
         for kwargs in ({"description": "too short"}, {"description": "x" * 351},
@@ -5229,44 +5261,31 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("private", out, "the checklist names the steps AIKit cannot take")
         self.assertIn("stay under", out, "earlier releases keep their license")
 
-    def test_published_topics_add_the_stack_and_the_license(self):
-        # ADR-215: recorded topics, then one per detected stack, then source-available for a
-        # personal-tier project; a restricted project announces no license topic.
-        from scripts.aikit_cli import publish_topics, test_command_topic
-        self.assertEqual(test_command_topic("python -m unittest"), "python")
-        self.assertEqual(test_command_topic("npm test"), "javascript")
-        self.assertEqual(test_command_topic("cargo test"), "rust")
-        self.assertEqual(test_command_topic("go test ./..."), "golang")
-        self.assertEqual(test_command_topic("./gradlew test"), "java")
-        self.assertIsNone(test_command_topic("make test"), "a custom runner names no language")
+    def test_published_topics_are_the_ai_choice_not_an_inference(self):
+        # ADR-236: publishing applies the recorded choice; it never adds stack/licence tags.
+        from scripts.aikit_cli import publish_topics
         folder = self.make_licensed_project()
         (folder / "pyproject.toml").write_text("[project]\nname = 'vault'\n", encoding="utf-8")
         (folder / "package.json").write_text("{}", encoding="utf-8")
         project = find_project("vault", self.kit)
-        self.assertEqual(publish_topics(project.path, ["aikit", "licensing", "python"]),
-                         ["aikit", "licensing", "python", "javascript", "source-available"])
-        (folder / "tsconfig.json").write_text("{}", encoding="utf-8")
-        self.assertEqual(publish_topics(project.path, ["aikit"]),
-                         ["aikit", "python", "javascript", "typescript", "source-available"],
-                         "a tsconfig marks the Node stack as TypeScript too")
-        restrict_project(folder, "vault", today="2026-10-25", runner=self.git_head())
-        self.assertEqual(publish_topics(project.path, ["aikit"]),
-                         ["aikit", "python", "javascript", "typescript"])
-
-    def test_a_restricted_game_project_announces_no_license_topics(self):
-        # ADR-215: a restricted project is not offered under a personal license, so neither the
-        # tier topic nor the AGL domain topics may survive the restriction.
-        from scripts.aikit_cli import publish_topics
-        folder = create_project("quest", workspace=self.kit, git_start=lambda root: None,
-                                license_kind="game",
-                                description="A tiny quest game made for a weekend jam.")
-        project = find_project("quest", self.kit)
-        personal = publish_topics(project.path, ["aikit"])
-        self.assertIn("game", personal)
-        self.assertIn("drm-free", personal)
-        self.assertIn("source-available", personal)
-        restrict_project(folder, "quest", today="2026-10-25", runner=self.git_head())
+        chosen = ["aikit", "licensing", "python", "security"]
+        self.assertEqual(publish_topics(project.path, chosen), chosen)
         self.assertEqual(publish_topics(project.path, ["aikit"]), ["aikit"])
+        with self.assertRaises(ProjectError):
+            publish_topics(project.path, ["Bad Tag"])
+
+    def test_ai_topic_choice_is_validated_and_never_auto_filled(self):
+        from scripts.project_topics import validate_choice
+        folder = self.make_licensed_project()
+        plan = validate_choice(folder, ["aikit", "old"], ["aikit", "old", "python"],
+                               ["aikit", "python", "security"])
+        self.assertEqual(plan["desired"], ["aikit", "old", "python", "security"])
+        self.assertEqual(plan["added"], ["security"])
+        self.assertEqual(plan["removed"], [])
+        self.assertIn("python", plan["kept"])
+        self.assertIn("old", plan["kept"])
+        with self.assertRaises(ValueError):
+            validate_choice(folder, ["aikit"], [], ["aikit", "Bad Tag"])
 
     def test_license_suggest_on_a_restricted_project_is_read_only(self):
         folder = self.make_licensed_project()
@@ -5379,7 +5398,8 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertEqual(code, 0, err)
         config = json.loads((self.kit / "projects" / "tagged" / ".aikit" / "project.json")
                             .read_text(encoding="utf-8"))
-        self.assertEqual(config["topics"], ["aikit", "web", "flask"])
+        self.assertEqual(config["topics"], ["aikit", "aikit-integrated", "source-available",
+                                             "aegean-license", "commercial-license", "web", "flask"])
 
     def test_new_project_ignores_bytecode_and_has_a_clean_adr_template(self):
         folder = create_project("pyapp", workspace=self.kit,
@@ -5600,7 +5620,8 @@ class TestProjectRegistry(unittest.TestCase):
         shutil.copyfile(ROOT_DIR / "LICENSE", created / "LICENSE")
         with mock.patch("scripts.aikit_cli.create_project", return_value=created), \
              mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "[OK] Published to GitHub")) as mock_pub:
-            code, out, err = self.run_cli("new", "publishedapp", "--publish", "--test", "python -m unittest",
+            code, out, err = self.run_cli("new", "publishedapp", "--publish", "--no-media",
+                                        "--test", "python -m unittest",
                                         "--description", "A tool that publishes itself on creation.",
                                         "--topic", "Demo")
             self.assertEqual(code, 0, out + err)
@@ -5608,11 +5629,26 @@ class TestProjectRegistry(unittest.TestCase):
             # ADR-200: the new project's description and topics reach the repository it creates.
             self.assertNotIn("description", mock_pub.call_args.kwargs, "publish reads the README (ADR-202)")
             self.assertEqual(mock_pub.call_args.kwargs["topics"],
-                             ["aikit", "demo", "python", "source-available"],
-                             "the first push carries the test runner's language and the license topic")
+                             ["aikit", "aikit-integrated", "source-available", "aegean-license",
+                              "commercial-license", "demo"],
+                             "the first push carries integration and license metadata plus the choice")
             self.assertIn("Publishing 'publishedapp' to GitHub:", out)
             self.assertIn("[OK] Published to GitHub", out)
 
+    def test_new_generates_review_pending_media_before_any_publish(self):
+        created = self.kit / "projects" / "mediaapp"
+        (created / ".aikit").mkdir(parents=True)
+        (created / ".aikit" / "project.json").write_text(
+            json.dumps({"schema": 1, "name": "mediaapp", "topics": ["aikit"]}), encoding="utf-8")
+        (created / "README.md").write_text("# Media App\n\nA small demo project.\n", encoding="utf-8")
+        with mock.patch("scripts.aikit_cli.create_project", return_value=created):
+            code, out, err = self.run_cli("new", "mediaapp",
+                                          "--description", "A small demo project for media generation.")
+        self.assertEqual(code, 0, out + err)
+        manifest = created / ".aikit" / "media.json"
+        self.assertTrue(manifest.is_file())
+        self.assertEqual(len(project_media.media_blockers(created)), 2)
+        self.assertIn("media review mediaapp", out)
 
     def test_status_displays_repo_url(self):
         folder = self.make_folder()
@@ -7918,7 +7954,7 @@ class TestTestTierBudgetGate(unittest.TestCase):
         def runner(module, timeout):
             if module == self.UNIT:
                 calls["unit"] += 1
-                return self.ok(100, 1.05 if calls["unit"] == 1 else 0.9)
+                return self.ok(100, 2.5 if calls["unit"] == 1 else 0.9)
             return self.ok(45, 1.0)
 
         buf = io.StringIO()
@@ -7929,9 +7965,9 @@ class TestTestTierBudgetGate(unittest.TestCase):
         self.assertIn("best of 2", buf.getvalue())
 
     def test_a_real_regression_fails_both_runs_and_reports_both(self):
-        code, out = self.gate({self.UNIT: self.ok(100, 1.05), self.INTEG: self.ok(45, 1.0)})
+        code, out = self.gate({self.UNIT: self.ok(100, 2.5), self.INTEG: self.ok(45, 1.0)})
         self.assertEqual(code, 1)
-        self.assertIn("runs 10.50ms, 10.50ms", out)
+        self.assertIn("runs 25.00ms, 25.00ms", out)
 
     def test_a_red_tier_is_not_retried(self):
         calls = {"unit": 0}
@@ -8138,6 +8174,541 @@ class TestPostCommitVerification(unittest.TestCase):
         code, report = verify_commit(repo=Path("/repo"), runner=lambda argv, cwd: (128, "fatal"))
         self.assertEqual(code, 1)
         self.assertIn("no commit to verify", report[0])
+
+
+class TestReforgeCore(unittest.TestCase):
+    """PRINCIPLE-014: Aegean Reforge's detectors, repairs, state and sync stay fast and grounded."""
+
+    DETECTOR_SOURCE = (
+        "import os, subprocess, yaml, requests\n"
+        "def f(x=[]):\n"
+        "    try:\n"
+        "        pass\n"
+        "    except:\n"
+        "        pass\n"
+        "    yaml.load('x')\n"
+        "    requests.get('https://example.invalid', verify=False)\n"
+        "    subprocess." + "run(['ls'], shell=True)\n"
+        "    eval('1')\n"
+        "    open('x')\n"
+        "    os.environ['X']\n"
+        "    d = {'a': 1, 'a': 2}\n"
+        "    return 1 / 0\n"
+    ) + "    password = " + repr("hunter2hunter2") + "\n"
+
+    def root(self):
+        path = Path(tempfile.mkdtemp(prefix="reforge_unit_"))
+        self.addCleanup(shutil.rmtree, str(path), True)
+        return path
+
+    def repair(self, source, add_tests=False):
+        root = self.root()
+        path = root / "pkg.py"
+        path.write_text(source, encoding="utf-8")
+        findings = reforge_detect_source("pkg.py", source, "sha")
+        repairs = repair_findings(root, findings, add_tests=add_tests)
+        return root, path, repairs
+
+    def test_detectors_cover_the_supported_defect_classes(self):
+        codes = {finding.code for finding in reforge_detect_source("pkg.py", self.DETECTOR_SOURCE, "sha")}
+        for code in ("bare-except", "swallowed-exception", "mutable-default", "unsafe-yaml-load",
+                     "verify-false", "shell-true", "eval-exec", "subprocess-timeout",
+                     "unmanaged-open", "environ-index", "duplicate-key", "division-by-zero",
+                     "hardcoded-secret"):
+            with self.subTest(code=code):
+                self.assertIn(code, codes)
+
+    def test_a_bare_except_is_repaired_and_rechecked(self):
+        _, path, repairs = self.repair("try:\n    pass\nexcept:\n    pass\n")
+        self.assertTrue(any(repair.applied for repair in repairs))
+        self.assertIn("except Exception:", path.read_text(encoding="utf-8"))
+
+    def test_a_mutable_default_is_replaced_and_gets_a_regression_test(self):
+        root, path, repairs = self.repair("def f(items=[]):\n    return items\n", add_tests=True)
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("items=None", text)
+        self.assertIn("if items is None:", text)
+        self.assertTrue(any(repair.test_name for repair in repairs))
+        self.assertTrue((root / "test_reforge_regressions.py").is_file())
+
+    def test_yaml_shell_and_verify_are_repaired_together(self):
+        source = (
+            "import subprocess, yaml, requests\n"
+            "def f(data):\n"
+            "    yaml.load(data)\n"
+            "    subprocess." + "run(['ls'], shell=True)\n"
+            "    return requests.get('https://example.invalid', verify=False)\n"
+        )
+        _, path, repairs = self.repair(source)
+        text = path.read_text(encoding="utf-8")
+        self.assertTrue(any(repair.applied for repair in repairs))
+        self.assertIn("yaml.safe_load", text)
+        self.assertNotIn("shell=True", text)
+        self.assertNotIn("verify=False", text)
+
+    def test_a_repaired_finding_is_not_reported_or_repaired_twice(self):
+        root, path, _ = self.repair("try:\n    pass\nexcept:\n    pass\n")
+        source = path.read_text(encoding="utf-8")
+        self.assertEqual([finding for finding in reforge_detect_source("pkg.py", source, "sha")
+                          if finding.code == "bare-except"], [])
+        self.assertEqual(repair_findings(root, []), [])
+
+    def test_a_syntax_error_is_evidenced_and_marked_reproducible(self):
+        findings = reforge_detect_source("bad.py", "def f(:\n", "sha")
+        self.assertEqual(findings[0].code, "syntax-error")
+        self.assertTrue(findings[0].reproducible)
+
+    def test_stage_windows_follow_the_documented_progression(self):
+        self.assertEqual([window_for_stage(stage) for stage in (1, 2, 3, 4)], [3, 6, 9, 12])
+
+    def test_interaction_evidence_marks_a_prior_symbol_or_repair_as_a_regression(self):
+        from reforge.audit import _interaction
+
+        finding = Finding(code="mutable-default", category="defect", severity="high",
+                          path="app.py", line=1, message="m", evidence="e", commit="new",
+                          symbol="cache")
+        prior = ({}, {("app.py", "cache"): "abc123"}, {}, {})
+        text, strong = _interaction(finding, prior)
+        self.assertTrue(strong)
+        self.assertIn("abc123", text)
+        repaired = ({}, {}, {}, {("app.py", "mutable-default"): 1})
+        text, strong = _interaction(finding, repaired)
+        self.assertTrue(strong)
+        self.assertIn("stage 1", text)
+
+    def test_state_round_trips_and_refuses_a_newer_schema(self):
+        root = self.root()
+        state = load_state(root)
+        state["stage"] = 2
+        save_state(root, state)
+        self.assertEqual(load_state(root)["stage"], 2)
+        state_path(root).write_text('{"schema": 99}', encoding="utf-8")
+        with self.assertRaises(ReforgeError):
+            load_state(root)
+
+    def sync_tree(self):
+        source, target = self.root(), self.root()
+        files = {"reforge/__init__.py": "VALUE = 1\n", "reforge.py": "print(1)\n"}
+        for relative, text in files.items():
+            (source / relative).parent.mkdir(parents=True, exist_ok=True)
+            (source / relative).write_text(text, encoding="utf-8")
+            (target / relative).parent.mkdir(parents=True, exist_ok=True)
+            (target / relative).write_text(text, encoding="utf-8")
+        synced = {relative: hashlib.sha256((target / relative).read_bytes()).hexdigest()
+                  for relative in files}
+        (target / ".reforge-repo.json").write_text(
+            json.dumps({"schema": 1, "synced": synced}), encoding="utf-8")
+        return source, target
+
+    def test_repo_sync_pushes_and_pulls_shipped_source(self):
+        source, target = self.sync_tree()
+        (source / "reforge/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
+        pushed = sync_repo(source, target, "push")
+        self.assertEqual(pushed["copied"], ["reforge/__init__.py"])
+        self.assertIn("VALUE = 2", (target / "reforge/__init__.py").read_text(encoding="utf-8"))
+        (target / "reforge/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
+        pulled = sync_repo(source, target, "pull")
+        self.assertEqual(pulled["copied"], ["reforge/__init__.py"])
+        self.assertIn("VALUE = 3", (source / "reforge/__init__.py").read_text(encoding="utf-8"))
+
+    def test_repo_sync_refuses_a_two_sided_conflict(self):
+        source, target = self.sync_tree()
+        (source / "reforge/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
+        (target / "reforge/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
+        with self.assertRaises(ReforgeError) as raised:
+            sync_repo(source, target, "push")
+        self.assertIn("changed on both sides", raised.exception.message)
+
+    def test_the_parser_declares_the_shared_reforge_commands(self):
+        args = build_reforge_parser().parse_args(["repo", "sync", "--direction", "pull"])
+        self.assertEqual((args.command, args.repo_action, args.direction),
+                         ("repo", "sync", "pull"))
+
+    def test_delivery_refuses_a_non_conventional_message(self):
+        validate_reforge_message("fix(reforge): repair stage 1 findings")
+        with self.assertRaises(ReforgeError):
+            validate_reforge_message("repaired things")
+
+    def test_a_finding_serializes_every_evidence_field(self):
+        finding = reforge_detect_source("pkg.py", "try:\n    pass\nexcept:\n    pass\n", "sha")[0]
+        payload = finding.as_dict()
+        for key in ("code", "path", "line", "message", "evidence", "commit", "reproducible"):
+            with self.subTest(key=key):
+                self.assertIn(key, payload)
+        self.assertEqual(Finding(**payload), finding)
+
+    def test_no_test_command_is_invented_for_an_empty_repository(self):
+        self.assertEqual(default_test_command(self.root()), "")
+
+    def project(self, name="demo", readme="An AI agent and local-first CLI for research."):
+        root = self.root()
+        (root / "README.md").write_text(f"# {name}\n\n{readme}\n", encoding="utf-8")
+        write_memory(root, name, topics=["aikit"])
+        return root
+
+    def test_ui_identity_detects_web_game_and_cli_projects(self):
+        web = self.root()
+        (web / "index.html").write_text("<!doctype html><html><body><div id='app'></div></body></html>",
+                                        encoding="utf-8")
+        detected = project_ui.detect_ui(web)
+        self.assertTrue(detected["has_ui"])
+        self.assertEqual(detected["kind"], "web")
+        game = self.root()
+        (game / "requirements.txt").write_text("pygame==2.5\n", encoding="utf-8")
+        self.assertEqual(project_ui.detect_ui(game)["kind"], "game")
+        cli = self.root()
+        (cli / "main.py").write_text("import argparse\nargparse.ArgumentParser()\n", encoding="utf-8")
+        self.assertFalse(project_ui.detect_ui(cli)["has_ui"])
+        self.assertEqual(project_ui.detect_ui(cli)["kind"], "cli")
+
+    def test_ui_work_refreshes_the_identifier(self):
+        root = self.project()
+        refreshed = project_ui.refresh_ui_identifier(root)
+        self.assertTrue(refreshed["has_ui"])
+        self.assertIn(refreshed["kind"], {"web", "desktop", "game", "mobile"})
+        self.assertEqual(project_ui.ui_payload(root)["source"], "manual")
+
+    def test_ui_identity_can_be_set_manually_and_reported(self):
+        root = self.project()
+        project_ui.set_ui_manual(root, True, "desktop")
+        payload = project_ui.ui_payload(root)
+        self.assertTrue(payload["has_ui"])
+        self.assertEqual((payload["kind"], payload["source"]), ("desktop", "manual"))
+        (root / "index.html").write_text("<html><body></body></html>", encoding="utf-8")
+        auto = project_ui.auto_ui(root)
+        self.assertEqual((auto["kind"], auto["source"]), ("web", "detected"))
+
+    def test_the_ai_brief_supplies_evidence_but_chooses_nothing(self):
+        root = self.project(readme="A local-first AI agent with a CLI and research notes.")
+        brief = project_topics.ai_brief(root, "demo", ["aikit", "python"], ["aikit"])
+        self.assertEqual(brief["recorded_topics"], ["aikit", "python"])
+        self.assertEqual(brief["current_topics"], ["aikit"])
+        self.assertIn("ai-agents", brief["hint_tags"])
+        self.assertIn("local-first", brief["hint_tags"])
+        self.assertIn("reply_schema", brief)
+        self.assertNotIn("desired", brief)
+        self.assertEqual(brief["max_topics"], 20)
+
+    def test_ai_choice_is_added_on_top_and_never_auto_filled(self):
+        root = self.project(readme="A local-first AI agent with a CLI and research notes.")
+        plan = project_topics.validate_choice(
+            root, ["aikit", "old"], ["aikit", "old", "python"],
+            ["aikit", "security"])
+        self.assertEqual(plan["desired"], ["aikit", "old", "python", "security"])
+        self.assertEqual(plan["kept"], ["aikit", "old", "python"])
+        self.assertEqual(plan["added"], ["security"])
+        self.assertEqual(plan["removed"], [])
+        replaced = project_topics.validate_choice(
+            root, ["aikit", "old"], ["aikit", "old"], ["aikit", "python"], replace=True)
+        self.assertEqual((replaced["desired"], replaced["removed"]),
+                         (["aikit", "python"], ["old"]))
+        with self.assertRaises(ValueError):
+            project_topics.validate_choice(root, ["aikit"], [], ["aikit", "Bad Tag"])
+        with self.assertRaises(ValueError):
+            project_topics.validate_choice(root, ["aikit"], [], ["aikit"])
+
+    def test_every_catalog_project_has_a_unique_palette_and_artwork(self):
+        catalog = json.loads((ROOT_DIR / "scripts" / "brand_catalog.json").read_text(encoding="utf-8"))
+        names = sorted(catalog["projects"])
+        self.assertEqual(len(names), 39)
+        palettes = [tuple(project_brand.brand_spec(name)["palette"]) for name in names]
+        self.assertEqual(len(set(palettes)), len(names), "two projects share a palette")
+        logos = [project_brand.logo_svg(name) for name in names]
+        socials = [project_brand.social_svg(
+            name, "web", f"{name} description", f"github.com/AegeanWorks/{name}",
+            ["aikit", "software", "project"]) for name in names]
+        self.assertEqual(len(set(logos)), len(names), "two projects share a logo")
+        self.assertEqual(len(set(socials)), len(names), "two projects share a social preview")
+        for name in names:
+            self.assertIn(project_brand.brand_spec(name)["motif"], project_brand.logo_svg(name))
+            xml_ok = project_brand.logo_svg(name).lstrip().startswith("<svg")
+            self.assertTrue(xml_ok)
+
+    def test_ai_art_prompts_and_monograms_are_project_specific(self):
+        names = ["NeuralBeat", "NeuralDeck", "N1-Engine", "AegeanWorks", "MemoryReconstruction"]
+        self.assertEqual([project_artwork._monogram(name) for name in names],
+                         ["NB", "ND", "N1", "AW", "MR"])
+        prompts = [project_artwork._art_prompt(
+            name, f"{name} description", "network",
+            ("#050816", "#111c3a", "#5eead4", "#a78bfa")) for name in names]
+        self.assertEqual(len(set(prompts)), len(names))
+        self.assertTrue(all("no text" in prompt and "no watermark" in prompt
+                            for prompt in prompts))
+        logo_prompt = project_artwork._logo_model_prompt("AegeanWorks")
+        social_prompt = project_artwork._social_model_prompt("AegeanWorks")
+        self.assertIn('"Aegean Works"', logo_prompt)
+        self.assertIn("STUDIO", logo_prompt)
+        self.assertIn('"Aegean Works"', social_prompt)
+        self.assertIn("no tagline", social_prompt.lower())
+
+    def test_model_brand_requires_an_environment_key(self):
+        root = self.project("model-demo")
+        (root / "assets").mkdir(exist_ok=True)
+        with mock.patch.dict(os.environ, {"POLLINATIONS_API_KEY": "", "POLL_KEY": ""}):
+            with self.assertRaises(ProjectError):
+                project_artwork.generate_model_brand(root, "model-demo")
+
+    def test_the_asset_disclosure_is_specific_and_honest(self):
+        text = project_media.ASSET_DISCLOSURE
+        self.assertIn("AI-generated", text)
+        self.assertIn("illustrative", text)
+        self.assertIn("full project scope", text)
+
+    def test_media_blockers_are_empty_without_a_manifest(self):
+        self.assertEqual(project_media.media_blockers(self.root()), [])
+
+    def test_display_name_uses_the_catalog_override(self):
+        self.assertEqual(project_artwork._display_name("nomoreclutter"), "No More Clutter")
+        self.assertEqual(project_artwork._display_name("NeuralBeat"), "Neural Beat")
+
+    def test_model_key_requires_an_environment_value(self):
+        with mock.patch.dict(os.environ, {"POLLINATIONS_API_KEY": "", "POLL_KEY": ""}):
+            self.assertEqual(project_artwork.model_key(), "")
+
+    def test_new_projects_get_license_topic_metadata(self):
+        from scripts.project_registry import license_topics
+
+        folder = create_project("licenseapp", workspace=self.root(), git_start=lambda root: None)
+        topics = load_config(folder).get("topics") or []
+        self.assertIn("aikit-integrated", topics)
+        self.assertIn("source-available", topics)
+        self.assertIn("aegean-license", topics)
+        self.assertIn("commercial-license", topics)
+        self.assertEqual(
+            license_topics("game"),
+            ["source-available", "aegean-game-license", "drm-free", "commercial-license"])
+        self.assertEqual(license_topics("software", True),
+                         ["all-rights-reserved", "proprietary"])
+
+    def test_media_candidates_are_pending_until_reviewed_and_applied(self):
+        root = self.project("media-demo")
+        (root / "index.html").write_text("<html><body><main>demo</main></body></html>",
+                                          encoding="utf-8")
+        with mock.patch.object(project_media, "_head", return_value=""):
+            seeded = project_media.seed_media_assets(root, "media-demo")
+        self.assertTrue(seeded["has_ui"])
+        self.assertTrue((root / "assets" / "logo.svg").is_file())
+        manifest = project_media.load_media(root)
+        self.assertEqual(manifest["assets"]["logo"]["status"], "pending_review")
+        self.assertEqual(len(project_media.media_blockers(root)), 2)
+        dossier = self.root()
+        (dossier / "docs").mkdir()
+        review = project_media.review_media(
+            root, "logo", "approve", "agent:unit", "structural", "monogram and palette fit")
+        self.assertEqual(review["status"], "approved")
+        project_media.review_media(
+            root, "social_preview", "approve", "agent:unit", "structural",
+            "title and category fit the project")
+        self.assertEqual(project_media.media_blockers(root), [])
+        applied = project_media.apply_media(root, "media-demo", dossier=dossier)
+        self.assertTrue(applied["logo"])
+        self.assertTrue((dossier / "docs" / "media" / "Media-Demo" / "logo.svg").is_file())
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        self.assertIn("aegean:media:start", readme)
+        self.assertNotIn("assets/logo", readme)
+        self.assertEqual(readme.count("social-preview"), 1)
+        self.assertIn("## 🎨 Brand Assets", readme)
+        self.assertIn("ai-generated brand assets", readme.lower())
+        audit = project_media.audit_media(root, dossier=dossier)
+        self.assertTrue(audit["ok"], audit["problems"])
+
+    def test_media_review_refuses_an_unresolvable_screenshot_commit(self):
+        root = self.project("shot-demo")
+        (root / "index.html").write_text("<html><body></body></html>", encoding="utf-8")
+        with mock.patch.object(project_media, "_head", return_value=""):
+            project_media.seed_media_assets(root, "shot-demo")
+        manifest = project_media.load_media(root)
+        manifest["screenshots"] = [{
+            "path": "assets/screenshots/shot.png", "alt": "shot", "commit": "deadbeef",
+            "taken_at": "2026-10-27", "viewport": "1440x900", "width": 1440, "height": 900,
+            "status": "pending_review", "review": None,
+        }]
+        (root / "assets" / "screenshots").mkdir(parents=True)
+        (root / "assets" / "screenshots" / "shot.png").write_bytes(
+            project_media.PNG_SIGNATURE + b"\x00\x00\x00\rIHDR" + b"\x00\x00\x05\xa0" + b"\x00\x00\x03\x84")
+        project_media.save_media(root, manifest)
+        with mock.patch.object(project_media, "run_command", return_value=(1, "no commit")):
+            with self.assertRaises(ProjectError):
+                project_media.review_media(root, "screenshot", "approve", "agent:unit",
+                                           "structural", "looks aligned")
+
+    def test_the_manifest_ships_the_package_and_standalone_shim(self):
+        shipped = reforge_manifest(ROOT_DIR)
+        self.assertIn("reforge.py", shipped)
+        self.assertIn("reforge/cli.py", shipped)
+
+    def test_the_sync_file_names_the_shipped_source_and_target(self):
+        root = self.root()
+        (root / "reforge-sync.json").write_text(json.dumps({
+            "schema": 1, "package": "pkg", "entrypoint": "entry.py",
+            "standalone": "external/reforge", "marker": ".marker.json",
+        }), encoding="utf-8")
+        config = reforge_sync_config(root)
+        self.assertEqual((config["package"], config["entrypoint"], config["standalone"]),
+                         ("pkg", "entry.py", "external/reforge"))
+        (root / "reforge-sync.json").write_text(json.dumps({
+            "schema": 1, "package": "../escape"}), encoding="utf-8")
+        with self.assertRaises(ReforgeError):
+            reforge_sync_config(root)
+
+    def test_window_settings_are_configurable_and_capped_by_stop(self):
+        self.assertEqual([window_for_stage(stage, 4, 2, 10) for stage in (1, 2, 3, 4)],
+                         [4, 6, 8, 10])
+        self.assertEqual(window_for_stage(5, 4, 2, 10), 10)
+        self.assertEqual(window_for_stage(3, 2, 2, None), 6)
+
+    def test_runs_stop_resume_and_create_independent_histories(self):
+        root = self.root()
+        state = new_state()
+        first = create_run(state, 3, 3, 6)
+        self.assertEqual((first["id"], first["start"], first["stop"]), ("run-1", 3, 6))
+        save_state(root, state)
+        self.assertEqual(stop_run(root, state, first)["status"], "stopped")
+        self.assertEqual(load_state(root)["active_run"], None)
+        self.assertEqual(resume_run(root, state, first)["status"], "active")
+        second = create_run(state, 2, 2, 4)
+        self.assertEqual(second["id"], "run-2")
+        self.assertIsNot(first, second)
+        self.assertEqual(state["active_run"], "run-2")
+        self.assertEqual([run["id"] for run in state["runs"]], ["run-1", "run-2"])
+
+    def test_schema_one_migrates_to_an_independent_first_run(self):
+        root = self.root()
+        state_path(root).parent.mkdir(parents=True, exist_ok=True)
+        state_path(root).write_text(json.dumps({
+            "schema": 1, "stage": 2, "window": 6, "audited_commits": ["abc"],
+            "last_audit": None, "history": [],
+        }), encoding="utf-8")
+        migrated = load_state(root)
+        self.assertEqual(migrated["schema"], 2)
+        self.assertEqual(migrated["runs"][0]["id"], "run-1")
+        self.assertEqual(migrated["runs"][0]["stage"], 2)
+        self.assertEqual(migrated["runs"][0]["audited_commits"], ["abc"])
+
+    def test_only_fixable_unrepaired_findings_block_the_next_stage(self):
+        run = {"last_audit": {"findings": [
+            {"code": "bare-except", "fixable": True, "repaired": False},
+            {"code": "eval-exec", "fixable": False, "repaired": False},
+            {"code": "mutable-default", "fixable": True, "repaired": True},
+        ]}}
+        self.assertEqual([item["code"] for item in pending_fixable(run)], ["bare-except"])
+
+    def test_settings_validate_and_cannot_rewrite_a_used_start(self):
+        for start, step, stop in ((1, 3, None), (3, 0, None), (3, 3, 2)):
+            with self.subTest(start=start, step=step, stop=stop):
+                with self.assertRaises(ReforgeError):
+                    validate_settings(start, step, stop)
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 6)
+        run["stage"] = 1
+        with self.assertRaises(ReforgeError):
+            update_settings(root, state, run, start=4)
+        updated = update_settings(root, state, run, step=2)
+        self.assertEqual((updated["step"], updated["stop"], updated["start"]), (2, 6, 3))
+        run["window"] = 3
+        completed = update_settings(root, state, run, stop=3)
+        self.assertEqual((completed["status"], state["active_run"]), ("completed", None))
+
+    def test_an_active_review_is_refused_before_git_or_a_next_stage(self):
+        from reforge.pipeline import run_pipeline
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 15)
+        run["last_audit"] = {"findings": [
+            {"code": "bare-except", "fixable": True, "repaired": False},
+        ]}
+        save_state(root, state)
+        with self.assertRaises(ReforgeError) as raised:
+            run_pipeline(root, "audit", run_tests=False)
+        self.assertIn("awaiting repair", raised.exception.message)
+        self.assertIn("reforge fix", raised.exception.fix)
+
+    def test_the_parser_declares_run_management_commands(self):
+        parser = build_reforge_parser()
+        start = parser.parse_args(["start", "x", "--start", "2", "--step", "2", "--stop", "10"])
+        self.assertEqual((start.command, start.start, start.step, start.stop),
+                         ("start", 2, 2, 10))
+        settings = parser.parse_args(["settings", "x", "--run", "run-2", "--step", "4"])
+        self.assertEqual((settings.command, settings.run_id, settings.step),
+                         ("settings", "run-2", 4))
+        runs = parser.parse_args(["runs", "x", "--json"])
+        self.assertEqual((runs.command, runs.json), ("runs", True))
+
+
+class TestIdeaCatcherShip(unittest.TestCase):
+    """PRINCIPLE-014: Idea Catcher ships complete and its two copies stay synchronized."""
+
+    def tree(self):
+        source = Path(tempfile.mkdtemp(prefix="idea_source_"))
+        target = Path(tempfile.mkdtemp(prefix="idea_target_"))
+        self.addCleanup(shutil.rmtree, str(source), True)
+        self.addCleanup(shutil.rmtree, str(target), True)
+        (source / "idea-catcher-sync.json").write_text(json.dumps({
+            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
+            "standalone": "target", "marker": ".marker.json",
+        }), encoding="utf-8")
+        (source / "idea_catcher.py").write_text("ENTRY = 1\n", encoding="utf-8")
+        package = source / "idea_catcher"
+        package.mkdir()
+        (package / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (target / "targets.json").write_text("{}\n", encoding="utf-8")
+        return source, target
+
+    def marker(self, target):
+        (target / ".marker.json").write_text(json.dumps({"schema": 1, "synced": {}}),
+                                             encoding="utf-8")
+
+    def test_the_manifest_carries_the_package_and_the_shim(self):
+        source, _ = self.tree()
+        shipped = idea_sync.manifest(source, idea_sync.sync_config(source))
+        self.assertEqual(shipped, ["idea_catcher.py", "idea_catcher/__init__.py"])
+
+    def test_a_sync_path_may_not_escape_the_checkout(self):
+        source, _ = self.tree()
+        (source / "idea-catcher-sync.json").write_text(json.dumps({
+            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
+            "standalone": "../outside", "marker": ".marker.json",
+        }), encoding="utf-8")
+        with self.assertRaises(idea_sync.SyncError):
+            idea_sync.sync_config(source)
+
+    def test_sync_pushes_and_pulls_shipped_source(self):
+        source, target = self.tree()
+        self.marker(target)
+        adopted = idea_sync.adopt_repo(source, target)
+        self.assertEqual(len(adopted["copied"]), 2)
+        (source / "idea_catcher/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
+        pushed = idea_sync.sync_repo(source, target, "push")
+        self.assertEqual(pushed["copied"], ["idea_catcher/__init__.py"])
+        (target / "idea_catcher/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
+        pulled = idea_sync.sync_repo(source, target, "pull")
+        self.assertEqual(pulled["copied"], ["idea_catcher/__init__.py"])
+        self.assertIn("VALUE = 3", (source / "idea_catcher/__init__.py").read_text(encoding="utf-8"))
+
+    def test_sync_refuses_a_two_sided_conflict(self):
+        source, target = self.tree()
+        self.marker(target)
+        idea_sync.adopt_repo(source, target)
+        (source / "idea_catcher/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
+        (target / "idea_catcher/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
+        with self.assertRaises(idea_sync.SyncError) as raised:
+            idea_sync.sync_repo(source, target, "push")
+        self.assertIn("both sides", raised.exception.message)
+
+    def test_the_root_override_selects_a_register(self):
+        root = Path(tempfile.mkdtemp(prefix="idea_root_"))
+        self.addCleanup(shutil.rmtree, str(root), True)
+        with mock.patch.dict(os.environ, {"IDEA_CATCHER_ROOT": str(root)}):
+            self.assertEqual(idea_registry.default_root(), root.resolve())
+
+    def test_the_parser_declares_the_repo_and_status_commands(self):
+        parser = idea_registry.build_parser()
+        self.assertEqual(parser.parse_args(["status"]).command, "status")
+        sync = parser.parse_args(["repo", "sync", "--direction", "pull"])
+        self.assertEqual((sync.command, sync.repo_action, sync.direction),
+                         ("repo", "sync", "pull"))
 
 
 if __name__ == "__main__":

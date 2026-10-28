@@ -77,6 +77,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="upload the starter files to GitHub at creation (needs --description); later "
                           "uploads go through `publish` and its gates")
     new.add_argument("--public", action="store_true", help="with --publish: make the GitHub repository public (default: private)")
+    new.add_argument("--no-media", action="store_true",
+                     help="skip the generated logo/social-preview candidates and media manifest")
 
     attach = commands.add_parser("attach", help="register an existing project folder and add the AIKit Integrated badge to its README")
     attach.add_argument("path", type=Path, help="the project's top folder")
@@ -160,14 +162,72 @@ def build_parser() -> argparse.ArgumentParser:
 
     topics_cmd = project_command("topics", "show or set the GitHub topics a project records")
     topics_cmd.add_argument("--suggest", action="store_true",
-                            help="show the recorded and detected topics, with the domain evidence")
+                            help="show an AI brief and the current/recorded tags (read-only)")
+    topics_cmd.add_argument("--brief", action="store_true",
+                            help="print the bounded brief an AI agent uses to choose tags (read-only)")
+    topics_cmd.add_argument("--review", action="store_true",
+                            help="audit current/recorded topics without choosing anything (read-only)")
+    topics_cmd.add_argument("--from-file", dest="from_file", metavar="JSON",
+                            help="record the AI's chosen topics from a JSON file")
     topics_cmd.add_argument("--set", dest="set_topics", nargs="*", metavar="TOPIC",
-                            help="replace the recorded topics; 'aikit' is always added")
-    topics_cmd.add_argument("--add", action="append", metavar="TOPIC", help="add a recorded topic")
+                            help="record an explicit AI/user topic choice; 'aikit' is always added")
+    topics_cmd.add_argument("--add", action="append", metavar="TOPIC",
+                            help="add one topic to the recorded choice")
     topics_cmd.add_argument("--remove", action="append", metavar="TOPIC",
-                            help="remove a recorded topic")
+                            help="remove one topic from the recorded choice")
+    topics_cmd.add_argument("--apply", action="store_true",
+                            help="apply the recorded/chosen topics on GitHub")
+    topics_cmd.add_argument("--offline", action="store_true",
+                            help="do not read the live GitHub topics")
     topics_cmd.add_argument("--json", action="store_true",
                             help="print one machine-readable object instead of text")
+
+    ui_id = project_command("ui-id", "detect or set whether a project has a screenshotable UI (ADR-233)")
+    ui_id.add_argument("--set", dest="set_ui", choices=("auto", "yes", "no"), default=None,
+                       help="write a manual yes/no, or auto to re-detect; default: show")
+    ui_id.add_argument("--kind", choices=("web", "desktop", "game", "mobile", "cli", "library", "service"),
+                       help="with --set yes, override the detected interface kind")
+    ui_id.add_argument("--json", action="store_true", help="print one machine-readable object")
+
+    media = commands.add_parser("media", help="generate, review and apply project logos, social previews and screenshots")
+    media_commands = media.add_subparsers(dest="media_action", required=True,
+                                          parser_class=TriadArgumentParser)
+    media_init = media_commands.add_parser("init", help="generate candidate logo/social assets and .aikit/media.json")
+    media_init.add_argument("name", help="project name, as `list` shows it")
+    media_init.add_argument("--force", action="store_true", help="regenerate candidates in place")
+    media_init.add_argument("--png", action="store_true", help="also render the 1280x640 social preview PNG")
+    media_init.add_argument("--art", action="store_true",
+                            help="use the image model for unique hero artwork, then compose exact text (ADR-239)")
+    media_init.add_argument("--json", action="store_true")
+    media_status_cmd = media_commands.add_parser("status", help="show asset and screenshot review states")
+    media_status_cmd.add_argument("name")
+    media_status_cmd.add_argument("--json", action="store_true")
+    media_capture = media_commands.add_parser("capture", help="capture a UI project at HEAD for review")
+    media_capture.add_argument("name")
+    media_capture.add_argument("--url", help="local index.html/HTML entry point (default: detected)")
+    media_capture.add_argument("--viewport", default="1440x900", metavar="WxH")
+    media_capture.add_argument("--force", action="store_true", help="replace today's capture deliberately")
+    media_capture.add_argument("--json", action="store_true")
+    media_review = media_commands.add_parser("review", help="record a vision or structural review decision")
+    media_review.add_argument("name")
+    media_review.add_argument("--kind", required=True,
+                              choices=("logo", "social_preview", "social_preview_png", "screenshot"))
+    media_review.add_argument("--decision", required=True, choices=("approve", "reject"))
+    media_review.add_argument("--reviewer", required=True,
+                              help="agent:<id>, subagent:<id> or human:<id>")
+    media_review.add_argument("--method", choices=("vision", "structural"), default="structural")
+    media_review.add_argument("--notes", required=True, help="what was checked and why it fits")
+    media_review.add_argument("--score", type=int, help="optional 0-100 quality score")
+    media_review.add_argument("--index", type=int, help="1-based screenshot index (default: latest)")
+    media_review.add_argument("--json", action="store_true")
+    media_apply = media_commands.add_parser("apply", help="copy approved assets to README and the AegeanWorks dossier")
+    media_apply.add_argument("name")
+    media_apply.add_argument("--dossier", type=Path, help="AegeanWorks project root")
+    media_apply.add_argument("--json", action="store_true")
+    media_audit = media_commands.add_parser("audit", help="verify files, commit stamps, README and dossier links")
+    media_audit.add_argument("name")
+    media_audit.add_argument("--dossier", type=Path)
+    media_audit.add_argument("--json", action="store_true")
 
     ui = commands.add_parser("ui", help="bound edits to one UI surface declared in .aikit/ui.json")
     ui_commands = ui.add_subparsers(dest="ui_action", required=True, parser_class=TriadArgumentParser)
@@ -206,6 +266,20 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--json", action="store_true",
                              help="emit stable finding codes as JSON for CI")
 
+
+    reforge = commands.add_parser("reforge", help="audit Git history in 3/6/9 stages and repair "
+                                                  "evidence-backed findings (Aegean Reforge)")
+    reforge_commands = reforge.add_subparsers(dest="reforge_action", required=True,
+                                              parser_class=TriadArgumentParser)
+    from reforge.cli import add_commands as add_reforge_commands
+    add_reforge_commands(reforge_commands)
+
+    idea = commands.add_parser("idea-catcher", help="validate, render and review the Idea Catcher "
+                                                    "register shipped in idea_catcher/")
+    idea_commands = idea.add_subparsers(dest="idea_catcher_action", required=True,
+                                        parser_class=TriadArgumentParser)
+    from idea_catcher.registry import add_commands as add_idea_catcher_commands
+    add_idea_catcher_commands(idea_commands)
 
     delegate = commands.add_parser("delegate", help="run an OpenCode sub-agent on a bounded brief")
     delegate.add_argument("role", help="a profile name in .opencode/agents/")

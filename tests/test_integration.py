@@ -4,7 +4,7 @@ Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).
 This module holds the tests that must spawn real processes: multi-process concurrency
 reproductions, real-binary CLI contracts, and real `git` output grounding. They cannot be
 sub-millisecond by nature, so they are budgeted separately from the unit tier in
-`test_kit.py`, which carries the <=10ms per-test budget.
+`test_kit.py`, which carries the <=20ms per-test budget.
 
 Both tiers run under the single canonical command (`python -m unittest discover tests`);
 nothing here is hidden or opt-in. Every spawned process is bounded by an explicit timeout
@@ -1217,6 +1217,275 @@ class TestProjectPublishLifecycle(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("gates passed for 'app'", out)
         self.assertNotIn("auto-pushing", out)
+
+
+class TestProjectPolicyCLI(unittest.TestCase):
+    """PRINCIPLE-014: the UI, topic and media commands reach the registry and write real files."""
+
+    def test_ui_topic_and_media_commands_round_trip(self):
+        from scripts.project_registry import write_memory
+
+        workspace = Path(tempfile.mkdtemp(prefix="policy_workspace_"))
+        self.addCleanup(remove_tree, workspace)
+        project = workspace / "projects" / "demo"
+        project.mkdir(parents=True)
+        write_memory(project, "demo")
+        (project / "README.md").write_text(
+            "# Demo\n\nA local-first AI agent with a CLI and research notes.\n", encoding="utf-8")
+        (project / "index.html").write_text(
+            "<!doctype html><html><body><main>demo</main></body></html>", encoding="utf-8")
+        (project / "requirements.txt").write_text("requests\n", encoding="utf-8")
+        git = lambda *args: subprocess.run(  # noqa: E731
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
+            cwd=project, capture_output=True, text=True, timeout=PROC_TIMEOUT)
+        self.assertEqual(git("init", "-q").returncode, 0)
+        self.assertEqual(git("add", "README.md", "index.html", "requirements.txt", ".aikit").returncode, 0)
+        self.assertEqual(git("commit", "-q", "-m", "feat: demo").returncode, 0)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = aikit_main(["--workspace", str(workspace), *argv])
+            self.assertEqual(code, 0, out.getvalue())
+            return json.loads(out.getvalue())
+
+        ui = run("ui-id", "demo", "--set", "auto", "--json")
+        self.assertTrue(ui["result"]["has_ui"])
+        brief = run("topics", "demo", "--brief", "--offline", "--json")
+        self.assertIn("ai-agents", brief["result"]["brief"]["hint_tags"])
+        choice_path = workspace / "topics.json"
+        choice_path.write_text(json.dumps({"topics": ["aikit", "python", "ai-agents",
+                                                      "local-first"]}), encoding="utf-8")
+        topics = run("topics", "demo", "--from-file", str(choice_path), "--offline", "--json")
+        self.assertEqual(topics["result"]["desired"],
+                         ["aikit", "python", "ai-agents", "local-first"])
+        media = run("media", "init", "demo", "--json")
+        self.assertTrue(media["result"]["has_ui"])
+        review = run("media", "review", "demo", "--kind", "logo", "--decision", "approve",
+                     "--reviewer", "agent:test", "--method", "structural",
+                     "--notes", "monogram and palette match the project", "--json")
+        self.assertEqual(review["result"]["status"], "approved")
+        run("media", "review", "demo", "--kind", "social_preview", "--decision", "approve",
+            "--reviewer", "agent:test", "--method", "structural",
+            "--notes", "title and category fit the project", "--json")
+        dossier = Path(tempfile.mkdtemp(prefix="policy_dossier_"))
+        self.addCleanup(remove_tree, dossier)
+        applied = run("media", "apply", "demo", "--dossier", str(dossier), "--json")
+        self.assertTrue(applied["result"]["logo"])
+        readme = (project / "README.md").read_text(encoding="utf-8")
+        self.assertIn("aegean:media:start", readme)
+        self.assertNotIn("assets/logo", readme)
+        self.assertEqual(readme.count("social-preview"), 1)
+        self.assertIn("## 🎨 Brand Assets", readme)
+        self.assertIn("ai-generated brand assets", readme.lower())
+        audit = run("media", "audit", "demo", "--dossier", str(dossier), "--json")
+        self.assertTrue(audit["result"]["ok"], audit["result"]["problems"])
+
+
+class TestReforgeHistory(unittest.TestCase):
+    """PRINCIPLE-014: progressive history auditing and repair against real Git commits."""
+
+    IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
+
+    def git(self, root: Path, *args: str):
+        done = subprocess.run(
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
+            cwd=root, capture_output=True, text=True, timeout=PROC_TIMEOUT,
+        )
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return done
+
+    def repository(self, defects=True) -> Path:
+        root = Path(tempfile.mkdtemp(prefix="reforge_history_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
+        app = ("def load(value):\n"
+               "    try:\n"
+               "        return value\n"
+               "    except:\n"
+               "        pass\n"
+               "    return value\n") if defects else "def load(value):\n    return value\n"
+        (root / "app.py").write_text(app, encoding="utf-8")
+        self.git(root, "add", "app.py")
+        self.git(root, "commit", "-q", "-m", "feat: first")
+        (root / "other.py").write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+        self.git(root, "add", "other.py")
+        self.git(root, "commit", "-q", "-m", "feat: second")
+        if defects:
+            (root / "app.py").write_text(
+                app + "\ndef cache(items=[]):\n    return items\n", encoding="utf-8")
+            self.git(root, "add", "app.py")
+            self.git(root, "commit", "-q", "-m", "feat: third")
+        return root
+
+    def simple_repository(self, commits: int) -> Path:
+        """A small clean history for window/run tests that do not need repairs."""
+        root = Path(tempfile.mkdtemp(prefix="reforge_simple_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
+        for index in range(commits):
+            (root / f"value{index}.py").write_text(f"VALUE = {index}\n", encoding="utf-8")
+            self.git(root, "add", f"value{index}.py")
+            self.git(root, "commit", "-q", "-m", f"feat: value {index}")
+        return root
+
+    def test_stage_one_repairs_and_records_evidence(self):
+        from reforge.pipeline import run_pipeline
+        from reforge.state import load_state
+
+        root = self.repository()
+        report = run_pipeline(root, "run", run_tests=False)
+        self.assertEqual(report["stage"], 1)
+        self.assertTrue(report["repaired"] >= 2)
+        state = load_state(root)
+        self.assertEqual(state["stage"], 1)
+        self.assertEqual(len(state["audited_commits"]), 3)
+        self.assertTrue(all(finding["evidence"] for finding in report["findings"]))
+        self.assertTrue((root / "test_reforge_regressions.py").is_file())
+        self.assertNotIn("except:", (root / "app.py").read_text(encoding="utf-8"))
+        self.assertNotIn("items=[]", (root / "app.py").read_text(encoding="utf-8"))
+        generated = subprocess.run([sys.executable, "-m", "unittest", "test_reforge_regressions"],
+                                   cwd=root, capture_output=True, text=True, timeout=PROC_TIMEOUT)
+        self.assertEqual(generated.returncode, 0, generated.stdout + generated.stderr)
+        from reforge.delivery import commit_repairs
+        committed = commit_repairs(root, "fix(reforge): repair stage 1 findings")
+        self.assertTrue(committed["commit"])
+        shown = self.git(root, "show", "--name-only", "--format=", "HEAD").stdout
+        self.assertIn("app.py", shown)
+        self.assertIn(".aikit/reforge.json", shown)
+
+    def test_a_failing_test_rolls_the_repair_back(self):
+        from reforge.errors import ReforgeError
+        from reforge.pipeline import run_pipeline
+
+        root = self.repository()
+        original = (root / "app.py").read_text(encoding="utf-8")
+        with self.assertRaises(ReforgeError):
+            run_pipeline(root, "run", test_command="exit 1")
+        self.assertEqual((root / "app.py").read_text(encoding="utf-8"), original)
+        self.assertFalse((root / "test_reforge_regressions.py").exists())
+
+    def test_standalone_repository_is_complete_and_runs_its_own_cli(self):
+        from reforge.repo_sync import init_repo
+
+        target = Path(tempfile.mkdtemp(prefix="reforge_standalone_")) / "aegean-reforge"
+        self.addCleanup(remove_tree, target.parent)
+        with mock.patch.dict(os.environ, self.IDENTITY):
+            result = init_repo(ROOT_DIR, target)
+        self.assertTrue((target / ".git").is_dir())
+        self.assertTrue((target / "reforge" / "cli.py").is_file())
+        self.assertTrue((target / "README.md").is_file())
+        self.assertTrue((target / ".reforge-repo.json").is_file())
+        self.assertTrue(result["commit"])
+        self.assertTrue((target / "tests" / "test_reforge.py").is_file())
+        self.assertTrue((target / "CHANGELOG.md").is_file())
+
+    def test_projects_run_concurrently_and_a_locked_project_refuses_again(self):
+        from reforge.locking import run_lock
+        from reforge.pipeline import run_pipeline
+
+        busy = Path(tempfile.mkdtemp(prefix="reforge_busy_"))
+        self.addCleanup(remove_tree, busy)
+        first, second = self.simple_repository(1), self.simple_repository(1)
+        with run_lock(busy):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                reports = list(pool.map(
+                    lambda root: run_pipeline(root, "run", run_tests=False), (first, second)))
+            done = subprocess.run(
+                [sys.executable, "reforge.py", "run", str(busy), "--json", "--no-tests"],
+                cwd=ROOT_DIR, capture_output=True, text=True, timeout=PROC_TIMEOUT,
+            )
+            self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+            self.assertIn("Another Reforge operation is active", done.stdout + done.stderr)
+        self.assertEqual([report["stage"] for report in reports], [1, 1])
+        self.assertEqual([report["run"] for report in reports], ["run-1", "run-1"])
+        self.assertNotEqual(first, second)
+        for root in (first, second):
+            self.assertTrue((root / ".aikit" / "reforge.json").is_file())
+
+    def test_aikit_reforge_status_reaches_the_registry_and_state(self):
+        from scripts.project_registry import write_memory
+
+        workspace = Path(tempfile.mkdtemp(prefix="reforge_kit_"))
+        self.addCleanup(remove_tree, workspace)
+        project = workspace / "projects" / "demo"
+        project.mkdir(parents=True)
+        write_memory(project, "demo")
+        self.git(project, "init", "-q")
+        self.git(project, "config", "user.name", "T")
+        self.git(project, "config", "user.email", "t@example.com")
+        (project / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+        self.git(project, "add", "app.py")
+        self.git(project, "commit", "-q", "-m", "feat: initial")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = aikit_main(["--workspace", str(workspace), "reforge", "status", "demo", "--json"])
+        self.assertEqual(code, 0, out.getvalue())
+        payload = json.loads(out.getvalue())
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["result"]["project"]["name"] if "project" in payload["result"] else "demo", "demo")
+        self.assertEqual(payload["result"]["stage"], 0)
+
+
+class TestIdeaCatcherSyncCheck(unittest.TestCase):
+    """PRINCIPLE-014: the shipped copy and the standalone register report drift as a gate."""
+
+    def tree(self):
+        source = Path(tempfile.mkdtemp(prefix="idea_sync_source_"))
+        target = Path(tempfile.mkdtemp(prefix="idea_sync_target_"))
+        self.addCleanup(remove_tree, source)
+        self.addCleanup(remove_tree, target)
+        (source / "idea-catcher-sync.json").write_text(json.dumps({
+            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
+            "standalone": "target", "marker": ".marker.json",
+        }), encoding="utf-8")
+        (source / "idea_catcher.py").write_text("ENTRY = 1\n", encoding="utf-8")
+        package = source / "idea_catcher"
+        package.mkdir()
+        (package / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (target / "targets.json").write_text("{}\n", encoding="utf-8")
+        (target / ".marker.json").write_text(json.dumps({"schema": 1, "synced": {}}),
+                                             encoding="utf-8")
+        return source, target
+
+    def test_repo_status_check_fails_on_drift(self):
+        from idea_catcher import registry as idea_registry
+        from idea_catcher import repo_sync as idea_sync
+
+        source, target = self.tree()
+        idea_sync.adopt_repo(source, target)
+        (source / "idea_catcher/__init__.py").write_text("VALUE = 9\n", encoding="utf-8")
+        out = io.StringIO()
+        with mock.patch.object(idea_sync, "source_root", return_value=source), \
+                contextlib.redirect_stdout(out):
+            code = idea_registry.main(["repo", "status", "--check", "--path", str(target)])
+        self.assertEqual(code, 1, out.getvalue())
+        self.assertIn("diverged", out.getvalue())
+
+
+class TestIdeaCatcherCli(unittest.TestCase):
+    """PRINCIPLE-011: `aikit.py idea-catcher` reaches the shipped register in a workspace."""
+
+    def test_status_reads_the_workspace_register(self):
+        workspace = Path(tempfile.mkdtemp(prefix="idea_kit_"))
+        self.addCleanup(remove_tree, workspace)
+        project = workspace / "projects" / "idea-catcher"
+        project.mkdir(parents=True)
+        (project / "targets.json").write_text(json.dumps({
+            "schema": 1, "targets": [{
+                "id": "aikit", "name": "AIKit", "path": "../../", "stack": "stdlib",
+                "gate": "tests", "fit": "governance", "added": "2026-10-28",
+            }],
+        }), encoding="utf-8")
+        (project / "ideas.json").write_text('{"schema": 1, "ideas": []}', encoding="utf-8")
+        (project / "reviews.json").write_text('{"schema": 1, "repos": {}, "reviews": []}',
+                                              encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = aikit_main(["--workspace", str(workspace), "idea-catcher", "status"])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("0 ideas", out.getvalue())
 
 
 if __name__ == "__main__":

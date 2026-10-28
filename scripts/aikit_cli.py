@@ -9,6 +9,7 @@ could not be carried out, 2 the command line was wrong (PRINCIPLE-011).
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -46,6 +47,7 @@ from scripts.project_registry import (
     DEFAULT_LICENSE_KIND,
     DESCRIPTION_MAX,
     DESCRIPTION_MIN,
+    INTEGRATION_TOPICS,
     LICENSE_CHOICES,
     MAX_TOPICS,
     Project,
@@ -55,9 +57,9 @@ from scripts.project_registry import (
     attach_project,
     config_path,
     create_project,
-    detect_stacks,
     find_project,
     latest_decision,
+    license_topics,
     list_projects,
     load_config,
     migrate_aikit_links,
@@ -70,6 +72,7 @@ from scripts.project_registry import (
 )
 from scripts.subagent_delegate import delegate_subagent
 from scripts import ui_contract
+from scripts import project_artwork, project_media, project_topics, project_ui
 from scripts.update_knowledge_base import (
     find_python_files,
     generate_codebase_map,
@@ -119,10 +122,8 @@ def project_is_clean(audit: Dict[str, object], open_ui_task: bool) -> bool:
 
 
 # GitHub topic per detected stack (ADR-215); java-maven and java-gradle are both `java`.
-STACK_TOPICS = {"python": "python", "node": "javascript", "rust": "rust", "go": "golang",
-                "java-maven": "java", "java-gradle": "java", "dotnet": "dotnet"}
-# A brand-new project has no marker files for `detect_stacks`, so the test command the user gave
-# supplies the one language signal available at the first push (ADR-216).
+# A brand-new project has no marker files, so its test runner is only a hint for the AI brief,
+# never an automatically published topic (ADR-216, ADR-236).
 TEST_RUNNER_TOPICS = (
     (("python", "pytest", "unittest"), "python"),
     (("npm ", "npm test", "yarn", "pnpm", "jest", "vitest", "node "), "javascript"),
@@ -142,52 +143,9 @@ def test_command_topic(test_command: Optional[str]) -> Optional[str]:
     return None
 
 
-def is_typescript_project(project_root: Path) -> bool:
-    """Whether a Node project writes TypeScript: a tsconfig, or `typescript` in package.json."""
-    if (project_root / "tsconfig.json").is_file():
-        return True
-    package = project_root / "package.json"
-    if not package.is_file():
-        return False
-    try:
-        data = json.loads(package.read_text(encoding="utf-8"))
-    except (OSError, ValueError):  # hygiene: allow a broken package.json is not a stack signal; publish still runs
-        return False
-    if not isinstance(data, dict):
-        return False
-    dependencies = {}
-    for key in ("dependencies", "devDependencies", "peerDependencies"):
-        value = data.get(key)
-        if isinstance(value, dict):
-            dependencies.update(value)
-    return "typescript" in dependencies
-
-
 def publish_topics(project_root: Path, recorded: List[str]) -> List[str]:
-    """
-    The topics `publish` sets: the recorded ones, then one per detected stack, then
-    `source-available` for a personal-tier project, without repeats (ADR-215). A restricted
-    project names no license topic: it is not offered under one.
-    """
-    topics = list(recorded)
-    extra = []
-    for stack in detect_stacks(project_root):
-        if stack.name in STACK_TOPICS:
-            extra.append(STACK_TOPICS[stack.name])
-        if stack.name == "node" and is_typescript_project(project_root):
-            extra.append("typescript")
-    state = license_state(project_root)
-    if state.tier == "personal":
-        extra.append("source-available")
-        kind = state.kind
-        if kind == "game":
-            extra.extend(("game", "drm-free"))
-        elif kind == "science":
-            extra.extend(("science", "research"))
-    for topic in extra:
-        if topic not in topics:
-            topics.append(topic)
-    return topics[:MAX_TOPICS]
+    """The AI-chosen topics `publish` sets, validated; AIKit adds no tag on its own (ADR-236)."""
+    return normalize_topics(list(recorded))
 
 
 def license_summary(project: Project) -> str:
@@ -267,20 +225,47 @@ def cmd_new(args: argparse.Namespace) -> int:
     license_kind = getattr(args, "license_kind", "auto")
     if license_kind == "auto":
         license_kind = DEFAULT_LICENSE_KIND
-    root = create_project(args.name, args.test, workspace=args.workspace,
-                          description=args.description, topics=args.topic,
-                          license_kind=license_kind)
+    root = create_project(
+        args.name, args.test, workspace=args.workspace, description=args.description,
+        topics=args.topic, license_kind=license_kind,
+    )
     print(f"[OK] Created project '{args.name}' at {root} "
           f"with the {LICENSE_CHOICES[license_kind]['name']}")
+    kind = "library"
+    if config_path(root).is_file():
+        identity = project_ui.auto_ui(root)
+        kind = str(identity["kind"])
+        print(f"     UI identifier: has_ui={identity['has_ui']} kind={identity['kind']} "
+              "(uncommitted; update with `ui-id` as the interface appears).")
+    if not getattr(args, "no_media", False):
+        media = None
+        if project_artwork.model_key():
+            try:
+                media = project_artwork.generate_model_brand(
+                    root, args.name, kind=kind, force=True)
+                print("     AI-generated logo and social banner created "
+                      "(uncommitted; vision review required before applying).")
+            except (ProjectError, OSError, ValueError) as exc:
+                print(f"     [WARN] Image-model brand generation failed: {exc}", file=sys.stderr)
+        if media is None:
+            media = project_media.seed_media_assets(root, args.name)
+            print("     Local brand candidates generated "
+                  "(uncommitted; set POLLINATIONS_API_KEY for model-rendered assets).")
+        print(f"     Next: review `python aikit.py media review {args.name} ...`, then "
+              f"`python aikit.py media apply {args.name}` before publishing.")
     if getattr(args, "publish", False):
+        blockers = project_media.media_blockers(root)
+        if blockers:
+            print(f"Error: '{args.name}' has unreviewed brand assets.", file=sys.stderr)
+            print(f"Why: {', '.join(blockers)} must be approved before publication.", file=sys.stderr)
+            print(f"Fix: review with `python aikit.py media review {args.name} ...`, apply, "
+                  "then publish; the project stays local.", file=sys.stderr)
+            return 2
         print(f"Publishing '{args.name}' to GitHub:")
-        # The created project is empty, so `detect_stacks` has nothing to read; the topics it can
-        # know now are the user's, `aikit`, the license tier, and the language of the test runner
-        # the user named (ADR-216). A later publish adds the rest from marker files.
-        first_topics = normalize_topics(args.topic)
-        runner_topic = test_command_topic(getattr(args, "test", None))
-        if runner_topic and runner_topic not in first_topics:
-            first_topics.append(runner_topic)
+        # Tags are chosen by an AI, never inferred here; `--topic` is the explicit first choice.
+        first_topics = normalize_topics(
+            [*INTEGRATION_TOPICS, *license_topics(license_kind),
+             *(args.topic or [])][:MAX_TOPICS])
         code, report = publish_project(root, args.name, public=getattr(args, "public", False),
                                        topics=publish_topics(root, first_topics))
         print(report, file=sys.stdout if code == 0 else sys.stderr)
@@ -307,6 +292,10 @@ def cmd_attach(args: argparse.Namespace) -> int:
               "commit it).")
     elif not (folder / "README.md").is_file():
         print(f"     No README.md: `python aikit.py fix {name}` writes one with the AIKit Integrated badge.")
+    if config_path(folder).is_file():
+        identity = project_ui.auto_ui(folder)
+        print(f"     UI identifier: has_ui={identity['has_ui']} kind={identity['kind']} "
+              f"(uncommitted; review and commit it).")
     return 0
 
 
@@ -593,6 +582,8 @@ def cmd_fix(args: argparse.Namespace) -> int:
     if find_python_files(project.path):
         write_generated_file(memory / "codebase_map.md", generate_codebase_map(root=project.path, strict=False))
         fixes.append("regenerated .aikit/codebase_map.md")
+    identity = project_ui.auto_ui(project.path)
+    fixes.append(f"refreshed UI identifier (has_ui={identity['has_ui']}, kind={identity['kind']})")
     for fix in fixes:
         print(f"[FIXED] {fix}")
     print(f"Checking '{project.name}' after {len(fixes)} repair(s):")
@@ -614,6 +605,14 @@ def cmd_publish(args: argparse.Namespace) -> int:
         refusal = public_remote_refusal(project.path, project.name)
         if refusal:
             return report_error(refusal)
+    blockers = project_media.media_blockers(project.path)
+    if blockers:
+        return report_error(ProjectError(
+            f"'{project.name}' has unreviewed brand assets.",
+            f"{', '.join(blockers)} must be approved before publication.",
+            f"review with `python aikit.py media review {project.name} ...`, then "
+            f"`python aikit.py media apply {project.name}`; nothing was published.",
+        ))
     # The README's first paragraph is the one description source (ADR-202), so a publish without
     # a usable one would create an undescribed repository (ADR-216). Long text is cut at GitHub's
     # 350-character limit by extraction; too little is refused before any gate runs.
@@ -823,77 +822,320 @@ def cmd_license(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_project_topics(project: Project, topics: List[str], source: str = "ai") -> List[str]:
+    path = config_path(project.path)
+    with file_lock(path):
+        config = load_config(project.path)
+        config["topics"] = topics
+        config["topics_source"] = source
+        config["topics_reviewed_at"] = time.strftime("%Y-%m-%d")
+        atomic_write_json(path, config)
+    return topics
+
+
+def _topic_error(exc: ValueError) -> int:
+    return report_error(ProjectError(
+        str(exc),
+        "AIKit validates the AI's topic choice but never invents the final list.",
+        "fix the chosen topics and retry `python aikit.py topics <name> --from-file <file>`.",
+        exit_code=2,
+    ))
+
+
 def cmd_topics(args: argparse.Namespace) -> int:
-    """Show or set the GitHub topics AIKit records and derives for a project (ADR-218)."""
+    """Let an AI choose GitHub topics; validate, record and optionally apply them (ADR-236)."""
     project = present_project(args.name, args.workspace)
     config = load_config(project.path)
     if args.set_topics is not None and (args.add or args.remove):
         return report_error(ProjectError(
             "--set replaces the list; --add and --remove edit it.",
             "one mode per call keeps the resulting list predictable.",
-            f"use `python aikit.py topics {project.name} --set ...` or "
-            f"`--add`/`--remove`, not both.",
+            f"use `python aikit.py topics {project.name} --set ...` or `--add`/`--remove`, not both.",
             exit_code=2,
         ))
-    if args.suggest and (args.set_topics is not None or args.add or args.remove):
+    if getattr(args, "from_file", None) and (args.set_topics is not None or args.add or args.remove):
         return report_error(ProjectError(
-            "--suggest is read-only and cannot be combined with a change.",
-            "an agent reads the suggestion, then writes a separate deliberate choice.",
-            f"run `python aikit.py topics {project.name} --suggest` first.",
+            "--from-file is one complete AI choice and cannot be mixed with --set/--add/--remove.",
+            "the choice file is the reviewable artifact; editing it twice hides the real list.",
+            f"use `--from-file` alone, or `--set`/`--add`/`--remove` without it.",
             exit_code=2,
         ))
+    recorded = list(config.get("topics") or ["aikit"])
+    slug = project_topics.repo_slug(project.path, project.name)
+    current: List[str] = []
+    live_error = ""
+    needs_live = bool(getattr(args, "apply", False) or getattr(args, "review", False))
+    if needs_live and not getattr(args, "offline", False):
+        current, live_error = project_topics.github_topics(slug)
+
+    change_flags = (args.set_topics is not None or args.add or args.remove
+                    or getattr(args, "from_file", None) or getattr(args, "apply", False))
+    if (args.suggest or getattr(args, "brief", False) or getattr(args, "review", False)) and change_flags:
+        return report_error(ProjectError(
+            "read-only topic views cannot be combined with a change.",
+            "an AI reads the brief or audit, then records a separate deliberate choice.",
+            f"run `python aikit.py topics {project.name} --brief` first.",
+            exit_code=2,
+        ))
+
     if args.suggest:
         suggestion = suggest_license(project.path)
         state = license_state(project.path)
         restricted = state.tier == TIER_RESTRICTED
-        topics = publish_topics(project.path, config.get("topics") or ["aikit"])
+        brief = project_topics.ai_brief(project.path, project.name, recorded, current)
+        payload = {"project": project.name, "tier": state.tier,
+                   "set_allowed": not restricted,
+                   "topics": recorded,
+                   "domain": None if restricted else suggestion["kind"],
+                   "confidence": "n/a" if restricted else suggestion["confidence"],
+                   "reasons": [] if restricted else suggestion["reasons"],
+                   "recommended_key": None if restricted else suggestion["recommended_key"],
+                   "hint_tags": brief["hint_tags"], "brief": brief}
         if getattr(args, "json", False):
-            print(json.dumps({"ok": True, "result": {
-                "project": project.name,
-                "tier": state.tier,
-                "set_allowed": not restricted,
-                "topics": topics,
-                "domain": None if restricted else suggestion["kind"],
-                "confidence": "n/a" if restricted else suggestion["confidence"],
-                "reasons": [] if restricted else suggestion["reasons"],
-                "recommended_key": None if restricted else suggestion["recommended_key"],
-            }}, indent=2, default=str))
+            print(json.dumps({"ok": True, "result": payload}, indent=2, default=str))
             return 0
         print(f"Project: {project.name}")
-        print(f"Topics:  {', '.join(topics)}")
-        if restricted:
-            print("Domain:  restricted (no personal license topic; All Rights Reserved)")
+        print(f"Topics:  {', '.join(recorded)}")
+        print(f"Possible tags for the AI to consider: {', '.join(brief['hint_tags'])}")
+        print("No tag is chosen automatically; use --from-file or --set to record the AI choice.")
+        return 0
+
+    if getattr(args, "brief", False):
+        brief = project_topics.ai_brief(project.path, project.name, recorded, current)
+        payload = {"project": project.name, "slug": slug, "brief": brief,
+                   "recorded_topics": recorded, "current_topics": current,
+                   "live_error": live_error}
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": True, "result": payload}, indent=2))
+            return 0
+        print(f"AI topic brief for '{project.name}' ({slug})")
+        print(f"Description: {brief['description'] or '(none)'}")
+        print(f"Stacks: {', '.join(brief['stacks']) or 'none detected'}; "
+              f"UI: {brief['ui']['has_ui']} ({brief['ui']['kind']})")
+        print(f"Recorded: {', '.join(recorded)}")
+        print(f"Current:  {', '.join(current) if current else '(unavailable)'}")
+        print(f"Possible tags to consider: {', '.join(brief['hint_tags'])}")
+        print("Choose the final list and write it as a JSON object with a topics array, then run:")
+        print(f"  python aikit.py topics {project.name} --from-file <file> [--apply]")
+        return 0
+
+    if getattr(args, "review", False):
+        audit = project_topics.topic_audit(current or recorded, recorded)
+        result = {"project": project.name, "slug": slug, "audit": audit,
+                  "current": current, "recorded": recorded, "live_error": live_error}
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": True, "result": result}, indent=2))
+            return 0
+        print(f"Topics for '{project.name}': {len(current or recorded)} used, "
+              f"{project_topics.MAX_TOPICS} allowed")
+        print(f"  current:  {', '.join(current) if current else '(offline)'}")
+        print(f"  recorded: {', '.join(recorded)}")
+        for problem in audit["problems"]:
+            print(f"  - {problem}")
+        if audit["ok"]:
+            print("  no policy problem found")
+        return 0
+
+    chosen: Optional[List[str]] = None
+    explicit_remove: List[str] = []
+    replace = False
+    if getattr(args, "from_file", None):
+        try:
+            choice = project_topics.read_choice_file(Path(args.from_file))
+        except ValueError as exc:
+            return _topic_error(exc)
+        chosen = list(choice["topics"])
+        explicit_remove = list(choice["remove"])
+    elif args.set_topics is not None:
+        chosen = list(args.set_topics)
+        replace = True
+    elif args.add or args.remove:
+        chosen = list(args.add or [])
+        explicit_remove = [str(item).strip().lower() for item in (args.remove or [])]
+    elif getattr(args, "apply", False):
+        chosen = []
+
+    if chosen is None:
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": True, "result": {"project": project.name, "topics": recorded,
+                                                     "current": current, "slug": slug}}, indent=2))
         else:
-            print(f"Domain:  {suggestion['kind']} ({suggestion['confidence']} confidence)")
-            for reason in suggestion["reasons"]:
-                print(f"  - {reason}")
-        print("Set the recorded ones with "
-              f"`python aikit.py topics {project.name} --set <topic>...`; publish adds the rest.")
+            print(f"Topics for '{project.name}': {', '.join(recorded)}")
+            print("Read-only. Use --brief for an AI brief, --from-file for the AI's choice, "
+                  "or --review to audit.")
         return 0
-    if args.set_topics is not None:
-        topics = normalize_topics(args.set_topics)
-    else:
-        topics = list(config.get("topics") or ["aikit"])
-        for topic in args.add or []:
-            candidate = topic.strip().lower()
-            if candidate and candidate not in topics:
-                topics.append(candidate)
-        for topic in args.remove or []:
-            candidate = topic.strip().lower()
-            topics = [item for item in topics if item != candidate]
-        topics = normalize_topics(topics)
-    path = config_path(project.path)
-    with file_lock(path):
-        config = load_config(project.path)
-        config["topics"] = topics
-        atomic_write_json(path, config)
+
+    try:
+        plan = project_topics.validate_choice(
+            project.path, recorded, current, chosen, replace=replace, remove=explicit_remove)
+    except ValueError as exc:
+        return _topic_error(exc)
+    source = "ai" if (getattr(args, "from_file", None) or getattr(args, "brief", False)) else "manual"
+    topics = _write_project_topics(project, plan["desired"], source)
+    if getattr(args, "apply", False):
+        plan["apply"] = project_topics.apply_topics(slug, plan["added"], plan["removed"])
+    plan.update({"project": project.name, "slug": slug, "topics": topics,
+                 "live_error": live_error})
     if getattr(args, "json", False):
-        print(json.dumps({"ok": True, "result": {"project": project.name,
-                                                 "topics": topics}}, indent=2))
+        print(json.dumps({"ok": True, "result": plan}, indent=2))
         return 0
-    print(f"[OK] Topics for '{project.name}': {', '.join(topics)}")
-    print("Review and commit .aikit/project.json; publish still adds detected stack and domain topics.")
+    print(f"[OK] Topics for '{project.name}' ({slug}): {', '.join(topics)}")
+    if plan["added"]:
+        print(f"     Added:   {', '.join(plan['added'])}")  # noqa: F541
+    if plan["removed"]:
+        print(f"     Removed: {', '.join(plan['removed'])}")
+    if "apply" in plan:
+        print(f"     GitHub:  {'applied' if plan['apply']['ok'] else 'partly failed'}")
+    else:
+        print("     Local only; pass --apply to update GitHub.")
+    print("Review and commit .aikit/project.json; the AI chose this list.")
     return 0
+
+
+
+def cmd_ui_id(args: argparse.Namespace) -> int:
+    """Detect or manually set a project's UI identifier (ADR-233)."""
+    project = present_project(args.name, args.workspace)
+    if args.set_ui == "auto":
+        result = project_ui.auto_ui(project.path)
+    elif args.set_ui == "yes":
+        result = project_ui.set_ui_manual(project.path, True, args.kind)
+    elif args.set_ui == "no":
+        result = project_ui.set_ui_manual(project.path, False)
+    else:
+        result = project_ui.ui_payload(project.path)
+    payload = {"project": project.name, **result}
+    if getattr(args, "json", False):
+        print(json.dumps({"ok": True, "result": payload}, indent=2))
+        return 0
+    print(f"UI identifier for '{project.name}': has_ui={payload['has_ui']} kind={payload['kind']} "
+          f"source={payload.get('source') or 'recorded'}")
+    for path in payload.get("evidence") or []:
+        print(f"  evidence: {path}")
+    print("Used by the media/screenshot pipeline; `--set yes|no` records a manual decision.")
+    return 0
+
+
+def cmd_media(args: argparse.Namespace) -> int:
+    """Generate, review and apply brand/screenshot media (ADR-235)."""
+    project = present_project(args.name, args.workspace)
+    action = args.media_action
+    if action == "init":
+        project_ui.auto_ui(project.path)
+    elif action == "capture":
+        project_ui.refresh_ui_identifier(project.path)
+    if action == "init":
+        if getattr(args, "art", False) and project_artwork.model_key():
+            ui = project_ui.ui_payload(project.path)
+            result = project_artwork.generate_model_brand(
+                project.path, project.name, kind=str(ui.get("kind") or "library"),
+                force=args.force)
+        elif getattr(args, "art", False):
+            description = extract_readme_description(project.path) or ""
+            config = load_config(project.path)
+            ui = project_ui.ui_payload(project.path)
+            result = project_artwork.generate_brand(
+                project.path, project.name, description=description,
+                tags=config.get("topics") or [], kind=str(ui.get("kind") or "library"),
+                force=True, refresh_art=args.force)
+        else:
+            result = project_media.seed_media_assets(
+                project.path, project.name, force=args.force, capture_png=args.png)
+    elif action == "status":
+        result = project_media.media_status(project.path)
+    elif action == "capture":
+        result = project_media.capture_screenshot(
+            project.path, project.name, url=args.url, viewport=args.viewport, force=args.force)
+    elif action == "review":
+        result = project_media.review_media(
+            project.path, args.kind, args.decision, args.reviewer, args.method,
+            args.notes, score=args.score, index=args.index)
+    elif action == "apply":
+        result = project_media.apply_media(project.path, project.name, dossier=args.dossier)
+    else:
+        result = project_media.audit_media(project.path, dossier=args.dossier)
+    if getattr(args, "json", False):
+        print(json.dumps({"ok": True, "result": result}, indent=2))
+        return 0
+    if action == "init":
+        assets = result.get("assets") or (["artwork", "logo", "social_preview"]
+                                          if result.get("artwork") else [])
+        print(f"[OK] Media candidates for '{project.name}': {', '.join(assets)} "
+              f"(has_ui={result.get('has_ui')}, kind={result.get('kind')}); review before applying.")
+    elif action == "status":
+        print(f"Media for '{project.name}' (has_ui={result['has_ui']}):")
+        for key, asset in result["assets"].items():
+            print(f"  {key}: {asset['status']} {asset['path']}")
+        for shot in result["screenshots"]:
+            print(f"  screenshot: {shot['status']} {shot['path']} commit={shot['commit']}")
+    elif action == "capture":
+        print(f"[OK] Captured {result['path']} at commit {result['commit'][:12]}; "
+              "status=pending_review.")
+    elif action == "review":
+        print(f"[OK] {result['kind']} {result['status']}: {result['asset']}")
+    elif action == "apply":
+        print(f"[OK] Applied approved media for '{project.name}' to {result['repo']} "
+              f"({result['screenshots']} screenshot(s)).")
+        for path in result["applied"]:
+            print(f"  {path}")
+        print("Review and commit these files; nothing was pushed.")
+    else:
+        print(f"Media audit for '{project.name}': {'clean' if result['ok'] else 'problems'}")
+        for problem in result["problems"]:
+            print(f"  - {problem}")
+        print(f"  pending reviews: {result['pending']}; dossier screenshots: "
+              f"{result['dossier_screenshots']}")
+    return 0
+
+
+def cmd_reforge(args: argparse.Namespace) -> int:
+    """Reach Aegean Reforge through AIKit's registry, gates and persistence."""
+    from reforge.cli import dispatch
+
+    target = getattr(args, "target", None)
+    project = None
+    if args.reforge_action in ("audit", "fix", "run", "status", "report", "start", "stop",
+                               "resume", "settings", "runs") and target:
+        try:
+            project = find_project(target, args.workspace)
+        except ProjectError:
+            project = None
+        if project is not None and not project.present:
+            raise ProjectError(
+                f"Project '{project.name}' is missing at {project.path}.",
+                "its folder or .aikit/project.json is gone, so there is no repository to audit.",
+                "restore it, or pass a repository path instead of the project name.",
+            )
+    gate_runner = None
+    if getattr(args, "gates", False):
+        if project is None:
+            raise ProjectError(
+                "--gates needs a registered project.",
+                "AIKit's gates read a project's .aikit/ memory; a bare path has none.",
+                "register the folder with `python aikit.py attach <path>`, then use its name.",
+                exit_code=2,
+            )
+
+        def gate_runner():
+            gates = resolve_gates(project)
+            results = run_gates(project.path, gates)
+            lines = [f"[{'PASS' if result.passed else 'FAIL'}] {result.gate.name}"
+                     + ("" if result.passed else ": " + " | ".join(failure_tail(result.output)[-3:]))
+                     for result in results]
+            return all(result.passed for result in results), lines
+
+    return dispatch(args, aikit_root=args.workspace,
+                    project_root=project.path if project else None,
+                    gate_runner=gate_runner)
+
+
+def cmd_idea_catcher(args: argparse.Namespace) -> int:
+    """Reach the shipped Idea Catcher register through AIKit's workspace layout."""
+    from idea_catcher.registry import run
+
+    args.command = args.idea_catcher_action
+    project_root = Path(args.workspace) / "projects" / "idea-catcher"
+    return run(args, root=project_root)
 
 
 def cmd_delegate(args: argparse.Namespace) -> int:
@@ -912,13 +1154,17 @@ def cmd_ui(args: argparse.Namespace) -> int:
                                                  fast=args.fast, paths=args.paths,
                                                  snapshot=args.snapshot)
         command = contract["commands"]["fast"]
+        identity = project_ui.refresh_ui_identifier(project.path)
         print(f"[OK] Wrote {ui_contract.CONTRACT_REL} for surface '{args.surface}' "
-              f"with fast proof '{command}'. Review and commit it, then run `ui begin`.")
+              f"with fast proof '{command}'. UI identifier: has_ui={identity['has_ui']} "
+              f"kind={identity['kind']}. Review and commit it, then run `ui begin`.")
         return 0
     if args.ui_action == "begin":
         task = ui_contract.begin(project.path, args.surface)
+        identity = project_ui.refresh_ui_identifier(project.path)
         print(f"[OK] UI task opened on '{args.surface}' from "
-              f"{str(task['baseline_commit'])[:12]}; edit only the contract surface.")
+              f"{str(task['baseline_commit'])[:12]}; UI identifier: "
+              f"has_ui={identity['has_ui']} kind={identity['kind']}.")
         return 0
     if args.ui_action == "allow":
         ui_contract.allow(project.path, args.pattern, args.reason)
@@ -986,8 +1232,10 @@ def cmd_ui(args: argparse.Namespace) -> int:
                 print("Fix: `ui finish` also needs --reviewed after a human looked at "
                       "the running UI.", file=sys.stderr)
             return 1
+        identity = project_ui.refresh_ui_identifier(project.path)
         print(f"[OK] UI surface verified for '{project.name}'." if args.ui_action == "verify"
               else f"[OK] UI task closed for '{project.name}'.")
+        print(f"[OK] UI identifier: has_ui={identity['has_ui']} kind={identity['kind']}.")
         # The closing report names what the task was allowed to remove: an allow decision that is
         # never read back is an unreviewed control loss (ADR-171).
         for entry in ui_contract.allowed_removal_entries(before or {}):
@@ -1026,6 +1274,10 @@ HANDLERS = {
     "publish": cmd_publish,
     "license": cmd_license,
     "topics": cmd_topics,
+    "ui-id": cmd_ui_id,
+    "media": cmd_media,
+    "reforge": cmd_reforge,
+    "idea-catcher": cmd_idea_catcher,
     "delegate": cmd_delegate,
     "ui": cmd_ui,
 }
