@@ -515,9 +515,9 @@
 ---
 
 ### [`reforge/version.py`](reforge/version.py)
-> *The single version constant shared by the package, CLI and generated standalone repository.*
+> *The single version constant shared by the package, its CLI and the archived standalone repository.*
 
-**Size**: `3` lines (`121` bytes)
+**Size**: `3` lines (`128` bytes)
 
 ---
 
