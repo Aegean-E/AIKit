@@ -50,8 +50,14 @@ every changed non-Python path as not analysed instead of returning silent covera
 fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. A separate `fix` refreshes the history entry `report` reads, a second
 `fix --commit` delivers an already-reviewed patch, and raising `--stop` reopens a completed run.
-See [ADR-230](decisions.md), [ADR-232](decisions.md), [ADR-248](decisions.md) and
-[ADR-249](decisions.md).
+Run lifecycle events are mirrored into the repository's AIKit task ledger by `reforge/ledger.py`
+under a `reforge:<run-id>` task: entries are appended under the ledger lock with `active_task`
+untouched, a stopped run is `suspended` (so `--resume` lists it as resumable), a run reaching its
+stop is `completed`, and the ledger's `.bak`/`.lock` siblings are treated as Reforge's own
+bookkeeping by the clean-tree and patch-review checks. A repository without a ledger is audited
+unchanged and the CLI says nothing was recorded. See [ADR-230](decisions.md),
+[ADR-232](decisions.md), [ADR-248](decisions.md), [ADR-249](decisions.md) and
+[ADR-250](decisions.md).
 
 ## 🧭 Idea Catcher: Shipped Register Tool
 `idea_catcher/` is the tool AIKit ships for the private `projects/idea-catcher/` register: cloning

@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from reforge.audit import audit_window, plan_next_stage, summarize, window_for_stage
 from reforge.errors import ReforgeError
 from reforge.git_history import dirty_paths, head_sha
+from reforge.ledger import ledger_artifacts, record_event, stage_files
 from reforge.locking import LOCK_REL, run_lock
 from reforge.model import Finding, Repair, StagePlan
 from reforge.repair import regression_test_path, repair_findings, repair_paths
@@ -93,8 +94,10 @@ def _restore(root: Path, snapshots: Dict[str, Optional[bytes]]) -> None:
 def _clean_before_repair(root: Path, allow_dirty: bool) -> None:
     if allow_dirty:
         return
+    ledger = set(ledger_artifacts(root))
     dirty = {path for path in dirty_paths(root)
              if path.replace("\\", "/") != STATE_REL.as_posix()
+             and path.replace("\\", "/") not in ledger
              and not is_reforge_artifact(path)}
     if dirty:
         shown = ", ".join(sorted(dirty)[:8])
@@ -122,6 +125,9 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
             issues = recheck_repairs(root, applied)
             allowed = repair_paths(repairs, root) + [STATE_REL.as_posix(), LOCK_REL.as_posix()]
             allowed += [path for path in dirty_paths(root) if is_reforge_artifact(path)]
+            # The stage checkpoint Reforge appended, and its .bak/.lock siblings, are its own
+            # bookkeeping; without this the review would reject every tree on a project with a ledger.
+            allowed.extend(ledger_artifacts(root))
             issues += review_patch(root, allowed, _scanner)
             if issues:
                 raise ReforgeError(
@@ -164,7 +170,8 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
 
 def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
              findings: Sequence[Finding], repairs: Sequence[Repair], tests: Dict[str, object],
-             gates: Dict[str, object], skipped: Sequence[str] = ()) -> Dict[str, object]:
+             gates: Dict[str, object], skipped: Sequence[str] = (),
+             ledger: Optional[Dict[str, object]] = None) -> Dict[str, object]:
     applied = sum(1 for repair in repairs if repair.applied)
     return {
         "mode": mode,
@@ -180,6 +187,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
         "skipped": list(skipped),
+        "ledger": ledger or {},
         "tests": tests,
         "gates": gates,
         "summary": (f"{plan.run_id} stage {plan.stage}: {len(findings)} finding(s), "
@@ -284,14 +292,32 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         if mode == "audit":
             entry = entry_from_stage(plan, findings, [], skipped=skipped)
             record_stage(root, state, run, entry)
-            return _payload(root, mode, plan, run, findings, [], {}, {}, skipped)
+            return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
+                            _note_stage(root, run, plan, entry, findings, skipped))
         _clean_before_repair(root, allow_dirty)
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
                                                  test_command, gate_runner)
         entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped)
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
-        return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped)
+        return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
+                        _note_stage(root, run, plan, entry, findings, skipped))
+
+
+def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict[str, object],
+                findings: Sequence[Finding], skipped: Sequence[str]) -> Dict[str, object]:
+    """Mirror one stage into the repository's task ledger so cold start can see the audit."""
+    applied = sum(1 for repair in entry.get("repairs") or [] if repair.get("applied"))
+    counts = ", ".join(f"{name}={value}" for name, value in sorted((entry.get("counts") or {}).items()))
+    description = (
+        f"window {plan.window}, {len(entry.get('new_commits') or [])} commit(s), "
+        f"{len(findings)} finding(s), {applied} repaired"
+        + (f", {len(skipped)} not analysed" if skipped else "")
+        + (f" ({counts})" if counts else "")
+    )
+    return record_event(root, plan.run_id, plan.stage, description,
+                        stage_files(findings, skipped),
+                        status="completed" if run.get("status") == "completed" else "in_progress")
 
 
 def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = None,
@@ -311,8 +337,11 @@ def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = N
         run = create_run(state, start if start is not None else DEFAULT_START,
                              step if step is not None else DEFAULT_STEP, _stop_value(stop))
         save_state(root, state)
+        ledger = record_event(root, str(run["id"]), 0,
+                              f"run started (start={run['start']}, step={run['step']}, "
+                              f"stop={run['stop']})")
         return {"mode": "start", "root": str(root), "run": run_summary(run),
-                "runs": runs_summary(state)}
+                "runs": runs_summary(state), "ledger": ledger}
 
 
 def stop_audit(root: Path, run_id: Optional[str] = None) -> Dict[str, object]:
@@ -321,8 +350,11 @@ def stop_audit(root: Path, run_id: Optional[str] = None) -> Dict[str, object]:
         state = load_state(root)
         run = current_run(state, run_id)
         stopped = stop_run(root, state, run)
+        ledger = record_event(root, str(stopped["id"]), int(stopped.get("stage") or 0),
+                              f"run stopped at stage {stopped.get('stage') or 0}; "
+                              "resume it with `reforge resume`", status="suspended")
         return {"mode": "stop", "root": str(root), "run": run_summary(stopped),
-                "runs": runs_summary(state)}
+                "runs": runs_summary(state), "ledger": ledger}
 
 
 def resume_audit(root: Path, run_id: Optional[str] = None) -> Dict[str, object]:
@@ -331,8 +363,10 @@ def resume_audit(root: Path, run_id: Optional[str] = None) -> Dict[str, object]:
         state = load_state(root)
         run = current_run(state, run_id)
         resumed = resume_run(root, state, run)
+        ledger = record_event(root, str(resumed["id"]), int(resumed.get("stage") or 0),
+                              "run resumed")
         return {"mode": "resume", "root": str(root), "run": run_summary(resumed),
-                "runs": runs_summary(state)}
+                "runs": runs_summary(state), "ledger": ledger}
 
 
 def configure_audit(root: Path, run_id: Optional[str] = None, start: Optional[int] = None,

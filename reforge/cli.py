@@ -163,12 +163,27 @@ def _print_findings(payload: Dict[str, object]) -> None:
         print("No safe automatic repair: review the evidence above and fix by hand.")
     if payload.get("run_status") == "completed":
         print(f"Run {payload.get('run')} reached its stop and is complete.")
+    _print_ledger(payload)
 
 
 def _start_payload(payload: Dict[str, object]) -> None:
     print(f"[OK] Started {payload['run']['id']} (start={payload['run']['start']}, "
           f"step={payload['run']['step']}, stop={payload['run']['stop'] or 'none'}).")
     _print_runs(payload.get("runs") or [])
+    _print_ledger(payload)
+
+
+def _print_ledger(payload: Dict[str, object]) -> None:
+    """Say where the run was recorded: the ledger is how a cold start finds an open audit."""
+    ledger = payload.get("ledger") or {}
+    if not isinstance(ledger, dict):
+        return
+    if ledger.get("recorded"):
+        print(f"  [OK] task ledger {ledger.get('task_id')} updated in {ledger.get('path')}")
+    elif ledger.get("path"):
+        print(f"  [WARN] task ledger not updated: {ledger.get('reason')}")
+    elif ledger.get("reason"):
+        print(f"  [SKIP] task ledger not updated: {ledger.get('reason')}")
 
 
 def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
@@ -245,6 +260,7 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         else:
             print(f"[OK] Stopped {payload['run']['id']}; its history is kept.")
             _print_runs(payload.get("runs") or [])
+            _print_ledger(payload)
         return 0
     if action == "resume":
         payload = pipeline.resume_audit(root, run_id=getattr(args, "run_id", None))
@@ -252,6 +268,7 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
             print(json.dumps({"ok": True, "result": payload}, indent=2))
         else:
             print(f"[OK] Resumed {payload['run']['id']} at stage {payload['run']['stage']}.")
+            _print_ledger(payload)
         return 0
     if action == "settings":
         payload = pipeline.configure_audit(root, run_id=getattr(args, "run_id", None),

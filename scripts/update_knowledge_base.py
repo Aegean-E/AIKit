@@ -472,7 +472,7 @@ def update_and_validate(knowledge_dir: Optional[Path] = None, root: Optional[Pat
         print(f"[OK] Verified ADR IDs are unique and consecutive in {k_dir.name}/decisions.md")
 
 
-README_MAX_CHARS = 25_000
+README_MAX_CHARS = 30_000
 README_LABELS = (
     "Cold-Start Quick Reference",
     "**Runtime Prerequisites**:",

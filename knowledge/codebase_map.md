@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `52`
+- **Total Python Modules**: `53`
 - **Total Classes**: `122`
-- **Total Top-Level Functions**: `703`
-- **Total Class Methods**: `780`
-- **Total Source Lines**: `30157`
+- **Total Top-Level Functions**: `712`
+- **Total Class Methods**: `785`
+- **Total Source Lines**: `30424`
 
 ---
 
@@ -249,7 +249,7 @@
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `199` lines (`9051` bytes)
+**Size**: `209` lines (`9632` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
@@ -257,6 +257,7 @@
 - `def _prior_context(repo, plan, history)`
 - `def _interaction(finding, prior)`
 - `def supports_source(path)` - *Whether Reforge can analyse this path; its detectors are Python's own AST.*
+- `def is_bookkeeping(path)` - *Reforge's own state, its backups and locks, and the task ledger it updates.*
 - `def audit_window(repo, plan, history, skipped)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
 - `def _ordered(findings)`
 - `def summarize(findings)`
@@ -266,7 +267,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `324` lines (`15847` bytes)
+**Size**: `341` lines (`16549` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -282,6 +283,7 @@
 - `def _print_runs(runs)`
 - `def _print_findings(payload)`
 - `def _start_payload(payload)`
+- `def _print_ledger(payload)` - *Say where the run was recorded: the ledger is how a cold start finds an open audit.*
 - `def _workspace(args, root, gate_runner)`
 - `def dispatch(args, aikit_root, project_root, gate_runner)` - *Run one parsed request; every failure is reported as a triad or a JSON envelope.*
 - `def main(argv)`
@@ -377,6 +379,21 @@
 
 ---
 
+### [`reforge/ledger.py`](reforge/ledger.py)
+> *Record Reforge progress in the audited repository's AIKit task ledger.*
+
+**Size**: `116` lines (`4969` bytes)
+
+**Functions:**
+- `def ledger_path(root)` - *The ledger `root` already has, or None; Reforge never creates one for a foreign repository.*
+- `def ledger_relative(root)` - *The ledger's repo-relative path when it exists, for the queue of paths Reforge may dirty.*
+- `def ledger_artifacts(root)` - *The ledger plus the `.bak` and `.lock` siblings AIKit's atomic writer leaves beside it.*
+- `def _describe(stage, description)`
+- `def record_event(root, run_id, stage, description, files, status, agent)` - *Append one checkpoint for `run_id`; returns what happened instead of raising.*
+- `def stage_files(findings, skipped)` - *Paths a stage touched or could not read: the ledger's `files_affected` for that entry.*
+
+---
+
 ### [`reforge/locking.py`](reforge/locking.py)
 > *A per-project advisory lock so one project never runs two Reforge operations at once.*
 
@@ -409,7 +426,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `399` lines (`17823` bytes)
+**Size**: `433` lines (`20106` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -420,9 +437,10 @@
 - `def _restore(root, snapshots)`
 - `def _clean_before_repair(root, allow_dirty)`
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
-- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger)`
 - `def _review_error(run, pending)`
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
 - `def resume_audit(root, run_id)`
@@ -1244,7 +1262,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1511` lines (`76880` bytes)
+**Size**: `1544` lines (`78840` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1355,6 +1373,7 @@
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
   - Method `.test_a_non_python_change_is_reported_as_not_analysed()`
+  - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
@@ -1376,7 +1395,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8792` lines (`499736` bytes)
+**Size**: `8849` lines (`502820` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2076,6 +2095,10 @@
   - Method `.test_new_projects_get_license_topic_metadata()`
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
   - Method `.test_aegeanworks_keeps_its_own_badge_set()`
+  - Method `.test_a_repository_without_a_ledger_records_nothing_and_does_not_fail()`
+  - Method `.test_a_stage_checkpoint_is_appended_without_becoming_the_active_task()`
+  - Method `.test_a_completed_stage_is_not_offered_as_resumable()`
+  - Method `.test_ledger_artifacts_cover_the_backup_its_writer_leaves()`
   - Method `.test_a_project_without_a_shared_banner_is_not_asked_for_badges()`
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`

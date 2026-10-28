@@ -1389,6 +1389,39 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertEqual(load_state(root)["runs"][0]["last_audit"]["skipped"], ["app.js"])
         self.assertEqual(report["findings"], [])
 
+    def test_an_audited_project_records_its_run_in_the_task_ledger(self):
+        # A cold start reads only the ledger, so an open audit must be visible there without
+        # taking over the task the operator is working on (ADR-250).
+        import json as jsonlib
+
+        from reforge.pipeline import run_pipeline, start_audit, stop_audit
+        from scripts.disruption_recovery import resumable_tasks
+
+        root = self.repository()
+        (root / ".aikit").mkdir()
+        ledger = root / ".aikit" / "task_ledger.json"
+        operator = {"task_id": "operator-task", "status": "in_progress", "owner": "kilo:1",
+                    "last_phase": "Planning", "active_phase": 2}
+        ledger.write_text(jsonlib.dumps({"version": 1, "active_task": operator,
+                                         "checkpoints": []}), encoding="utf-8")
+        self.git(root, "add", ".aikit/task_ledger.json")
+        self.git(root, "commit", "-q", "-m", "chore: add a ledger")
+        start_audit(root, start=2, step=2, stop=2)
+        report = run_pipeline(root, "run", run_tests=False)
+        self.assertTrue(report["ledger"]["recorded"], report["ledger"].get("reason"))
+        self.assertEqual(report["ledger"]["task_id"], "reforge:run-1")
+        data = jsonlib.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(data["active_task"], operator)
+        entry = data["checkpoints"][-1]
+        self.assertEqual(entry["status"], "completed", "a run reaching its stop is not resumable")
+        self.assertIn("app.py", entry["files_affected"])
+        start_audit(root, start=2, step=1)
+        stop_audit(root)
+        paused = resumable_tasks(jsonlib.loads(ledger.read_text(encoding="utf-8")))
+        self.assertEqual([task["task_id"] for task in paused], ["reforge:run-2"])
+        self.assertIn("items=None", (root / "app.py").read_text(encoding="utf-8"),
+                      "recording the audit must not break the repair it accompanies")
+
     def test_a_failing_test_rolls_the_repair_back(self):
         from reforge.errors import ReforgeError
         from reforge.pipeline import run_pipeline

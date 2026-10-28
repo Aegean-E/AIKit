@@ -206,6 +206,12 @@ red result restores the exact bytes, and `--commit`/`--push` stage only reviewed
 `.aikit/reforge.json`, never forcing. Runs are independent (`settings`, `stop`, `resume`, `runs`,
 `report`); state is crash-safe and a per-project lock refuses concurrent work.
 
+Where the repository has an AIKit ledger, every run also appends checkpoints under the
+`reforge:<run-id>` task, so `disruption_recovery.py --resume` shows an open audit and a
+stopped run in the paused list; `active_task` is never touched, the ledger's own `.bak` and
+`.lock` count as Reforge's bookkeeping, and a plain checkout without a ledger simply audits
+without one (ADR-250).
+
 ## 🧭 Idea Catcher: Routed Idea Register
 
 Idea Catcher ships in `idea_catcher/` and `idea_catcher.py`; its register lives in
@@ -255,7 +261,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=25k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=30k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
 | **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit `[milestone N/M]` once Phase 4 passes under PRINCIPLE-018 R1; failing work uncommitted via `--checkpoint`; `--complete`/`--reset` before switching tasks; `--clean` stale `.tmp_*`; ledger writes name `--agent`; another agent's task needs `--take-over`. |
 | **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan. |
 | **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger. |

@@ -142,11 +142,20 @@ def _interaction(finding: Finding, prior: Tuple[Dict[str, CommitInfo],
 
 
 SUPPORTED_SUFFIXES = (".py",)
+# Files Reforge itself writes, or AIKit's memory: reporting them as "not analysed" is noise, not
+# coverage, because no language front end was ever going to read a ledger or an audit state.
+BOOKKEEPING_PATHS = (".aikit/reforge.json", ".aikit/task_ledger.json", ".agents/task_ledger.json")
 
 
 def supports_source(path: str) -> bool:
     """Whether Reforge can analyse this path; its detectors are Python's own AST."""
     return path.lower().endswith(SUPPORTED_SUFFIXES)
+
+
+def is_bookkeeping(path: str) -> bool:
+    """Reforge's own state, its backups and locks, and the task ledger it updates."""
+    normal = path.replace("\\", "/")
+    return normal in BOOKKEEPING_PATHS or normal.startswith(".aikit/reforge.")
 
 
 def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object]] = (),
@@ -166,7 +175,8 @@ def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object
             if status == "D":
                 continue
             if not supports_source(path):
-                uncovered.add(path)
+                if not is_bookkeeping(path):
+                    uncovered.add(path)
                 continue
             source = file_at(repo, sha, path)
             if source is None:

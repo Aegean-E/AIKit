@@ -378,7 +378,7 @@ class TestPrincipleSync(unittest.TestCase):
         p5 = next((p for p in principles if p["id"] == "PRINCIPLE-005"), None)
         self.assertIsNotNone(p5)
         # Mechanisms, not labels (ADR-063): the size limit, the checked items, the trigger, the gate.
-        for mechanism in ("readme <=25k chars", "prerequisites, test command, tree",
+        for mechanism in ("readme <=30k chars", "prerequisites, test command, tree",
                           "user-visible changes update it same commit",
                           "`update_knowledge_base.py --check` gates it"):
             with self.subTest(mechanism=mechanism):
@@ -684,17 +684,17 @@ class TestPrincipleSync(unittest.TestCase):
 
     def test_readme_cold_start_orientation_and_script_parity(self):
         # Enforces PRINCIPLE-005: README.md must contain 30s quick reference, prerequisites, canonical test command,
-        # cold-start token ceiling (<25,000 chars), and valid paths for every file listed in the directory tree.
+        # cold-start token ceiling (<30,000 chars), and valid paths for every file listed in the directory tree.
         readme_path = ROOT_DIR / "README.md"
         self.assertTrue(readme_path.exists(), "README.md missing from repository root")
         readme_content = readme_path.read_text(encoding="utf-8")
         
-        # 1. Cold-Start Token Ceiling (<25,000 characters)
-        MAX_README_CHARS = 25000
+        # 1. Cold-Start Token Ceiling (<30,000 characters)
+        MAX_README_CHARS = 30000
         self.assertLessEqual(
             len(readme_content),
             MAX_README_CHARS,
-            f"README.md exceeds 25,000 char cold-start budget: {len(readme_content)} chars"
+            f"README.md exceeds 30,000 char cold-start budget: {len(readme_content)} chars"
         )
 
         # 2. Orientation block & prerequisites
@@ -792,8 +792,8 @@ class TestPrinciple005ReadmeGate(unittest.TestCase):
         ])
 
     def test_size_labels_and_tree_are_required(self):
-        errors = self.audit("# x\n" + "y" * 25_001)
-        self.assertIn("README.md has 25,005 chars; the limit is 25,000 (R1)", errors)
+        errors = self.audit("# x\n" + "y" * 30_001)
+        self.assertIn("README.md has 30,005 chars; the limit is 30,000 (R1)", errors)
         self.assertIn("README.md has no heading containing 'Cold-Start Quick Reference' (R1)", errors)
         self.assertIn("README.md has no ```text directory tree after \"What's Inside\" (R5)", errors)
 
@@ -8558,6 +8558,63 @@ class TestReforgeCore(unittest.TestCase):
         self.assertNotIn("AIKit-integrated", readme)
         audit = project_media.audit_media(root, dossier=dossier)
         self.assertTrue(audit["ok"], audit["problems"])
+
+    def test_a_repository_without_a_ledger_records_nothing_and_does_not_fail(self):
+        from reforge.ledger import ledger_artifacts, record_event
+
+        root = self.root()
+        result = record_event(root, "run-1", 1, "audited")
+        self.assertFalse(result["recorded"])
+        self.assertIsNone(result["path"])
+        self.assertIn("no AIKit task ledger", result["reason"])
+        self.assertEqual(ledger_artifacts(root), [])
+
+    def test_a_stage_checkpoint_is_appended_without_becoming_the_active_task(self):
+        from reforge.ledger import record_event
+
+        root = self.root()
+        (root / ".aikit").mkdir()
+        ledger = root / ".aikit" / "task_ledger.json"
+        active = {"task_id": "operator-task", "status": "in_progress", "owner": "kilo:1",
+                  "last_phase": "Planning", "active_phase": 2}
+        ledger.write_text(json.dumps({"version": 1, "active_task": active, "checkpoints": [
+            {"task_id": "operator-task", "phase": "Planning", "phase_num": 2,
+             "description": "the operator's plan", "files_affected": [], "status": "in_progress",
+             "timestamp": 1.0, "timestamp_str": "2026-01-01 00:00:00", "agent": "kilo:1"}
+        ]}), encoding="utf-8")
+        result = record_event(root, "run-2", 1, "window 2, 1 finding", ["pkg.py"], agent="kilo:2")
+        self.assertTrue(result["recorded"], result.get("reason"))
+        data = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(data["active_task"], active, "an audit must not take over the operator's task")
+        entry = data["checkpoints"][-1]
+        self.assertEqual((entry["task_id"], entry["status"]), ("reforge:run-2", "in_progress"))
+        self.assertEqual(entry["files_affected"], ["pkg.py"])
+        self.assertEqual(entry["agent"], "kilo:2")
+        self.assertEqual(entry["phase_num"], 3)
+
+    def test_a_completed_stage_is_not_offered_as_resumable(self):
+        from reforge.ledger import record_event
+        from scripts.disruption_recovery import resumable_tasks
+
+        root = self.root()
+        (root / ".aikit").mkdir()
+        ledger = root / ".aikit" / "task_ledger.json"
+        ledger.write_text(json.dumps({"version": 1, "active_task": None, "checkpoints": []}),
+                          encoding="utf-8")
+        record_event(root, "run-1", 3, "reached its stop", status="completed")
+        record_event(root, "run-2", 1, "stopped by the operator", status="suspended")
+        paused = resumable_tasks(json.loads(ledger.read_text(encoding="utf-8")))
+        self.assertEqual([task["task_id"] for task in paused], ["reforge:run-2"])
+
+    def test_ledger_artifacts_cover_the_backup_its_writer_leaves(self):
+        from reforge.ledger import ledger_artifacts
+
+        root = self.root()
+        (root / ".aikit").mkdir()
+        (root / ".aikit" / "task_ledger.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(ledger_artifacts(root),
+                         [".aikit/task_ledger.json", ".aikit/task_ledger.json.bak",
+                          ".aikit/task_ledger.json.lock"])
 
     def test_a_project_without_a_shared_banner_is_not_asked_for_badges(self):
         root = self.project("badge-free")

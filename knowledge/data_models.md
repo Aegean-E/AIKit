@@ -101,6 +101,12 @@ changed paths a stage could not analyse because Reforge's detectors are Python-o
 `reproducible`, `fixable`, `interaction` and `repaired`; each repair carries `code`, `path`, `line`,
 `summary`, `test_name` and `applied`.
 
+The same stages are mirrored into the repository's task ledger (`.aikit/task_ledger.json` in a
+project, `.agents/task_ledger.json` at AIKit's root) as ordinary checkpoint entries under
+`task_id` `reforge:<run-id>`, with `phase_num` 3, `status` `in_progress`, `suspended` or
+`completed`, and `files_affected` holding the stage's finding paths plus the paths it could not
+analyse (ADR-250). `active_task` is never written, so the operator's task survives an audit.
+
 ### Project Presentation Fields (`<project>/.aikit/project.json`)
 `has_ui` (bool), `ui_kind` (`web`, `desktop`, `game`, `mobile`, `cli`, `library`, `service`),
 `ui_evidence` (relative marker paths), `ui_checked_at` and `ui_source` (`detected` or `manual`).
