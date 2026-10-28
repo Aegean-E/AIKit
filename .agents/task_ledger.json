@@ -3,24 +3,15 @@
   "active_task": {
     "task_id": "idea-catcher-integration",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793228794.4242477,
     "owner": "kilo:idea-catcher-integration",
     "started_by": "kilo:idea-catcher-integration",
-    "continuations": []
+    "continuations": [],
+    "completed_at": 1793228994.8118093
   },
   "checkpoints": [
-    {
-      "task_id": "project-model-brand",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-model-brand' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793199865.4679604,
-      "timestamp_str": "2026-10-28 18:04:25",
-      "agent": "kilo:model-brand"
-    },
     {
       "task_id": "project-readme-media",
       "phase": "in_progress",
@@ -264,6 +255,16 @@
       "status": "in_progress",
       "timestamp": 1793228794.4242477,
       "timestamp_str": "2026-10-29 02:06:34",
+      "agent": "kilo:idea-catcher-integration"
+    },
+    {
+      "task_id": "idea-catcher-integration",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-catcher-integration' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793228994.8118107,
+      "timestamp_str": "2026-10-29 02:09:54",
       "agent": "kilo:idea-catcher-integration"
     }
   ]
