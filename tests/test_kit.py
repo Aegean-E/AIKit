@@ -143,7 +143,6 @@ from reforge.detectors import detect_source as reforge_detect_source
 from reforge.errors import ReforgeError
 from reforge.model import Finding
 from reforge.repair import repair_findings
-from reforge.repo_sync import manifest as reforge_manifest, sync_config as reforge_sync_config, sync_repo
 from reforge.state import (
     create_run,
     load_state,
@@ -8253,6 +8252,54 @@ class TestReforgeCore(unittest.TestCase):
                           if finding.code == "bare-except"], [])
         self.assertEqual(repair_findings(root, []), [])
 
+    def test_an_uneditable_finding_is_not_also_marked_repaired(self):
+        source = ("import subprocess\n"
+                  "def run(cmd):\n"
+                  "    subprocess." + "run(cmd, shell=True)\n"
+                  "def load():\n"
+                  "    try:\n"
+                  "        pass\n"
+                  "    except:\n"
+                  "        pass\n")
+        root, path, repairs = self.repair(source, add_tests=True)
+        shell = [repair for repair in repairs if repair.code == "shell-true"]
+        self.assertEqual(len(shell), 1)
+        self.assertFalse(shell[0].applied)
+        bare = [repair for repair in repairs if repair.code == "bare-except"]
+        self.assertTrue(bare and all(repair.applied for repair in bare))
+        generated = (root / "test_reforge_regressions.py").read_text(encoding="utf-8")
+        self.assertNotIn("shell_true", generated)
+        self.assertIn("except Exception:", path.read_text(encoding="utf-8"))
+
+    def test_a_crlf_repair_keeps_every_line_ending(self):
+        root = self.root()
+        path = root / "pkg.py"
+        path.write_bytes(b"try:\r\n    pass\r\nexcept:\r\n    pass\r\n")
+        findings = reforge_detect_source("pkg.py", path.read_bytes().decode("utf-8"), "sha")
+        repairs = repair_findings(root, findings, add_tests=False)
+        self.assertTrue(any(repair.applied for repair in repairs))
+        data = path.read_bytes()
+        self.assertIn(b"except Exception:", data)
+        self.assertEqual(data.count(b"\n"), data.count(b"\r\n"))
+
+    def test_a_failed_repair_restores_the_exact_bytes(self):
+        from reforge.pipeline import _execute_repairs
+
+        root = self.root()
+        path = root / "pkg.py"
+        original = b"try:\r\n    pass\r\nexcept:\r\n    pass\r\n"
+        path.write_bytes(original)
+        findings = reforge_detect_source("pkg.py", original.decode("utf-8"), "sha")
+        with self.assertRaises(ReforgeError):
+            _execute_repairs(root, findings, True, False, None, lambda: (False, ["gate failed"]))
+        self.assertEqual(path.read_bytes(), original)
+        self.assertFalse((root / "test_reforge_regressions.py").exists())
+
+    def test_the_generated_mutable_default_test_covers_constructor_defaults(self):
+        root, _, _ = self.repair("def f(items=list()):\n    return items\n", add_tests=True)
+        generated = (root / "test_reforge_regressions.py").read_text(encoding="utf-8")
+        self.assertIn("default.func.id", generated)
+
     def test_a_syntax_error_is_evidenced_and_marked_reproducible(self):
         findings = reforge_detect_source("bad.py", "def f(:\n", "sha")
         self.assertEqual(findings[0].code, "syntax-error")
@@ -8286,43 +8333,21 @@ class TestReforgeCore(unittest.TestCase):
         with self.assertRaises(ReforgeError):
             load_state(root)
 
-    def sync_tree(self):
-        source, target = self.root(), self.root()
-        files = {"reforge/__init__.py": "VALUE = 1\n", "reforge.py": "print(1)\n"}
-        for relative, text in files.items():
-            (source / relative).parent.mkdir(parents=True, exist_ok=True)
-            (source / relative).write_text(text, encoding="utf-8")
-            (target / relative).parent.mkdir(parents=True, exist_ok=True)
-            (target / relative).write_text(text, encoding="utf-8")
-        synced = {relative: hashlib.sha256((target / relative).read_bytes()).hexdigest()
-                  for relative in files}
-        (target / ".reforge-repo.json").write_text(
-            json.dumps({"schema": 1, "synced": synced}), encoding="utf-8")
-        return source, target
-
-    def test_repo_sync_pushes_and_pulls_shipped_source(self):
-        source, target = self.sync_tree()
-        (source / "reforge/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
-        pushed = sync_repo(source, target, "push")
-        self.assertEqual(pushed["copied"], ["reforge/__init__.py"])
-        self.assertIn("VALUE = 2", (target / "reforge/__init__.py").read_text(encoding="utf-8"))
-        (target / "reforge/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
-        pulled = sync_repo(source, target, "pull")
-        self.assertEqual(pulled["copied"], ["reforge/__init__.py"])
-        self.assertIn("VALUE = 3", (source / "reforge/__init__.py").read_text(encoding="utf-8"))
-
-    def test_repo_sync_refuses_a_two_sided_conflict(self):
-        source, target = self.sync_tree()
-        (source / "reforge/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
-        (target / "reforge/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
+    def test_a_structural_run_entry_is_refused_by_name(self):
+        root = self.root()
+        state_path(root).parent.mkdir(parents=True, exist_ok=True)
+        state_path(root).write_text(json.dumps({
+            "schema": 2, "runs": ["not-a-run"], "audited_commits": [], "history": [],
+        }), encoding="utf-8")
         with self.assertRaises(ReforgeError) as raised:
-            sync_repo(source, target, "push")
-        self.assertIn("changed on both sides", raised.exception.message)
+            load_state(root)
+        self.assertIn("structurally invalid", raised.exception.message)
 
     def test_the_parser_declares_the_shared_reforge_commands(self):
-        args = build_reforge_parser().parse_args(["repo", "sync", "--direction", "pull"])
-        self.assertEqual((args.command, args.repo_action, args.direction),
-                         ("repo", "sync", "pull"))
+        args = build_reforge_parser().parse_args(["settings", "demo", "--step", "4"])
+        self.assertEqual((args.command, args.target, args.step), ("settings", "demo", 4))
+        with self.assertRaises(SystemExit):
+            build_reforge_parser().parse_args(["repo", "sync"])
 
     def test_delivery_refuses_a_non_conventional_message(self):
         validate_reforge_message("fix(reforge): repair stage 1 findings")
@@ -8533,6 +8558,18 @@ class TestReforgeCore(unittest.TestCase):
         audit = project_media.audit_media(root, dossier=dossier)
         self.assertTrue(audit["ok"], audit["problems"])
 
+    def test_a_project_without_a_shared_banner_is_not_asked_for_badges(self):
+        root = self.project("badge-free")
+        (root / "README.md").write_text(
+            "# badge-free\n\n<!-- aegean:media:start -->\n<!-- aegean:media:end -->\n\n"
+            "<!-- aegean:brand-assets:start -->\n## 🎨 Brand Assets\n\n"
+            "> The banner and logo are **AI-generated brand assets**.\n"
+            "<!-- aegean:brand-assets:end -->\n",
+            encoding="utf-8")
+        audit = project_media.audit_media(root, dossier=self.root())
+        self.assertNotIn("README lacks the license badge under the banner", audit["problems"])
+        self.assertNotIn("README lacks the AIKit-integrated badge", audit["problems"])
+
     def test_media_review_refuses_an_unresolvable_screenshot_commit(self):
         root = self.project("shot-demo")
         (root / "index.html").write_text("<html><body></body></html>", encoding="utf-8")
@@ -8552,25 +8589,6 @@ class TestReforgeCore(unittest.TestCase):
             with self.assertRaises(ProjectError):
                 project_media.review_media(root, "screenshot", "approve", "agent:unit",
                                            "structural", "looks aligned")
-
-    def test_the_manifest_ships_the_package_and_standalone_shim(self):
-        shipped = reforge_manifest(ROOT_DIR)
-        self.assertIn("reforge.py", shipped)
-        self.assertIn("reforge/cli.py", shipped)
-
-    def test_the_sync_file_names_the_shipped_source_and_target(self):
-        root = self.root()
-        (root / "reforge-sync.json").write_text(json.dumps({
-            "schema": 1, "package": "pkg", "entrypoint": "entry.py",
-            "standalone": "external/reforge", "marker": ".marker.json",
-        }), encoding="utf-8")
-        config = reforge_sync_config(root)
-        self.assertEqual((config["package"], config["entrypoint"], config["standalone"]),
-                         ("pkg", "entry.py", "external/reforge"))
-        (root / "reforge-sync.json").write_text(json.dumps({
-            "schema": 1, "package": "../escape"}), encoding="utf-8")
-        with self.assertRaises(ReforgeError):
-            reforge_sync_config(root)
 
     def test_window_settings_are_configurable_and_capped_by_stop(self):
         self.assertEqual([window_for_stage(stage, 4, 2, 10) for stage in (1, 2, 3, 4)],

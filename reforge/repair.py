@@ -25,6 +25,15 @@ def _lines(text: str) -> List[str]:
     return text.splitlines(keepends=True)
 
 
+def _newline(text: str) -> str:
+    """The file's own line ending, so a repair never rewrites untouched lines."""
+    if "\r\n" in text:
+        return "\r\n"
+    if "\r" in text:
+        return "\r"
+    return "\n"
+
+
 def _offset(lines: Sequence[str], line: int, column: int) -> int:
     return sum(len(item) for item in lines[:max(0, line - 1)]) + column
 
@@ -126,7 +135,8 @@ def _remove_keyword(text: str, lines: Sequence[str], node: ast.Call, name: str) 
     return _Edit(start, end, "")
 
 
-def _mutable_default_edits(lines: Sequence[str], located: _MutableDefault) -> List[_Edit]:
+def _mutable_default_edits(lines: Sequence[str], located: _MutableDefault,
+                           newline: str = "\n") -> List[_Edit]:
     default = located.default
     start = _offset(lines, default.lineno, default.col_offset)
     end = _offset(lines, default.end_lineno, default.end_col_offset)
@@ -137,10 +147,13 @@ def _mutable_default_edits(lines: Sequence[str], located: _MutableDefault) -> Li
     if index >= len(body):
         return [_Edit(start, end, "None")]
     first = body[index]
+    if first.lineno == getattr(function, "lineno", 0):
+        # A one-line `def f(x=[]): return x` has no separate line to insert a guard before.
+        return []
     line_text = lines[first.lineno - 1] if first.lineno <= len(lines) else ""
     indent = line_text[:len(line_text) - len(line_text.lstrip())]
-    guard = (f"{indent}if {located.argument.arg} is None:\n"
-             f"{indent}    {located.argument.arg} = {_default_constructor(default)}()\n")
+    guard = (f"{indent}if {located.argument.arg} is None:{newline}"
+             f"{indent}    {located.argument.arg} = {_default_constructor(default)}(){newline}")
     guard_at = _offset(lines, first.lineno, 0)
     return [_Edit(start, end, "None"), _Edit(guard_at, guard_at, guard, priority=1)]
 
@@ -154,7 +167,7 @@ def _edits_for(text: str, finding: Finding, tree: ast.Module) -> List[_Edit]:
         edit = _bare_except_edit(text, lines, located)
         return [edit] if edit else []
     if finding.code == "mutable-default" and isinstance(located, _MutableDefault):
-        return _mutable_default_edits(lines, located)
+        return _mutable_default_edits(lines, located, _newline(text))
     if finding.code == "unsafe-yaml-load" and isinstance(located, ast.Call):
         return [_yaml_edit(text, lines, located)]
     if finding.code == "verify-false" and isinstance(located, ast.Call):
@@ -192,20 +205,20 @@ def _secret_hits(label: str, text: str) -> Sequence[Tuple[str, int, str, str]]:
     return scan_text(label, text)
 
 
-def _write_text(path: Path, text: str) -> None:
+def _write_text(path: Path, text: str, newline: Optional[str] = None) -> None:
     try:
         from scripts.update_knowledge_base import write_generated_file
     except ImportError:
-        _local_atomic_write(path, text)
+        _local_atomic_write(path, text, newline)
         return
-    write_generated_file(path, text)
+    write_generated_file(path, text, newline=newline)
 
 
-def _local_atomic_write(path: Path, text: str) -> None:
+def _local_atomic_write(path: Path, text: str, newline: Optional[str] = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + f".tmp_{os.getpid()}_{int(time.time() * 1000)}")
     try:
-        with open(tmp, "w", encoding="utf-8") as handle:
+        with open(tmp, "w", encoding="utf-8", newline=newline) as handle:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
@@ -248,7 +261,9 @@ def _test_body(code: str, relative: str) -> str:
                  '        for node in ast.walk(tree):\n'
                  '            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):\n'
                  '                for default in list(node.args.defaults) + [d for d in node.args.kw_defaults if d]:\n'
-                 '                    if isinstance(default, (ast.List, ast.Dict, ast.Set)):\n'
+                 '                    if isinstance(default, (ast.List, ast.Dict, ast.Set)) or (\n'
+                 '                            isinstance(default, ast.Call) and isinstance(default.func, ast.Name)\n'
+                 '                            and default.func.id in {"list", "dict", "set"}):\n'
                  '                        bad.append(node.lineno)\n'
                  '        self.assertEqual(bad, [], "a shared mutable default came back")')
     elif code == "unsafe-yaml-load":
@@ -290,7 +305,12 @@ def _add_regression_tests(root: Path, repairs: Sequence[Repair]) -> List[Repair]
     depth = ".parent" if path.parent.name == "tests" else ""
     text = path.read_text(encoding="utf-8") if path.is_file() else TEST_HEADER.format(depth=depth)
     if "class ReforgeRegressionTests" not in text:
-        raise ValueError(f"{path} exists but is not a Reforge regression module")
+        raise ReforgeError(
+            f"{path} exists but is not a Reforge regression module.",
+            "Reforge appends its generated tests to that exact file and will not overwrite "
+            "a module it does not own.",
+            "move or rename the existing file, then run the repair again; no source was committed.",
+        )
     updated = text
     tests: List[Repair] = []
     for repair in repairs:
@@ -330,19 +350,22 @@ def repair_findings(root: Path, findings: Sequence[Finding],
     for relative, items in sorted(by_path.items()):
         path = root / relative
         try:
-            text = path.read_text(encoding="utf-8")
+            with open(path, "r", encoding="utf-8", newline="") as handle:
+                text = handle.read()
             tree = ast.parse(text)
         except (OSError, SyntaxError, UnicodeDecodeError) as exc:
             repairs.extend(Repair(item.code, relative, item.line, f"not repaired: {exc}", "", False)
                            for item in items)
             continue
         edits: List[_Edit] = []
+        edited: List[Finding] = []
         for finding in sorted(items, key=lambda item: item.line, reverse=True):
             made = _edits_for(text, finding, tree)
             if not made:
                 repairs.append(Repair(finding.code, relative, finding.line,
                                       "left for review: no safe automatic edit", "", False))
                 continue
+            edited.append(finding)
             edits.extend(made)
         if not edits:
             continue
@@ -352,17 +375,20 @@ def repair_findings(root: Path, findings: Sequence[Finding],
         except SyntaxError as exc:
             repairs.extend(Repair(item.code, relative, item.line,
                                   f"not repaired: edit did not parse ({exc.msg})", "", False)
-                           for item in items)
+                           for item in edited)
             continue
         if _secret_hits(relative, new_text):
             repairs.extend(Repair(item.code, relative, item.line,
                                   "not repaired: the edit would write credential-shaped text", "", False)
-                           for item in items)
+                           for item in edited)
             continue
         if new_text == text:
+            repairs.extend(Repair(item.code, relative, item.line,
+                                  "left for review: the edit changed nothing", "", False)
+                           for item in edited)
             continue
-        _write_text(path, new_text)
-        for item in items:
+        _write_text(path, new_text, newline="")
+        for item in edited:
             repairs.append(Repair(item.code, relative, item.line,
                                   f"repaired {item.code}", "", True))
     repairs = [item for item in repairs if item.applied or item.summary.startswith(("left", "not "))]
@@ -374,7 +400,7 @@ def repair_findings(root: Path, findings: Sequence[Finding],
 def repair_paths(repairs: Sequence[Repair], root: Path) -> List[str]:
     """The source and test paths a repair touched, for an explicit commit and patch review."""
     paths = {item.path for item in repairs if item.applied}
-    if paths:
+    if any(item.test_name for item in repairs):
         test_file = regression_test_path(Path(root))
         try:
             paths.add(str(test_file.relative_to(root)).replace("\\", "/"))

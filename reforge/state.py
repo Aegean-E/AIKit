@@ -204,6 +204,12 @@ def load_state(root: Path) -> Dict[str, object]:
             "'runs', 'audited_commits' and 'history' must be lists.",
             "restore the file from its .bak shadow or a committed copy.",
         )
+    if not all(isinstance(run, dict) and isinstance(run.get("id"), str) for run in data["runs"]):
+        raise ReforgeError(
+            f"{path} is structurally invalid.",
+            "every entry in 'runs' must be an object with a string 'id'.",
+            "restore the file from its .bak shadow or a committed copy.",
+        )
     return data
 
 

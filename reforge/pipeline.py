@@ -58,20 +58,20 @@ def _stop_value(stop: Optional[int]) -> Optional[int]:
     return None if stop in (None, 0) else int(stop)
 
 
-def _snapshot(root: Path, findings: Sequence[Finding]) -> Dict[str, Optional[str]]:
+def _snapshot(root: Path, findings: Sequence[Finding]) -> Dict[str, Optional[bytes]]:
     paths = {finding.path for finding in findings if finding.fixable}
     paths.add(str(regression_test_path(root).relative_to(root)).replace("\\", "/"))
-    snapshots: Dict[str, Optional[str]] = {}
+    snapshots: Dict[str, Optional[bytes]] = {}
     for relative in paths:
         path = root / relative
         try:
-            snapshots[relative] = path.read_text(encoding="utf-8") if path.is_file() else None
+            snapshots[relative] = path.read_bytes() if path.is_file() else None
         except OSError:
             snapshots[relative] = None
     return snapshots
 
 
-def _restore(root: Path, snapshots: Dict[str, Optional[str]]) -> None:
+def _restore(root: Path, snapshots: Dict[str, Optional[bytes]]) -> None:
     for relative, original in snapshots.items():
         path = root / relative
         try:
@@ -80,7 +80,7 @@ def _restore(root: Path, snapshots: Dict[str, Optional[str]]) -> None:
                     path.unlink()
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(original, encoding="utf-8")
+                path.write_bytes(original)
         except OSError:
             continue
 
@@ -171,6 +171,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "counts": summarize(findings),
         "findings": [finding.as_dict() for finding in findings],
         "repairs": [repair.as_dict() for repair in repairs],
+        "commit_paths": sorted(set(repair_paths(repairs, root)) | {STATE_REL.as_posix()}),
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
         "tests": tests,

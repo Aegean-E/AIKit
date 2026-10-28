@@ -67,8 +67,7 @@ portable_agent_kit/
 ├── assets/                       <- Root brand assets
 │   ├── logo.jpg
 │   └── social-preview.png
-├── reforge.py                    <- Aegean Reforge standalone CLI entry point
-├── reforge-sync.json             <- Reforge source/standalone sync manifest (ADR-231)
+├── reforge.py                    <- Aegean Reforge CLI entry point (and `aikit.py reforge`)
 ├── reforge/                      <- Progressive Git history auditor & safe repair engine
 ├── idea_catcher.py               <- Idea Catcher standalone CLI entry point
 ├── idea-catcher-sync.json        <- Idea Catcher source/standalone sync manifest (ADR-246)
@@ -187,19 +186,20 @@ A project's memory is `.aikit/` (record, ledger, decisions); ledger commands tak
 
 ## 🔁 Aegean Reforge: History Audit & Safe Repair
 
-Reforge ships in `reforge/` and `reforge.py`; AIKit reuses its registry, gates, secret scanner and
-persistence. Projects have separate runs and locks; a second run on one is refused.
+Reforge is integrated into AIKit: its only source lives in `reforge/` and `reforge.py`, and AIKit
+reuses its registry, gates, secret scanner and persistence. Projects have separate runs and locks;
+a second run on one is refused.
 
 ```bash
 python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # independent run
 python aikit.py reforge run my-app         # audit, repair, add regression tests, verify, record
 python aikit.py reforge run my-app --push  # after review: commit explicit paths, push without force
-python aikit.py reforge repo init          # own repo at projects/aegean-reforge
-python aikit.py reforge repo sync --direction push
+python reforge.py --help                   # same engine, no AIKit project registry
 ```
 
 Window N is `start + step*(N-1)`, capped by `stop`; evidence is commit/path/line, only mechanical
-repairs are automatic, and a red gate rolls them back.
+repairs are automatic, and a red gate rolls them back. The former standalone repository
+`AegeanWorks/Aegean-Reforge` is archived and points here; there is no second copy to synchronize.
 
 ## 🧭 Idea Catcher: Routed Idea Register
 

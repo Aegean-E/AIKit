@@ -129,15 +129,31 @@ def worktree_diff(repo: Path, paths: Sequence[str]) -> str:
 
 
 def status_paths(repo: Path) -> List[str]:
-    code, out = run_git(repo, "status", "--porcelain", "--untracked-files=no")
+    """Changed tracked paths, including both sides of a rename, from NUL-delimited porcelain."""
+    code, out = run_git(repo, "status", "--porcelain", "-z", "--untracked-files=no")
     if code != 0:
         return []
-    return [line[3:].strip() for line in out.splitlines() if len(line) > 3]
+    entries = out.split("\0")
+    paths: List[str] = []
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if len(entry) < 4:
+            continue
+        status, path = entry[:2], entry[3:]
+        paths.append(path)
+        if "R" in status or "C" in status:
+            original = entries[index] if index < len(entries) else ""
+            if original:
+                paths.append(original)
+            index += 1
+    return paths
 
 
 def untracked_paths(repo: Path) -> List[str]:
-    code, out = run_git(repo, "ls-files", "--others", "--exclude-standard")
-    return out.splitlines() if code == 0 else []
+    code, out = run_git(repo, "ls-files", "--others", "--exclude-standard", "-z")
+    return [path for path in out.split("\0") if path] if code == 0 else []
 
 
 def diff_paths(diff_text: str) -> List[str]:

@@ -83,25 +83,6 @@ def add_commands(subparsers) -> None:
     report.add_argument("target")
     report.add_argument("--json", action="store_true")
 
-    repo = subparsers.add_parser("repo", help="and manage Reforge's own standalone Git repository")
-    actions = repo.add_subparsers(dest="repo_action", required=True)
-    init = actions.add_parser("init", help="create the standalone repository from AIKit's shipped source")
-    init.add_argument("path", nargs="?", type=Path, help="target folder (default: projects/aegean-reforge)")
-    init.add_argument("--force", action="store_true", help="overwrite Reforge's own files in place")
-    sync = actions.add_parser("sync", help="copy shipped source in one direction")
-    sync.add_argument("path", nargs="?", type=Path, help="standalone repository (default: projects/aegean-reforge)")
-    sync.add_argument("--direction", choices=("push", "pull"), default="push",
-                      help="push: AIKit to standalone; pull: standalone to AIKit")
-    sync.add_argument("--force", action="store_true", help="discard the receiving side on a conflict")
-    state = actions.add_parser("status", help="compare the standalone repository with AIKit")
-    state.add_argument("path", nargs="?", type=Path, help="standalone repository")
-    release = actions.add_parser("release", help="create a local annotated release tag")
-    release.add_argument("path", nargs="?", type=Path, help="standalone repository")
-    release.add_argument("--tag", required=True, help="release tag, e.g. v0.2.0")
-    release.add_argument("--message", default="", help="annotation message")
-    for command in (init, sync, state, release):
-        command.add_argument("--json", action="store_true", help="print one machine-readable result")
-
 
 class ReforgeArgumentParser(argparse.ArgumentParser):
     """argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011)."""
@@ -191,6 +172,13 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
 
     action = getattr(args, "reforge_action", None) or args.command
     as_json = bool(getattr(args, "json", False))
+    if action == "audit" and (getattr(args, "commit", False) or getattr(args, "push", False)):
+        raise ReforgeError(
+            "--commit is not valid with audit.",
+            "an audit records findings but changes no code, so there is no repair patch to commit.",
+            "run `fix` or `run`, then commit the repair patch; nothing was recorded.",
+            exit_code=2,
+        )
     if action == "status":
         payload = pipeline.status_payload(root)
         if as_json:
@@ -276,19 +264,13 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
     )
     do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:
-        if action == "audit":
-            raise ReforgeError(
-                "--commit is not valid with audit.",
-                "an audit changes no code; only its state file could be committed.",
-                "run `fix` or `run`, then commit the repair patch.",
-                exit_code=2,
-            )
         run_name = payload.get("run") or "active"
         if payload.get("repaired"):
             message = f"fix(reforge): repair {run_name} stage {payload['stage']} findings"
         else:
             message = f"chore(reforge): record {run_name} stage {payload['stage']} audit"
-        delivery = deliver(root, message, bool(getattr(args, "push", False)))
+        delivery = deliver(root, message, bool(getattr(args, "push", False)),
+                           paths=payload.get("commit_paths"))
         payload["delivery"] = delivery[0]
         payload["delivery_lines"] = delivery[1]
     if as_json:
@@ -300,50 +282,11 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
     return 0
 
 
-def _repo(args, aikit_root: Path) -> int:
-    import reforge.repo_sync as repo_sync
-    target = getattr(args, "path", None)
-    source = Path(aikit_root)
-    if args.repo_action == "init":
-        result = repo_sync.init_repo(source, target, force=args.force)
-    elif args.repo_action == "sync":
-        result = repo_sync.sync_repo(source, target, direction=args.direction, force=args.force)
-    elif args.repo_action == "status":
-        result = repo_sync.repo_status(source, target)
-    else:
-        result = repo_sync.create_release(target, args.tag, args.message)
-    if getattr(args, "json", False):
-        print(json.dumps({"ok": True, "result": result}, indent=2))
-        return 0
-    if args.repo_action == "init":
-        print(f"[OK] Created standalone Aegean Reforge at {result['path']} "
-              f"({result['files']} files, commit {result['commit']}).")
-    elif args.repo_action == "sync":
-        print(f"[OK] {result['direction']} sync from {result['path']}: "
-              f"{len(result['copied'])} copied, {len(result['ahead'])} already ahead.")
-        for relative in result["copied"]:
-            print(f"  copied {relative}")
-    elif args.repo_action == "status":
-        print(f"Standalone: {result['path']} (version {result['version']})")
-        print(f"Differing:  {len(result['differing'])} file(s)")
-        for relative in result["differing"]:
-            print(f"  {relative}")
-        print(f"Stale marker: {len(result['stale_marker'])}; dirty: {result['dirty']}")
-    else:
-        print(f"[OK] Created release tag {result['tag']}.")
-        print(f"Publish it deliberately: {result['publish']}")
-    return 0
-
-
 def dispatch(args, aikit_root: Optional[Path] = None, project_root: Optional[Path] = None,
              gate_runner: Optional[GateRunner] = None) -> int:
     """Run one parsed request; every failure is reported as a triad or a JSON envelope."""
     as_json = bool(getattr(args, "json", False))
     try:
-        command = getattr(args, "command", None)
-        reforge_action = getattr(args, "reforge_action", None)
-        if command == "repo" or (command == "reforge" and reforge_action == "repo"):
-            return _repo(args, Path(aikit_root) if aikit_root else Path.cwd())
         root = Path(project_root) if project_root else Path(getattr(args, "target", ""))
         if not root.is_dir():
             raise ReforgeError(
@@ -354,14 +297,18 @@ def dispatch(args, aikit_root: Optional[Path] = None, project_root: Optional[Pat
             )
         return _workspace(args, root, gate_runner)
     except ReforgeError as error:
-        if as_json:
-            return _report_error(error, True)
-        return _report_error(error, False)
+        return _report_error(error, as_json)
     except OSError as error:
         return _report_error(ReforgeError(
             "a filesystem operation failed",
             f"the operating system denied or interrupted it: {error}",
             "check the path permissions and free space, then retry.",
+        ), as_json)
+    except Exception as error:  # report an unexpected stop instead of a traceback (PRINCIPLE-011)
+        return _report_error(ReforgeError(
+            "Reforge stopped unexpectedly.",
+            f"{type(error).__name__}: {error}",
+            "nothing was committed; re-run with --json and report the message and command.",
         ), as_json)
 
 

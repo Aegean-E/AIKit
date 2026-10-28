@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `53`
+- **Total Python Modules**: `52`
 - **Total Classes**: `122`
-- **Total Top-Level Functions**: `712`
+- **Total Top-Level Functions**: `699`
 - **Total Class Methods**: `776`
-- **Total Source Lines**: `30566`
+- **Total Source Lines**: `30009`
 
 ---
 
@@ -265,7 +265,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `370` lines (`18521` bytes)
+**Size**: `317` lines (`15403` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -282,7 +282,6 @@
 - `def _print_findings(payload)`
 - `def _start_payload(payload)`
 - `def _workspace(args, root, gate_runner)`
-- `def _repo(args, aikit_root)`
 - `def dispatch(args, aikit_root, project_root, gate_runner)` - *Run one parsed request; every failure is reported as a triad or a JSON envelope.*
 - `def main(argv)`
 
@@ -291,13 +290,13 @@
 ### [`reforge/delivery.py`](reforge/delivery.py)
 > *Explicit staging, conventional commit and never-forced push for accepted repairs.*
 
-**Size**: `102` lines (`4130` bytes)
+**Size**: `104` lines (`4280` bytes)
 
 **Functions:**
 - `def validate_message(message)`
 - `def _paths_to_commit(root)`
 - `def commit_repairs(root, message, paths)` - *Stage exactly the repair paths, commit, and verify the commit holds them.*
-- `def deliver(root, message, do_push)`
+- `def deliver(root, message, do_push, paths)` - *Commit only the reviewed repair paths plus the audit state, then optionally push.*
 
 ---
 
@@ -353,7 +352,7 @@
 ### [`reforge/git_history.py`](reforge/git_history.py)
 > *Bounded Git reads used by the auditor, the repair review and delivery.*
 
-**Size**: `183` lines (`6367` bytes)
+**Size**: `199` lines (`6914` bytes)
 
 **Functions:**
 - `def run_git(repo, *args, timeout)` - *Run git with stdin closed and a timeout; returns (exit code, combined output).*
@@ -367,7 +366,7 @@
 - `def parent_sha(repo, sha)`
 - `def file_at(repo, sha, path)`
 - `def worktree_diff(repo, paths)`
-- `def status_paths(repo)`
+- `def status_paths(repo)` - *Changed tracked paths, including both sides of a rename, from NUL-delimited porcelain.*
 - `def untracked_paths(repo)`
 - `def diff_paths(diff_text)` - *Paths in a unified diff, in first-seen order.*
 - `def commit_paths(repo, sha)`
@@ -409,7 +408,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `379` lines (`16507` bytes)
+**Size**: `380` lines (`16572` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -435,7 +434,7 @@
 ### [`reforge/repair.py`](reforge/repair.py)
 > *Smallest-safe automatic repairs, generated regression tests and repair verification.*
 
-**Size**: `383` lines (`16021` bytes)
+**Size**: `409` lines (`17449` bytes)
 
 **Classes:**
 - `class _Edit`
@@ -443,6 +442,7 @@
 
 **Functions:**
 - `def _lines(text)`
+- `def _newline(text)` - *The file's own line ending, so a repair never rewrites untouched lines.*
 - `def _offset(lines, line, column)`
 - `def _default_constructor(node)`
 - `def _locate(tree, finding)`
@@ -450,12 +450,12 @@
 - `def _bare_except_edit(text, lines, node)`
 - `def _yaml_edit(text, lines, node)`
 - `def _remove_keyword(text, lines, node, name)`
-- `def _mutable_default_edits(lines, located)`
+- `def _mutable_default_edits(lines, located, newline)`
 - `def _edits_for(text, finding, tree)`
 - `def _apply_edits(text, edits)`
 - `def _secret_hits(label, text)`
-- `def _write_text(path, text)`
-- `def _local_atomic_write(path, text)`
+- `def _write_text(path, text, newline)`
+- `def _local_atomic_write(path, text, newline)`
 - `def _test_method_name(code, path)`
 - `def _test_body(code, relative)`
 - `def regression_test_path(root)`
@@ -465,32 +465,10 @@
 
 ---
 
-### [`reforge/repo_sync.py`](reforge/repo_sync.py)
-> *Materialize Reforge as its own Git repository and synchronize both directions.*
-
-**Size**: `562` lines (`21336` bytes)
-
-**Functions:**
-- `def source_root()`
-- `def sync_config(root)` - *Read the AIKit-side sync file; defaults keep an older checkout working.*
-- `def manifest(root, config)` - *The shipped Reforge source: its package and standalone shim, never generated docs.*
-- `def _digest(path)`
-- `def _write(path, text)` - *Atomic generated-file write: temp, fsync, replace (PRINCIPLE-013).*
-- `def _copy(source, target)`
-- `def _marker(target, marker_name)`
-- `def _generated_files(source)`
-- `def _git(root, *args, timeout)`
-- `def init_repo(source, target, force)` - *Create the standalone repository with source, docs, CI, issue templates and a first commit.*
-- `def sync_repo(source, target, direction, force)` - *Copy changed shipped files one way, refusing a file both sides changed since the last sync.*
-- `def repo_status(source, target)`
-- `def create_release(target, tag, message)` - *Create a local annotated release tag; publishing it stays a deliberate GitHub step.*
-
----
-
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `410` lines (`15704` bytes)
+**Size**: `416` lines (`16037` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -912,7 +890,7 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `830` lines (`36704` bytes)
+**Size**: `834` lines (`37036` bytes)
 
 **Functions:**
 - `def media_path(root)`
@@ -941,7 +919,7 @@
 - `def _find_asset(data, kind, index)`
 - `def review_media(project_root, kind, decision, reviewer, method, notes, score, index)` - *Validate the asset, then record an approve/reject decision with its evidence.*
 - `def name_of(root)`
-- `def _approved(asset)`
+- `def _approved(asset)` - *True only for a reviewed, approved asset entry; a missing entry is simply not approved.*
 - `def _copy_media(source, target)`
 - `def apply_media(project_root, name, dossier)` - *Copy approved assets into the dossier and reference them from the project README.*
 - `def _badge_row(project_root, repo)` - *License and AIKit badges under the banner; AegeanWorks keeps its own badge set.*
@@ -1262,7 +1240,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1494` lines (`75943` bytes)
+**Size**: `1479` lines (`75150` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1372,7 +1350,6 @@
   - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
-  - Method `.test_standalone_repository_is_complete_and_runs_its_own_cli()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherSyncCheck` - *PRINCIPLE-014: the shipped copy and the standalone register report drift as a gate.*
@@ -1393,7 +1370,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8736` lines (`496898` bytes)
+**Size**: `8754` lines (`497673` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2064,13 +2041,15 @@
   - Method `.test_a_mutable_default_is_replaced_and_gets_a_regression_test()`
   - Method `.test_yaml_shell_and_verify_are_repaired_together()`
   - Method `.test_a_repaired_finding_is_not_reported_or_repaired_twice()`
+  - Method `.test_an_uneditable_finding_is_not_also_marked_repaired()`
+  - Method `.test_a_crlf_repair_keeps_every_line_ending()`
+  - Method `.test_a_failed_repair_restores_the_exact_bytes()`
+  - Method `.test_the_generated_mutable_default_test_covers_constructor_defaults()`
   - Method `.test_a_syntax_error_is_evidenced_and_marked_reproducible()`
   - Method `.test_stage_windows_follow_the_documented_progression()`
   - Method `.test_interaction_evidence_marks_a_prior_symbol_or_repair_as_a_regression()`
   - Method `.test_state_round_trips_and_refuses_a_newer_schema()`
-  - Method `.sync_tree()`
-  - Method `.test_repo_sync_pushes_and_pulls_shipped_source()`
-  - Method `.test_repo_sync_refuses_a_two_sided_conflict()`
+  - Method `.test_a_structural_run_entry_is_refused_by_name()`
   - Method `.test_the_parser_declares_the_shared_reforge_commands()`
   - Method `.test_delivery_refuses_a_non_conventional_message()`
   - Method `.test_a_finding_serializes_every_evidence_field()`
@@ -2091,9 +2070,8 @@
   - Method `.test_new_projects_get_license_topic_metadata()`
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
   - Method `.test_aegeanworks_keeps_its_own_badge_set()`
+  - Method `.test_a_project_without_a_shared_banner_is_not_asked_for_badges()`
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
-  - Method `.test_the_manifest_ships_the_package_and_standalone_shim()`
-  - Method `.test_the_sync_file_names_the_shipped_source_and_target()`
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`
   - Method `.test_runs_stop_resume_and_create_independent_histories()`
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`

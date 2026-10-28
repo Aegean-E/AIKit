@@ -1368,21 +1368,6 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertEqual((root / "app.py").read_text(encoding="utf-8"), original)
         self.assertFalse((root / "test_reforge_regressions.py").exists())
 
-    def test_standalone_repository_is_complete_and_runs_its_own_cli(self):
-        from reforge.repo_sync import init_repo
-
-        target = Path(tempfile.mkdtemp(prefix="reforge_standalone_")) / "aegean-reforge"
-        self.addCleanup(remove_tree, target.parent)
-        with mock.patch.dict(os.environ, self.IDENTITY):
-            result = init_repo(ROOT_DIR, target)
-        self.assertTrue((target / ".git").is_dir())
-        self.assertTrue((target / "reforge" / "cli.py").is_file())
-        self.assertTrue((target / "README.md").is_file())
-        self.assertTrue((target / ".reforge-repo.json").is_file())
-        self.assertTrue(result["commit"])
-        self.assertTrue((target / "tests" / "test_reforge.py").is_file())
-        self.assertTrue((target / "CHANGELOG.md").is_file())
-
     def test_projects_run_concurrently_and_a_locked_project_refuses_again(self):
         from reforge.locking import run_lock
         from reforge.pipeline import run_pipeline

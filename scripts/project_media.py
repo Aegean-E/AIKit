@@ -577,8 +577,10 @@ def name_of(root: Path) -> str:
         return Path(root).name
 
 
-def _approved(asset: Dict[str, object]) -> bool:
-    return asset.get("status") == "approved" and isinstance(asset.get("review"), dict)
+def _approved(asset: object) -> bool:
+    """True only for a reviewed, approved asset entry; a missing entry is simply not approved."""
+    return (isinstance(asset, dict) and asset.get("status") == "approved"
+            and isinstance(asset.get("review"), dict))
 
 
 def _copy_media(source: Path, target: Path) -> None:
@@ -802,7 +804,9 @@ def audit_media(project_root: Path, dossier: Optional[Path] = None) -> Dict[str,
         problems.append("README lacks the Brand Assets section")
     if "ai-generated brand assets" not in readme_text.lower():
         problems.append("README lacks the generated-asset disclosure")
-    if repo.strip().lower() != "aegeanworks":
+    # `apply` writes the badge row with the banner, so a project with no approved
+    # social preview must not be failed for badges that were never inserted.
+    if repo.strip().lower() != "aegeanworks" and _approved(assets.get("social_preview")):
         if "img.shields.io/badge/license-" not in readme_text:
             problems.append("README lacks the license badge under the banner")
         if "AIKit-integrated" not in readme_text:

@@ -1,28 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "aikit-readme-badges",
-    "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793214905.489915,
-    "owner": "kilo:main",
-    "started_by": "kilo:main",
+    "task_id": "reforge-aikit-integration",
+    "last_phase": "planning",
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793215738.4198003,
+    "owner": "kilo:reforge-integration",
+    "started_by": "kilo:reforge-integration",
     "continuations": [],
-    "completed_at": 1793214905.6352563
+    "impact_assessment": {
+      "why": "The user wants Reforge integrated into AIKit only; the duplicate projects/aegean-reforge checkout and one-way sync file create two sources of truth and already drifted.",
+      "benefits": "One canonical source for Reforge, no bidirectional sync conflicts, less documentation ambiguity, and a safer repair commit scope.",
+      "risks": "contract: reforge repo subcommands and reforge-sync.json disappear; dependency: none beyond stdlib; concurrency: docs/tests edited while another AIKit session may touch shared files; state: no persisted schema change.",
+      "mitigation": "Remove the layer atomically, keep reforge.py plus reforge/ as the entrypoints, update every reference and test, and re-read shared files immediately before staging."
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "project-logo-review",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Delivered 39 individually reviewed logos and 39 social cards; fixed 6 weak lockups/monograms, removed the shared footer, added curated taglines, regenerated all cards, applied approvals, and pushed 37 projects + Reforge; idea-catcher committed locally (no remote); all media audits pending=0 and all gates pass.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793185899.0982072,
-      "timestamp_str": "2026-10-28 14:11:39",
-      "agent": "kilo:logo-review"
-    },
     {
       "task_id": "project-logo-review",
       "phase": "completed",
@@ -260,6 +254,23 @@
       "timestamp": 1793214905.635258,
       "timestamp_str": "2026-10-28 22:15:05",
       "agent": "kilo:main"
+    },
+    {
+      "task_id": "reforge-aikit-integration",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] Remove the standalone Reforge repository layer, fix the repair/delivery defects it exposed, refresh knowledge and gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793215738.4198003,
+      "timestamp_str": "2026-10-28 22:28:58",
+      "agent": "kilo:reforge-integration",
+      "impact_assessment": {
+        "why": "The user wants Reforge integrated into AIKit only; the duplicate projects/aegean-reforge checkout and one-way sync file create two sources of truth and already drifted.",
+        "benefits": "One canonical source for Reforge, no bidirectional sync conflicts, less documentation ambiguity, and a safer repair commit scope.",
+        "risks": "contract: reforge repo subcommands and reforge-sync.json disappear; dependency: none beyond stdlib; concurrency: docs/tests edited while another AIKit session may touch shared files; state: no persisted schema change.",
+        "mitigation": "Remove the layer atomically, keep reforge.py plus reforge/ as the entrypoints, update every reference and test, and re-read shared files immediately before staging."
+      }
     }
   ]
 }

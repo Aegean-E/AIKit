@@ -121,14 +121,14 @@ Schema 1; `palettes` (one unique four-colour palette per project) and `projects`
 has `motif`, `layout`, `palette` index, optional `monogram`, `display` (title-case override such as
 "No More Clutter"), `category` (the logo eyebrow) and `tagline` (the curated social-card sentence).
 
-### Reforge Sync Config (`reforge-sync.json`) and Marker (`<standalone>/.reforge-repo.json`)
-`reforge-sync.json` names the shipped `package`, `entrypoint`, `standalone` target and `marker`;
-`repo init/sync/status` read it. The standalone marker holds schema 1, name, source, version and
-`synced` (relative path -> SHA-256 at the last completed sync), which is how a two-sided edit is
-refused instead of overwritten.
+### Reforge Audit State (`.aikit/reforge.json`)
+Schema 2; `next_run_id`, `active_run`, `last_run`, `runs` and mirrored top-level fields (`stage`,
+`window`, `audited_commits`, `last_audit`, `history`) so schema-1 readers stay readable. Each run
+holds `id`, `start`, `step`, `stop`, `status`, its audited SHAs and a bounded history of stage
+entries. Reforge has no sync config or standalone marker any more (ADR-248).
 
 ### Idea Catcher Sync Config (`idea-catcher-sync.json`) and Marker (`<standalone>/.idea-catcher-repo.json`)
-The same schema-1 shape as Reforge's sync config, naming `package` (`idea_catcher`),
+The same schema-1 shape that Reforge formerly used, naming `package` (`idea_catcher`),
 `entrypoint` (`idea_catcher.py`), the `projects/idea-catcher` standalone target and the marker.
 The marker records name, source, version and `synced` path hashes; `repo adopt` seeds it for an
 existing register, and `repo sync --direction push|pull` updates it after a one-way copy (ADR-245).

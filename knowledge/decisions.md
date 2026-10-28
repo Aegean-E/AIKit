@@ -2665,7 +2665,7 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 
 ### ADR-231: Reforge Exports Itself as Its Own Repository With Two-Way Sync
 - **Date**: 2026-10-27
-- **Status**: Accepted
+- **Status**: Superseded by ADR-248
 - **Context**: Reforge must have its own commits, issues, releases, documentation and tests, while AIKit must contain the complete source and never require Git submodules. Copying once satisfies neither direction: a fix made in either repository would silently diverge.
 - **Decision**: `reforge repo init` copies the shipped `reforge/` package and `reforge.py` into `projects/aegean-reforge`, generates its README, changelog, contribution and security docs, CI workflow, issue and pull-request templates, license/REUSE metadata, standalone tests and `.reforge-repo.json` marker, then makes an explicit first commit. `repo sync --direction push` copies AIKit to that repository; `--direction pull` copies back. The marker stores each shipped path's last synchronized SHA-256, so a path changed on both sides since that point is refused instead of overwritten; `--force` is a deliberate override. `repo release` creates a local annotated tag and prints the explicit publish commands.
 - **Consequences**: Both repositories remain ordinary cloneable Git histories with no submodule step. Generated documentation and CI are not part of the source manifest, so syncing never overwrites a release note or workflow customisation. A developer pulling a standalone fix into AIKit reviews and commits it under AIKit's gates, preserving one source of truth for code while allowing either side to lead on a change.
@@ -2798,3 +2798,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `project_media._badge_row` returns nothing for `AegeanWorks`, `apply` therefore adds only the approved social preview, and `audit_media` skips the generic license/AIKit badge requirements for that repository. Every other project keeps the standard row.
 - **Consequences**: AegeanWorks keeps one curated badge set, the media audit reports clean without inventing duplicate badges, and the exception is isolated to the one repository that owns its presentation.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-005 (README accuracy), PRINCIPLE-011 (audit reports the real contract) and PRINCIPLE-014 (the exception has a unit test).
+
+### ADR-248: Reforge Is Integrated into AIKit and Its Standalone Repository Is Archived
+- **Date**: 2026-10-28
+- **Status**: Accepted
+- **Context**: ADR-231 created a second full checkout of Reforge at `projects/aegean-reforge` and a two-way hash-marker sync to keep it equal to AIKit. In practice the copy drifted, the sync file and `repo init/sync/status/release` commands made two sources of truth look legitimate, and the user asked for Reforge to live inside AIKit only, with the former repository archived and still discoverable from the website.
+- **Decision**: Delete `reforge/repo_sync.py`, `reforge-sync.json` and the `projects/aegean-reforge` checkout; the `repo` command group leaves the CLI. `reforge/` plus `reforge.py` (and `python -m reforge`) remain the only source, reachable through `aikit.py reforge`. The GitHub repository `AegeanWorks/Aegean-Reforge` is archived with a README that names AIKit as its home, and the AegeanWorks portfolio row and dossier point there instead of promising a live standalone tool.
+- **Consequences**: One canonical copy, no sync conflicts or stale markers, and a smaller CLI surface. The archive keeps existing clones, tags and issue history readable without implying active development; anyone installing Reforge clones AIKit.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (one verified source), PRINCIPLE-005 (README and tree match the tracked files), PRINCIPLE-009 (the sync layer is removed rather than left dead), PRINCIPLE-011 (one documented entry point) and PRINCIPLE-014 (tests assert the removed command and the remaining parser surface).

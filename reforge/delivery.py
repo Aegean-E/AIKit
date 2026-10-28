@@ -84,8 +84,10 @@ def commit_repairs(root: Path, message: str, paths: Optional[Sequence[str]] = No
             "message": message, "paths": selected}
 
 
-def deliver(root: Path, message: str, do_push: bool) -> Tuple[Dict[str, object], List[str]]:
-    report = commit_repairs(root, message)
+def deliver(root: Path, message: str, do_push: bool,
+            paths: Optional[Sequence[str]] = None) -> Tuple[Dict[str, object], List[str]]:
+    """Commit only the reviewed repair paths plus the audit state, then optionally push."""
+    report = commit_repairs(root, message, paths)
     lines = [f"[OK] Committed {report['commit']}: {message}"]
     if not do_push:
         lines.append("     Not pushed: pass --push to publish the repair commits.")
