@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `53`
-- **Total Classes**: `122`
-- **Total Top-Level Functions**: `712`
-- **Total Class Methods**: `785`
-- **Total Source Lines**: `30424`
+- **Total Python Modules**: `52`
+- **Total Classes**: `120`
+- **Total Top-Level Functions**: `697`
+- **Total Class Methods**: `776`
+- **Total Source Lines**: `29954`
 
 ---
 
@@ -31,9 +31,9 @@
 ---
 
 ### [`idea_catcher/__main__.py`](idea_catcher/__main__.py)
-> *`python -m idea_catcher`: the standalone entry point.*
+> *`python -m idea_catcher`: the module entry point.*
 
-**Size**: `8` lines (`161` bytes)
+**Size**: `8` lines (`157` bytes)
 
 ---
 
@@ -91,7 +91,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2075` lines (`92128` bytes)
+**Size**: `2021` lines (`88633` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -102,7 +102,7 @@
 - `class LockBusy` - *Another process holds the registry lock and the wait timed out.*
 
 **Functions:**
-- `def default_root()` - *The register this checkout serves: the standalone repo, or AIKit's projects copy.*
+- `def default_root()` - *The private register this AIKit checkout serves.*
 - `def load_json(path)` - *Read one registry file, refusing a missing or non-object document by name.*
 - `def write_json(path, payload)` - *Write atomically: temp file in the same directory, fsync, then replace.*
 - `def load_targets(root)`
@@ -154,37 +154,8 @@
 - `def _report(errors)`
 - `def add_commands(sub)` - *Declare every Idea Catcher command once, for either top-level CLI.*
 - `def build_parser()`
-- `def _repo_command(args)` - *Run repo init/adopt/status/sync without loading the register first.*
 - `def main(argv, root)`
 - `def run(args, root)` - *Execute an already parsed command; shared with `python aikit.py idea-catcher`.*
-
----
-
-### [`idea_catcher/repo_sync.py`](idea_catcher/repo_sync.py)
-> *Materialize Idea Catcher's shipped tool source and synchronize both directions.*
-
-**Size**: `324` lines (`13031` bytes)
-
-**Classes:**
-- `class SyncError` - *A repository sync request was refused; carries the AIKit What/Why/Fix triad.*
-  - Method `.__init__(message, why, fix, exit_code)`
-  - Method `.triad()`
-
-**Functions:**
-- `def source_root()` - *The AIKit checkout that owns this package, found by its sync file.*
-- `def sync_config(root)` - *Read the AIKit-side sync file; every path is relative to the checkout.*
-- `def manifest(root, config)` - *The shipped Idea Catcher source: the package and its standalone shim.*
-- `def _digest(path)`
-- `def _write(path, text)` - *Atomic generated-file write: temp, fsync, replace (PRINCIPLE-013).*
-- `def _copy(source, target)`
-- `def _git(root, *args)`
-- `def _marker(target, marker_name)`
-- `def _target(root, config, target)`
-- `def init_repo(source, target, force)` - *Create an empty standalone repository with the shipped source and a first commit.*
-- `def adopt_repo(source, target)` - *Attach the shipped source to an existing register and record the sync baseline.*
-- `def sync_repo(source, target, direction, force)` - *Copy changed shipped files one way, refusing a file both sides changed since the last sync.*
-- `def repo_status(source, target)` - *Compare both copies and the last synced baseline without changing anything.*
-- `def _version()`
 
 ---
 
@@ -219,16 +190,16 @@
 ---
 
 ### [`idea_catcher/version.py`](idea_catcher/version.py)
-> *The single version constant shared by the package, CLI and standalone repository.*
+> *The single version constant shared by the package and its CLI.*
 
-**Size**: `3` lines (`111` bytes)
+**Size**: `3` lines (`92` bytes)
 
 ---
 
 ### [`idea_catcher.py`](idea_catcher.py)
-> *Standalone Idea Catcher entry point: `python idea_catcher.py --help`.*
+> *Idea Catcher entry point: `python idea_catcher.py --help`.*
 
-**Size**: `9` lines (`200` bytes)
+**Size**: `9` lines (`189` bytes)
 
 ---
 
@@ -553,7 +524,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1301` lines (`65284` bytes)
+**Size**: `1300` lines (`65184` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -587,7 +558,7 @@
 - `def cmd_ui_id(args)` - *Detect or manually set a project's UI identifier (ADR-233).*
 - `def cmd_media(args)` - *Generate, review and apply brand/screenshot media (ADR-235).*
 - `def cmd_reforge(args)` - *Reach Aegean Reforge through AIKit's registry, gates and persistence.*
-- `def cmd_idea_catcher(args)` - *Reach the shipped Idea Catcher register through AIKit's workspace layout.*
+- `def cmd_idea_catcher(args)` - *Reach the private Idea Catcher register that ships with AIKit.*
 - `def cmd_delegate(args)`
 - `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
@@ -1262,7 +1233,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1544` lines (`78840` bytes)
+**Size**: `1507` lines (`77013` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1377,11 +1348,8 @@
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
-- `class TestIdeaCatcherSyncCheck` - *PRINCIPLE-014: the shipped copy and the standalone register report drift as a gate.*
-  - Method `.tree()`
-  - Method `.test_repo_status_check_fails_on_drift()`
-- `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the shipped register in a workspace.*
-  - Method `.test_status_reads_the_workspace_register()`
+- `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
+  - Method `.test_status_reads_the_register_named_by_the_root_override()`
 
 **Functions:**
 - `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
@@ -1395,7 +1363,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8849` lines (`502820` bytes)
+**Size**: `8795` lines (`499916` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2110,15 +2078,10 @@
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`
-- `class TestIdeaCatcherShip` - *PRINCIPLE-014: Idea Catcher ships complete and its two copies stay synchronized.*
-  - Method `.tree()`
-  - Method `.marker(target)`
-  - Method `.test_the_manifest_carries_the_package_and_the_shim()`
-  - Method `.test_a_sync_path_may_not_escape_the_checkout()`
-  - Method `.test_sync_pushes_and_pulls_shipped_source()`
-  - Method `.test_sync_refuses_a_two_sided_conflict()`
+- `class TestIdeaCatcherShip` - *PRINCIPLE-014: Idea Catcher ships complete and keeps its register private.*
   - Method `.test_the_root_override_selects_a_register()`
-  - Method `.test_the_parser_declares_the_repo_and_status_commands()`
+  - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`
+  - Method `.test_the_standalone_sync_layer_is_gone()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

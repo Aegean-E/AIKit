@@ -135,14 +135,9 @@ Schema 2; `next_run_id`, `active_run`, `last_run`, `runs` and mirrored top-level
 holds `id`, `start`, `step`, `stop`, `status`, its audited SHAs and a bounded history of stage
 entries. Reforge has no sync config or standalone marker any more (ADR-248).
 
-### Idea Catcher Sync Config (`idea-catcher-sync.json`) and Marker (`<standalone>/.idea-catcher-repo.json`)
-The same schema-1 shape that Reforge formerly used, naming `package` (`idea_catcher`),
-`entrypoint` (`idea_catcher.py`), the `projects/idea-catcher` standalone target and the marker.
-The marker records name, source, version and `synced` path hashes; `repo adopt` seeds it for an
-existing register, and `repo sync --direction push|pull` updates it after a one-way copy (ADR-245).
-
 ### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
-Schema 1. `targets.json` holds the routing targets; `ideas.json` holds each idea's `id`, dossier,
+Schema 1, stored as private local data under `.idea-catcher/` at the AIKit root and never in Git.
+`targets.json` holds the routing targets; `ideas.json` holds each idea's `id`, dossier,
 concept, target, impact, effort, status, reason/evidence, optional `tags`, `superseded_by`, and a
 `history` list whose entries are either a status change or a `field` (`target`/`tags`) with
 `from`/`to`. `reviews.json` holds `repos` (claim count, last order) and `reviews` (review id, slug,

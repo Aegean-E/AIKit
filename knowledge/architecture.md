@@ -60,16 +60,13 @@ unchanged and the CLI says nothing was recorded. See [ADR-230](decisions.md),
 [ADR-250](decisions.md).
 
 ## 🧭 Idea Catcher: Shipped Register Tool
-`idea_catcher/` is the tool AIKit ships for the private `projects/idea-catcher/` register: cloning
-AIKit yields the full source, while the data (`targets.json`, `ideas.json`, `reviews.json`,
-`dossiers/`) stays in the standalone repository. `aikit.py idea-catcher` reaches the same
-`idea_catcher.registry.run` dispatcher as `idea_catcher.py` and `python -m idea_catcher`; the
-default register root is the standalone checkout beside the package, overridable with
-`IDEA_CATCHER_ROOT`. The historical `tools/` modules in the standalone repository are thin
-facades over the package. `idea-catcher-sync.json` names the package, shim, standalone target and
-marker; `repo adopt` attaches the source to an existing register, `repo sync --direction push|pull`
-moves changed files, and a marker hash refuses a two-sided edit. See
-[ADR-246](decisions.md).
+`idea_catcher/` is the tool AIKit ships for its private idea register: cloning AIKit yields the
+full source, while the data (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`) lives in
+the git-ignored `.idea-catcher/` folder at the AIKit root and never enters Git. `aikit.py
+idea-catcher` reaches the same `idea_catcher.registry.run` dispatcher as `idea_catcher.py` and
+`python -m idea_catcher`; the default register root is `.idea-catcher/`, overridable with
+`IDEA_CATCHER_ROOT`. There is no second copy or sync marker any more: the archived standalone
+repository pointed here instead (ADR-246, ADR-252).
 
 ## 🖼️ UI Identity, AI Topic Briefs and Reviewed Media
 `scripts/project_ui.py` writes `has_ui`/`ui_kind`/`ui_evidence` into each project's

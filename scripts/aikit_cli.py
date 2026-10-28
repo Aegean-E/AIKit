@@ -1130,12 +1130,11 @@ def cmd_reforge(args: argparse.Namespace) -> int:
 
 
 def cmd_idea_catcher(args: argparse.Namespace) -> int:
-    """Reach the shipped Idea Catcher register through AIKit's workspace layout."""
+    """Reach the private Idea Catcher register that ships with AIKit."""
     from idea_catcher.registry import run
 
     args.command = args.idea_catcher_action
-    project_root = Path(args.workspace) / "projects" / "idea-catcher"
-    return run(args, root=project_root)
+    return run(args)
 
 
 def cmd_delegate(args: argparse.Namespace) -> int:

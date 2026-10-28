@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "package": "idea_catcher",
-  "entrypoint": "idea_catcher.py",
-  "standalone": "projects/idea-catcher",
-  "marker": ".idea-catcher-repo.json",
-  "comment": "The one file that names where Idea Catcher lives in AIKit and where its standalone repository is synchronized. Edit paths here, then run `python aikit.py idea-catcher repo sync`."
-}

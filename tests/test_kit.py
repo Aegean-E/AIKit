@@ -158,7 +158,6 @@ from reforge.state import (
 )
 from reforge.verification import default_test_command
 from idea_catcher import registry as idea_registry
-from idea_catcher import repo_sync as idea_sync
 import scripts.project_artwork as project_artwork
 import scripts.project_brand as project_brand
 import scripts.project_media as project_media
@@ -8772,64 +8771,7 @@ class TestReforgeCore(unittest.TestCase):
 
 
 class TestIdeaCatcherShip(unittest.TestCase):
-    """PRINCIPLE-014: Idea Catcher ships complete and its two copies stay synchronized."""
-
-    def tree(self):
-        source = Path(tempfile.mkdtemp(prefix="idea_source_"))
-        target = Path(tempfile.mkdtemp(prefix="idea_target_"))
-        self.addCleanup(shutil.rmtree, str(source), True)
-        self.addCleanup(shutil.rmtree, str(target), True)
-        (source / "idea-catcher-sync.json").write_text(json.dumps({
-            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
-            "standalone": "target", "marker": ".marker.json",
-        }), encoding="utf-8")
-        (source / "idea_catcher.py").write_text("ENTRY = 1\n", encoding="utf-8")
-        package = source / "idea_catcher"
-        package.mkdir()
-        (package / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-        (target / "targets.json").write_text("{}\n", encoding="utf-8")
-        return source, target
-
-    def marker(self, target):
-        (target / ".marker.json").write_text(json.dumps({"schema": 1, "synced": {}}),
-                                             encoding="utf-8")
-
-    def test_the_manifest_carries_the_package_and_the_shim(self):
-        source, _ = self.tree()
-        shipped = idea_sync.manifest(source, idea_sync.sync_config(source))
-        self.assertEqual(shipped, ["idea_catcher.py", "idea_catcher/__init__.py"])
-
-    def test_a_sync_path_may_not_escape_the_checkout(self):
-        source, _ = self.tree()
-        (source / "idea-catcher-sync.json").write_text(json.dumps({
-            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
-            "standalone": "../outside", "marker": ".marker.json",
-        }), encoding="utf-8")
-        with self.assertRaises(idea_sync.SyncError):
-            idea_sync.sync_config(source)
-
-    def test_sync_pushes_and_pulls_shipped_source(self):
-        source, target = self.tree()
-        self.marker(target)
-        adopted = idea_sync.adopt_repo(source, target)
-        self.assertEqual(len(adopted["copied"]), 2)
-        (source / "idea_catcher/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
-        pushed = idea_sync.sync_repo(source, target, "push")
-        self.assertEqual(pushed["copied"], ["idea_catcher/__init__.py"])
-        (target / "idea_catcher/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
-        pulled = idea_sync.sync_repo(source, target, "pull")
-        self.assertEqual(pulled["copied"], ["idea_catcher/__init__.py"])
-        self.assertIn("VALUE = 3", (source / "idea_catcher/__init__.py").read_text(encoding="utf-8"))
-
-    def test_sync_refuses_a_two_sided_conflict(self):
-        source, target = self.tree()
-        self.marker(target)
-        idea_sync.adopt_repo(source, target)
-        (source / "idea_catcher/__init__.py").write_text("VALUE = 2\n", encoding="utf-8")
-        (target / "idea_catcher/__init__.py").write_text("VALUE = 3\n", encoding="utf-8")
-        with self.assertRaises(idea_sync.SyncError) as raised:
-            idea_sync.sync_repo(source, target, "push")
-        self.assertIn("both sides", raised.exception.message)
+    """PRINCIPLE-014: Idea Catcher ships complete and keeps its register private."""
 
     def test_the_root_override_selects_a_register(self):
         root = Path(tempfile.mkdtemp(prefix="idea_root_"))
@@ -8837,12 +8779,16 @@ class TestIdeaCatcherShip(unittest.TestCase):
         with mock.patch.dict(os.environ, {"IDEA_CATCHER_ROOT": str(root)}):
             self.assertEqual(idea_registry.default_root(), root.resolve())
 
-    def test_the_parser_declares_the_repo_and_status_commands(self):
+    def test_the_parser_declares_the_status_command_without_a_repo_group(self):
         parser = idea_registry.build_parser()
         self.assertEqual(parser.parse_args(["status"]).command, "status")
-        sync = parser.parse_args(["repo", "sync", "--direction", "pull"])
-        self.assertEqual((sync.command, sync.repo_action, sync.direction),
-                         ("repo", "sync", "pull"))
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["repo", "status"])
+
+    def test_the_standalone_sync_layer_is_gone(self):
+        package = Path(idea_registry.__file__).resolve().parent
+        self.assertFalse((package / "repo_sync.py").exists())
+        self.assertFalse((package.parent / "idea-catcher-sync.json").exists())
 
 
 if __name__ == "__main__":

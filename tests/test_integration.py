@@ -1480,62 +1480,25 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertEqual(payload["result"]["stage"], 0)
 
 
-class TestIdeaCatcherSyncCheck(unittest.TestCase):
-    """PRINCIPLE-014: the shipped copy and the standalone register report drift as a gate."""
-
-    def tree(self):
-        source = Path(tempfile.mkdtemp(prefix="idea_sync_source_"))
-        target = Path(tempfile.mkdtemp(prefix="idea_sync_target_"))
-        self.addCleanup(remove_tree, source)
-        self.addCleanup(remove_tree, target)
-        (source / "idea-catcher-sync.json").write_text(json.dumps({
-            "schema": 1, "package": "idea_catcher", "entrypoint": "idea_catcher.py",
-            "standalone": "target", "marker": ".marker.json",
-        }), encoding="utf-8")
-        (source / "idea_catcher.py").write_text("ENTRY = 1\n", encoding="utf-8")
-        package = source / "idea_catcher"
-        package.mkdir()
-        (package / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-        (target / "targets.json").write_text("{}\n", encoding="utf-8")
-        (target / ".marker.json").write_text(json.dumps({"schema": 1, "synced": {}}),
-                                             encoding="utf-8")
-        return source, target
-
-    def test_repo_status_check_fails_on_drift(self):
-        from idea_catcher import registry as idea_registry
-        from idea_catcher import repo_sync as idea_sync
-
-        source, target = self.tree()
-        idea_sync.adopt_repo(source, target)
-        (source / "idea_catcher/__init__.py").write_text("VALUE = 9\n", encoding="utf-8")
-        out = io.StringIO()
-        with mock.patch.object(idea_sync, "source_root", return_value=source), \
-                contextlib.redirect_stdout(out):
-            code = idea_registry.main(["repo", "status", "--check", "--path", str(target)])
-        self.assertEqual(code, 1, out.getvalue())
-        self.assertIn("diverged", out.getvalue())
-
-
 class TestIdeaCatcherCli(unittest.TestCase):
-    """PRINCIPLE-011: `aikit.py idea-catcher` reaches the shipped register in a workspace."""
+    """PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command."""
 
-    def test_status_reads_the_workspace_register(self):
-        workspace = Path(tempfile.mkdtemp(prefix="idea_kit_"))
-        self.addCleanup(remove_tree, workspace)
-        project = workspace / "projects" / "idea-catcher"
-        project.mkdir(parents=True)
-        (project / "targets.json").write_text(json.dumps({
+    def test_status_reads_the_register_named_by_the_root_override(self):
+        register = Path(tempfile.mkdtemp(prefix="idea_kit_"))
+        self.addCleanup(remove_tree, register)
+        (register / "targets.json").write_text(json.dumps({
             "schema": 1, "targets": [{
                 "id": "aikit", "name": "AIKit", "path": "../../", "stack": "stdlib",
                 "gate": "tests", "fit": "governance", "added": "2026-10-28",
             }],
         }), encoding="utf-8")
-        (project / "ideas.json").write_text('{"schema": 1, "ideas": []}', encoding="utf-8")
-        (project / "reviews.json").write_text('{"schema": 1, "repos": {}, "reviews": []}',
-                                              encoding="utf-8")
+        (register / "ideas.json").write_text('{"schema": 1, "ideas": []}', encoding="utf-8")
+        (register / "reviews.json").write_text('{"schema": 1, "repos": {}, "reviews": []}',
+                                               encoding="utf-8")
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = aikit_main(["--workspace", str(workspace), "idea-catcher", "status"])
+        with mock.patch.dict(os.environ, {"IDEA_CATCHER_ROOT": str(register)}), \
+                contextlib.redirect_stdout(out):
+            code = aikit_main(["idea-catcher", "status"])
         self.assertEqual(code, 0, out.getvalue())
         self.assertIn("0 ideas", out.getvalue())
 

@@ -3,12 +3,12 @@
 ``MATRIX.md`` is a rendered artefact. Its two inputs are ``targets.json`` (which
 projects ideas can be routed to) and ``ideas.json`` (every extracted idea, its
 routing and its decision state). Editing either input and re-running ``render``
-is the whole workflow; ``render --check`` fails when the committed matrix no
+is the whole workflow; ``render --check`` fails when the rendered matrix no
 longer matches them, so a stale register cannot be merged.
 
 Adding a routing target is one command, not a code change:
 
-    python tools/idea_catcher.py add-target --id research-engine --name "Research Engine" \
+    python aikit.py idea-catcher add-target --id research-engine --name "Research Engine" \
         --path ../research-engine --stack "..." --gate "..." --fit "..."
 
 Every non-``Proposed`` status must record why it was decided. A rejected idea
@@ -35,11 +35,10 @@ from pathlib import Path
 from typing import Any
 
 try:  # ``python tools/idea_catcher.py`` runs the module as a script.
-    from . import claim_audit, concept_map, repo_sync, upstream_check
+    from . import claim_audit, concept_map, upstream_check
 except ImportError:  # pragma: no cover - exercised by the CLI entry point
     import claim_audit  # type: ignore[no-redef]
     import concept_map  # type: ignore[no-redef]
-    import repo_sync  # type: ignore[no-redef]
     import upstream_check  # type: ignore[no-redef]
 
 TARGETS_FILE = "targets.json"
@@ -50,11 +49,11 @@ LOCK_FILE = ".registry.lock"
 
 
 def default_root() -> Path:
-    """The register this checkout serves: the standalone repo, or AIKit's projects copy.
+    """The private register this AIKit checkout serves.
 
-    The shipped package lives at the AIKit root, while the data it renders lives in
-    ``projects/idea-catcher``. In the standalone repository the package sits beside its
-    data, so the same module serves both layouts. ``IDEA_CATCHER_ROOT`` overrides both.
+    The shipped package lives at the AIKit root, while its data lives beside it in the
+    ignored ``.idea-catcher`` folder and never enters Git. A standalone checkout that keeps
+    its data beside the package still works. ``IDEA_CATCHER_ROOT`` overrides both.
     """
     override = os.environ.get("IDEA_CATCHER_ROOT")
     if override:
@@ -62,10 +61,10 @@ def default_root() -> Path:
     checkout = Path(__file__).resolve().parents[1]
     if (checkout / TARGETS_FILE).is_file():
         return checkout
-    nested = checkout / "projects" / "idea-catcher"
-    if (nested / TARGETS_FILE).is_file():
-        return nested
-    return checkout
+    private = checkout / ".idea-catcher"
+    if (private / TARGETS_FILE).is_file():
+        return private
+    return private
 
 
 ROOT = default_root()
@@ -1671,63 +1670,12 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     history = sub.add_parser("history", help="show the recorded changes for one idea")
     history.add_argument("idea_id")
     history.add_argument("--json", action="store_true", help="print entries as JSON")
-    repo = sub.add_parser("repo", help="manage the standalone Idea Catcher repository")
-    repo_actions = repo.add_subparsers(dest="repo_action", required=True)
-    status = repo_actions.add_parser("status", help="compare both copies with the last sync")
-    status.add_argument("--path", default="", help="standalone folder; defaults to the sync config")
-    status.add_argument("--check", action="store_true",
-                        help="exit 1 when the two copies differ, for CI")
-    init = repo_actions.add_parser("init", help="create an empty standalone repository")
-    init.add_argument("--path", default="", help="target folder; defaults to the sync config")
-    init.add_argument("--force", action="store_true", help="overwrite Idea Catcher's source only")
-    adopt = repo_actions.add_parser("adopt", help="attach the source to an existing register")
-    adopt.add_argument("--path", default="", help="register folder; defaults to the sync config")
-    sync = repo_actions.add_parser("sync", help="synchronize shipped source one way")
-    sync.add_argument("--direction", choices=("push", "pull"), default="push")
-    sync.add_argument("--path", default="", help="standalone folder; defaults to the sync config")
-    sync.add_argument("--force", action="store_true", help="discard one side of a conflict")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="idea_catcher", description=__doc__.splitlines()[0])
     add_commands(parser.add_subparsers(dest="command", required=True))
     return parser
-
-
-def _repo_command(args: argparse.Namespace) -> int:
-    """Run repo init/adopt/status/sync without loading the register first."""
-    target = Path(args.path) if getattr(args, "path", "") else None
-    try:
-        if args.repo_action == "init":
-            result = repo_sync.init_repo(target=target, force=args.force)
-            print(f"[OK] initialized {result['path']} with {result['files']} shipped file(s)")
-        elif args.repo_action == "adopt":
-            result = repo_sync.adopt_repo(target=target)
-            copied = f", copied {len(result['copied'])} file(s)" if result["copied"] else ""
-            print(f"[OK] adopted {result['path']}{copied}")
-        elif args.repo_action == "sync":
-            result = repo_sync.sync_repo(direction=args.direction, target=target, force=args.force)
-            copied = ", ".join(result["copied"]) or "nothing"
-            print(f"[OK] {result['direction']} sync to {result['path']}: {copied}")
-        else:
-            result = repo_sync.repo_status(target=target)
-            differing = ", ".join(result["differing"]) or "none"
-            print(f"{result['path']} · version {result['version']}")
-            print(f"  config: {result['config']}")
-            print(f"  differing: {differing}")
-            print(f"  stale marker: {', '.join(result['stale_marker']) or 'none'}")
-            print(f"  dirty: {'yes' if result['dirty'] else 'no'}")
-            if args.check and result["differing"]:
-                print("[FAIL] the shipped copy and the standalone repository have diverged")
-                print("       Why: a clone must carry the same Idea Catcher source as the register.")
-                print("       Fix: merge the two copies, then run `repo sync --direction push|pull`.")
-                return 1
-        return 0
-    except repo_sync.SyncError as error:
-        print(f"[FAIL] {error.message}")
-        print(f"       Why: {error.why}")
-        print(f"       Fix: {error.fix}")
-        return error.exit_code
 
 
 def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
@@ -1737,8 +1685,6 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
 def run(args: argparse.Namespace, root: Path = ROOT) -> int:
     """Execute an already parsed command; shared with `python aikit.py idea-catcher`."""
     try:
-        if args.command == "repo":
-            return _repo_command(args)
         if args.command == "add-target":
             targets = add_target(
                 root,

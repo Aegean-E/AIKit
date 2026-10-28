@@ -44,6 +44,10 @@ secrets.*
 # The projects AIKit builds: each is its own git repository with its own .aikit/ memory (ADR-119)
 projects/
 
+# Idea Catcher's private register: the tool ships in idea_catcher/, the found ideas never
+# leave this machine and are never published (ADR-252).
+/.idea-catcher/
+
 # Other projects' code kept here for reference only: never uploaded, never mapped (ADR-201).
 references/
 

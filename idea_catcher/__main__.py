@@ -1,4 +1,4 @@
-"""`python -m idea_catcher`: the standalone entry point."""
+"""`python -m idea_catcher`: the module entry point."""
 
 import sys
 

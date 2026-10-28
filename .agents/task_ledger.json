@@ -1,51 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-aikit-integration",
-    "last_phase": "planning",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793215738.4198003,
-    "owner": "kilo:reforge-integration",
-    "started_by": "kilo:reforge-integration",
-    "continuations": [],
-    "impact_assessment": {
-      "why": "The user wants Reforge integrated into AIKit only; the duplicate projects/aegean-reforge checkout and one-way sync file create two sources of truth and already drifted.",
-      "benefits": "One canonical source for Reforge, no bidirectional sync conflicts, less documentation ambiguity, and a safer repair commit scope.",
-      "risks": "contract: reforge repo subcommands and reforge-sync.json disappear; dependency: none beyond stdlib; concurrency: docs/tests edited while another AIKit session may touch shared files; state: no persisted schema change.",
-      "mitigation": "Remove the layer atomically, keep reforge.py plus reforge/ as the entrypoints, update every reference and test, and re-read shared files immediately before staging."
-    },
-    "completed_at": 1793217876.4310071
+    "task_id": "idea-catcher-integration",
+    "last_phase": "in_progress",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1793228794.4242477,
+    "owner": "kilo:idea-catcher-integration",
+    "started_by": "kilo:idea-catcher-integration",
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "project-model-brand",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Replace local word lockups with online-model-rendered brand assets",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793199865.1942596,
-      "timestamp_str": "2026-10-28 18:04:25",
-      "agent": "kilo:model-brand",
-      "impact_assessment": {
-        "why": "The user rejected the locally composed typography and asked for an online image model.",
-        "benefits": "Model-rendered title/category in every logo and wide social card, with individual vision approval for all 39 projects plus Reforge.",
-        "risks": "contract: social cards are reframed to 1280x640 after the model's square output; dependency: Pollinations model and a secret environment key; concurrency: sequential generation; state: assets return to pending until re-reviewed.",
-        "mitigation": "Environment-only API key, free model fallback, per-asset regeneration seeds, individual vision review, media audits pending=0, and full gate verification."
-      }
-    },
-    {
-      "task_id": "project-model-brand",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Delivered model-rendered identities for 38 projects + Reforge: 39 logos and 39 wide social cards individually reviewed; rejected text/letterboxing regenerated or cropped; 37 projects + Reforge pushed, idea-catcher committed locally (no remote); all media audits pending=0 and all gates pass.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793199865.3378155,
-      "timestamp_str": "2026-10-28 18:04:25",
-      "agent": "kilo:model-brand"
-    },
     {
       "task_id": "project-model-brand",
       "phase": "completed",
@@ -272,6 +237,34 @@
       "timestamp": 1793217876.4310086,
       "timestamp_str": "2026-10-28 23:04:36",
       "agent": "kilo:reforge-integration"
+    },
+    {
+      "task_id": "idea-catcher-integration",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Integrate Idea Catcher into AIKit only: move its private register to the AIKit root, drop the repo sync layer, archive and remove projects/idea-catcher",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793227805.88696,
+      "timestamp_str": "2026-10-29 01:50:05",
+      "agent": "kilo:idea-catcher-integration",
+      "impact_assessment": {
+        "why": "The user wants the Idea Catcher tool integrated into AIKit, its found ideas kept but invisible to the public, the local standalone repo archived, and projects/idea-catcher removed",
+        "benefits": "One canonical Idea Catcher source, no bidirectional sync drift, private register data preserved outside public commits, and a smaller CLI surface",
+        "risks": "contract: repo subcommands, idea-catcher-sync.json and the projects register layout disappear; dependency: stdlib only; concurrency: shared docs/tests may be touched by another session; state: register data moves to an ignored root folder, no public schema change",
+        "mitigation": "Move data atomically, ignore it before staging, update every reference and test, archive the full repository first, then run all Phase 4 gates and verify git status carries no idea data"
+      }
+    },
+    {
+      "task_id": "idea-catcher-integration",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[5/5] Idea Catcher integrated into AIKit only; private register moved to git-ignored .idea-catcher/; repo sync layer removed; standalone repo archived to Desktop and projects/idea-catcher deleted; 595 unit + 66 integration tests and every gate pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793228794.4242477,
+      "timestamp_str": "2026-10-29 02:06:34",
+      "agent": "kilo:idea-catcher-integration"
     }
   ]
 }

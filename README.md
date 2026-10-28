@@ -27,7 +27,7 @@
 |---|---|---|
 | **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
 | **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`; windows, Python AST (ADR-230, ADR-232, ADR-249)|
-| **Route Ideas & Reviews**| `python aikit.py idea-catcher <cmd>`| `validate`, `render`, `status`, `ideas`, `tag`, `history`, `reviews`, `review-start/finish`, `revalidate`, `audit-claims`, `concepts`, `repo`; shipped register tooling (ADR-246)|
+| **Route Ideas & Reviews**| `python aikit.py idea-catcher <cmd>`| `validate`, `render`, `status`, `ideas`, `tag`, `history`, `reviews`, `review-start/finish`, `revalidate`, `audit-claims`, `concepts`; shipped register tooling with a private register (ADR-246, ADR-252)|
 | **Project Tags & Media**| `python aikit.py <cmd>`| `ui-id`, `topics --brief/--from-file`, `media init/capture/review/apply/audit`; AI-chosen tags, reviewed logos and commit-stamped screenshots (ADR-233..236)|
 | **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=20ms unit, <=500ms integration|
 | **Run One Tier**| `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration`| Isolates a failing tier|
@@ -69,15 +69,13 @@ portable_agent_kit/
 │   └── social-preview.png
 ├── reforge.py                    <- Aegean Reforge CLI entry point (and `aikit.py reforge`)
 ├── reforge/                      <- Progressive Git history auditor & safe repair engine
-├── idea_catcher.py               <- Idea Catcher standalone CLI entry point
-├── idea-catcher-sync.json        <- Idea Catcher source/standalone sync manifest (ADR-246)
+├── idea_catcher.py               <- Idea Catcher CLI entry point (and `aikit.py idea-catcher`)
 ├── idea_catcher/                 <- Target registry, idea ledger, review ledger and matrix renderer
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── registry.py
 │   ├── claim_audit.py
 │   ├── concept_map.py
-│   ├── repo_sync.py
 │   ├── upstream_check.py
 │   └── version.py
 ├── .gitignore                    <- Credential & local-state baseline (PRINCIPLE-019 R3)
@@ -214,17 +212,16 @@ without one (ADR-250).
 
 ## 🧭 Idea Catcher: Routed Idea Register
 
-Idea Catcher ships in `idea_catcher/` and `idea_catcher.py`; its register lives in
-`projects/idea-catcher/`, outside AIKit's tree. `repo sync` moves code one way and refuses a
-two-sided edit.
+Idea Catcher is integrated into AIKit: its only source lives in `idea_catcher/` and
+`idea_catcher.py`. Its register is private local data under `.idea-catcher/` at the AIKit root;
+that path is git-ignored, so the ideas it has collected never enter a commit or the public
+repository (ADR-252). `IDEA_CATCHER_ROOT` points the tool at a different register.
 
 ```bash
 python aikit.py idea-catcher status             # counts per target and decision state
 python aikit.py idea-catcher validate           # targets, ideas, dossiers and matrix
 python aikit.py idea-catcher render --check     # fail when MATRIX.md is stale
 python aikit.py idea-catcher reviews --stale
-python aikit.py idea-catcher repo status --check  # exit 1 when both copies diverge
-python aikit.py idea-catcher repo sync --direction push  # pull reverses it
 ```
 
 A review leases its repository and reserves idea ids, so parallel analyses cannot collide.

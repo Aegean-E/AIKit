@@ -52,9 +52,9 @@ python aikit.py reforge fix <name>     # repair safe findings, add regression te
 python aikit.py reforge run <name> --push  # review first; commits explicit paths, pushes without force (ADR-230)
 python aikit.py reforge settings|stop|resume|runs|status|report <name>  # manage runs (ADR-232, ADR-249)
 python reforge.py <path> --help        # same engine against any repo, no project registry (ADR-248)
-python aikit.py idea-catcher status     # shipped register tool over projects/idea-catcher (ADR-246)
+python aikit.py idea-catcher status     # shipped tool over the private .idea-catcher/ register (ADR-246, ADR-252)
 python aikit.py idea-catcher validate   # targets, ideas, dossiers and generated matrix; render --check
-python aikit.py idea-catcher repo status --check  # exit 1 on drift; repo sync --direction push|pull
+python aikit.py idea-catcher render --check  # fail when MATRIX.md is stale
 ```
 - Reforge in one paragraph: window N is `start + step*(N-1)`, capped by `stop`; a stage inspects only the lines its own commits add and attributes each finding to the commit that introduced it. Five rules repair mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`), each with a generated regression test; the other 16 are reported for a human. A red test or gate restores the exact bytes, and `--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`, never forcing. Detectors use Python's AST, so changed non-Python files print as `[SKIP] ... not analysed` instead of passing silently. Every run also appends `reforge:<run-id>` checkpoints to the repo's AIKit ledger without touching `active_task`, so `--resume` shows it; a plain checkout without a ledger is audited anyway. `reforge/` + `reforge.py` are the only source; the standalone repository is archived.
 - Request names no single project: ask which one, or the name of a new one, before writing code.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone Idea Catcher entry point: `python idea_catcher.py --help`."""
+"""Idea Catcher entry point: `python idea_catcher.py --help`."""
 
 import sys
 
