@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `52`
 - **Total Classes**: `122`
-- **Total Top-Level Functions**: `699`
-- **Total Class Methods**: `776`
-- **Total Source Lines**: `30009`
+- **Total Top-Level Functions**: `702`
+- **Total Class Methods**: `779`
+- **Total Source Lines**: `30106`
 
 ---
 
@@ -408,10 +408,11 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `380` lines (`16572` bytes)
+**Size**: `394` lines (`17457` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
+- `def repair_from_dict(item)`
 - `def _scanner(label, text)`
 - `def _stop_value(stop)`
 - `def _snapshot(root, findings)`
@@ -468,7 +469,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `416` lines (`16037` bytes)
+**Size**: `445` lines (`17219` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -476,6 +477,8 @@
 - `def new_state()` - *A fresh state with mirrored top-level fields for schema-1 readers and reports.*
 - `def _now()`
 - `def validate_settings(start, step, stop)` - *A run's window plan: start >= 2, step >= 1, and an optional stop at or past start.*
+- `def _stage_key(entry)`
+- `def sync_last_audit(run)` - *Point the run's history at its last audit entry after a later `fix` wrote it.*
 - `def _mirror(state, run)`
 - `def create_run(state, start, step, stop)` - *Add one independent audit run and make it active; its history starts empty.*
 - `def _find_by_id(state, run_id)`
@@ -1240,7 +1243,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1479` lines (`75150` bytes)
+**Size**: `1495` lines (`76028` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1349,6 +1352,7 @@
   - Method `.repository(defects)`
   - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
+  - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
@@ -1370,7 +1374,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8754` lines (`497673` bytes)
+**Size**: `8792` lines (`499736` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2074,6 +2078,8 @@
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`
   - Method `.test_runs_stop_resume_and_create_independent_histories()`
+  - Method `.test_raising_the_stop_reopens_a_completed_run()`
+  - Method `.test_a_later_fix_refreshes_the_history_entry_too()`
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`

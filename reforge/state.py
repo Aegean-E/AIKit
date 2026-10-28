@@ -73,7 +73,32 @@ def validate_settings(start: int, step: int, stop: Optional[int]) -> None:
         )
 
 
+def _stage_key(entry: Dict[str, object]) -> tuple:
+    return (entry.get("run"), entry.get("stage"), entry.get("window"), entry.get("timestamp"))
+
+
+def sync_last_audit(run: Dict[str, object]) -> None:
+    """Point the run's history at its last audit entry after a later `fix` wrote it.
+
+    A separate `fix` invocation reloads the state from disk, where `last_audit` and the
+    matching history entry are two distinct objects; updating only one left `report`
+    showing the pre-repair stage entry.
+    """
+    last = run.get("last_audit")
+    if not isinstance(last, dict):
+        return
+    key = _stage_key(last)
+    history = list(run.get("history") or [])
+    for index in range(len(history) - 1, -1, -1):
+        entry = history[index]
+        if isinstance(entry, dict) and _stage_key(entry) == key:
+            history[index] = last
+            run["history"] = history
+            return
+
+
 def _mirror(state: Dict[str, object], run: Optional[Dict[str, object]]) -> None:
+    sync_last_audit(run or {})
     for key, default in (("stage", 0), ("window", 0), ("audited_commits", []),
                          ("last_audit", None), ("history", [])):
         state[key] = (run or {}).get(key, default)
@@ -378,11 +403,15 @@ def update_settings(root: Path, state: Dict[str, object], run: Dict[str, object]
     run["step"] = new_step
     run["stop"] = new_stop
     run["updated"] = _now()
-    if (run.get("status") == "active" and isinstance(new_stop, int)
-            and int(run.get("window") or 0) >= new_stop):
+    reached_stop = isinstance(new_stop, int) and int(run.get("window") or 0) >= new_stop
+    if run.get("status") == "active" and reached_stop:
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
+    elif run.get("status") == "completed" and not reached_stop:
+        # Raising the stop reopens the run: that is the recovery `plan_next_stage` recommends.
+        run["status"] = "active"
+        state["active_run"] = run["id"]
     _mirror(state, run)
     save_state(root, state)
     return run

@@ -148,6 +148,7 @@ from reforge.state import (
     load_state,
     new_state,
     pending_fixable,
+    record_stage,
     resume_run,
     save_state,
     state_path,
@@ -8610,6 +8611,43 @@ class TestReforgeCore(unittest.TestCase):
         self.assertIsNot(first, second)
         self.assertEqual(state["active_run"], "run-2")
         self.assertEqual([run["id"] for run in state["runs"]], ["run-1", "run-2"])
+
+    def test_raising_the_stop_reopens_a_completed_run(self):
+        # `plan_next_stage` tells the operator to raise --stop; that advice must work.
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 2, 1, 3)
+        entry = {"run": "run-1", "stage": 1, "window": 3, "commits": [], "new_commits": ["a"],
+                 "prior_commits": [], "findings": [], "repairs": [], "counts": {}, "tests": {},
+                 "gates": {}, "timestamp": "2026-10-28T00:00:00"}
+        record_stage(root, state, run, entry)
+        self.assertEqual(run["status"], "completed")
+        self.assertIsNone(state["active_run"])
+        reopened = update_settings(root, state, run, stop=9)
+        self.assertEqual(reopened["status"], "active")
+        self.assertEqual(load_state(root)["active_run"], "run-1")
+
+    def test_a_later_fix_refreshes_the_history_entry_too(self):
+        # `last_audit` and its history entry are separate objects after a reload, so a fix that
+        # updated one left `report` showing the pre-repair stage.
+        from reforge.model import Repair
+        from reforge.state import mark_repairs
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 2, 1, 3)
+        entry = {"run": "run-1", "stage": 1, "window": 2, "commits": [], "new_commits": ["a"],
+                 "prior_commits": [], "counts": {},
+                 "findings": [{"code": "bare-except", "path": "pkg.py", "line": 4, "fixable": True}],
+                 "repairs": [], "tests": {}, "gates": {}, "timestamp": "2026-10-28T00:00:00"}
+        record_stage(root, state, run, entry)
+        reloaded = load_state(root)
+        reloaded_run = reloaded["runs"][0]
+        mark_repairs(root, reloaded, reloaded_run,
+                     [Repair("bare-except", "pkg.py", 4, "repaired", "t", True)])
+        history = load_state(root)["runs"][0]["history"][-1]
+        self.assertTrue(history["findings"][0]["repaired"],
+                        "the history entry report reads must record the repair")
 
     def test_schema_one_migrates_to_an_independent_first_run(self):
         root = self.root()

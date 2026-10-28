@@ -1357,6 +1357,22 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertIn("app.py", shown)
         self.assertIn(".aikit/reforge.json", shown)
 
+    def test_a_second_fix_offers_the_reviewed_patch_for_commit(self):
+        # `audit` then `fix` leaves a reviewed patch; a second `fix --commit` publishes it
+        # instead of refusing, which is what the first fix prints as advice.
+        from reforge.pipeline import run_pipeline
+
+        root = self.repository()
+        run_pipeline(root, "audit")
+        first = run_pipeline(root, "fix", run_tests=False)
+        self.assertTrue(first["repaired"] >= 2)
+        second = run_pipeline(root, "fix", run_tests=False)
+        self.assertEqual(second["repaired"], first["repaired"])
+        self.assertIn("app.py", second["commit_paths"])
+        self.assertIn(".aikit/reforge.json", second["commit_paths"])
+        before = self.git(root, "status", "--porcelain").stdout
+        self.assertIn("app.py", before, "the reviewed patch is still uncommitted before delivery")
+
     def test_a_failing_test_rolls_the_repair_back(self):
         from reforge.errors import ReforgeError
         from reforge.pipeline import run_pipeline

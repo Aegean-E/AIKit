@@ -46,6 +46,11 @@ def finding_from_dict(item: Dict[str, object]) -> Finding:
     return Finding(**{key: value for key, value in item.items() if key in fields})
 
 
+def repair_from_dict(item: Dict[str, object]) -> Repair:
+    fields = {field.name for field in dataclasses.fields(Repair)}
+    return Repair(**{key: value for key, value in item.items() if key in fields})
+
+
 def _scanner(label: str, text: str):
     try:
         from scripts.check_secrets import scan_diff
@@ -212,13 +217,6 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 )
             all_findings = [finding_from_dict(item) for item in unrepaired_findings(run)]
             fixable = [item for item in all_findings if item.fixable]
-            if not fixable:
-                raise ReforgeError(
-                    f"Audit run {run.get('id')} has no safe automatic repair left.",
-                    "every remaining finding needs a human decision, or every repair is complete.",
-                    f"review the evidence, then start the next audit or `reforge stop <project> "
-                    f"--run {run.get('id')}`.",
-                )
             plan = StagePlan(stage=int(last.get("stage") or 0), window=int(last.get("window") or 0),
                              commits=(), new_shas=tuple(last.get("new_commits") or []),
                              prior_shas=tuple(last.get("prior_commits") or []),
@@ -226,6 +224,22 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                              start=int(run.get("start") or DEFAULT_START),
                              step=int(run.get("step") or DEFAULT_STEP),
                              stop=run.get("stop") if isinstance(run.get("stop"), int) else None)
+            if not fixable:
+                # `audit` then `fix` in two invocations leaves a reviewed patch uncommitted;
+                # a second `fix --commit` publishes it instead of refusing (the CLI's own advice).
+                applied = [repair_from_dict(item) for item in (last.get("repairs") or [])
+                           if item.get("applied")]
+                pending = [path for path in repair_paths(applied, root)
+                           if path in dirty_paths(root)]
+                if not pending:
+                    raise ReforgeError(
+                        f"Audit run {run.get('id')} has no safe automatic repair left.",
+                        "every remaining finding needs a human decision, or every repair is complete.",
+                        f"review the evidence, then start the next audit or `reforge stop <project> "
+                        f"--run {run.get('id')}`.",
+                    )
+                return _payload(root, mode, plan, run, all_findings, applied,
+                                last.get("tests") or {}, last.get("gates") or {})
             _clean_before_repair(root, allow_dirty)
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner)
