@@ -75,6 +75,72 @@ Printed by `cmd_status` and `cmd_resume` in `scripts/aikit_cli.py` (`python aiki
 | `error.code` | string | `"project.error"` on an operational or usage failure; `ok` is then `false` and no other key is present. |
 | `error.message` | string | The failure's message line; its `Why:`/`Fix:` triad still goes to stderr in text mode. |
 
+### Reforge Audit State (`<project>/.aikit/reforge.json`)
+The progressive audits' durable record, written by `reforge/state.py` through AIKit's
+`atomic_write_json` and `file_lock` when AIKit is present (portable atomic fallback otherwise);
+ADR-230, ADR-232. The per-project run lock is `<project>/.aikit/reforge.run.lock`; other projects
+use different locks and states, so they audit concurrently.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `schema` | int | `2`; schema `1` migrates in memory to `run-1`, and an unsupported value is refused without rewriting the file. |
+| `next_run_id` | int | Counter for `run-<n>` IDs; IDs are never reused. |
+| `active_run` | string or null | The run a plain `audit`/`run`/`fix` selects. A lock holder or a run with fixable findings blocks a second start. |
+| `last_run` | string or null | The run status/report/fix fall back to after completion or stop. |
+| `runs` | list | Independent runs, each with `id`, `start`, `step`, `stop`, `stage`, `window`, `audited_commits`, `status` (`active`, `stopped`, `completed`), `created`, `updated`, `last_audit`, `history`. |
+| `stage`, `window`, `audited_commits`, `last_audit`, `history` | mirrors | Copies of the last run for schema-1 readers and compact reports. |
+
+Window N is `start + step*(N - 1)`, capped by `stop` when set; `start >= 2`, `step >= 1`,
+`stop >= start`, and `stop` may be `null` for unlimited. A run completes when its window reaches
+`stop`; its history is then kept while a new run may start from any window. Each stage history is
+bounded to 20 entries and carries `stage`, `window`, `commits`, `new_commits`, `prior_commits`,
+`findings`, `repairs`, `counts`, `tests`, `gates`, `timestamp`. Each finding carries `code`,
+`category`, `severity`, `path`, `line`, `message`, `evidence`, `commit`, `symbol`, `introduced`,
+`reproducible`, `fixable`, `interaction` and `repaired`; each repair carries `code`, `path`, `line`,
+`summary`, `test_name` and `applied`.
+
+### Project Presentation Fields (`<project>/.aikit/project.json`)
+`has_ui` (bool), `ui_kind` (`web`, `desktop`, `game`, `mobile`, `cli`, `library`, `service`),
+`ui_evidence` (relative marker paths), `ui_checked_at` and `ui_source` (`detected` or `manual`).
+`topics` is the AI-chosen list; AIKit validates it, never fills it. `license_topics` records the
+mandatory license metadata tags for the project's AL/AGL/ASL/restricted tier. `ui_required` remains the
+separate opt-in contract that makes `check --strict` enforce `.aikit/ui.json`.
+
+### Project Media Manifest (`<project>/.aikit/media.json`)
+Schema 1; `name`, `repo`, `has_ui`, `ui_kind`, `palette`, `motif`, `layout`, `assets` (`logo`, `social_preview`,
+optional `social_preview_png`, `artwork`) and `screenshots`. Logo and social previews may be SVG
+fallbacks or model-rendered JPEGs (`model` records the model ID); each asset has `path`, `status`
+(`pending_review`, `approved`, `rejected`), `generated_at`, `commit` and `review`; a review records
+`reviewer`, `method` (`vision`/`structural`), `notes`, `score` and `reviewed_at`. A screenshot also
+records `taken_at`, `viewport`, `width` and `height`, and its `commit` must resolve in the project.
+`media apply` copies approved files to `projects/AegeanWorks/docs/media/<Repo>/` and writes the
+dossier manifest `docs/media/<Repo>.json` (schema 1: `repo`, `logo`, `screenshots`).
+
+### Brand Catalogue (`scripts/brand_catalog.json`)
+Schema 1; `palettes` (one unique four-colour palette per project) and `projects`. Each project entry
+has `motif`, `layout`, `palette` index, optional `monogram`, `display` (title-case override such as
+"No More Clutter"), `category` (the logo eyebrow) and `tagline` (the curated social-card sentence).
+
+### Reforge Sync Config (`reforge-sync.json`) and Marker (`<standalone>/.reforge-repo.json`)
+`reforge-sync.json` names the shipped `package`, `entrypoint`, `standalone` target and `marker`;
+`repo init/sync/status` read it. The standalone marker holds schema 1, name, source, version and
+`synced` (relative path -> SHA-256 at the last completed sync), which is how a two-sided edit is
+refused instead of overwritten.
+
+### Idea Catcher Sync Config (`idea-catcher-sync.json`) and Marker (`<standalone>/.idea-catcher-repo.json`)
+The same schema-1 shape as Reforge's sync config, naming `package` (`idea_catcher`),
+`entrypoint` (`idea_catcher.py`), the `projects/idea-catcher` standalone target and the marker.
+The marker records name, source, version and `synced` path hashes; `repo adopt` seeds it for an
+existing register, and `repo sync --direction push|pull` updates it after a one-way copy (ADR-245).
+
+### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
+Schema 1. `targets.json` holds the routing targets; `ideas.json` holds each idea's `id`, dossier,
+concept, target, impact, effort, status, reason/evidence, optional `tags`, `superseded_by`, and a
+`history` list whose entries are either a status change or a `field` (`target`/`tags`) with
+`from`/`to`. `reviews.json` holds `repos` (claim count, last order) and `reviews` (review id, slug,
+URL, kind, lease, reserved ids, state, order). A dossier section from `IDEA-632` onward must carry a
+`- **Source**:` line. `MATRIX.md` and `CONCEPTS.md` are generated from these inputs.
+
 ## 🛡️ Model Invariants
 1. Models are type-annotated; data passed between layers is a frozen dataclass or `NamedTuple` (**PRINCIPLE-009** R5).
 2. Every setting has a documented default, so a clone runs with no configuration (**PRINCIPLE-011** R2).

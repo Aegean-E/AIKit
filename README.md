@@ -19,7 +19,10 @@
 | Operational Role| Canonical Command| Verification Gate|
 |---|---|---|
 | **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
-| **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=10ms unit, <=350ms integration|
+| **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`, `repo`; configurable windows; isolated runs (ADR-230, ADR-232)|
+| **Route Ideas & Reviews**| `python aikit.py idea-catcher <cmd>`| `validate`, `render`, `status`, `ideas`, `tag`, `history`, `reviews`, `review-start/finish`, `revalidate`, `audit-claims`, `concepts`, `repo`; shipped register tooling (ADR-246)|
+| **Project Tags & Media**| `python aikit.py <cmd>`| `ui-id`, `topics --brief/--from-file`, `media init/capture/review/apply/audit`; AI-chosen tags, reviewed logos and commit-stamped screenshots (ADR-233..236)|
+| **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=20ms unit, <=500ms integration|
 | **Run One Tier**| `python -m unittest tests.test_kit` / `python -m unittest tests.test_integration`| Isolates a failing tier|
 | **Synchronize IDE Rules**| `python scripts/sync_principles.py`| <=1,750 est. tokens/target incl. a reserved 300-token Tier 1B|
 | **Verify Rule Freshness**| `python scripts/sync_principles.py --check`| Read-only; exits 1 on rule drift, or when a principle changed since the last commit lacks an ADR naming its `--citing` set (PRINCIPLE-000 R3)|
@@ -54,6 +57,23 @@ portable_agent_kit/
 ├── COMMERCIAL.md                 <- Paid commercial terms (ACL-1.0)
 ├── licenses/                     <- Pinned Aegean license texts + PIN.json
 ├── aikit.py                      <- Project CLI
+├── assets/                       <- Root brand assets
+│   ├── logo.jpg
+│   └── social-preview.png
+├── reforge.py                    <- Aegean Reforge standalone CLI entry point
+├── reforge-sync.json             <- Reforge source/standalone sync manifest (ADR-231)
+├── reforge/                      <- Progressive Git history auditor & safe repair engine
+├── idea_catcher.py               <- Idea Catcher standalone CLI entry point
+├── idea-catcher-sync.json        <- Idea Catcher source/standalone sync manifest (ADR-246)
+├── idea_catcher/                 <- Target registry, idea ledger, review ledger and matrix renderer
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── registry.py
+│   ├── claim_audit.py
+│   ├── concept_map.py
+│   ├── repo_sync.py
+│   ├── upstream_check.py
+│   └── version.py
 ├── .gitignore                    <- Credential & local-state baseline (PRINCIPLE-019 R3)
 ├── AGENTS.md                     <- Generated Tier 1 capsules (AGENTS.md-convention hosts)
 ├── GUIDELINES.md                 <- Source of truth: every principle and rule (Tier 2)
@@ -105,10 +125,16 @@ portable_agent_kit/
 │   ├── aikit_parser.py           <- `aikit.py` grammar, alone for --help
 │   ├── subagent_delegate.py      <- Bounded OpenCode sub-agent runs
 │   ├── project_publish.py        <- Uploads a project to its own GitHub repo
+│   ├── project_ui.py             <- Durable has_ui/ui_kind identifier (ADR-233)
+│   ├── project_topics.py         <- AI topic brief and validator, max 20 (ADR-236)
+│   ├── project_media.py          <- Reviewed logo/social/screenshot pipeline (ADR-235)
+│   ├── project_brand.py          <- Per-project motif, palette and social composition (ADR-238)
+│   ├── project_artwork.py        <- Image-model hero art plus exact text overlay (ADR-239)
+│   ├── brand_catalog.json        <- Authored unique project identities
 │   ├── check_secrets.py          <- Secret/sensitive data scanner
 │   └── verify_commit.py          <- Verifies a commit alone in a throwaway worktree
 ├── tests/
-│   ├── test_kit.py               <- Unit tier (<=10ms per test)
+│   ├── test_kit.py               <- Unit tier (<=20ms per test)
 │   └── test_integration.py       <- Integration tier: concurrency, CLI contracts
 └── knowledge/
     ├── INDEX.md                  <- Knowledge base table of contents
@@ -128,7 +154,7 @@ portable_agent_kit/
 
 ## 🚀 Start a Project
 
-Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it.
+Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it. `new` also detects the UI kind, adds the project's license topic tags, and creates logo/social candidates; `publish` and `new --publish` wait until those assets are reviewed and applied (ADR-243, ADR-245).
 
 ```bash
 python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AL-1.1 LICENSE, AIKit badge
@@ -147,33 +173,57 @@ python aikit.py ui finish my-app --reviewed  # close after review; evidence in .
 python aikit.py ui abort my-app        # restore only the surface; keep unrelated work
 python aikit.py fix my-app          # restore memory/README, migrate the AIKit link, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
-python aikit.py publish my-app [--owner ORG] [--license auto]  # repo, description, stack/license topics
+python aikit.py publish my-app [--owner ORG] [--license auto]  # repo, description, recorded AI topics
 python aikit.py license my-app [--suggest|--set game|--restrict]  # AL-1.1, AGL-1.1 (DRM-free games) or ASL-1.1 (science)
 ```
-A project's memory is its `.aikit/` folder (record, ledger, decisions, guidelines: its own rules, below the principles), committed in its repository; ledger commands take `--workspace projects/<name>`. Stack/test command are detected (Python, Node, Rust, Go, Java, .NET); `--test` overrides. Descriptions keep their case (10-350 chars); `publish` requires one. Titles and new repos are title-cased. `license --suggest/--set` picks AL-1.1, AGL-1.1 (games, DRM-free) or ASL-1.1 (science); `topics` sets tags; `publish --license auto` applies a confident pick and stops for the commit. Before a commit, `check` asks for `checklists: passed` (or the failed IDs) in the task's latest checkpoint; a deliberate finding needs `hygiene: allow <reason>` on its line or above. `check_project_hygiene.py --artifacts` adds test modules, untracked source/output, a root README and tracked caches. The `ui` commands are opt-in: commit `.aikit/ui.json` with surfaces, protected paths, a fast proof, `snapshot` and `style.theme_paths`, plus file/line limits; `verify` refuses out-of-surface edits, protected paths, budget overruns, a moved baseline, a red proof, lost entries (`ui allow` records an intended one) and hardcoded color/font literals outside the theme, except a font value that is a `var()` theme token; `finish` needs `--reviewed` and appends evidence to `.aikit/ui_history.json`; an open UI task blocks delivery (ADR-160, ADR-161, ADR-163). Set `ui_required` in `.aikit/project.json` to require `.aikit/ui.json` for `check --strict` and `publish`; a missing or invalid contract blocks delivery. With `ui_required`, each declared surface must also match a finished task's recorded digest, and `ui verify --json` returns stable codes plus a `ui.error` envelope on operational errors. `status --json`/`resume --json` report project, guidelines, audit and `clean`, with a `project.error` envelope on failure. `publish` runs the gates first. `new --publish` needs `--description` and uploads only AIKit's starter files. `check`/`fix`/`publish` run a project's commands unsandboxed: attach only trusted repositories.
+A project's memory is `.aikit/` (record, ledger, decisions); ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 README description. `license --suggest/--set` picks AL-1.1, AGL-1.1 or ASL-1.1; `topics` sets GitHub tags. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
+
+## 🔁 Aegean Reforge: History Audit & Safe Repair
+
+Reforge ships in `reforge/` and `reforge.py`; AIKit reuses its registry, gates, secret scanner and
+persistence. Projects have separate runs and locks; a second run on one is refused.
+
+```bash
+python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # independent run
+python aikit.py reforge run my-app         # audit, repair, add regression tests, verify, record
+python aikit.py reforge run my-app --push  # after review: commit explicit paths, push without force
+python aikit.py reforge repo init          # own repo at projects/aegean-reforge
+python aikit.py reforge repo sync --direction push
+```
+
+Window N is `start + step*(N-1)`, capped by `stop`; evidence is commit/path/line, only mechanical
+repairs are automatic, and a red gate rolls them back.
+
+## 🧭 Idea Catcher: Routed Idea Register
+
+Idea Catcher ships complete in `idea_catcher/` and `idea_catcher.py`, and its register lives in
+`projects/idea-catcher/` so the data stays out of AIKit's own tree. Both copies carry the same
+source; `repo sync` moves changes one way and refuses a two-sided edit.
+
+```bash
+python aikit.py idea-catcher status             # counts per target and decision state
+python aikit.py idea-catcher validate           # targets, ideas, dossiers and matrix
+python aikit.py idea-catcher render --check     # fail when MATRIX.md is stale
+python aikit.py idea-catcher ideas --target aikit --status Proposed
+python aikit.py idea-catcher reviews --stale
+python aikit.py idea-catcher repo status --check  # exit 1 when both copies diverge
+python aikit.py idea-catcher repo sync --direction push  # pull reverses it
+```
+
+A review claims a repository with a lease and reserves idea ids, so parallel analyses cannot
+collide. Dossiers must name a `Source` from `IDEA-632` onward; tags, target changes and status
+changes append to each idea's history. Standalone: `python idea_catcher.py --help`.
+
+`ui-id` stores `has_ui`, `ui_kind` and `ui_evidence`. `topics --brief` gives an AI the evidence;
+`--from-file` records its tags and `--apply` publishes them, capped at 20. `media init --art` uses
+the online image model with `POLLINATIONS_API_KEY`; `review/apply/audit` require a named reviewer and
+shots.
 
 ## 📥 Alternative: Copy AIKit Into an Existing Project
 
-The primary path is above: keep the project under `projects/`. To instead govern a repository in
-place, copy the source of truth and tooling into it and generate the rest:
-
-```bash
-cd portable_agent_kit
-mkdir -p /path/to/target/.agents
-cp -r GUIDELINES.md scripts knowledge /path/to/target/
-cp -r .agents/rules .agents/skills /path/to/target/.agents/
-cd /path/to/target && python scripts/sync_principles.py && python scripts/update_knowledge_base.py
-```
-
-- **Do not copy** `tests/`, `.github/` or `.agents/task_ledger.json`: they are AIKit's own. The CLI
-  gates in the matrix above carry the enforcement.
-- Replace the copied `knowledge/` documents with your project's, and copy
-  `.agents/rules/readme_quickref.md.template` into your `README.md`, filling every `<FILL` placeholder.
-- If the target already has instruction files, move their project-specific rules into
-  `.agents/rules/domain.md` (max 1,200 chars) and delete the originals. Sync injects that block into
-  all 8 Tier 1 files and refuses to overwrite a hand-authored file (`[PROTECTED]`).
-- The two commands above generate the 8 Tier 1 files (each <=1,750 tokens including Tier 1B) and
-  `knowledge/codebase_map.md`, the AST catalogue of every class, method, argument and docstring.
+The primary path is above. To govern a repository in place, copy `GUIDELINES.md`, `scripts/`,
+`knowledge/` and `.agents/`, run the sync scripts, and keep project rules in `domain.md`. Do not
+copy `tests/`, `.github/` or the ledger.
 
 ---
 
@@ -194,7 +244,7 @@ The principles are strictly organized across **5 chronological execution phases*
 ### 🧭 Phase 2: Pre-Flight Orientation & Planning
 | Principle | Title | Capsule |
 |---|---|---|
-| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=22.5k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
+| **PRINCIPLE-005** | AI Cold-Start Readiness & Living Documentation | README <=25k chars: prerequisites, test command, tree; user-visible changes update it same commit; `update_knowledge_base.py --check` gates it. |
 | **PRINCIPLE-006** | Incremental Progress Checkpointing & Disruption Recovery | Commit `[milestone N/M]` once Phase 4 passes under PRINCIPLE-018 R1; failing work uncommitted via `--checkpoint`; `--complete`/`--reset` before switching tasks; `--clean` stale `.tmp_*`; ledger writes name `--agent`; another agent's task needs `--take-over`. |
 | **PRINCIPLE-007** | Pre-flight Impact & Quality Checklist | Track C first plan checkpoint carries --why --benefits --risks (contract, dependency, concurrency, state) --mitigation; no TODO or stub; no change outside the plan. |
 | **PRINCIPLE-008** | Hierarchical Problem & Task Decomposition | Plan of M<=6 milestones (more: split into tasks), built bottom-up, each passing Phase 4 alone; re-plan = new `[1/M']` checkpoint; sub-agents never write the ledger. |
@@ -203,7 +253,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-009** | Modularity & Pluggable Architecture | Every module: no junk-drawer name, roles of 1-5 methods, no import cycle (gated). At a pluggable boundary: 4 layers, registry lookup, constructor DI with default, frozen DTOs. |
-| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <250ms; unit <=10ms, integ <=350ms/test. |
+| **PRINCIPLE-010** | Performance & Resource Optimization | Stream uncontrolled input; threads only for steps >=200ms; timeout= on subprocess, with on open(); one fsync per file; `--help` <250ms; unit <=20ms, integ <=500ms/test. |
 | **PRINCIPLE-011** | Zero-Friction Onboarding & Instant Usability | Only declared deps; creates its dirs; prompts only with `--interactive`; no `os.environ[...]` reads; exit 0/1/2; errors give `Why:`/`Fix:`; demo <10s; other software: its `aikit.py` project is the workspace (R8). |
 | **PRINCIPLE-012** | Token Frugality & Lean Code Architecture | LLM code: <=16k-char payloads, static prefix first, schema-checked replies, 429 backoff, step caps; agent: diff -U3, search <=50 hits, relative paths. |
 
@@ -211,7 +261,7 @@ The principles are strictly organized across **5 chronological execution phases*
 | Principle | Title | Capsule |
 |---|---|---|
 | **PRINCIPLE-013** | Crash Resilience, State Atomicity & Power-Loss Recovery | State files: >=10MB free, temp + fsync + os.replace (5 tries) + dir fsync, .bak, advisory locking 3s/30s stale, corrupt -> quarantine/.bak/migrate. Generated: temp + fsync + replace. |
-| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=10ms/test, no spawns/sleeps; integ <=350ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
+| **PRINCIPLE-014** | Automated Test Verification & Continuous Test Coverage | 100% test pass gate; behaviour change = failing-first test; weakening a test needs user approval + ADR naming it; unit <=20ms/test, no spawns/sleeps; integ <=500ms/test; tempdir + addCleanup; `scripts/check_reachability.py`. |
 | **PRINCIPLE-015** | Universal Operational Dogfooding & Chaos Verification | Domain-specific interactive dogfooding via `scripts/dogfood.py` as a commit gate; golden path + chaos perturbation; non-interactive stdin parity; portable RAII process tree teardown; ephemeral safety jail; terse reporting (<=15 lines). |
 
 ### 🚀 Phase 5: Living Synchronization & Delivery

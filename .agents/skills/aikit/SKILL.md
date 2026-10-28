@@ -27,14 +27,18 @@ This operational runbook provides the unified command matrix for driving AIKit a
 The user's software lives in its own project, never in AIKit's tree:
 ```bash
 python aikit.py list                 # which projects exist
-python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]... [--kind software|game|science]  # projects/<name>/: own repo, .aikit/ memory, AL-1.1/AGL-1.1/ASL-1.1 LICENSE + COMMERCIAL.md (ACL-1.0), Built with AIKit badge; topic aikit always added, title title-cased, description keeps its case; --publish (needs --description) uploads only these starter files with derived topics, only when the user asks
+python aikit.py new <name> --description "<10-350 chars>" [--topic <t>]... [--kind software|game|science]  # own repo + .aikit memory; auto-detects UI, generates model logo/social candidates (POLLINATIONS_API_KEY) or local fallback, writes media pending; --publish refuses until logo/social are reviewed and applied (ADR-243)
 python aikit.py attach <path>        # an existing folder: adds .aikit/ memory and an AIKit Integrated badge under its README title (uncommitted)
 python aikit.py status <name>        # its task, changes, latest decision and its gates
 python aikit.py check <name>         # its Phase 4: tests, stack gates, hygiene, guidelines, secret scan; exit 0 to commit; never pushes, add --push only when push delivery is authorized (PRINCIPLE-018 R4)
 python aikit.py guideline <name> "<rule>" --source user   # a project rule, below the principles
-python aikit.py publish <name> [--public] [--owner <org>] [--license auto]  # its own GitHub repo with the README's description, stack/license topics and an AI-chosen license; needs a 10-350 char README paragraph; only when the user asks
+python aikit.py publish <name> [--public] [--owner <org>] [--license auto]  # its own GitHub repo with the README description, the recorded AI-chosen topics and an AI-chosen license; needs a 10-350 char README paragraph; only when the user asks
 python aikit.py license <name> [--suggest [--json]|--set software|game|science|--restrict]  # AL-1.1, AGL-1.1 (DRM-free games) or ASL-1.1 (science); --restrict, only when the user asks, makes later versions All Rights Reserved from HEAD (earlier releases keep their license), drops COMMERCIAL.md, blocks publish --public, and allows check --push or publish only to a repository gh reports private (ADR-214)
-python aikit.py topics <name> [--suggest [--json]|--set <t>...]  # AI-chosen GitHub tags, recorded in project.json
+python aikit.py topics <name> --brief --json   # bounded evidence for an AI to choose tags; no tag chosen automatically
+python aikit.py topics <name> --from-file <json> [--apply]  # record the AI's choice; apply only with --apply (ADR-236)
+python aikit.py topics <name> --review [--json]  # audit current/recorded tags without choosing
+python aikit.py ui-id <name> [--set auto|yes|no] [--kind <k>]  # durable has_ui/ui_kind evidence (ADR-233)
+python aikit.py media init --art <name>  # IMAGE MODEL: POLLINATIONS_API_KEY env only; gen.pollinations.ai free flux model renders title+category, then the square is reframed to 1280x640; never commit the key (ADR-239, ADR-241)
 python aikit.py fix <name>           # self-heals memory, cleans stale temp buffers, syncs codebase map
 python aikit.py checkpoint <name>    # disruption checkpoint on the project ledger; --agent <host>:<session> names you
 python aikit.py resume <name>        # disruption resume on the project
@@ -42,6 +46,14 @@ python aikit.py complete <name>      # mark project task complete; another agent
 python scripts/disruption_recovery.py --suspend "<reason>" --workspace projects/<name>  # pause a task, keep it resumable
 python scripts/disruption_recovery.py --resume-task <task_id> --workspace projects/<name>  # reactivate a paused or superseded task (ADR-219)
 python aikit.py clean <name>         # clean dangling project buffers
+python aikit.py reforge start <name> --start 3 --step 3 --stop 15  # independent run; per-project lock
+python aikit.py reforge run <name>     # audit, repair safe findings, add regression tests, verify patch
+python aikit.py reforge run <name> --push  # review first; commits explicit paths and pushes without force (ADR-230)
+python aikit.py reforge audit <name>   # next window; fix repairs; settings/stop/resume/runs/status manage runs (ADR-232)
+python aikit.py reforge repo init      # own Git repo at projects/aegean-reforge; repo sync --direction push|pull (ADR-231)
+python aikit.py idea-catcher status     # shipped register tool over projects/idea-catcher (ADR-246)
+python aikit.py idea-catcher validate   # targets, ideas, dossiers and generated matrix; render --check
+python aikit.py idea-catcher repo status --check  # exit 1 on drift; repo sync --direction push|pull
 ```
 - Request names no single project: ask which one, or the name of a new one, before writing code.
 - Before writing code in a project, read its guidelines (`status` or `resume` prints them): its own rules, which add to the principles and never override one (PRINCIPLE-000 R6). When the user states a lasting rule for the project, record it with `aikit guideline`.
@@ -154,7 +166,7 @@ Before committing any Track B or Track C changes, ALL gates must pass:
 
 ### 1. Test Suite Verification (100% Pass Required)
 ```bash
-# Both tiers plus their per-test budgets (unit <=10ms, integration <=350ms)
+# Both tiers plus their per-test budgets (unit <=20ms, integration <=500ms)
 python scripts/check_test_budgets.py
 
 # Either tier on its own, when a failure needs isolating

@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `22`
-- **Total Classes**: `95`
-- **Total Top-Level Functions**: `364`
-- **Total Class Methods**: `684`
-- **Total Source Lines**: `20387`
+- **Total Python Modules**: `53`
+- **Total Classes**: `122`
+- **Total Top-Level Functions**: `711`
+- **Total Class Methods**: `775`
+- **Total Source Lines**: `30494`
 
 ---
 
@@ -23,10 +23,537 @@
 
 ---
 
+### [`idea_catcher/__init__.py`](idea_catcher/__init__.py)
+> *Idea Catcher: target registry, idea ledger, review ledger and generated register matrix.*
+
+**Size**: `5` lines (`168` bytes)
+
+---
+
+### [`idea_catcher/__main__.py`](idea_catcher/__main__.py)
+> *`python -m idea_catcher`: the standalone entry point.*
+
+**Size**: `8` lines (`161` bytes)
+
+---
+
+### [`idea_catcher/claim_audit.py`](idea_catcher/claim_audit.py)
+> *Advertised-module evidence for a real repository checkout.*
+
+**Size**: `376` lines (`13829` bytes)
+
+**Classes:**
+- `class AuditError` - *The audit cannot run against the given repository or claim.*
+- `class ModuleClaim`
+- `class ClaimEvidence`
+
+**Functions:**
+- `def parse_claim(value)` - *Parse ``name=path`` or ``name=path:Symbol,other_symbol``.*
+- `def claims_from_dossier(text)` - *Extract backticked repository paths from a dossier, with nearby symbols.*
+- `def _looks_like_path(token)`
+- `def _relative(repo, path)`
+- `def _safe_path(repo, advertised)`
+- `def _python_symbols(tree)`
+- `def _symbols(path)`
+- `def _is_stub(path)`
+- `def _has_behaviour(path)`
+- `def _walk_files(repo, max_files)`
+- `def _find_symbol(repo, entrypoints, max_files)`
+- `def audit_claims(repo_path, claims, *, commit, max_files)` - *Check every advertised module against a real checkout.*
+- `def _count_artefacts(repo, max_files)`
+- `def assess_ratio(repo_path, evidence, *, max_files)` - *Repository-level verdict merged from IDEA-500: implemented, brief, or docs-only.*
+- `def render_summary(verdict)`
+- `def render_table(evidence)`
+
+---
+
+### [`idea_catcher/concept_map.py`](idea_catcher/concept_map.py)
+> *Deterministic concept co-occurrence map for the idea register.*
+
+**Size**: `275` lines (`11411` bytes)
+
+**Functions:**
+- `def tokenize(text, stop)` - *Lowercase, split on punctuation, and drop short or boilerplate terms.*
+- `def _doc_tokens(value)`
+- `def build_cooccurrence(docs, min_df)` - *Count document-level co-occurrence for terms that appear in at least ``min_df`` docs.*
+- `def clusters(graph, threshold)` - *Connected components of the edges at or above ``threshold``.*
+- `def _normalise_concept(concept)`
+- `def exact_duplicates(ideas)` - *Idea ids whose normalised concept strings are identical.*
+- `def documents_from_root(root)` - *One token document per dossier, keyed by its relative path.*
+- `def documents_from_ideas(ideas)` - *One token document per dossier, built from the idea concepts it registers.*
+- `def target_overlap(ideas, docs)` - *Per target, the terms shared by at least two of its dossiers.*
+- `def shared_pair_count(graph, threshold)`
+- `def render_report(graph, clusters_, *, duplicates, target_overlap_, min_df, threshold, documents, limit)` - *Render the deterministic Markdown report.*
+- `def write_report(path, text)` - *Write the generated report atomically.*
+
+---
+
+### [`idea_catcher/registry.py`](idea_catcher/registry.py)
+> *Generate and validate the Idea Catcher register.*
+
+**Size**: `2075` lines (`92128` bytes)
+
+**Classes:**
+- `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
+- `class TagSpec` - *One analysis tag: what it asserts and whether it competes with other verification tags.*
+- `class RegistryError` - *A registry write was refused because the result would be invalid.*
+- `class DossierSection` - *One idea section's routing metadata, including its optional source locator.*
+- `class DossierEntry` - *A dossier section joined with the dossier path that declares it.*
+- `class LockBusy` - *Another process holds the registry lock and the wait timed out.*
+
+**Functions:**
+- `def default_root()` - *The register this checkout serves: the standalone repo, or AIKit's projects copy.*
+- `def load_json(path)` - *Read one registry file, refusing a missing or non-object document by name.*
+- `def write_json(path, payload)` - *Write atomically: temp file in the same directory, fsync, then replace.*
+- `def load_targets(root)`
+- `def file_lock(path, *, timeout)` - *Hold an exclusive cross-process lock on ``path`` for the ``with`` block.*
+- `def registry_lock(root, *, timeout)` - *Serialise one read-modify-write cycle over the registry.*
+- `def now_iso()` - *UTC timestamp with second precision; injectable in tests via ``now`` args.*
+- `def load_reviews(root)`
+- `def empty_reviews()`
+- `def target_ids(targets)`
+- `def load_ideas(root)`
+- `def parse_dossier_sections(text)` - *Map every ``### `IDEA-NNN`: Title`` heading to its routing metadata.*
+- `def parse_dossier_ideas(text)` - *Map every heading to (title, declared target); kept for narrow callers.*
+- `def dossier_sources(root)` - *Map idea id -> (dossier relative path, target declared in that dossier).*
+- `def dossier_duplicates(root)` - *Map every idea id declared in more than one dossier to those dossiers.*
+- `def dossier_catalog(root)` - *Map idea id -> dossier path, title, declared target and source locator.*
+- `def validate_targets(targets)`
+- `def validate_idea(idea, targets, sources)`
+- `def validate_tags(idea_id, tags)` - *Refuse unknown or repeated tags and more than one verification tag.*
+- `def effective_tags(idea)` - *Stored tags, the implicit `unverified` default, and the decision status once one is made.*
+- `def idea_number(idea_id)`
+- `def reserved_ids(reviews)` - *Map every reserved idea number to the review that holds it.*
+- `def free_idea_numbers(count, *, payload, reviews)` - *The lowest ``count`` numbers that are neither registered nor reserved.*
+- `def validate_ideas(payload, targets, root, reviews)`
+- `def badge(status)` - *Shields.io badge for one status; the alt text carries the decision state.*
+- `def _cell(value)`
+- `def _status_counts(ideas)`
+- `def render_matrix(targets, payload, reviews)`
+- `def matrix_matches(root, targets, payload, reviews)`
+- `def add_target(root, *, target, require_path)`
+- `def add_idea(root, *, dossier, target, impact, effort, idea_id, concept, review_id)` - *Register a dossier section as an idea, taking the title from the heading.*
+- `def _history_entry(*, field, before, after, by, at, reason)`
+- `def set_tags(root, idea_id, *, add, remove, by, reason)` - *Add and remove analysis tags; a new verification tag replaces the previous one.*
+- `def set_status(root, idea_id, *, status, reason, decided_at, decided_by, evidence, target, superseded_by)`
+- `def _parse_ts(value)`
+- `def _lease_expired(review, now)`
+- `def validate_reviews(payload, root, *, ideas_payload)`
+- `def _release(review, now, reason)` - *Close a review and drop the idea numbers it had not consumed.*
+- `def release_expired(root, *, now)` - *Abandon every active review whose lease has passed and release its ids.*
+- `def review_start(root, *, slug, url, agent, lease_minutes, now, force, reserve, kind)` - *Claim one repository for analysis and reserve the idea numbers it will use.*
+- `def review_finish(root, review_id, *, dossier, ideas, now)` - *Close an active review, giving it the next place in the review order.*
+- `def review_abandon(root, review_id, *, reason, now)` - *Close an active review without counting it, recording why.*
+- `def review_rows(payload, *, now)` - *One row per repository: review order, count, last review and current state.*
+- `def classify_freshness(review, dossier_text, *, today, max_age_days)` - *Classify one review as current, aged, superseded or unknown.*
+- `def stale_reviews(rows, root, *, today, max_age_days)` - *Return the non-current rows, oldest analysis first, with a ``freshness`` field.*
+- `def list_ideas(payload, *, target, status, dossier, tag)` - *Return the register rows matching the filters, in id order.*
+- `def idea_history(payload, idea_id)` - *Return one idea's recorded changes, or refuse an unknown id.*
+- `def proposed_by_target(payload)` - *Per target, how many ideas sit in each decision state.*
+- `def _plus_minutes(now, minutes)`
+- `def _report(errors)`
+- `def add_commands(sub)` - *Declare every Idea Catcher command once, for either top-level CLI.*
+- `def build_parser()`
+- `def _repo_command(args)` - *Run repo init/adopt/status/sync without loading the register first.*
+- `def main(argv, root)`
+- `def run(args, root)` - *Execute an already parsed command; shared with `python aikit.py idea-catcher`.*
+
+---
+
+### [`idea_catcher/repo_sync.py`](idea_catcher/repo_sync.py)
+> *Materialize Idea Catcher's shipped tool source and synchronize both directions.*
+
+**Size**: `324` lines (`13031` bytes)
+
+**Classes:**
+- `class SyncError` - *A repository sync request was refused; carries the AIKit What/Why/Fix triad.*
+  - Method `.__init__(message, why, fix, exit_code)`
+  - Method `.triad()`
+
+**Functions:**
+- `def source_root()` - *The AIKit checkout that owns this package, found by its sync file.*
+- `def sync_config(root)` - *Read the AIKit-side sync file; every path is relative to the checkout.*
+- `def manifest(root, config)` - *The shipped Idea Catcher source: the package and its standalone shim.*
+- `def _digest(path)`
+- `def _write(path, text)` - *Atomic generated-file write: temp, fsync, replace (PRINCIPLE-013).*
+- `def _copy(source, target)`
+- `def _git(root, *args)`
+- `def _marker(target, marker_name)`
+- `def _target(root, config, target)`
+- `def init_repo(source, target, force)` - *Create an empty standalone repository with the shipped source and a first commit.*
+- `def adopt_repo(source, target)` - *Attach the shipped source to an existing register and record the sync baseline.*
+- `def sync_repo(source, target, direction, force)` - *Copy changed shipped files one way, refusing a file both sides changed since the last sync.*
+- `def repo_status(source, target)` - *Compare both copies and the last synced baseline without changing anything.*
+- `def _version()`
+
+---
+
+### [`idea_catcher/upstream_check.py`](idea_catcher/upstream_check.py)
+> *Read-only upstream revalidation for dossier headers.*
+
+**Size**: `342` lines (`13191` bytes)
+
+**Classes:**
+- `class UpstreamError` - *The upstream API could not be reached or answered with an error.*
+
+**Functions:**
+- `def _header_text(text)`
+- `def _field(text, label)`
+- `def _first_tick(value)`
+- `def normalise_licence(value)` - *Turn a messy header licence into one comparable SPDX-ish token.*
+- `def _licence_key(value)`
+- `def parse_header(text)` - *Read the three upstream facts from a dossier's opening block.*
+- `def repo_from_url(url)` - *Return ``owner/name`` for a GitHub URL, or an empty string.*
+- `def _is_missing(payload)`
+- `def _nested(payload, *keys)`
+- `def resolve_upstream(repo, fetch, *, commit)` - *Fetch the current facts for one repository with an injected fetch callable.*
+- `def diff_upstream(recorded, current)` - *Classify the difference between the dossier and the live repository.*
+- `def is_failure(result)` - *Only a licence change or a vanished repository fails ``--strict``.*
+- `def render_report(results)` - *Render one compact table for the terminal.*
+- `def _cache_path(cache_dir, repo)`
+- `def _load_cache(path, today)`
+- `def _store_cache(path, today, current)`
+- `def run_revalidation(root, *, fetch, today, cache_dir, limit)` - *Check every dossier header, reusing a same-day cache and never editing a dossier.*
+- `def github_fetch(url)` - *Default network fetch: stdlib only, optional token, polite timeout.*
+
+---
+
+### [`idea_catcher/version.py`](idea_catcher/version.py)
+> *The single version constant shared by the package, CLI and standalone repository.*
+
+**Size**: `3` lines (`111` bytes)
+
+---
+
+### [`idea_catcher.py`](idea_catcher.py)
+> *Standalone Idea Catcher entry point: `python idea_catcher.py --help`.*
+
+**Size**: `9` lines (`200` bytes)
+
+---
+
+### [`reforge/__init__.py`](reforge/__init__.py)
+> *Aegean Reforge: progressive Git history auditing and autonomous safe repair.*
+
+**Size**: `5` lines (`151` bytes)
+
+---
+
+### [`reforge/__main__.py`](reforge/__main__.py)
+> *`python -m reforge`: the standalone entry point.*
+
+**Size**: `8` lines (`146` bytes)
+
+---
+
+### [`reforge/audit.py`](reforge/audit.py)
+> *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
+
+**Size**: `180` lines (`8422` bytes)
+
+**Functions:**
+- `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
+- `def plan_next_stage(repo, run)` - *The next window for one run, its new commits and its already-audited overlap.*
+- `def _prior_context(repo, plan, history)`
+- `def _interaction(finding, prior)`
+- `def audit_window(repo, plan, history)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
+- `def _ordered(findings)`
+- `def summarize(findings)`
+
+---
+
+### [`reforge/cli.py`](reforge/cli.py)
+> *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
+
+**Size**: `370` lines (`18521` bytes)
+
+**Classes:**
+- `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
+  - Method `.error(message)`
+
+**Functions:**
+- `def _add_run_selection(command)`
+- `def _add_window_settings(command, defaults)`
+- `def add_commands(subparsers)` - *Declare every Reforge command once, for either top-level CLI.*
+- `def build_parser()`
+- `def _report_error(error, as_json)`
+- `def _run_line(run)`
+- `def _print_runs(runs)`
+- `def _print_findings(payload)`
+- `def _start_payload(payload)`
+- `def _workspace(args, root, gate_runner)`
+- `def _repo(args, aikit_root)`
+- `def dispatch(args, aikit_root, project_root, gate_runner)` - *Run one parsed request; every failure is reported as a triad or a JSON envelope.*
+- `def main(argv)`
+
+---
+
+### [`reforge/delivery.py`](reforge/delivery.py)
+> *Explicit staging, conventional commit and never-forced push for accepted repairs.*
+
+**Size**: `102` lines (`4130` bytes)
+
+**Functions:**
+- `def validate_message(message)`
+- `def _paths_to_commit(root)`
+- `def commit_repairs(root, message, paths)` - *Stage exactly the repair paths, commit, and verify the commit holds them.*
+- `def deliver(root, message, do_push)`
+
+---
+
+### [`reforge/detectors.py`](reforge/detectors.py)
+> *AST detectors for the defect, security and reliability classes Reforge can evidence.*
+
+**Size**: `297` lines (`13740` bytes)
+
+**Classes:**
+- `class Rule` - *Catalogue entry: what a code means and whether a safe repair exists.*
+- `class _Visitor`
+  - Method `.__init__(path, commit, lines)`
+  - Method `.add(code, node, line, symbol, reproducible)`
+  - Method `._visit_function(node)`
+  - Method `.visit_FunctionDef(node)`
+  - Method `.visit_AsyncFunctionDef(node)`
+  - Method `.visit_ExceptHandler(node)`
+  - Method `.visit_With(node)`
+  - Method `.visit_AsyncWith(node)`
+  - Method `.visit_BinOp(node)`
+  - Method `.visit_Dict(node)`
+  - Method `.visit_Try(node)`
+  - Method `.visit_Subscript(node)`
+  - Method `.visit_Assign(node)`
+  - Method `.visit_AnnAssign(node)`
+  - Method `._credential_assignment(targets, value, node)`
+  - Method `.visit_Call(node)`
+  - Method `.generic_visit(node)`
+
+**Functions:**
+- `def parse_source(source, path)` - *Parse with the running grammar; raises SyntaxError, never guesses a fix.*
+- `def _dotted(node)`
+- `def _snippet(lines, line)`
+- `def _function_ranges(tree)`
+- `def symbol_at(tree, line)` - *The innermost function or class containing `line`, for interaction evidence.*
+- `def symbols_in_source(source)`
+- `def detect_source(path, source, commit)` - *Every rule hit in one file revision, deduplicated and ordered by line.*
+
+---
+
+### [`reforge/errors.py`](reforge/errors.py)
+> *Actionable failures shared by the standalone CLI and the AIKit command.*
+
+**Size**: `15` lines (`536` bytes)
+
+**Classes:**
+- `class ReforgeError` - *A request Reforge refused; carries the AIKit What/Why/Fix triad and exit code.*
+  - Method `.__init__(message, why, fix, exit_code)`
+  - Method `.triad()`
+
+---
+
+### [`reforge/git_history.py`](reforge/git_history.py)
+> *Bounded Git reads used by the auditor, the repair review and delivery.*
+
+**Size**: `183` lines (`6367` bytes)
+
+**Functions:**
+- `def run_git(repo, *args, timeout)` - *Run git with stdin closed and a timeout; returns (exit code, combined output).*
+- `def is_git_repo(repo)`
+- `def head_sha(repo)`
+- `def commit_window(repo, limit)` - *The newest `limit` commits, newest first.*
+- `def commit_info(repo, sha)`
+- `def commit_count(repo)`
+- `def changed_files(repo, sha)` - *(status, relative path) pairs a commit changed; root commits included.*
+- `def added_lines(repo, sha, path)` - *Line numbers a commit adds to `path`, from a zero-context diff.*
+- `def parent_sha(repo, sha)`
+- `def file_at(repo, sha, path)`
+- `def worktree_diff(repo, paths)`
+- `def status_paths(repo)`
+- `def untracked_paths(repo)`
+- `def diff_paths(diff_text)` - *Paths in a unified diff, in first-seen order.*
+- `def commit_paths(repo, sha)`
+- `def stage_and_commit(repo, paths, message)` - *Explicit `git add -- <paths>` then commit; never stages the whole tree.*
+- `def push(repo)` - *Adaptive, never forced push: set the upstream once when origin exists.*
+- `def dirty_paths(repo)` - *Tracked and untracked paths that differ from HEAD, for delivery refusal.*
+
+---
+
+### [`reforge/locking.py`](reforge/locking.py)
+> *A per-project advisory lock so one project never runs two Reforge operations at once.*
+
+**Size**: `68` lines (`2666` bytes)
+
+**Functions:**
+- `def lock_path(root)`
+- `def run_lock(root, wait_seconds)` - *Hold the project's run lock; refuse immediately when another process already holds it.*
+
+---
+
+### [`reforge/model.py`](reforge/model.py)
+> *Immutable values shared by Reforge's audit, repair, persistence and CLI layers.*
+
+**Size**: `110` lines (`2946` bytes)
+
+**Classes:**
+- `class CommitInfo` - *One commit in the window Reforge is auditing.*
+- `class Finding` - *An evidence-backed problem introduced by an audited commit.*
+  - Method `.key()` - *Stable identity for a finding inside one audit stage.*
+  - Method `.as_dict()`
+- `class Repair` - *One repair Reforge made, or deliberately skipped, for a finding.*
+  - Method `.as_dict()`
+- `class StagePlan` - *The progressive history window for one audit stage of one named run.*
+  - Property `.has_new_commits`
+  - Method `.as_dict()`
+
+---
+
+### [`reforge/pipeline.py`](reforge/pipeline.py)
+> *Orchestrates one independent audit run, its safe repairs and their verification.*
+
+**Size**: `379` lines (`16507` bytes)
+
+**Functions:**
+- `def finding_from_dict(item)`
+- `def _scanner(label, text)`
+- `def _stop_value(stop)`
+- `def _snapshot(root, findings)`
+- `def _restore(root, snapshots)`
+- `def _clean_before_repair(root, allow_dirty)`
+- `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates)`
+- `def _review_error(run, pending)`
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
+- `def stop_audit(root, run_id)`
+- `def resume_audit(root, run_id)`
+- `def configure_audit(root, run_id, start, step, stop)`
+- `def runs_payload(root)`
+- `def status_payload(root)`
+- `def report_payload(root)`
+
+---
+
+### [`reforge/repair.py`](reforge/repair.py)
+> *Smallest-safe automatic repairs, generated regression tests and repair verification.*
+
+**Size**: `383` lines (`16021` bytes)
+
+**Classes:**
+- `class _Edit`
+- `class _MutableDefault`
+
+**Functions:**
+- `def _lines(text)`
+- `def _offset(lines, line, column)`
+- `def _default_constructor(node)`
+- `def _locate(tree, finding)`
+- `def _call_name(node)`
+- `def _bare_except_edit(text, lines, node)`
+- `def _yaml_edit(text, lines, node)`
+- `def _remove_keyword(text, lines, node, name)`
+- `def _mutable_default_edits(lines, located)`
+- `def _edits_for(text, finding, tree)`
+- `def _apply_edits(text, edits)`
+- `def _secret_hits(label, text)`
+- `def _write_text(path, text)`
+- `def _local_atomic_write(path, text)`
+- `def _test_method_name(code, path)`
+- `def _test_body(code, relative)`
+- `def regression_test_path(root)`
+- `def _add_regression_tests(root, repairs)`
+- `def repair_findings(root, findings, add_tests)` - *Apply safe repairs per file, then add one regression test per repaired rule and file.*
+- `def repair_paths(repairs, root)` - *The source and test paths a repair touched, for an explicit commit and patch review.*
+
+---
+
+### [`reforge/repo_sync.py`](reforge/repo_sync.py)
+> *Materialize Reforge as its own Git repository and synchronize both directions.*
+
+**Size**: `562` lines (`21336` bytes)
+
+**Functions:**
+- `def source_root()`
+- `def sync_config(root)` - *Read the AIKit-side sync file; defaults keep an older checkout working.*
+- `def manifest(root, config)` - *The shipped Reforge source: its package and standalone shim, never generated docs.*
+- `def _digest(path)`
+- `def _write(path, text)` - *Atomic generated-file write: temp, fsync, replace (PRINCIPLE-013).*
+- `def _copy(source, target)`
+- `def _marker(target, marker_name)`
+- `def _generated_files(source)`
+- `def _git(root, *args, timeout)`
+- `def init_repo(source, target, force)` - *Create the standalone repository with source, docs, CI, issue templates and a first commit.*
+- `def sync_repo(source, target, direction, force)` - *Copy changed shipped files one way, refusing a file both sides changed since the last sync.*
+- `def repo_status(source, target)`
+- `def create_release(target, tag, message)` - *Create a local annotated release tag; publishing it stays a deliberate GitHub step.*
+
+---
+
+### [`reforge/state.py`](reforge/state.py)
+> *Persistent audit runs, written atomically and isolated per project.*
+
+**Size**: `410` lines (`15704` bytes)
+
+**Functions:**
+- `def state_path(root)`
+- `def is_reforge_artifact(relative)` - *Backups, temp files and locks belong to Reforge, not to the reviewed patch.*
+- `def new_state()` - *A fresh state with mirrored top-level fields for schema-1 readers and reports.*
+- `def _now()`
+- `def validate_settings(start, step, stop)` - *A run's window plan: start >= 2, step >= 1, and an optional stop at or past start.*
+- `def _mirror(state, run)`
+- `def create_run(state, start, step, stop)` - *Add one independent audit run and make it active; its history starts empty.*
+- `def _find_by_id(state, run_id)`
+- `def find_run(state, run_id)` - *The named run, else the active one, else the most recent; None when there is none.*
+- `def current_run(state, run_id)`
+- `def _migrate_v1(data)` - *A schema-1 state becomes run-1 without losing its stage, commits or history.*
+- `def load_state(root)` - *Read the state; a missing file is fresh, schema 1 migrates in memory, corrupt is refused.*
+- `def _local_atomic_write(path, text)`
+- `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
+- `def entry_from_stage(plan, findings, repairs, tests, gates)`
+- `def run_complete(run, window)`
+- `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
+- `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
+- `def unrepaired_findings(run)`
+- `def pending_fixable(run)` - *Findings an agent still has to repair before another stage may start.*
+- `def stop_run(root, state, run)`
+- `def resume_run(root, state, run)`
+- `def update_settings(root, state, run, start, step, stop)` - *Change a run's step/stop; start may change only before its first stage.*
+- `def run_summary(run)`
+- `def runs_summary(state)`
+
+---
+
+### [`reforge/verification.py`](reforge/verification.py)
+> *Patch review, repair re-checks and bounded test execution.*
+
+**Size**: `84` lines (`3699` bytes)
+
+**Functions:**
+- `def _shell(command)`
+- `def run_test_command(command, cwd, timeout)` - *Run a project command with stdin closed and the whole process tree bounded.*
+- `def python_command(*args)`
+- `def default_test_command(root)` - *The repository's own unittest discovery when it has tests; never a guessed runner.*
+- `def recheck_repairs(root, repairs)` - *Every repaired rule must be absent from the file it was repaired in.*
+- `def review_patch(root, allowed_paths, scanner)` - *Review the actual diff: only intended paths, no credential-shaped added line.*
+
+---
+
+### [`reforge/version.py`](reforge/version.py)
+> *The single version constant shared by the package, CLI and generated standalone repository.*
+
+**Size**: `3` lines (`121` bytes)
+
+---
+
+### [`reforge.py`](reforge.py)
+> *Standalone Aegean Reforge entry point: `python reforge.py --help`.*
+
+**Size**: `9` lines (`187` bytes)
+
+---
+
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1049` lines (`52300` bytes)
+**Size**: `1301` lines (`65284` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -35,8 +562,7 @@
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
 - `def project_is_clean(audit, open_ui_task)` - *Whether the project's tree and ledger are delivery-ready, decided once for every surface.*
 - `def test_command_topic(test_command)` - *The language topic a known test runner implies, or None for a custom command.*
-- `def is_typescript_project(project_root)` - *Whether a Node project writes TypeScript: a tsconfig, or `typescript` in package.json.*
-- `def publish_topics(project_root, recorded)` - *The topics `publish` sets: the recorded ones, then one per detected stack, then*
+- `def publish_topics(project_root, recorded)` - *The AI-chosen topics `publish` sets, validated; AIKit adds no tag on its own (ADR-236).*
 - `def license_summary(project)` - *One line on the project's license tier for `status` (ADR-214).*
 - `def project_payload(project)` - *The project half of a `--json` report: what `status` prints as its header lines.*
 - `def error_envelope(error)` - *The stable `--json` failure shape shared by every project command (ADR-167, ADR-172).*
@@ -55,7 +581,13 @@
 - `def cmd_fix(args)` - *Repair what AIKit can repair mechanically, then run the gates: everything left is the*
 - `def cmd_publish(args)`
 - `def cmd_license(args)`
-- `def cmd_topics(args)` - *Show or set the GitHub topics AIKit records and derives for a project (ADR-218).*
+- `def _write_project_topics(project, topics, source)`
+- `def _topic_error(exc)`
+- `def cmd_topics(args)` - *Let an AI choose GitHub topics; validate, record and optionally apply them (ADR-236).*
+- `def cmd_ui_id(args)` - *Detect or manually set a project's UI identifier (ADR-233).*
+- `def cmd_media(args)` - *Generate, review and apply brand/screenshot media (ADR-235).*
+- `def cmd_reforge(args)` - *Reach Aegean Reforge through AIKit's registry, gates and persistence.*
+- `def cmd_idea_catcher(args)` - *Reach the shipped Idea Catcher register through AIKit's workspace layout.*
 - `def cmd_delegate(args)`
 - `def cmd_ui(args)` - *Bound a UI task to one declared surface and keep it inside that contract.*
 - `def main(argv)`
@@ -65,7 +597,7 @@
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `220` lines (`14446` bytes)
+**Size**: `294` lines (`20115` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -127,7 +659,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `349` lines (`14734` bytes)
+**Size**: `351` lines (`14871` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -170,7 +702,7 @@
 ### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
 > *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
 
-**Size**: `225` lines (`9128` bytes)
+**Size**: `224` lines (`9049` bytes)
 
 **Classes:**
 - `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
@@ -278,6 +810,60 @@
 
 ---
 
+### [`scripts/project_artwork.py`](scripts/project_artwork.py)
+> *Image-model brand artwork for projects (ADR-239).*
+
+**Size**: `541` lines (`29083` bytes)
+
+**Functions:**
+- `def _hex_rgb(value)`
+- `def _rgba(value, alpha)`
+- `def _art_prompt(name, description, motif, palette)`
+- `def model_key()`
+- `def _model_headers()`
+- `def _download_url(url, output, attempts)`
+- `def _palette_words(palette)`
+- `def _logo_model_prompt(name)`
+- `def _social_model_prompt(name)`
+- `def generate_model_brand(project_root, name, kind, force, parts, seed_offset)` - *Render the requested parts with the online image model (ADR-239/240/241).*
+- `def _download(url, output, attempts)`
+- `def _throttle()`
+- `def fetch_artwork(project_root, name, description)` - *Generate and store this project's hero image; retries transient model failures.*
+- `def _monogram(name)`
+- `def _display_name(name)`
+- `def _wrap_words(text, max_chars, max_lines)`
+- `def _lockup(title, max_lines)`
+- `def _logo_html(name, art)`
+- `def _chips_html(tags, palette)`
+- `def _social_html(name, art, description, kind, tags)`
+- `def compose_brand(project_root, name, description, tags, kind)` - *Render the final 512px logo and 1280x640 social card over the generated artwork.*
+- `def crop_letterboxed_social(project_root, name, zoom, axis)` - *Crop a model card's dark letterbox bands by scaling it inside the 1280x640 frame.*
+- `def generate_brand(project_root, name, description, tags, kind, force, refresh_art)` - *Fetch image-model artwork, compose PNG brand assets, and mark them for review.*
+
+---
+
+### [`scripts/project_brand.py`](scripts/project_brand.py)
+> *Project-specific brand artwork: one motif, palette and composition per project.*
+
+**Size**: `452` lines (`27984` bytes)
+
+**Functions:**
+- `def _catalog()`
+- `def _hex(hue, saturation, lightness)`
+- `def _fallback_palette(name)`
+- `def brand_spec(name)` - *The authored motif/palette/composition for a project, with a stable fallback.*
+- `def _display_name(name)`
+- `def _monogram(name)`
+- `def _wrap(text, width, limit)`
+- `def _motif_body(motif, accent, accent2)`
+- `def _motif(motif, accent, accent2, cx, cy, scale, opacity)`
+- `def _logo_rings(layout, accent, accent2)`
+- `def logo_svg(name)` - *A 512px square identity: project motif, unique palette, monogram and AegeanWorks mark.*
+- `def _chips(tags, x, y)`
+- `def social_svg(name, kind, description, repo_url, tags)` - *A 1280x640 social card with a layout chosen for this project, not a shared template.*
+
+---
+
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
@@ -323,6 +909,47 @@
 
 ---
 
+### [`scripts/project_media.py`](scripts/project_media.py)
+> *Project brand and screenshot media pipeline (ADR-235).*
+
+**Size**: `781` lines (`34767` bytes)
+
+**Functions:**
+- `def media_path(root)`
+- `def _atomic_text(path, text)`
+- `def _atomic_bytes(path, data)`
+- `def _head(root)`
+- `def _description(root, name)`
+- `def _palette(name, kind)`
+- `def _logo_svg(name, kind)`
+- `def _social_svg(name, kind, description, repo_url, tags)`
+- `def _browser()`
+- `def capture_html(source, output, width, height)` - *Render a local SVG/HTML file with the installed browser, bounded by a timeout.*
+- `def jpeg_size(path)`
+- `def image_size(path)`
+- `def png_size(path)`
+- `def _validate_svg(path, title)`
+- `def _review_record(reviewer, method, notes, score)`
+- `def load_media(root)`
+- `def media_blockers(root)` - *Assets that still need a review before a new project may be published.*
+- `def save_media(root, data)`
+- `def _asset(path, commit, status)`
+- `def seed_media_assets(project_root, name, force, capture_png)` - *Generate candidate logo/social assets and a pending manifest; never touches the README.*
+- `def capture_screenshot(project_root, name, url, viewport, force)` - *Capture a UI project at HEAD and register the image as pending review.*
+- `def _parse_viewport(value)`
+- `def _surface(root, url, name)`
+- `def _find_asset(data, kind, index)`
+- `def review_media(project_root, kind, decision, reviewer, method, notes, score, index)` - *Validate the asset, then record an approve/reject decision with its evidence.*
+- `def name_of(root)`
+- `def _approved(asset)`
+- `def _copy_media(source, target)`
+- `def apply_media(project_root, name, dossier)` - *Copy approved assets into the dossier and reference them from the project README.*
+- `def _update_readme(readme, repo, data, shots)`
+- `def audit_media(project_root, dossier)` - *Check the manifest, files, commit stamps, dossier links and README references.*
+- `def media_status(project_root)`
+
+---
+
 ### [`scripts/project_publish.py`](scripts/project_publish.py)
 > *Publish a project to its own GitHub repository (ADR-134).*
 
@@ -348,7 +975,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1106` lines (`51163` bytes)
+**Size**: `1134` lines (`52758` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -357,6 +984,7 @@
 - `class Project` - *A registered project as `aikit list` reports it.*
 
 **Functions:**
+- `def license_topics(kind, restricted)` - *The GitHub topics that name a project's license tier, kept out of automatic AI choice.*
 - `def title_case(text)` - *A display title from a project name: words capitalised, small joining words left lower unless*
 - `def repository_name(name)` - *The GitHub repository name for a project: each hyphen- or underscore-delimited word takes a*
 - `def license_choice(kind)` - *The catalog entry for `kind`, or a ProjectError naming the three choices.*
@@ -401,6 +1029,50 @@
 - `def project_guidelines(project_root)` - *The project's rule lines (`- **G-NNN** (source): rule`), oldest first; [] when it has none.*
 - `def add_guideline(project_root, rule, source)` - *Append one rule to the project's guidelines and return its new ID. Whatever the guidelines*
 - `def latest_decision(project_root)` - *The last `### ADR-NNN: ...` heading in the project's decision register, if any.*
+
+---
+
+### [`scripts/project_topics.py`](scripts/project_topics.py)
+> *GitHub topic policy (ADR-234, revised by ADR-236): an AI agent chooses the tags; AIKit validates,*
+
+**Size**: `306` lines (`13845` bytes)
+
+**Functions:**
+- `def _read_readme(root)`
+- `def _license_tags(root)`
+- `def _has_token(text, token)`
+- `def hint_tags(project_root, description)` - *Possible tags for the AI to consider; the agent decides and may ignore all of them.*
+- `def ai_brief(project_root, name, recorded, current)` - *The bounded evidence an AI agent needs to choose the final tags.*
+- `def _dedupe(tags)`
+- `def _dedupe_raw(tags)`
+- `def validate_choice(project_root, recorded, current, chosen, replace, remove)` - *Validate an AI addition to the existing tags; valid older tags are never dropped.*
+- `def choice_from_payload(payload)` - *Accept `{"topics": [...], "remove": [...]}` or a bare list; anything else is refused.*
+- `def read_choice_file(path)`
+- `def repo_slug(project_root, name)` - *`owner/repo` from the project's origin, else the conventional AegeanWorks name.*
+- `def github_topics(slug, runner)` - *Read the repository's live topics; ([], error) when GitHub cannot be reached.*
+- `def apply_topics(slug, add, remove, runner)` - *Add and remove topics in two explicit calls; a failure is reported, never hidden.*
+- `def topic_audit(current, recorded)` - *Audit the live/recorded lists without choosing anything for the agent.*
+
+---
+
+### [`scripts/project_ui.py`](scripts/project_ui.py)
+> *Project UI identifier (ADR-233): does this project have a user interface a screenshot can show?*
+
+**Size**: `247` lines (`9748` bytes)
+
+**Functions:**
+- `def _scan_files(root)`
+- `def _read_small(path, limit)`
+- `def _package_dependencies(root)`
+- `def _python_dependency_text(root)`
+- `def _evidence(paths, root, limit)`
+- `def _html_files(files, root)`
+- `def detect_ui(project_root, respect_manual)` - *Classify a project's interface, with the marker files that justify the answer.*
+- `def write_ui_identity(project_root, result)` - *Persist the identifier atomically, preserving the rest of the project's memory.*
+- `def set_ui_manual(project_root, has_ui, kind)` - *Record an explicit human/agent decision; `auto` clears it on the next detection.*
+- `def auto_ui(project_root)`
+- `def refresh_ui_identifier(project_root)` - *Re-detect after UI work; a UI command or capture proves a screenshotable surface exists.*
+- `def ui_payload(project_root)`
 
 ---
 
@@ -589,7 +1261,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1223` lines (`61549` bytes)
+**Size**: `1492` lines (`75818` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -691,6 +1363,22 @@
   - Method `.test_shell_keeps_quotes_and_reports_exit_codes()`
 - `class TestProjectPublishLifecycle` - *Publishing visibility and check --no-push with real processes and git checkouts (ADR-134, ADR-135).*
   - Method `.test_project_status_list_repo_and_check_no_push()`
+- `class TestProjectPolicyCLI` - *PRINCIPLE-014: the UI, topic and media commands reach the registry and write real files.*
+  - Method `.test_ui_topic_and_media_commands_round_trip()`
+- `class TestReforgeHistory` - *PRINCIPLE-014: progressive history auditing and repair against real Git commits.*
+  - Method `.git(root, *args)`
+  - Method `.repository(defects)`
+  - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
+  - Method `.test_stage_one_repairs_and_records_evidence()`
+  - Method `.test_a_failing_test_rolls_the_repair_back()`
+  - Method `.test_standalone_repository_is_complete_and_runs_its_own_cli()`
+  - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
+  - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
+- `class TestIdeaCatcherSyncCheck` - *PRINCIPLE-014: the shipped copy and the standalone register report drift as a gate.*
+  - Method `.tree()`
+  - Method `.test_repo_status_check_fails_on_drift()`
+- `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the shipped register in a workspace.*
+  - Method `.test_status_reads_the_workspace_register()`
 
 **Functions:**
 - `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
@@ -704,7 +1392,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8144` lines (`466045` bytes)
+**Size**: `8715` lines (`495690` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1130,8 +1818,8 @@
   - Method `.test_restrict_appends_a_license_section_to_a_readme_without_one()`
   - Method `.test_restrict_rewrites_a_license_entry_that_is_last_in_the_tree()`
   - Method `.test_cli_license_reports_then_restricts_with_a_checklist()`
-  - Method `.test_published_topics_add_the_stack_and_the_license()`
-  - Method `.test_a_restricted_game_project_announces_no_license_topics()`
+  - Method `.test_published_topics_are_the_ai_choice_not_an_inference()`
+  - Method `.test_ai_topic_choice_is_validated_and_never_auto_filled()`
   - Method `.test_license_suggest_on_a_restricted_project_is_read_only()`
   - Method `.test_switching_a_license_seeds_missing_commercial_terms()`
   - Method `.test_publish_refuses_the_template_description_placeholder()`
@@ -1155,6 +1843,7 @@
   - Method `.test_project_ledger_commands_keep_the_impact_gate()`
   - Method `.test_workspace_is_explicit_never_the_working_directory()`
   - Method `.test_new_with_publish_flag_calls_publish_project()`
+  - Method `.test_new_generates_review_pending_media_before_any_publish()`
   - Method `.test_status_displays_repo_url()`
   - Method `.test_status_exit_code_tracks_dirty_state_without_changing_plain_status()`
   - Method `.test_status_json_reports_the_same_readiness_as_the_exit_code()`
@@ -1366,6 +2055,59 @@
   - Method `.test_the_worktree_is_removed_even_when_a_gate_fails()`
   - Method `.test_a_worktree_that_cannot_be_made_is_reported_not_passed()`
   - Method `.test_a_ref_that_is_no_commit_is_refused()`
+- `class TestReforgeCore` - *PRINCIPLE-014: Aegean Reforge's detectors, repairs, state and sync stay fast and grounded.*
+  - Method `.root()`
+  - Method `.repair(source, add_tests)`
+  - Method `.test_detectors_cover_the_supported_defect_classes()`
+  - Method `.test_a_bare_except_is_repaired_and_rechecked()`
+  - Method `.test_a_mutable_default_is_replaced_and_gets_a_regression_test()`
+  - Method `.test_yaml_shell_and_verify_are_repaired_together()`
+  - Method `.test_a_repaired_finding_is_not_reported_or_repaired_twice()`
+  - Method `.test_a_syntax_error_is_evidenced_and_marked_reproducible()`
+  - Method `.test_stage_windows_follow_the_documented_progression()`
+  - Method `.test_interaction_evidence_marks_a_prior_symbol_or_repair_as_a_regression()`
+  - Method `.test_state_round_trips_and_refuses_a_newer_schema()`
+  - Method `.sync_tree()`
+  - Method `.test_repo_sync_pushes_and_pulls_shipped_source()`
+  - Method `.test_repo_sync_refuses_a_two_sided_conflict()`
+  - Method `.test_the_parser_declares_the_shared_reforge_commands()`
+  - Method `.test_delivery_refuses_a_non_conventional_message()`
+  - Method `.test_a_finding_serializes_every_evidence_field()`
+  - Method `.test_no_test_command_is_invented_for_an_empty_repository()`
+  - Method `.project(name, readme)`
+  - Method `.test_ui_identity_detects_web_game_and_cli_projects()`
+  - Method `.test_ui_work_refreshes_the_identifier()`
+  - Method `.test_ui_identity_can_be_set_manually_and_reported()`
+  - Method `.test_the_ai_brief_supplies_evidence_but_chooses_nothing()`
+  - Method `.test_ai_choice_is_added_on_top_and_never_auto_filled()`
+  - Method `.test_every_catalog_project_has_a_unique_palette_and_artwork()`
+  - Method `.test_ai_art_prompts_and_monograms_are_project_specific()`
+  - Method `.test_model_brand_requires_an_environment_key()`
+  - Method `.test_the_asset_disclosure_is_specific_and_honest()`
+  - Method `.test_media_blockers_are_empty_without_a_manifest()`
+  - Method `.test_display_name_uses_the_catalog_override()`
+  - Method `.test_model_key_requires_an_environment_value()`
+  - Method `.test_new_projects_get_license_topic_metadata()`
+  - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
+  - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
+  - Method `.test_the_manifest_ships_the_package_and_standalone_shim()`
+  - Method `.test_the_sync_file_names_the_shipped_source_and_target()`
+  - Method `.test_window_settings_are_configurable_and_capped_by_stop()`
+  - Method `.test_runs_stop_resume_and_create_independent_histories()`
+  - Method `.test_schema_one_migrates_to_an_independent_first_run()`
+  - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
+  - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
+  - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
+  - Method `.test_the_parser_declares_run_management_commands()`
+- `class TestIdeaCatcherShip` - *PRINCIPLE-014: Idea Catcher ships complete and its two copies stay synchronized.*
+  - Method `.tree()`
+  - Method `.marker(target)`
+  - Method `.test_the_manifest_carries_the_package_and_the_shim()`
+  - Method `.test_a_sync_path_may_not_escape_the_checkout()`
+  - Method `.test_sync_pushes_and_pulls_shipped_source()`
+  - Method `.test_sync_refuses_a_two_sided_conflict()`
+  - Method `.test_the_root_override_selects_a_register()`
+  - Method `.test_the_parser_declares_the_repo_and_status_commands()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`
