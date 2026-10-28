@@ -26,7 +26,7 @@
 | Operational Role| Canonical Command| Verification Gate|
 |---|---|---|
 | **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
-| **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`, `repo`; configurable windows; isolated runs (ADR-230, ADR-232)|
+| **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`; windows, Python AST (ADR-230, ADR-232, ADR-249)|
 | **Route Ideas & Reviews**| `python aikit.py idea-catcher <cmd>`| `validate`, `render`, `status`, `ideas`, `tag`, `history`, `reviews`, `review-start/finish`, `revalidate`, `audit-claims`, `concepts`, `repo`; shipped register tooling (ADR-246)|
 | **Project Tags & Media**| `python aikit.py <cmd>`| `ui-id`, `topics --brief/--from-file`, `media init/capture/review/apply/audit`; AI-chosen tags, reviewed logos and commit-stamped screenshots (ADR-233..236)|
 | **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=20ms unit, <=500ms integration|
@@ -160,66 +160,70 @@ portable_agent_kit/
 
 ## 🚀 Start a Project
 
-Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own git repository; AIKit's gates, map and ledger never read it. `new` also detects the UI kind, adds the project's license topic tags, and creates logo/social candidates; `publish` and `new --publish` wait until those assets are reviewed and applied (ADR-243, ADR-245).
+Open this folder in any AI host and describe what to build. Each project gets its own folder under `projects/` (ignored by AIKit's git) and its own repository; AIKit's gates, map and ledger never read it. `new` also detects the UI kind, adds license topics and creates logo/social candidates that must be reviewed before `publish` (ADR-243, ADR-245).
 
 ```bash
 python aikit.py new my-app --description "<10-350 chars>" --topic web  # new repo, .aikit/, AL-1.1 LICENSE, AIKit badge
-python aikit.py attach ../existing  # register a folder elsewhere; adds .aikit/, .gitignore lines, AIKit badge (migrates a pre-move link)
+python aikit.py attach ../existing  # register an existing folder; adds .aikit/, ignore rules, badge
 python aikit.py list                # every project, its stack and test command
-python aikit.py status my-app       # its task, changes, decision; --exit-code fails when dirty or blocked, --json for CI
-python aikit.py check my-app        # its tests, configured checks, hygiene, guidelines, secrets; --push to push (exit 1 if it cannot)
+python aikit.py status my-app       # task, changes, decision; --exit-code fails when dirty, --json for CI
+python aikit.py check my-app        # tests, checks, hygiene, guidelines, secrets; --push pushes (exit 1 if blocked)
 python aikit.py check my-app --strict  # delivery gate: clean tree, map, no conflicts, no open UI task
 python aikit.py ui init my-app        # React/Vite pilot: write a conservative .aikit/ui.json
-python aikit.py ui init my-app --fast "npm run test" --paths "src/**"  # manual other-stack contract
+python aikit.py ui init my-app --fast "npm run test" --paths "src/**"  # other stacks
 python aikit.py ui begin my-app --surface menu  # bound edits to one declared UI surface
 python aikit.py ui verify my-app       # scope, budget, fast + snapshot proofs, style drift
-python aikit.py ui verify my-app --json  # stable finding codes for CI
-python aikit.py ui allow my-app "Btn*" --reason "<why>"  # record intended inventory removals
+python aikit.py ui allow my-app "Btn*" --reason "<why>"  # intended inventory removal
 python aikit.py ui finish my-app --reviewed  # close after review; evidence in .aikit/ui_history.json
-python aikit.py ui abort my-app        # restore only the surface; keep unrelated work
 python aikit.py fix my-app          # restore memory/README, migrate the AIKit link, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app [--owner ORG] [--license auto]  # repo, description, recorded AI topics
 python aikit.py license my-app [--suggest|--set game|--restrict]  # AL-1.1, AGL-1.1 (DRM-free games) or ASL-1.1 (science)
 ```
-A project's memory is `.aikit/` (record, ledger, decisions); ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 README description. `license --suggest/--set` picks AL-1.1, AGL-1.1 or ASL-1.1; `topics` sets GitHub tags. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
+A project's memory is `.aikit/`; ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 character README description; `license` picks AL-1.1, AGL-1.1 or ASL-1.1. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
 
 ## 🔁 Aegean Reforge: History Audit & Safe Repair
 
-Reforge is integrated into AIKit: its only source lives in `reforge/` and `reforge.py`, and AIKit
-reuses its registry, gates, secret scanner and persistence. Projects have separate runs and locks;
-a second run on one is refused.
+Reforge audits history in widening windows and repairs only what it can prove. It lives in
+`reforge/` and `reforge.py`: `aikit.py reforge` uses the project registry, `python -m reforge`
+the bare engine. The standalone repository is archived (ADR-248).
 
 ```bash
-python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # independent run
-python aikit.py reforge run my-app         # audit, repair, add regression tests, verify, record
-python aikit.py reforge run my-app --push  # after review: commit explicit paths, push without force
-python reforge.py --help                   # same engine, no AIKit project registry
+python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # new independent run
+python aikit.py reforge audit my-app       # analyse the next window, cite evidence
+python aikit.py reforge fix my-app         # repair safe findings, add regression tests
+python aikit.py reforge run my-app --push  # audit, fix, verify, then commit and push
 ```
 
-Window N is `start + step*(N-1)`, capped by `stop`; evidence is commit/path/line, only mechanical
-repairs are automatic, and a red gate rolls them back. The former standalone repository
-`AegeanWorks/Aegean-Reforge` is archived and points here; there is no second copy to synchronize.
+Window N is `start + step*(N-1)`, capped by `stop`: stage 1 reads the first `start` commits and each
+later stage adds `step`. A stage inspects only the lines its own commits add, attributes a finding to
+the commit that introduced it, and cites `commit:path:line`. Its 21 rules cover exceptions,
+shell/exec, deserialisation, mutable defaults, timeouts, secrets and control flow; five are repaired
+mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`),
+each earning a regression test. Detectors use Python's AST, so a changed non-Python file is reported
+as not analysed instead of passing silently. A patch must survive the project's tests and gates; a
+red result restores the exact bytes, and `--commit`/`--push` stage only reviewed paths plus
+`.aikit/reforge.json`, never forcing. Runs are independent (`settings`, `stop`, `resume`, `runs`,
+`report`); state is crash-safe and a per-project lock refuses concurrent work.
 
 ## 🧭 Idea Catcher: Routed Idea Register
 
-Idea Catcher ships complete in `idea_catcher/` and `idea_catcher.py`, and its register lives in
-`projects/idea-catcher/` so the data stays out of AIKit's own tree. Both copies carry the same
-source; `repo sync` moves changes one way and refuses a two-sided edit.
+Idea Catcher ships in `idea_catcher/` and `idea_catcher.py`; its register lives in
+`projects/idea-catcher/`, outside AIKit's tree. `repo sync` moves code one way and refuses a
+two-sided edit.
 
 ```bash
 python aikit.py idea-catcher status             # counts per target and decision state
 python aikit.py idea-catcher validate           # targets, ideas, dossiers and matrix
 python aikit.py idea-catcher render --check     # fail when MATRIX.md is stale
-python aikit.py idea-catcher ideas --target aikit --status Proposed
 python aikit.py idea-catcher reviews --stale
 python aikit.py idea-catcher repo status --check  # exit 1 when both copies diverge
 python aikit.py idea-catcher repo sync --direction push  # pull reverses it
 ```
 
-A review claims a repository with a lease and reserves idea ids, so parallel analyses cannot
-collide. Dossiers must name a `Source` from `IDEA-632` onward; tags, target changes and status
-changes append to each idea's history. Standalone: `python idea_catcher.py --help`.
+A review leases its repository and reserves idea ids, so parallel analyses cannot collide.
+Dossiers name a `Source` from `IDEA-632` onward; tags, target and status changes append to each
+idea's history.
 
 `ui-id` stores `has_ui`, `ui_kind` and `ui_evidence`. `topics --brief` gives an AI the evidence;
 `--from-file` records its tags and `--apply` publishes them, capped at 20. `media init --art` uses

@@ -47,14 +47,16 @@ python scripts/disruption_recovery.py --suspend "<reason>" --workspace projects/
 python scripts/disruption_recovery.py --resume-task <task_id> --workspace projects/<name>  # reactivate a paused or superseded task (ADR-219)
 python aikit.py clean <name>         # clean dangling project buffers
 python aikit.py reforge start <name> --start 3 --step 3 --stop 15  # independent run; per-project lock
-python aikit.py reforge run <name>     # audit, repair safe findings, add regression tests, verify patch
-python aikit.py reforge run <name> --push  # review first; commits explicit paths and pushes without force (ADR-230)
-python aikit.py reforge audit <name>   # next window; fix repairs; settings/stop/resume/runs/status manage runs (ADR-232)
-python aikit.py reforge repo init      # own Git repo at projects/aegean-reforge; repo sync --direction push|pull (ADR-231)
+python aikit.py reforge audit <name>   # next window: findings cite commit:path:line
+python aikit.py reforge fix <name>     # repair safe findings, add regression tests, verify patch
+python aikit.py reforge run <name> --push  # review first; commits explicit paths, pushes without force (ADR-230)
+python aikit.py reforge settings|stop|resume|runs|status|report <name>  # manage runs (ADR-232, ADR-249)
+python reforge.py <path> --help        # same engine against any repo, no project registry (ADR-248)
 python aikit.py idea-catcher status     # shipped register tool over projects/idea-catcher (ADR-246)
 python aikit.py idea-catcher validate   # targets, ideas, dossiers and generated matrix; render --check
 python aikit.py idea-catcher repo status --check  # exit 1 on drift; repo sync --direction push|pull
 ```
+- Reforge in one paragraph: window N is `start + step*(N-1)`, capped by `stop`; a stage inspects only the lines its own commits add and attributes each finding to the commit that introduced it. Five rules repair mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`), each with a generated regression test; the other 16 are reported for a human. A red test or gate restores the exact bytes, and `--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`, never forcing. Detectors use Python's AST, so changed non-Python files print as `[SKIP] ... not analysed` instead of passing silently. `reforge/` + `reforge.py` are the only source; the standalone repository is archived.
 - Request names no single project: ask which one, or the name of a new one, before writing code.
 - Before writing code in a project, read its guidelines (`status` or `resume` prints them): its own rules, which add to the principles and never override one (PRINCIPLE-000 R6). When the user states a lasting rule for the project, record it with `aikit guideline`.
 - In the steps below, project work replaces the repository with the project: use the cockpit subcommands above, or add `--workspace <project path>` to every `disruption_recovery.py` command, write ADRs in `<project>/.aikit/decisions.md`, stage and commit inside the project, and run `python aikit.py check <name>` as Phase 4. `aikit fix <name>` self-heals project memory and cleans temporary buffers. AIKit's other gates are for changes to AIKit only.

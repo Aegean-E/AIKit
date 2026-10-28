@@ -45,8 +45,13 @@ audit concurrently, while a second operation on one project is refused. A run's 
 settings, and a stopped or completed run keeps its history when another begins. Within a run, every
 previously audited SHA stays in view for interaction evidence; only mechanical repairs are applied,
 one regression test is generated per repaired rule/file, the real diff is reviewed, the project's
-tests run, and a red result rolls the patch back. See [ADR-230](decisions.md),
-[ADR-231](decisions.md) and [ADR-232](decisions.md).
+tests run, and a red result rolls the patch back. Detectors read Python's AST, so a stage reports
+every changed non-Python path as not analysed instead of returning silent coverage; the five
+fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
+`unsafe-yaml-load`. A separate `fix` refreshes the history entry `report` reads, a second
+`fix --commit` delivers an already-reviewed patch, and raising `--stop` reopens a completed run.
+See [ADR-230](decisions.md), [ADR-232](decisions.md), [ADR-248](decisions.md) and
+[ADR-249](decisions.md).
 
 ## 🧭 Idea Catcher: Shipped Register Tool
 `idea_catcher/` is the tool AIKit ships for the private `projects/idea-catcher/` register: cloning

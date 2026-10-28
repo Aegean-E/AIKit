@@ -150,6 +150,11 @@ def _print_findings(payload: Dict[str, object]) -> None:
         print(f"  [{'PASS' if tests.get('passed') else 'FAIL'}] tests: {tests.get('command')}")
     if not findings:
         print("  no introduced findings")
+    skipped = payload.get("skipped") or []
+    if skipped:
+        shown = ", ".join(str(path) for path in skipped[:5])
+        more = f" (+{len(skipped) - 5} more)" if len(skipped) > 5 else ""
+        print(f"  [SKIP] {len(skipped)} changed file(s) not analysed (Python only): {shown}{more}")
     if payload["mode"] == "audit" and findings:
         print(f"Next: python reforge.py fix {payload['root']} --run {payload.get('run')}")
     elif payload["mode"] in {"run", "fix"} and payload.get("repaired"):
@@ -219,9 +224,11 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
                 for entry in run.get("history") or []:
                     counts = ", ".join(f"{k}={v}" for k, v in
                                        sorted((entry.get("counts") or {}).items()))
+                    skipped = len(entry.get("skipped") or [])
                     print(f"    stage {entry['stage']} window {entry['window']}: "
                           f"{len(entry.get('new_commits') or [])} new, "
                           f"{len(entry.get('repairs') or [])} repair(s)"
+                          f"{', ' + str(skipped) + ' not analysed' if skipped else ''}"
                           f"{' (' + counts + ')' if counts else ''}")
         return 0
     if action == "start":

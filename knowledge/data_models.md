@@ -94,7 +94,9 @@ Window N is `start + step*(N - 1)`, capped by `stop` when set; `start >= 2`, `st
 `stop >= start`, and `stop` may be `null` for unlimited. A run completes when its window reaches
 `stop`; its history is then kept while a new run may start from any window. Each stage history is
 bounded to 20 entries and carries `stage`, `window`, `commits`, `new_commits`, `prior_commits`,
-`findings`, `repairs`, `counts`, `tests`, `gates`, `timestamp`. Each finding carries `code`,
+`findings`, `repairs`, `counts`, `skipped`, `tests`, `gates`, `timestamp`. `skipped` lists the
+changed paths a stage could not analyse because Reforge's detectors are Python-only
+(ADR-249), so coverage is recorded rather than implied. Each finding carries `code`,
 `category`, `severity`, `path`, `line`, `message`, `evidence`, `commit`, `symbol`, `introduced`,
 `reproducible`, `fixable`, `interaction` and `repaired`; each repair carries `code`, `path`, `line`,
 `summary`, `test_name` and `applied`.

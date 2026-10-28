@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `52`
 - **Total Classes**: `122`
-- **Total Top-Level Functions**: `702`
-- **Total Class Methods**: `779`
-- **Total Source Lines**: `30106`
+- **Total Top-Level Functions**: `703`
+- **Total Class Methods**: `780`
+- **Total Source Lines**: `30157`
 
 ---
 
@@ -249,14 +249,15 @@
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `180` lines (`8422` bytes)
+**Size**: `199` lines (`9051` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
 - `def plan_next_stage(repo, run)` - *The next window for one run, its new commits and its already-audited overlap.*
 - `def _prior_context(repo, plan, history)`
 - `def _interaction(finding, prior)`
-- `def audit_window(repo, plan, history)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
+- `def supports_source(path)` - *Whether Reforge can analyse this path; its detectors are Python's own AST.*
+- `def audit_window(repo, plan, history, skipped)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
 - `def _ordered(findings)`
 - `def summarize(findings)`
 
@@ -265,7 +266,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `317` lines (`15403` bytes)
+**Size**: `324` lines (`15847` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -408,7 +409,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `394` lines (`17457` bytes)
+**Size**: `399` lines (`17823` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -419,7 +420,7 @@
 - `def _restore(root, snapshots)`
 - `def _clean_before_repair(root, allow_dirty)`
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
-- `def _payload(root, mode, plan, run, findings, repairs, tests, gates)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped)`
 - `def _review_error(run, pending)`
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
@@ -469,7 +470,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `445` lines (`17219` bytes)
+**Size**: `449` lines (`17468` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -488,7 +489,7 @@
 - `def load_state(root)` - *Read the state; a missing file is fresh, schema 1 migrates in memory, corrupt is refused.*
 - `def _local_atomic_write(path, text)`
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
-- `def entry_from_stage(plan, findings, repairs, tests, gates)`
+- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped)` - *One stage's durable record; `skipped` names changed files this engine cannot analyse.*
 - `def run_complete(run, window)`
 - `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
@@ -1243,7 +1244,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1495` lines (`76028` bytes)
+**Size**: `1511` lines (`76880` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1353,6 +1354,7 @@
   - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
+  - Method `.test_a_non_python_change_is_reported_as_not_analysed()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`

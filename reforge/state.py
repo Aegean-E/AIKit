@@ -276,7 +276,9 @@ def save_state(root: Path, data: Dict[str, object]) -> None:
 
 def entry_from_stage(plan: StagePlan, findings: List[Finding], repairs: List[Repair],
                      tests: Optional[Dict[str, object]] = None,
-                     gates: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+                     gates: Optional[Dict[str, object]] = None,
+                     skipped: Optional[List[str]] = None) -> Dict[str, object]:
+    """One stage's durable record; `skipped` names changed files this engine cannot analyse."""
     counts: Dict[str, int] = {}
     for finding in findings:
         counts[finding.category] = counts.get(finding.category, 0) + 1
@@ -290,6 +292,7 @@ def entry_from_stage(plan: StagePlan, findings: List[Finding], repairs: List[Rep
         "findings": [finding.as_dict() for finding in findings],
         "repairs": [repair.as_dict() for repair in repairs],
         "counts": counts,
+        "skipped": list(skipped or []),
         "tests": tests or {},
         "gates": gates or {},
         "timestamp": _now(),
@@ -434,6 +437,7 @@ def run_summary(run: Dict[str, object]) -> Dict[str, object]:
             "window": last.get("window"),
             "counts": last.get("counts") or {},
             "new_commits": len(last.get("new_commits") or []),
+            "skipped": len(last.get("skipped") or []),
             "timestamp": last.get("timestamp"),
         } if last else None),
         "created": run.get("created"),

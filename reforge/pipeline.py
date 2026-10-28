@@ -164,7 +164,7 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
 
 def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
              findings: Sequence[Finding], repairs: Sequence[Repair], tests: Dict[str, object],
-             gates: Dict[str, object]) -> Dict[str, object]:
+             gates: Dict[str, object], skipped: Sequence[str] = ()) -> Dict[str, object]:
     applied = sum(1 for repair in repairs if repair.applied)
     return {
         "mode": mode,
@@ -179,10 +179,12 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "commit_paths": sorted(set(repair_paths(repairs, root)) | {STATE_REL.as_posix()}),
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
+        "skipped": list(skipped),
         "tests": tests,
         "gates": gates,
         "summary": (f"{plan.run_id} stage {plan.stage}: {len(findings)} finding(s), "
-                    f"{applied} repaired, window {plan.window}"),
+                    f"{applied} repaired, window {plan.window}"
+                    + (f", {len(skipped)} unsupported file(s) not analysed" if skipped else "")),
     }
 
 
@@ -239,7 +241,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                         f"--run {run.get('id')}`.",
                     )
                 return _payload(root, mode, plan, run, all_findings, applied,
-                                last.get("tests") or {}, last.get("gates") or {})
+                                last.get("tests") or {}, last.get("gates") or {},
+                                last.get("skipped") or [])
             _clean_before_repair(root, allow_dirty)
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner)
@@ -248,7 +251,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             last["gates"] = gates
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
-            return _payload(root, mode, plan, run, all_findings, repairs, tests, gates)
+            return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,
+                            last.get("skipped") or [])
 
         if mode not in {"audit", "run"}:
             raise ReforgeError(
@@ -275,18 +279,19 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         if pending:
             raise _review_error(run, pending)
         plan = plan_next_stage(root, run)
-        findings = audit_window(root, plan, run.get("history") or [])
+        skipped: List[str] = []
+        findings = audit_window(root, plan, run.get("history") or [], skipped)
         if mode == "audit":
-            entry = entry_from_stage(plan, findings, [])
+            entry = entry_from_stage(plan, findings, [], skipped=skipped)
             record_stage(root, state, run, entry)
-            return _payload(root, mode, plan, run, findings, [], {}, {})
+            return _payload(root, mode, plan, run, findings, [], {}, {}, skipped)
         _clean_before_repair(root, allow_dirty)
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
                                                  test_command, gate_runner)
-        entry = entry_from_stage(plan, findings, repairs, tests, gates)
+        entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped)
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
-        return _payload(root, mode, plan, run, findings, repairs, tests, gates)
+        return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped)
 
 
 def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = None,

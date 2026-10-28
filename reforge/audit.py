@@ -97,7 +97,7 @@ def _prior_context(repo: Path, plan: StagePlan, history: Sequence[Dict[str, obje
         if info is None:
             continue
         for status, path in changed_files(repo, sha):
-            if status == "D" or not path.endswith(".py"):
+            if status == "D" or not supports_source(path):
                 continue
             paths[path] = info
             source = file_at(repo, sha, path)
@@ -141,15 +141,32 @@ def _interaction(finding: Finding, prior: Tuple[Dict[str, CommitInfo],
     return "", False
 
 
-def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object]] = ()) -> List[Finding]:
-    """Deeply inspect every line the new commits add, and tie it to prior analysed work."""
+SUPPORTED_SUFFIXES = (".py",)
+
+
+def supports_source(path: str) -> bool:
+    """Whether Reforge can analyse this path; its detectors are Python's own AST."""
+    return path.lower().endswith(SUPPORTED_SUFFIXES)
+
+
+def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object]] = (),
+                 skipped: Optional[List[str]] = None) -> List[Finding]:
+    """Deeply inspect every line the new commits add, and tie it to prior analysed work.
+
+    `skipped` collects changed paths this engine cannot analyse (anything but Python), so the
+    caller can report coverage instead of silently auditing nothing in a polyglot commit.
+    """
     prior = _prior_context(repo, plan, history)
     by_sha = {commit.sha: commit for commit in plan.commits}
     findings: List[Finding] = []
+    uncovered: set = set()
     for sha in reversed(plan.new_shas):
         info = by_sha[sha]
         for status, path in changed_files(repo, sha):
-            if status == "D" or not path.endswith(".py"):
+            if status == "D":
+                continue
+            if not supports_source(path):
+                uncovered.add(path)
                 continue
             source = file_at(repo, sha, path)
             if source is None:
@@ -166,6 +183,8 @@ def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object
                            "category": "regression" if strong else finding.category}
                     )
                 findings.append(finding)
+    if skipped is not None:
+        skipped.extend(sorted(uncovered))
     return _ordered(findings)
 
 
