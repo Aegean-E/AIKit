@@ -118,9 +118,9 @@ def exact_duplicates(ideas: Mapping[str, Any]) -> list[list[str]]:
     """Idea ids whose normalised concept strings are identical."""
     grouped: dict[str, list[str]] = {}
     for idea in ideas.get("ideas", []) or []:
-        key = _normalise_concept(str(idea.get("concept", "")))
-        if key:
-            grouped.setdefault(key, []).append(str(idea.get("id", "")))
+        normalised = _normalise_concept(str(idea.get("concept", "")))
+        if normalised:
+            grouped.setdefault(normalised, []).append(str(idea.get("id", "")))
     duplicates = [sorted(ids) for ids in grouped.values() if len(ids) > 1]
     duplicates.sort()
     return duplicates

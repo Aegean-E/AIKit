@@ -8509,6 +8509,27 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(readme.count("social-preview"), 1)
         self.assertIn("## 🎨 Brand Assets", readme)
         self.assertIn("ai-generated brand assets", readme.lower())
+        self.assertIn("img.shields.io/badge/license-", readme)
+        self.assertEqual(readme.count("AIKit Integrated"), 1)
+        audit = project_media.audit_media(root, dossier=dossier)
+        self.assertTrue(audit["ok"], audit["problems"])
+
+    def test_aegeanworks_keeps_its_own_badge_set(self):
+        root = self.project("AegeanWorks")
+        (root / "index.html").write_text("<html><body><main>site</main></body></html>",
+                                         encoding="utf-8")
+        with mock.patch.object(project_media, "_head", return_value=""):
+            project_media.seed_media_assets(root, "AegeanWorks")
+        project_media.review_media(
+            root, "logo", "approve", "agent:unit", "structural", "monogram and palette fit")
+        project_media.review_media(
+            root, "social_preview", "approve", "agent:unit", "structural", "banner fits")
+        dossier = self.root()
+        (dossier / "docs").mkdir()
+        project_media.apply_media(root, "AegeanWorks", dossier=dossier)
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("img.shields.io/badge/license-", readme)
+        self.assertNotIn("AIKit-integrated", readme)
         audit = project_media.audit_media(root, dossier=dossier)
         self.assertTrue(audit["ok"], audit["problems"])
 

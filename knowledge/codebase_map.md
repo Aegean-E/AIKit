@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `53`
 - **Total Classes**: `122`
-- **Total Top-Level Functions**: `711`
-- **Total Class Methods**: `775`
-- **Total Source Lines**: `30494`
+- **Total Top-Level Functions**: `712`
+- **Total Class Methods**: `776`
+- **Total Source Lines**: `30566`
 
 ---
 
@@ -70,7 +70,7 @@
 ### [`idea_catcher/concept_map.py`](idea_catcher/concept_map.py)
 > *Deterministic concept co-occurrence map for the idea register.*
 
-**Size**: `275` lines (`11411` bytes)
+**Size**: `275` lines (`11432` bytes)
 
 **Functions:**
 - `def tokenize(text, stop)` - *Lowercase, split on punctuation, and drop short or boilerplate terms.*
@@ -912,7 +912,7 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `781` lines (`34767` bytes)
+**Size**: `830` lines (`36704` bytes)
 
 **Functions:**
 - `def media_path(root)`
@@ -944,6 +944,7 @@
 - `def _approved(asset)`
 - `def _copy_media(source, target)`
 - `def apply_media(project_root, name, dossier)` - *Copy approved assets into the dossier and reference them from the project README.*
+- `def _badge_row(project_root, repo)` - *License and AIKit badges under the banner; AegeanWorks keeps its own badge set.*
 - `def _update_readme(readme, repo, data, shots)`
 - `def audit_media(project_root, dossier)` - *Check the manifest, files, commit stamps, dossier links and README references.*
 - `def media_status(project_root)`
@@ -1261,7 +1262,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1492` lines (`75818` bytes)
+**Size**: `1494` lines (`75943` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1392,7 +1393,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8715` lines (`495690` bytes)
+**Size**: `8736` lines (`496898` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2089,6 +2090,7 @@
   - Method `.test_model_key_requires_an_environment_value()`
   - Method `.test_new_projects_get_license_topic_metadata()`
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
+  - Method `.test_aegeanworks_keeps_its_own_badge_set()`
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
   - Method `.test_the_manifest_ships_the_package_and_standalone_shim()`
   - Method `.test_the_sync_file_names_the_shipped_source_and_target()`

@@ -1278,6 +1278,8 @@ class TestProjectPolicyCLI(unittest.TestCase):
         self.assertEqual(readme.count("social-preview"), 1)
         self.assertIn("## 🎨 Brand Assets", readme)
         self.assertIn("ai-generated brand assets", readme.lower())
+        self.assertIn("img.shields.io/badge/license-", readme)
+        self.assertEqual(readme.count("AIKit Integrated"), 1)
         audit = run("media", "audit", "demo", "--dossier", str(dossier), "--json")
         self.assertTrue(audit["result"]["ok"], audit["result"]["problems"])
 

@@ -21,8 +21,18 @@ from xml.etree import ElementTree
 from xml.sax.saxutils import escape as xml_escape
 
 from scripts.disruption_recovery import ROOT_DIR, atomic_write_json, file_lock
+from scripts.project_license import license_state
 from scripts.project_publish import extract_readme_description, get_project_repo_url, run_command
-from scripts.project_registry import ProjectError, config_path, load_config, repository_name
+from scripts.project_registry import (
+    AIKIT_BADGE,
+    AIKIT_INTEGRATED_BADGE,
+    AIKIT_URL,
+    LICENSE_CHOICES,
+    ProjectError,
+    config_path,
+    load_config,
+    repository_name,
+)
 from scripts.project_ui import detect_ui
 from scripts.project_brand import brand_spec, logo_svg as brand_logo_svg, social_svg as brand_social_svg
 
@@ -639,6 +649,36 @@ def apply_media(project_root: Path, name: str, dossier: Optional[Path] = None) -
             "manifest": str(manifest_path)}
 
 
+def _badge_row(project_root: Path, repo: str = "") -> str:
+    """License and AIKit badges under the banner; AegeanWorks keeps its own badge set."""
+    if repo.strip().lower() == "aegeanworks":
+        return ""
+    try:
+        state = license_state(project_root)
+    except (ProjectError, OSError, ValueError):
+        # Standalone Aegean Reforge has a LICENSE but no AIKit project memory.
+        class _Default:
+            tier = "personal"
+            kind = "software"
+        state = _Default()
+    if state.tier == "restricted":
+        label, color = "All_Rights_Reserved", "b60205"
+    else:
+        license_id = LICENSE_CHOICES.get(state.kind or "software",
+                                        LICENSE_CHOICES["software"])["key"]
+        label = license_id.replace("-", "--")
+        color = "2f9e44" if state.kind == "software" else (
+            "7048e8" if state.kind == "game" else "1c7ed6")
+    license_badge = (
+        f'<a href="LICENSE"><img src="https://img.shields.io/badge/license-{label}-{color}" '
+        f'alt="License"></a>')
+    aikit_badge = (
+        f'<a href="{AIKIT_URL}"><img '
+        'src="https://img.shields.io/badge/AIKit-integrated-6f42c1" '
+        'alt="AIKit Integrated"></a>')
+    return f'<p align="center">{license_badge} {aikit_badge}</p>'
+
+
 def _update_readme(readme: Path, repo: str, data: Dict[str, object],
                    shots: Sequence[Dict[str, object]]) -> None:
     text = readme.read_text(encoding="utf-8")
@@ -648,6 +688,9 @@ def _update_readme(readme: Path, repo: str, data: Dict[str, object],
         social_src = str(assets["social_preview"].get("path") or "assets/social-preview.png").replace("\\", "/")
         pieces.append(f'<p align="center"><img src="{social_src}" '
                       f'alt="{repo} social preview" width="100%"></p>')
+        badges = _badge_row(readme.parent, repo)
+        if badges:
+            pieces.append(badges)
     block = ""
     if pieces:
         block = f"{MEDIA_MARKER_START}\n" + "\n".join(pieces) + f"\n{MEDIA_MARKER_END}\n"
@@ -694,7 +737,8 @@ def _update_readme(readme: Path, repo: str, data: Dict[str, object],
         if stripped in {f"*{ASSET_DISCLOSURE}*", ASSET_DISCLOSURE,
                         "*Brand assets are generated and may not fully represent the project scope.*",
                         "*The banner and logo are AI-generated brand assets. They are illustrative "
-                        "and may not literally depict every feature or the full project scope.*"}:
+                        "and may not literally depict every feature or the full project scope.*",
+                        AIKIT_BADGE, AIKIT_INTEGRATED_BADGE}:
             continue
         lines.append(line)
     text = "".join(lines)
@@ -758,6 +802,11 @@ def audit_media(project_root: Path, dossier: Optional[Path] = None) -> Dict[str,
         problems.append("README lacks the Brand Assets section")
     if "ai-generated brand assets" not in readme_text.lower():
         problems.append("README lacks the generated-asset disclosure")
+    if repo.strip().lower() != "aegeanworks":
+        if "img.shields.io/badge/license-" not in readme_text:
+            problems.append("README lacks the license badge under the banner")
+        if "AIKit-integrated" not in readme_text:
+            problems.append("README lacks the AIKit Integrated badge under the banner")
     return {"project": name, "repo": repo, "ok": not problems, "problems": problems,
             "pending": pending, "dossier": str(manifest_path) if dossier_manifest else "",
             "dossier_screenshots": len((dossier_manifest or {}).get("screenshots") or [])}

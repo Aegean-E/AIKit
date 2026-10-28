@@ -1,5 +1,12 @@
 # 🤖 Universal AI Principles & Agent Operating System (Portable Kit)
 
+<!-- aegean:media:start -->
+<p align="center"><img src="assets/social-preview.png" alt="AIKit social preview" width="100%"></p>
+<p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-AL--1.1-2f9e44" alt="License"></a> <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a></p>
+*The banner is AI-generated and illustrative, not a literal feature map.*
+<!-- aegean:media:end -->
+
+
 > **AI governance, architecture principles & disruption (incl. power-cut) recovery for any software project**, extracted from production development, with documentation and regression-shielded workflows.
 
 ---

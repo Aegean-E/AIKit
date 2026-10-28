@@ -73,7 +73,8 @@ asks it for the final logo and social card: exact title plus category, with no t
 reviewed individually by a vision subagent before approval (ADR-240). The README shows exactly one
 social preview, no logo hero, the commit/date caption under screenshots, and the generated-asset
 disclaimer; an older project banner is preferred and moved into `assets/` unless the user chooses
-the new render (ADR-242). `new` runs this pipeline automatically and both publish paths refuse
+the new render (ADR-242). AegeanWorks keeps its own curated badge block, so the generated license
+and AIKit row is skipped there (ADR-247). `new` runs this pipeline automatically and both publish paths refuse
 unreviewed logo/social assets, so a project cannot skip the review step (ADR-243). `reforge-sync.json` is the one
 AIKit-side file naming Reforge's package, shim, standalone target and marker (ADR-231).
 
