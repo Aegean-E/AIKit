@@ -3,8 +3,8 @@
   "active_task": {
     "task_id": "land-completed-idea-batch",
     "last_phase": "planning",
-    "active_phase": 2,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793304254.6636102,
     "owner": "opencode:land-batch",
     "started_by": "opencode:land-batch",
@@ -14,20 +14,10 @@
       "benefits": "The runbook split, map digest, marked-block helper, script-reference audit and commit shrink guard reach main; the working tree becomes clean",
       "risks": "contract: no principle change; dependency: stdlib only; concurrency: single writer; state: the ledger gains this delivery task",
       "mitigation": "Run the full Phase 4 gates and verify_commit on the exact commit before pushing; stage only named files"
-    }
+    },
+    "completed_at": 1793304540.6154222
   },
   "checkpoints": [
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 8",
-      "phase_num": 3,
-      "description": "Reforge stage 8: window 246, 30 commit(s), 33 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793299259.9429634,
-      "timestamp_str": "2026-10-29 21:40:59",
-      "agent": "opencode"
-    },
     {
       "task_id": "reforge:run-3",
       "phase": "reforge stage 9",
@@ -278,6 +268,16 @@
         "risks": "contract: no principle change; dependency: stdlib only; concurrency: single writer; state: the ledger gains this delivery task",
         "mitigation": "Run the full Phase 4 gates and verify_commit on the exact commit before pushing; stage only named files"
       }
+    },
+    {
+      "task_id": "land-completed-idea-batch",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'land-completed-idea-batch' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793304540.6154234,
+      "timestamp_str": "2026-10-29 23:09:00",
+      "agent": "opencode:land-batch"
     }
   ]
 }
