@@ -45,19 +45,22 @@ audit concurrently, while a second operation on one project is refused. A run's 
 settings, and a stopped or completed run keeps its history when another begins. Within a run, every
 previously audited SHA stays in view for interaction evidence; only mechanical repairs are applied,
 one regression test is generated per repaired rule/file, the real diff is reviewed, the project's
-tests run, and a red result rolls the patch back. Detectors read Python's AST, so a stage reports
-every changed non-Python path as not analysed instead of returning silent coverage; the five
-fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
+tests run, and a red result rolls the patch back. Python files go through the AST detectors; every
+other changed text file goes through `reforge/textdetect.py`, which validates JSON and TOML with the
+standard library, refuses an unclosed Markdown code fence and flags a committed conflict marker, so a
+stage reports only genuinely binary paths as not analysed and prints how many files it reviewed. The
+five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. A separate `fix` refreshes the history entry `report` reads, a second
 `fix --commit` delivers an already-reviewed patch, and raising `--stop` reopens a completed run.
 Run lifecycle events are mirrored into the repository's AIKit task ledger by `reforge/ledger.py`
 under a `reforge:<run-id>` task: entries are appended under the ledger lock with `active_task`
 untouched, a stopped run is `suspended` (so `--resume` lists it as resumable), a run reaching its
 stop is `completed`, and the ledger's `.bak`/`.lock` siblings are treated as Reforge's own
-bookkeeping by the clean-tree and patch-review checks. A repository without a ledger is audited
-unchanged and the CLI says nothing was recorded. See [ADR-230](decisions.md),
-[ADR-232](decisions.md), [ADR-248](decisions.md), [ADR-249](decisions.md) and
-[ADR-250](decisions.md).
+bookkeeping by the clean-tree and patch-review checks. The ledger is found by name, so AIKit's
+`.agents/task_ledger.json` still records a run after Reforge creates its own `.aikit/` state folder.
+A repository without a ledger is audited unchanged and the CLI says nothing was recorded. See
+[ADR-230](decisions.md), [ADR-232](decisions.md), [ADR-248](decisions.md),
+[ADR-249](decisions.md), [ADR-250](decisions.md) and [ADR-253](decisions.md).
 
 ## 🧭 Idea Catcher: Shipped Register Tool
 `idea_catcher/` is the tool AIKit ships for its private idea register: cloning AIKit yields the

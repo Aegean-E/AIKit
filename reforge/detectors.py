@@ -60,6 +60,14 @@ RULES: Dict[str, Rule] = {
                               "return in finally replaces an exception"),
     "chmod-777": Rule("chmod-777", "security", "medium",
                       "world-writable permissions are granted"),
+    "merge-conflict-marker": Rule("merge-conflict-marker", "defect", "high",
+                                  "a merge conflict marker was committed"),
+    "invalid-json": Rule("invalid-json", "defect", "high",
+                         "the file does not parse as JSON"),
+    "invalid-toml": Rule("invalid-toml", "defect", "high",
+                         "the file does not parse as TOML"),
+    "unclosed-code-fence": Rule("unclosed-code-fence", "defect", "medium",
+                                "a Markdown code fence is never closed"),
 }
 
 SUBPROCESS_CALLS = {"run", "call", "check_call", "check_output"}

@@ -1373,21 +1373,27 @@ class TestReforgeHistory(unittest.TestCase):
         before = self.git(root, "status", "--porcelain").stdout
         self.assertIn("app.py", before, "the reviewed patch is still uncommitted before delivery")
 
-    def test_a_non_python_change_is_reported_as_not_analysed(self):
-        # Coverage must be explicit: a polyglot commit used to audit nothing and say nothing.
+    def test_a_non_python_change_is_reviewed_not_skipped(self):
+        # Reforge reviews the changes a session makes; a JavaScript or Markdown commit must be
+        # inspected, and only a binary file may be reported as not analysed.
         from reforge.pipeline import run_pipeline, start_audit
         from reforge.state import load_state
 
         root = self.repository(defects=False)
         (root / "app.js").write_text("const answer = 42;\n", encoding="utf-8")
-        self.git(root, "add", "app.js")
-        self.git(root, "commit", "-q", "-m", "feat: javascript")
+        (root / "NOTES.md").write_text("# notes\n\n```bash\necho hi\n", encoding="utf-8")
+        (root / "logo.bin").write_bytes(b"\x00\x01binary")
+        self.git(root, "add", "app.js", "NOTES.md", "logo.bin")
+        self.git(root, "commit", "-q", "-m", "feat: javascript and docs")
         start_audit(root, start=3, step=1)
         report = run_pipeline(root, "audit")
-        self.assertEqual(report["skipped"], ["app.js"])
-        self.assertIn("1 unsupported file(s)", report["summary"])
-        self.assertEqual(load_state(root)["runs"][0]["last_audit"]["skipped"], ["app.js"])
-        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["skipped"], ["logo.bin"])
+        self.assertEqual(report["reviewed"], 4)
+        self.assertIn("4 file(s) reviewed", report["summary"])
+        self.assertIn("1 binary file(s) not analysed", report["summary"])
+        self.assertEqual([(item["code"], item["path"]) for item in report["findings"]],
+                         [("unclosed-code-fence", "NOTES.md")])
+        self.assertEqual(load_state(root)["runs"][0]["last_audit"]["reviewed"], 4)
 
     def test_an_audited_project_records_its_run_in_the_task_ledger(self):
         # A cold start reads only the ledger, so an open audit must be visible there without

@@ -94,11 +94,16 @@ def workspace_ledger_path(workspace: Path) -> Path:
     """
     The ledger of `workspace`: `<workspace>/.aikit/task_ledger.json` for a project AIKit builds,
     otherwise `<workspace>/.agents/task_ledger.json` (AIKit itself and sandboxed dogfood runs).
+
+    A project is identified by its `.aikit/project.json` marker, or by a `.aikit/` folder with no
+    `.agents/` sibling. A stray `.aikit/` created by a tool inside an AIKit checkout (Reforge keeps
+    its state there) must not turn AIKit into a project and hide its real ledger (ADR-253).
     """
     memory = workspace / PROJECT_MEMORY_DIRNAME
-    if memory.is_dir():
+    agent_memory = workspace / ".agents"
+    if memory.is_dir() and ((memory / "project.json").is_file() or not agent_memory.is_dir()):
         return memory / "task_ledger.json"
-    return workspace / ".agents" / "task_ledger.json"
+    return agent_memory / "task_ledger.json"
 
 
 def get_ledger_path(custom_dir: Optional[Path] = None) -> Path:

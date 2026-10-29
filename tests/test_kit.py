@@ -5460,6 +5460,19 @@ class TestProjectRegistry(unittest.TestCase):
             handle.write("\n### ADR-001: Use SQLite\n\n### ADR-002: Expose a REST API\n")
         self.assertEqual(latest_decision(folder), "ADR-002: Expose a REST API")
 
+    def test_a_stray_dot_aikit_folder_does_not_reclassify_aikit(self):
+        # Reforge writes .aikit/reforge.json at the audited root. That state folder must not turn
+        # AIKit into a project and hide its .agents/ ledger and knowledge/ base (ADR-253).
+        from scripts.update_knowledge_base import memory_dir
+
+        agents = self.kit / ".agents"
+        agents.mkdir()
+        (self.kit / "knowledge").mkdir()
+        (self.kit / ".aikit").mkdir()
+        (self.kit / ".aikit" / "reforge.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(workspace_ledger_path(self.kit), agents / "task_ledger.json")
+        self.assertEqual(memory_dir(self.kit), self.kit / "knowledge")
+
     def test_status_names_unknown_and_missing_projects(self):
         with self.assertRaises(ProjectError) as caught:
             find_project("nope", self.kit)
@@ -8568,6 +8581,25 @@ class TestReforgeCore(unittest.TestCase):
         self.assertIn("no AIKit task ledger", result["reason"])
         self.assertEqual(ledger_artifacts(root), [])
 
+    def test_aikit_ledger_is_found_even_though_reforge_created_dot_aikit(self):
+        # AIKit keeps its ledger in .agents/, while Reforge's state creates .aikit/. Presence of
+        # the memory folder must not hide the real ledger (the failure a run on AIKit showed).
+        from reforge.ledger import ledger_path, record_event
+
+        root = self.root()
+        agents = root / ".agents"
+        agents.mkdir()
+        ledger = agents / "task_ledger.json"
+        ledger.write_text(json.dumps({"version": 1, "active_task": None, "checkpoints": []}),
+                          encoding="utf-8")
+        (root / ".aikit").mkdir()
+        (root / ".aikit" / "reforge.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(ledger_path(root), ledger)
+        result = record_event(root, "run-1", 1, "audited", agent="kilo:2")
+        self.assertTrue(result["recorded"], result.get("reason"))
+        written = json.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(written["checkpoints"][-1]["task_id"], "reforge:run-1")
+
     def test_a_stage_checkpoint_is_appended_without_becoming_the_active_task(self):
         from reforge.ledger import record_event
 
@@ -8614,6 +8646,32 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(ledger_artifacts(root),
                          [".aikit/task_ledger.json", ".aikit/task_ledger.json.bak",
                           ".aikit/task_ledger.json.lock"])
+
+    def test_text_review_flags_a_committed_conflict_marker(self):
+        from reforge.textdetect import detect_text
+
+        source = "line one\n<<<<<<< HEAD\nmine\n=======\ntheirs\n>>>>>>> branch\n"
+        codes = [(item.code, item.line) for item in detect_text("NOTES.md", source, "sha")]
+        self.assertIn(("merge-conflict-marker", 2), codes)
+        self.assertIn(("merge-conflict-marker", 6), codes)
+
+    def test_text_review_validates_json_and_toml(self):
+        from reforge.textdetect import detect_text
+
+        self.assertEqual([item.code for item in detect_text("ok.json", '{"a": 1}', "sha")], [])
+        broken = detect_text("bad.json", '{\n  "a": 1,\n}', "sha")
+        self.assertEqual([(item.code, item.line) for item in broken], [("invalid-json", 2)])
+        self.assertEqual([item.code for item in detect_text("bad.toml", "[a\nb = 1\n", "sha")],
+                         ["invalid-toml"])
+
+    def test_text_review_flags_an_unclosed_markdown_fence(self):
+        from reforge.textdetect import detect_text
+
+        source = "# title\n\n```bash\necho hi\n"
+        self.assertEqual([(item.code, item.line) for item in detect_text("doc.md", source, "sha")],
+                         [("unclosed-code-fence", 3)])
+        closed = "# title\n\n```bash\necho hi\n```\n"
+        self.assertEqual(detect_text("doc.md", closed, "sha"), [])
 
     def test_a_project_without_a_shared_banner_is_not_asked_for_badges(self):
         root = self.project("badge-free")

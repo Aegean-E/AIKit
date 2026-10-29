@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `52`
+- **Total Python Modules**: `53`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `697`
-- **Total Class Methods**: `776`
-- **Total Source Lines**: `29954`
+- **Total Top-Level Functions**: `705`
+- **Total Class Methods**: `781`
+- **Total Source Lines**: `30181`
 
 ---
 
@@ -220,16 +220,16 @@
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `209` lines (`9632` bytes)
+**Size**: `221` lines (`10104` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
 - `def plan_next_stage(repo, run)` - *The next window for one run, its new commits and its already-audited overlap.*
 - `def _prior_context(repo, plan, history)`
 - `def _interaction(finding, prior)`
-- `def supports_source(path)` - *Whether Reforge can analyse this path; its detectors are Python's own AST.*
+- `def supports_source(path)` - *Whether Reforge's AST detectors can analyse this path.*
 - `def is_bookkeeping(path)` - *Reforge's own state, its backups and locks, and the task ledger it updates.*
-- `def audit_window(repo, plan, history, skipped)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
+- `def audit_window(repo, plan, history, skipped, reviewed)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
 - `def _ordered(findings)`
 - `def summarize(findings)`
 
@@ -238,7 +238,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `341` lines (`16549` bytes)
+**Size**: `345` lines (`16737` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -277,7 +277,7 @@
 ### [`reforge/detectors.py`](reforge/detectors.py)
 > *AST detectors for the defect, security and reliability classes Reforge can evidence.*
 
-**Size**: `297` lines (`13740` bytes)
+**Size**: `305` lines (`14282` bytes)
 
 **Classes:**
 - `class Rule` - *Catalogue entry: what a code means and whether a safe repair exists.*
@@ -353,7 +353,7 @@
 ### [`reforge/ledger.py`](reforge/ledger.py)
 > *Record Reforge progress in the audited repository's AIKit task ledger.*
 
-**Size**: `116` lines (`4969` bytes)
+**Size**: `128` lines (`5476` bytes)
 
 **Functions:**
 - `def ledger_path(root)` - *The ledger `root` already has, or None; Reforge never creates one for a foreign repository.*
@@ -397,7 +397,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `433` lines (`20106` bytes)
+**Size**: `442` lines (`20596` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -408,7 +408,7 @@
 - `def _restore(root, snapshots)`
 - `def _clean_before_repair(root, allow_dirty)`
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
-- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed)`
 - `def _review_error(run, pending)`
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
@@ -459,7 +459,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `449` lines (`17468` bytes)
+**Size**: `451` lines (`17546` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -478,7 +478,7 @@
 - `def load_state(root)` - *Read the state; a missing file is fresh, schema 1 migrates in memory, corrupt is refused.*
 - `def _local_atomic_write(path, text)`
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
-- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped)` - *One stage's durable record; `skipped` names changed files this engine cannot analyse.*
+- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
 - `def run_complete(run, window)`
 - `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
@@ -489,6 +489,23 @@
 - `def update_settings(root, state, run, start, step, stop)` - *Change a run's step/stop; start may change only before its first stage.*
 - `def run_summary(run)`
 - `def runs_summary(state)`
+
+---
+
+### [`reforge/textdetect.py`](reforge/textdetect.py)
+> *Structural review of changed text files that need no language front end.*
+
+**Size**: `104` lines (`3922` bytes)
+
+**Functions:**
+- `def is_text(source)` - *Whether a file revision can be reviewed as text instead of skipped as binary.*
+- `def _snippet(lines, line)`
+- `def _finding(code, path, line, lines, commit)`
+- `def _conflict_markers(path, lines, commit)`
+- `def _invalid_json(path, source, lines, commit)`
+- `def _invalid_toml(path, source, lines, commit)`
+- `def _unclosed_fence(path, lines, commit)`
+- `def detect_text(path, source, commit)` - *Every proven defect in one text file revision, ordered by line.*
 
 ---
 
@@ -693,7 +710,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `2075` lines (`98219` bytes)
+**Size**: `2080` lines (`98613` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -1180,7 +1197,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1051` lines (`49518` bytes)
+**Size**: `1058` lines (`49798` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -1233,7 +1250,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1507` lines (`77013` bytes)
+**Size**: `1513` lines (`77485` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1343,7 +1360,7 @@
   - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
-  - Method `.test_a_non_python_change_is_reported_as_not_analysed()`
+  - Method `.test_a_non_python_change_is_reviewed_not_skipped()`
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
@@ -1363,7 +1380,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8795` lines (`499916` bytes)
+**Size**: `8853` lines (`503031` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1804,6 +1821,7 @@
   - Method `.test_cli_reports_triad_and_exit_codes()`
   - Method `.test_a_filesystem_error_is_reported_with_a_remedy()`
   - Method `.test_project_memory_holds_ledger_and_decisions()`
+  - Method `.test_a_stray_dot_aikit_folder_does_not_reclassify_aikit()`
   - Method `.test_status_names_unknown_and_missing_projects()`
   - Method `.test_fix_cli_reports_triad_on_unknown_project()`
   - Method `.run_cli(*argv)` - *`aikit` in-process against this test's kit; returns (exit code, stdout, stderr).*
@@ -2064,9 +2082,13 @@
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
   - Method `.test_aegeanworks_keeps_its_own_badge_set()`
   - Method `.test_a_repository_without_a_ledger_records_nothing_and_does_not_fail()`
+  - Method `.test_aikit_ledger_is_found_even_though_reforge_created_dot_aikit()`
   - Method `.test_a_stage_checkpoint_is_appended_without_becoming_the_active_task()`
   - Method `.test_a_completed_stage_is_not_offered_as_resumable()`
   - Method `.test_ledger_artifacts_cover_the_backup_its_writer_leaves()`
+  - Method `.test_text_review_flags_a_committed_conflict_marker()`
+  - Method `.test_text_review_validates_json_and_toml()`
+  - Method `.test_text_review_flags_an_unclosed_markdown_fence()`
   - Method `.test_a_project_without_a_shared_banner_is_not_asked_for_badges()`
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`

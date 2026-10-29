@@ -25,13 +25,25 @@ DESCRIPTION_LIMIT = 240
 
 
 def ledger_path(root: Path) -> Optional[Path]:
-    """The ledger `root` already has, or None; Reforge never creates one for a foreign repository."""
+    """The ledger `root` already has, or None; Reforge never creates one for a foreign repository.
+
+    AIKit keeps its ledger in `.agents/task_ledger.json`, a project keeps its in
+    `.aikit/task_ledger.json`. Reforge's own state lives in `.aikit/reforge.json`, so the
+    presence of `.aikit/` says nothing about which ledger a repository uses: ask for each
+    candidate by name and take the one that exists.
+    """
+    root = Path(root)
     try:
         from scripts.disruption_recovery import workspace_ledger_path
     except ImportError:
         return None
-    path = workspace_ledger_path(Path(root))
-    return path if path.is_file() else None
+    candidates = [workspace_ledger_path(root),
+                  root / ".aikit" / "task_ledger.json",
+                  root / ".agents" / "task_ledger.json"]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
 
 
 def ledger_relative(root: Path) -> Optional[str]:

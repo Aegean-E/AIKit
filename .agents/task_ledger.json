@@ -1,55 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "idea-catcher-integration",
-    "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793228794.4242477,
-    "owner": "kilo:idea-catcher-integration",
-    "started_by": "kilo:idea-catcher-integration",
+    "task_id": "reforge-review-changes",
+    "last_phase": "planning",
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793252181.3973248,
+    "owner": "kilo:reforge-review",
+    "started_by": "kilo:reforge-review",
     "continuations": [],
-    "completed_at": 1793228994.8118093
+    "impact_assessment": {
+      "why": "Running Reforge on AIKit skipped 20 of 20 changed files as 'Python only' and reported 'no AIKit task ledger', so it could not review the agent's own step-by-step changes",
+      "benefits": "Every changed text file is inspected with structural checks, coverage is honest about binary files only, and an in-progress audit is visible to a cold start in .agents/task_ledger.json",
+      "risks": "contract: audit_window/api payload gains a reviewed count, skipped now means binary only; dependency: stdlib only (tomllib optional); concurrency: reforge state and ledger locks unchanged; state: stage entry gains an additive reviewed count",
+      "mitigation": "Keep Python AST rules byte-identical, add text rules as a separate module, test both layouts, refresh knowledge and ADR, and run every gate"
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "project-readme-media",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Enforce single social preview, no logo hero, commit/date-only screenshot captions, and generated-asset disclaimer",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793203566.2648382,
-      "timestamp_str": "2026-10-28 19:06:06",
-      "agent": "kilo:readme-media",
-      "impact_assessment": {
-        "why": "The user rejected logo placement, duplicate banners, local path text in screenshots, and wanted the image-model method remembered.",
-        "benefits": "One social banner per README, older banners moved to assets, AegeanWorks keeps its new render, no local paths under screenshots, and an explicit generated-asset caveat.",
-        "risks": "contract: README media block changes; dependency: none new; concurrency: sequential project commits; state: legacy banner embeds and files are removed.",
-        "mitigation": "Per-project verification, project pushes, media audits, and full Phase 4 gates."
-      }
-    },
-    {
-      "task_id": "project-readme-media",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Delivered single-banner READMEs across 38 projects + Reforge; old banners moved for MemoryReconstruction, N1-Engine, NeuralBeat, NeuralDeck, neurocore, NeuroOptic, NobetWizard; AegeanWorks keeps its new social preview; screenshot captions show only commit/date; generated-asset disclaimer added; all projects pushed except idea-catcher (no remote); all gates pass.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793203566.4182756,
-      "timestamp_str": "2026-10-28 19:06:06",
-      "agent": "kilo:readme-media"
-    },
-    {
-      "task_id": "project-readme-media",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-readme-media' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793203566.5716882,
-      "timestamp_str": "2026-10-28 19:06:06",
-      "agent": "kilo:readme-media"
-    },
     {
       "task_id": "project-creation-media",
       "phase": "in_progress",
@@ -266,6 +233,23 @@
       "timestamp": 1793228994.8118107,
       "timestamp_str": "2026-10-29 02:09:54",
       "agent": "kilo:idea-catcher-integration"
+    },
+    {
+      "task_id": "reforge-review-changes",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] Make Reforge review every changed file and record its run in AIKit's real task ledger",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793252181.3973248,
+      "timestamp_str": "2026-10-29 08:36:21",
+      "agent": "kilo:reforge-review",
+      "impact_assessment": {
+        "why": "Running Reforge on AIKit skipped 20 of 20 changed files as 'Python only' and reported 'no AIKit task ledger', so it could not review the agent's own step-by-step changes",
+        "benefits": "Every changed text file is inspected with structural checks, coverage is honest about binary files only, and an in-progress audit is visible to a cold start in .agents/task_ledger.json",
+        "risks": "contract: audit_window/api payload gains a reviewed count, skipped now means binary only; dependency: stdlib only (tomllib optional); concurrency: reforge state and ledger locks unchanged; state: stage entry gains an additive reviewed count",
+        "mitigation": "Keep Python AST rules byte-identical, add text rules as a separate module, test both layouts, refresh knowledge and ADR, and run every gate"
+      }
     }
   ]
 }

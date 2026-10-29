@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from reforge.detectors import detect_source, symbols_in_source
+from reforge.textdetect import detect_text, is_text
 from reforge.errors import ReforgeError
 from reforge.git_history import (
     added_lines,
@@ -144,45 +145,54 @@ def _interaction(finding: Finding, prior: Tuple[Dict[str, CommitInfo],
 SUPPORTED_SUFFIXES = (".py",)
 # Files Reforge itself writes, or AIKit's memory: reporting them as "not analysed" is noise, not
 # coverage, because no language front end was ever going to read a ledger or an audit state.
-BOOKKEEPING_PATHS = (".aikit/reforge.json", ".aikit/task_ledger.json", ".agents/task_ledger.json")
+LEDGER_PATHS = (".aikit/task_ledger.json", ".agents/task_ledger.json")
 
 
 def supports_source(path: str) -> bool:
-    """Whether Reforge can analyse this path; its detectors are Python's own AST."""
+    """Whether Reforge's AST detectors can analyse this path."""
     return path.lower().endswith(SUPPORTED_SUFFIXES)
 
 
 def is_bookkeeping(path: str) -> bool:
     """Reforge's own state, its backups and locks, and the task ledger it updates."""
     normal = path.replace("\\", "/")
-    return normal in BOOKKEEPING_PATHS or normal.startswith(".aikit/reforge.")
+    if normal.startswith(".aikit/reforge."):
+        return True
+    return any(normal == ledger or normal in {f"{ledger}.bak", f"{ledger}.lock"}
+               for ledger in LEDGER_PATHS)
 
 
 def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object]] = (),
-                 skipped: Optional[List[str]] = None) -> List[Finding]:
+                 skipped: Optional[List[str]] = None,
+                 reviewed: Optional[List[str]] = None) -> List[Finding]:
     """Deeply inspect every line the new commits add, and tie it to prior analysed work.
 
-    `skipped` collects changed paths this engine cannot analyse (anything but Python), so the
-    caller can report coverage instead of silently auditing nothing in a polyglot commit.
+    A Python file goes through the AST detectors; every other text file goes through the
+    structural checks in `reforge.textdetect`; `skipped` therefore collects only the binary paths
+    this engine cannot read as text, and `reviewed` names what it actually inspected.
     """
     prior = _prior_context(repo, plan, history)
     by_sha = {commit.sha: commit for commit in plan.commits}
     findings: List[Finding] = []
     uncovered: set = set()
+    inspected: set = set()
     for sha in reversed(plan.new_shas):
         info = by_sha[sha]
         for status, path in changed_files(repo, sha):
-            if status == "D":
-                continue
-            if not supports_source(path):
-                if not is_bookkeeping(path):
-                    uncovered.add(path)
+            if status == "D" or is_bookkeeping(path):
                 continue
             source = file_at(repo, sha, path)
             if source is None:
                 continue
+            if supports_source(path):
+                parsed = detect_source(path, source, sha)
+            elif is_text(source):
+                parsed = detect_text(path, source, sha)
+            else:
+                uncovered.add(path)
+                continue
+            inspected.add(path)
             touched = added_lines(repo, sha, path)
-            parsed = detect_source(path, source, sha)
             for finding in parsed:
                 if status != "A" and finding.line not in touched:
                     continue
@@ -195,6 +205,8 @@ def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object
                 findings.append(finding)
     if skipped is not None:
         skipped.extend(sorted(uncovered))
+    if reviewed is not None:
+        reviewed.extend(sorted(inspected))
     return _ordered(findings)
 
 

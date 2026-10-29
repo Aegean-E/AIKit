@@ -879,8 +879,15 @@ def guideline_errors(text: str) -> List[str]:
 
 
 def memory_dir(root: Path) -> Path:
-    """Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`."""
-    return root / ".aikit" if (root / ".aikit").is_dir() else root / "knowledge"
+    """Where `root` keeps its map and decisions: a project's `.aikit/`, else `knowledge/`.
+
+    The `.aikit/project.json` marker decides, so a tool state folder inside AIKit (Reforge writes
+    `.aikit/reforge.json`) cannot hide AIKit's own `knowledge/` (ADR-253).
+    """
+    memory = root / ".aikit"
+    if memory.is_dir() and ((memory / "project.json").is_file() or not (root / ".agents").is_dir()):
+        return memory
+    return root / "knowledge"
 
 
 def check_workspace(root: Path = ROOT_DIR) -> bool:

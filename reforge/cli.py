@@ -148,13 +148,16 @@ def _print_findings(payload: Dict[str, object]) -> None:
     tests = payload.get("tests") or {}
     if tests:
         print(f"  [{'PASS' if tests.get('passed') else 'FAIL'}] tests: {tests.get('command')}")
+    reviewed = int(payload.get("reviewed") or 0)
+    if reviewed:
+        print(f"  reviewed {reviewed} changed file(s)")
     if not findings:
         print("  no introduced findings")
     skipped = payload.get("skipped") or []
     if skipped:
         shown = ", ".join(str(path) for path in skipped[:5])
         more = f" (+{len(skipped) - 5} more)" if len(skipped) > 5 else ""
-        print(f"  [SKIP] {len(skipped)} changed file(s) not analysed (Python only): {shown}{more}")
+        print(f"  [SKIP] {len(skipped)} binary file(s) not analysed: {shown}{more}")
     if payload["mode"] == "audit" and findings:
         print(f"Next: python reforge.py fix {payload['root']} --run {payload.get('run')}")
     elif payload["mode"] in {"run", "fix"} and payload.get("repaired"):
@@ -242,8 +245,9 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
                     skipped = len(entry.get("skipped") or [])
                     print(f"    stage {entry['stage']} window {entry['window']}: "
                           f"{len(entry.get('new_commits') or [])} new, "
+                          f"{int(entry.get('reviewed') or 0)} reviewed, "
                           f"{len(entry.get('repairs') or [])} repair(s)"
-                          f"{', ' + str(skipped) + ' not analysed' if skipped else ''}"
+                          f"{', ' + str(skipped) + ' binary not analysed' if skipped else ''}"
                           f"{' (' + counts + ')' if counts else ''}")
         return 0
     if action == "start":

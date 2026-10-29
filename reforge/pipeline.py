@@ -171,7 +171,8 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
 def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
              findings: Sequence[Finding], repairs: Sequence[Repair], tests: Dict[str, object],
              gates: Dict[str, object], skipped: Sequence[str] = (),
-             ledger: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+             ledger: Optional[Dict[str, object]] = None,
+             reviewed: int = 0) -> Dict[str, object]:
     applied = sum(1 for repair in repairs if repair.applied)
     return {
         "mode": mode,
@@ -186,13 +187,14 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "commit_paths": sorted(set(repair_paths(repairs, root)) | {STATE_REL.as_posix()}),
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
+        "reviewed": reviewed,
         "skipped": list(skipped),
         "ledger": ledger or {},
         "tests": tests,
         "gates": gates,
-        "summary": (f"{plan.run_id} stage {plan.stage}: {len(findings)} finding(s), "
-                    f"{applied} repaired, window {plan.window}"
-                    + (f", {len(skipped)} unsupported file(s) not analysed" if skipped else "")),
+        "summary": (f"{plan.run_id} stage {plan.stage}: {reviewed} file(s) reviewed, "
+                    f"{len(findings)} finding(s), {applied} repaired, window {plan.window}"
+                    + (f", {len(skipped)} binary file(s) not analysed" if skipped else "")),
     }
 
 
@@ -250,7 +252,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                     )
                 return _payload(root, mode, plan, run, all_findings, applied,
                                 last.get("tests") or {}, last.get("gates") or {},
-                                last.get("skipped") or [])
+                                last.get("skipped") or [],
+                                reviewed=int(last.get("reviewed") or 0))
             _clean_before_repair(root, allow_dirty)
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner)
@@ -288,20 +291,25 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             raise _review_error(run, pending)
         plan = plan_next_stage(root, run)
         skipped: List[str] = []
-        findings = audit_window(root, plan, run.get("history") or [], skipped)
+        reviewed: List[str] = []
+        findings = audit_window(root, plan, run.get("history") or [], skipped, reviewed)
         if mode == "audit":
-            entry = entry_from_stage(plan, findings, [], skipped=skipped)
+            entry = entry_from_stage(plan, findings, [], skipped=skipped,
+                                    reviewed=len(reviewed))
             record_stage(root, state, run, entry)
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
-                            _note_stage(root, run, plan, entry, findings, skipped))
+                            _note_stage(root, run, plan, entry, findings, skipped),
+                            reviewed=len(reviewed))
         _clean_before_repair(root, allow_dirty)
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
                                                  test_command, gate_runner)
-        entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped)
+        entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped,
+                                 reviewed=len(reviewed))
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
-                        _note_stage(root, run, plan, entry, findings, skipped))
+                        _note_stage(root, run, plan, entry, findings, skipped),
+                        reviewed=len(reviewed))
 
 
 def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict[str, object],
@@ -311,8 +319,9 @@ def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict
     counts = ", ".join(f"{name}={value}" for name, value in sorted((entry.get("counts") or {}).items()))
     description = (
         f"window {plan.window}, {len(entry.get('new_commits') or [])} commit(s), "
+        f"{int(entry.get('reviewed') or 0)} file(s) reviewed, "
         f"{len(findings)} finding(s), {applied} repaired"
-        + (f", {len(skipped)} not analysed" if skipped else "")
+        + (f", {len(skipped)} binary not analysed" if skipped else "")
         + (f" ({counts})" if counts else "")
     )
     return record_event(root, plan.run_id, plan.stage, description,

@@ -133,7 +133,8 @@ has `motif`, `layout`, `palette` index, optional `monogram`, `display` (title-ca
 Schema 2; `next_run_id`, `active_run`, `last_run`, `runs` and mirrored top-level fields (`stage`,
 `window`, `audited_commits`, `last_audit`, `history`) so schema-1 readers stay readable. Each run
 holds `id`, `start`, `step`, `stop`, `status`, its audited SHAs and a bounded history of stage
-entries. Reforge has no sync config or standalone marker any more (ADR-248).
+entries; a stage entry also records `reviewed` (files inspected) and `skipped` (binary files only)
+(ADR-253). Reforge has no sync config or standalone marker any more (ADR-248).
 
 ### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
 Schema 1, stored as private local data under `.idea-catcher/` at the AIKit root and never in Git.

@@ -195,11 +195,13 @@ python aikit.py reforge run my-app --push  # audit, fix, verify, then commit and
 
 Window N is `start + step*(N-1)`, capped by `stop`: stage 1 reads the first `start` commits and each
 later stage adds `step`. A stage inspects only the lines its own commits add, attributes a finding to
-the commit that introduced it, and cites `commit:path:line`. Its 21 rules cover exceptions,
+the commit that introduced it, and cites `commit:path:line`. Its Python rules cover exceptions,
 shell/exec, deserialisation, mutable defaults, timeouts, secrets and control flow; five are repaired
 mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`),
-each earning a regression test. Detectors use Python's AST, so a changed non-Python file is reported
-as not analysed instead of passing silently. A patch must survive the project's tests and gates; a
+each earning a regression test. Every changed text file is reviewed, not only Python: JSON and TOML
+must parse, a Markdown code fence must close, and a committed conflict marker is a defect; only a
+binary file is reported as not analysed, and the stage prints how many files it reviewed. A patch must
+survive the project's tests and gates; a
 red result restores the exact bytes, and `--commit`/`--push` stage only reviewed paths plus
 `.aikit/reforge.json`, never forcing. Runs are independent (`settings`, `stop`, `resume`, `runs`,
 `report`); state is crash-safe and a per-project lock refuses concurrent work.
