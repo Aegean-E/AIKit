@@ -53,7 +53,8 @@ standard library, refuses an unclosed Markdown code fence and flags a committed 
 stage reports only genuinely binary paths as not analysed and prints how many files it reviewed. The
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. `reforge/ai_review.py` then sends a bounded diff to a read-only `architect`
-sub-agent on a free model; the brief is redacted with the project's secret scanner, every path and
+sub-agent on a free model; the brief is redacted with the project's secret scanner (and the review is skipped when that
+scanner is unavailable), every path and
 line must belong to the stage, the quoted evidence must exist in the current file, a file the
 brief omitted is treated as unknown, and every suggested replacement must occur exactly once
 and parse, after which `repair.apply_text_patches`

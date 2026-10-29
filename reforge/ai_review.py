@@ -102,17 +102,23 @@ def _file_diff(repo: Path, sha: str, path: str) -> str:
     return out if code == 0 else ""
 
 
-def _scrub(text: str) -> Tuple[str, int]:
-    """The diff with credential-shaped spans redacted, and how many detectors fired.
+def scrubber_available() -> bool:
+    """Whether the project's secret scanner can redact the brief.
 
-    The brief leaves this machine for a third-party free model, and the audited history is exactly
-    where a leaked key lives. PRINCIPLE-019 R4/R5 treats a written credential as already lost, so
-    the scrub happens here, at the boundary, and never depends on the model or the user.
+    Redaction is a precondition, not a nicety: without the scanner the diff is not sent at all, so
+    a standalone checkout degrades to "AI review skipped" instead of silently leaking history.
     """
     try:
-        from scripts.check_secrets import scrub_text
-    except ImportError:  # a checkout without AIKit's scanner still reviews, unredacted by contract
-        return text, 0
+        from scripts.check_secrets import scrub_text  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _scrub(text: str) -> Tuple[str, int]:
+    """The diff with credential-shaped spans redacted, and how many detectors fired."""
+    from scripts.check_secrets import scrub_text
+
     scrubbed, detectors = scrub_text(text)
     return scrubbed, len(detectors)
 
@@ -329,6 +335,11 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
                  runner: Optional[AiRunner] = None) -> Dict[str, object]:
     """Ask the AI to review this stage; never raises, and always says what happened."""
     repo = Path(repo)
+    if not scrubber_available():
+        return {"status": "skipped", "findings": [], "rejected": [], "files": [],
+                "model": model or DEFAULT_AI_MODEL, "agent": AI_AGENT_ROLE, "truncated": False,
+                "redacted": 0, "prompt_chars": 0, "seconds": 0.0,
+                "reason": "the secret scanner is unavailable, so the diff is not sent unredacted"}
     reviewed: List[str] = []
     redacted: List[int] = []
     brief, truncated = build_brief(repo, plan, reviewed, redacted)

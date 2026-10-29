@@ -2878,3 +2878,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: The prompt states that a file absent from the diff is unknown and forbids claiming that a feature, field or check is unimplemented outside the lines shown, telling the model to stay silent instead. The brief lists every changed path and names the ones omitted from the diff, so the boundary is explicit rather than implied. Version 0.7.3.
 - **Consequences**: Findings describe only what the given lines support. A truncated review may miss a real defect in an omitted file, which is honest: the stage reports truncation, and a narrower window reviews fewer files. The change costs no extra model call.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (no claim beyond the evidence), PRINCIPLE-012 (the brief stays inside its budget and says so), PRINCIPLE-014 (the brief test asserts the guard), and PRINCIPLE-011 (truncation is reported, not hidden).
+
+### ADR-258: AI Review Fails Closed Without the Secret Scanner
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: The fifth Reforge run found that the redaction step degraded silently when `scripts.check_secrets` could not be imported: the raw diff was still sent to the third-party model and the reported redaction count stayed zero, which reads as "nothing to redact". A guarantee that disappears with a missing import is not a guarantee.
+- **Decision**: `scrubber_available()` gates the review. When the scanner cannot be loaded, `review_stage` returns `skipped` with an explicit reason and never calls the model; no diff leaves the machine unredacted. The README states this. Version 0.7.4.
+- **Consequences**: A standalone Reforge checkout without AIKit's scanner loses the AI review instead of leaking history, which is the safer failure. The deterministic audit is unaffected, so the tool still works.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-019 (no egress without redaction), PRINCIPLE-011 (a clear skip reason, no traceback), and PRINCIPLE-014 (a test proves the model is never called).

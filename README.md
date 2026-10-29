@@ -207,8 +207,9 @@ A read-only AI agent then reviews the same diff (ADR-254). It runs on a free mod
 (`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the bounded diff as
 its whole input, and reports what a reviewer would with a line of evidence. The brief is redacted
 first: every credential-shaped span the project's secret scanner recognises is replaced before the
-text leaves the machine, and the stage prints how many were redacted. The diff still leaves the
-machine for a third-party endpoint, so unredacted history is a reason to run `--no-ai`. A finding
+text leaves the machine, and the stage prints how many were redacted; when the scanner cannot be
+loaded the review is skipped rather than sent unredacted. The diff still leaves the machine
+for a third-party endpoint, so unredacted history is a reason to run `--no-ai`. A finding
 must also quote a line that exists in the file now: an answer that quotes a line the commit removed
 is dropped as unverifiable, and a file left out of the bounded brief is treated as unknown rather
 than as absent code. A finding may carry an exact replacement; Reforge accepts it only when

@@ -8879,6 +8879,18 @@ class TestReforgeCore(unittest.TestCase):
         self.assertTrue(findings[0].fixable)
         self.assertEqual(rejected, [])
 
+    def test_the_review_is_skipped_when_the_secret_scanner_is_missing(self):
+        from reforge import ai_review
+
+        calls = []
+        plan = type("Plan", (), {"new_shas": (), "run_id": "run-1", "stage": 1})()
+        with mock.patch.object(ai_review, "scrubber_available", return_value=False):
+            report = ai_review.review_stage(
+                self.root(), plan, runner=lambda prompt, model: calls.append(prompt) or (0, "{}"))
+        self.assertEqual(report["status"], "skipped")
+        self.assertIn("not sent unredacted", report["reason"])
+        self.assertEqual(calls, [], "no diff may leave the machine without the scanner")
+
     def test_a_finding_quoting_a_removed_line_is_dropped(self):
         from reforge.ai_review import findings_from_payload
 

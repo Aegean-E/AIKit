@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `721`
-- **Total Class Methods**: `792`
-- **Total Source Lines**: `30917`
+- **Total Top-Level Functions**: `722`
+- **Total Class Methods**: `793`
+- **Total Source Lines**: `30940`
 
 ---
 
@@ -220,11 +220,12 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `389` lines (`17081` bytes)
+**Size**: `400` lines (`17472` bytes)
 
 **Functions:**
 - `def _changed_paths(repo, plan)` - *(commit, path) for every readable text file the stage's new commits changed.*
 - `def _file_diff(repo, sha, path)`
+- `def scrubber_available()` - *Whether the project's secret scanner can redact the brief.*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
 - `def build_brief(repo, plan, reviewed, redacted)` - *A bounded, redacted prompt holding the stage diff.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
@@ -1408,7 +1409,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8989` lines (`510943` bytes)
+**Size**: `9001` lines (`511597` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2132,6 +2133,7 @@
   - Method `.test_the_brief_counts_only_the_files_it_includes()`
   - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
   - Method `.test_a_patch_must_overlap_a_line_the_stage_added()`
+  - Method `.test_the_review_is_skipped_when_the_secret_scanner_is_missing()`
   - Method `.test_a_finding_quoting_a_removed_line_is_dropped()`
   - Method `.test_an_ai_answer_is_validated_against_the_stage()`
   - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`
