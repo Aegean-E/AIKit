@@ -1266,8 +1266,11 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
 
     PROTECTED = ["GUIDELINES.md", ".agents/task_ledger.json", ".agents/rules/domain.md", "CLAUDE.md",
                  "AGENTS.md", "opencode.jsonc", "knowledge/decisions.md", ".windsurfrules", ".clinerules"]
-    FORBIDDEN_SHELL = ["git add .", "git add -A", "git commit -m x", "git push", "git reset --hard",
-                       "git clean -fdx", "git checkout -- x.py", "git stash drop", "rm -rf knowledge"]
+    FORBIDDEN_SHELL = ["git add .", "git add -A", "git commit -m x", "git push --force",
+                       "git push -f", "git push --mirror", "git push --delete origin main",
+                       "git reset --hard", "git clean -fdx", "git checkout -- x.py",
+                       "git stash drop", "rm -rf knowledge"]
+    CONFIRM_SHELL = ["git push", "git push origin main", "git push -u origin feature"]
     EDITS = {"architect": [], "explorer": [], "reviewer": ["knowledge/architecture.md", "README.md"],
              "coder": ["scripts/sync_principles.py", "tests/test_kit.py"], "tester": ["tests/test_kit.py"],
              "worker": ["knowledge/architecture.md", "README.md"]}
@@ -1301,6 +1304,23 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
                 with self.subTest(agent=name, edit=path):
                     self.assertEqual(self.decide(chain, "edit", path), "deny")
             for command in self.FORBIDDEN_SHELL:
+                with self.subTest(agent=name, shell=command):
+                    self.assertEqual(self.decide(chain, "shell", command), "deny")
+
+    def test_ordinary_push_requires_confirmation_and_force_stays_denied(self):
+        rule = [r for r in self.global_rules if r.get("resource") == "git push*"]
+        self.assertEqual(rule[-1]["effect"], "ask")
+        for command in self.CONFIRM_SHELL:
+            with self.subTest(shell=command):
+                self.assertEqual(self.decide(self.global_rules, "shell", command), "ask")
+        for name, rules in self.agents.items():
+            chain = self.global_rules + rules
+            # Each subagent profile keeps its catch-all shell deny, so only the lead can push.
+            for command in self.CONFIRM_SHELL:
+                with self.subTest(agent=name, shell=command):
+                    self.assertEqual(self.decide(chain, "shell", command), "deny")
+            for command in ("git push --force", "git push -f", "git push --mirror",
+                            "git push --delete origin main"):
                 with self.subTest(agent=name, shell=command):
                     self.assertEqual(self.decide(chain, "shell", command), "deny")
 

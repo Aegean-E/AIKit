@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `733`
-- **Total Class Methods**: `810`
-- **Total Source Lines**: `31369`
+- **Total Class Methods**: `811`
+- **Total Source Lines**: `31389`
 
 ---
 
@@ -1422,7 +1422,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9199` lines (`519830` bytes)
+**Size**: `9219` lines (`521105` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1519,6 +1519,7 @@
   - Method `.decide(rules, action, resource)`
   - Method `.setUpClass()`
   - Method `.test_protected_files_and_destructive_commands_are_denied_to_every_subagent()`
+  - Method `.test_ordinary_push_requires_confirmation_and_force_stays_denied()`
   - Method `.test_each_subagent_edits_only_its_own_area()`
   - Method `.test_read_only_subagents_cannot_write_through_the_shell()`
 - `class TestKnowledgeCitations` - *PRINCIPLE-016 R2 drift made mechanical (ADR-101): citations in living documents resolve.*
