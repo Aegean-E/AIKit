@@ -13,158 +13,6 @@
   },
   "checkpoints": [
     {
-      "task_id": "reuse-preserve-annotations-v1",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[2/3] Added a same-identifier guard to write_reuse_metadata and a failing-first test tier; the fold brand annotation now survives a refresh",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793293306.2789617,
-      "timestamp_str": "2026-10-29 20:01:46",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 4",
-      "phase_num": 3,
-      "description": "Reforge stage 4: window 12, 3 commit(s), 15 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793293363.2779467,
-      "timestamp_str": "2026-10-29 20:02:43",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 5",
-      "phase_num": 3,
-      "description": "Reforge stage 5: window 15, 3 commit(s), 8 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793293676.6704001,
-      "timestamp_str": "2026-10-29 20:07:56",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reuse-preserve-annotations-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/3] Verified: targeted reuse tests pass; test_kit 641 OK and test_integration 69 OK; sync, KB, licenses, secrets, reachability and dogfood gates pass; budget gate remains over on pre-existing tier speeds",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793293876.92302,
-      "timestamp_str": "2026-10-29 20:11:16",
-      "agent": "opencode",
-      "handoff": {
-        "state": "source and tests complete but uncommitted",
-        "next": "review the diff and commit only when authorized",
-        "evidence": "tests/test_kit.py ReuseMetadataTest 3/3, python scripts/dogfood.py 5/5, knowledge/codebase_map.md refreshed"
-      }
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 6",
-      "phase_num": 3,
-      "description": "Reforge stage 6: window 18, 3 commit(s), 8 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793294622.0650468,
-      "timestamp_str": "2026-10-29 20:23:42",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 7",
-      "phase_num": 3,
-      "description": "Reforge stage 7: window 21, 3 commit(s), 7 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793294690.9459145,
-      "timestamp_str": "2026-10-29 20:24:50",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 8",
-      "phase_num": 3,
-      "description": "Reforge stage 8: window 24, 3 commit(s), 14 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793294799.2012088,
-      "timestamp_str": "2026-10-29 20:26:39",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reuse-preserve-annotations-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reuse-preserve-annotations-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793295603.8069804,
-      "timestamp_str": "2026-10-29 20:40:03",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "ui-checked-at-preserve-date",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Preserve the UI check date when the identifier is unchanged",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793296491.1020613,
-      "timestamp_str": "2026-10-29 20:54:51",
-      "agent": "opencode:ui-checked-at",
-      "impact_assessment": {
-        "why": "ui begin, verify and finish refresh the UI identifier and rewrite .aikit/project.json outside the bounded surface, so the next verify fails and records a strike.",
-        "benefits": "Guard commands stop dirtying project memory and a clean UI task records zero strikes.",
-        "risks": "contract: project memory write behavior changes; dependency: none; concurrency: existing file lock remains; state: ui_checked_at may stay older while the identifier is unchanged",
-        "mitigation": "Only skip the write when every identity field matches; identity changes still stamp and write; a failing-first test pins date preservation."
-      }
-    },
-    {
-      "task_id": "ui-checked-at-preserve-date",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/3] refresh_ui_identifier preserves ui_checked_at and skips an identical write; failing-first regression test added",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793296923.40818,
-      "timestamp_str": "2026-10-29 21:02:03",
-      "agent": "opencode:ui-checked-at"
-    },
-    {
-      "task_id": "ui-checked-at-preserve-date",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Verified: 642 unit, 75 integration, budget, sync, KB, licenses, secrets, reachability and dogfood pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793296923.5518973,
-      "timestamp_str": "2026-10-29 21:02:03",
-      "agent": "opencode:ui-checked-at"
-    },
-    {
-      "task_id": "ui-checked-at-preserve-date",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-checked-at-preserve-date' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793296923.696387,
-      "timestamp_str": "2026-10-29 21:02:03",
-      "agent": "opencode:ui-checked-at"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 9",
-      "phase_num": 3,
-      "description": "Reforge stage 9: window 27, 7 commit(s), 19 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297220.1471665,
-      "timestamp_str": "2026-10-29 21:07:00",
-      "agent": "opencode"
-    },
-    {
       "task_id": "reforge-reuse-hardening",
       "phase": "in_progress",
       "phase_num": 2,
@@ -244,6 +92,168 @@
       "status": "in_progress",
       "timestamp": 1793297733.1403813,
       "timestamp_str": "2026-10-29 21:15:33",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-2",
+      "phase": "reforge stage 12",
+      "phase_num": 3,
+      "description": "Reforge stage 12: run stopped at stage 12; resume it with `reforge resume`",
+      "files_affected": [],
+      "status": "suspended",
+      "timestamp": 1793297912.8132906,
+      "timestamp_str": "2026-10-29 21:18:32",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge run",
+      "phase_num": 3,
+      "description": "run started (start=36, step=30, stop=None)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793297913.2604122,
+      "timestamp_str": "2026-10-29 21:18:33",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 1",
+      "phase_num": 3,
+      "description": "Reforge stage 1: window 36, 36 commit(s), 38 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793297951.142537,
+      "timestamp_str": "2026-10-29 21:19:11",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 2",
+      "phase_num": 3,
+      "description": "Reforge stage 2: window 66, 30 commit(s), 46 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793298114.0587385,
+      "timestamp_str": "2026-10-29 21:21:54",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 3",
+      "phase_num": 3,
+      "description": "Reforge stage 3: window 96, 30 commit(s), 84 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired, 2 binary not analysed",
+      "files_affected": [
+        "assets/logo.jpg",
+        "assets/social-preview.png"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793298307.6651013,
+      "timestamp_str": "2026-10-29 21:25:07",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 4",
+      "phase_num": 3,
+      "description": "Reforge stage 4: window 126, 30 commit(s), 32 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793298610.6704288,
+      "timestamp_str": "2026-10-29 21:30:10",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 5",
+      "phase_num": 3,
+      "description": "Reforge stage 5: window 156, 30 commit(s), 36 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793298749.124817,
+      "timestamp_str": "2026-10-29 21:32:29",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 6",
+      "phase_num": 3,
+      "description": "Reforge stage 6: window 186, 30 commit(s), 47 file(s) reviewed (unreviewed), 2 finding(s), 0 repaired (reliability=2)",
+      "files_affected": [
+        "scripts/disruption_recovery.py",
+        "tests/test_integration.py"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793298910.5452619,
+      "timestamp_str": "2026-10-29 21:35:10",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 7",
+      "phase_num": 3,
+      "description": "Reforge stage 7: window 216, 30 commit(s), 51 file(s) reviewed (unreviewed), 1 finding(s), 0 repaired (reliability=1)",
+      "files_affected": [
+        "scripts/sync_principles.py"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793299084.6829963,
+      "timestamp_str": "2026-10-29 21:38:04",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 8",
+      "phase_num": 3,
+      "description": "Reforge stage 8: window 246, 30 commit(s), 33 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793299259.9429634,
+      "timestamp_str": "2026-10-29 21:40:59",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 9",
+      "phase_num": 3,
+      "description": "Reforge stage 9: window 276, 30 commit(s), 21 file(s) reviewed (unreviewed), 4 finding(s), 0 repaired (regression=3, reliability=1)",
+      "files_affected": [
+        "scripts/update_knowledge_base.py",
+        "scripts/disruption_recovery.py"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793299449.3600526,
+      "timestamp_str": "2026-10-29 21:44:09",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 10",
+      "phase_num": 3,
+      "description": "Reforge stage 10: window 306, 30 commit(s), 23 file(s) reviewed (unreviewed), 13 finding(s), 0 repaired (regression=10, reliability=3)",
+      "files_affected": [
+        "tests/test_kit.py",
+        "scripts/disruption_recovery.py",
+        "scripts/sync_principles.py",
+        "scripts/update_knowledge_base.py",
+        "scripts/dogfood.py"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793299666.9805107,
+      "timestamp_str": "2026-10-29 21:47:46",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 11",
+      "phase_num": 3,
+      "description": "Reforge stage 11: window 333, 27 commit(s), 20 file(s) reviewed (unreviewed), 8 finding(s), 0 repaired (regression=8)",
+      "files_affected": [
+        "scripts/disruption_recovery.py"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793299892.462669,
+      "timestamp_str": "2026-10-29 21:51:32",
       "agent": "opencode"
     }
   ]
