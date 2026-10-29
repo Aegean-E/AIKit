@@ -3,8 +3,8 @@
   "active_task": {
     "task_id": "task-reforge-fix-history-sync-v1",
     "last_phase": "in_progress",
-    "active_phase": 2,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793284113.4960604,
     "owner": "opencode:reforge-scope",
     "started_by": "opencode:reforge-followup",
@@ -20,26 +20,10 @@
       "benefits": "report, status and last_audit agree after a fix; the history survives reloads.",
       "risks": "contract: history review becomes authoritative after fix; dependency: none; concurrency: fix already holds the run lock; state: in-place matching entry update, no schema change.",
       "mitigation": "Call sync_last_audit before save, pin it with a failing-first unit test, append ADR-269 and run the full gate suite."
-    }
+    },
+    "completed_at": 1793284260.1683543
   },
   "checkpoints": [
-    {
-      "task_id": "reforge-host-review",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Re-scoped: the packet pivot, docs, tests and gates land as one atomic commit",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793277677.4003012,
-      "timestamp_str": "2026-10-29 15:41:17",
-      "agent": "opencode:reforge-scope",
-      "impact_assessment": {
-        "why": "The five planned milestones cannot pass Phase 4 separately because the code, README, knowledge and map must change together for the freshness, command and claim gates.",
-        "benefits": "One atomic, gate-passing commit instead of intermediate states whose docs still describe the deleted AI review.",
-        "risks": "contract: the CLI drops AI options and state key ai becomes review; dependency: none; concurrency: unchanged; state: schema 2 remains readable with legacy ai fallback.",
-        "mitigation": "Full Phase 4 triad passed; explicit staging; ADR-263 records the removed path and the new packet contract."
-      }
-    },
     {
       "task_id": "reforge-host-review",
       "phase": "completed",
@@ -285,6 +269,16 @@
         "mitigation": "Call sync_last_audit before save, pin it with a failing-first unit test, append ADR-269 and run the full gate suite."
       },
       "continued_from": "opencode:reforge-followup"
+    },
+    {
+      "task_id": "task-reforge-fix-history-sync-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-reforge-fix-history-sync-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793284260.1683555,
+      "timestamp_str": "2026-10-29 17:31:00",
+      "agent": "opencode:reforge-scope"
     }
   ]
 }
