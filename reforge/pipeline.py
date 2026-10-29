@@ -40,6 +40,7 @@ from reforge.state import (
     runs_summary,
     save_state,
     stop_run,
+    sync_last_audit,
     unrepaired_findings,
     update_settings,
 )
@@ -389,6 +390,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 allow_dirty, deliver, (findings_rel,), _owned_repairs(last))
             if not fixable:
                 if findings_file:
+                    sync_last_audit(run)
                     save_state(root, state)
                     return _payload(root, mode, plan, run, all_findings,
                                     [repair_from_dict(item) for item in (last.get("repairs") or [])],
@@ -419,6 +421,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             last["tests"] = tests
             last["gates"] = gates
             last["review"] = review_meta
+            sync_last_audit(run)
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
             return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,

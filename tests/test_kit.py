@@ -8872,6 +8872,40 @@ class TestReforgeCore(unittest.TestCase):
         ]}}
         self.assertEqual([item["code"] for item in pending_fixable(run)], ["bare-except"])
 
+    def test_a_fix_persists_the_review_status_in_the_run_history(self):
+        # A later stage used to move the reviewed entry into history while it still said
+        # "unreviewed", so `report` contradicted `last_audit` (found on the chronos run).
+        from reforge import pipeline
+        from reforge.state import create_run, load_state, new_state, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 6)
+        entry = {
+            "run": run["id"], "stage": 1, "window": 3,
+            "new_commits": ["a"], "prior_commits": [],
+            "findings": [], "repairs": [], "counts": {},
+            "reviewed": 1,
+            "review": {"status": "unreviewed", "files": ["app.py"], "findings": [],
+                       "rejected": [], "packet": "", "redacted": 0,
+                       "reason": "awaiting the reviewer's findings"},
+            "skipped": [], "tests": {}, "gates": {}, "timestamp": "2026-01-01T00:00:00",
+        }
+        record_stage(root, state, run, entry)
+        review = {"status": "reviewed", "files": ["app.py"], "findings": [],
+                  "rejected": [], "packet": "", "redacted": 0,
+                  "reason": "the answer held no findings"}
+        with mock.patch.object(pipeline, "_collect_review", return_value=review):
+            pipeline.run_pipeline(root, "fix", run_tests=False,
+                                  findings_file=str(root / "answer.json"))
+
+        reloaded = load_state(root)
+        audit = reloaded["runs"][0]["last_audit"]
+        history = reloaded["runs"][0]["history"]
+        self.assertEqual(audit["review"]["status"], "reviewed")
+        self.assertEqual(history[-1]["review"]["status"], "reviewed",
+                         "report would show the reviewed stage as unreviewed")
+
     def test_settings_validate_and_cannot_rewrite_a_used_start(self):
         for start, step, stop in ((1, 3, None), (3, 0, None), (3, 3, 2)):
             with self.subTest(start=start, step=step, stop=stop):

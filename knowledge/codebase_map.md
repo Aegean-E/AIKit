@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `738`
-- **Total Class Methods**: `814`
-- **Total Source Lines**: `31573`
+- **Total Class Methods**: `815`
+- **Total Source Lines**: `31610`
 
 ---
 
@@ -405,7 +405,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `594` lines (`28450` bytes)
+**Size**: `597` lines (`28545` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -1425,7 +1425,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9319` lines (`526531` bytes)
+**Size**: `9353` lines (`528347` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2146,6 +2146,7 @@
   - Method `.test_a_later_fix_refreshes_the_history_entry_too()`
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
+  - Method `.test_a_fix_persists_the_review_status_in_the_run_history()`
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`

@@ -1,40 +1,28 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-packet-scope",
+    "task_id": "task-reforge-fix-history-sync-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793283440.4764051,
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793284113.4960604,
     "owner": "opencode:reforge-scope",
-    "started_by": "opencode:reforge-scope",
-    "continuations": [],
+    "started_by": "opencode:reforge-followup",
+    "continuations": [
+      {
+        "agent": "opencode:reforge-scope",
+        "from": "opencode:reforge-followup",
+        "at": 1793284113.4960604
+      }
+    ],
     "impact_assessment": {
-      "why": "A widening stage adds one old commit and new commits, but the packet diffed the whole window and repeated the entire stage-1 refactor (201 KB) instead of reviewing only the new work.",
-      "benefits": "Packets are bounded by the new commits, findings cannot repeat a prior stage, and patch validation only accepts lines the new commits added.",
-      "risks": "contract: packet files are the union of new-commit paths; dependency: none; concurrency: unchanged; state: no schema change.",
-      "mitigation": "Filter _changed_paths/_binary_paths by plan.new_shas, compute touched lines per new commit, add a unit test, and append ADR-268."
-    },
-    "completed_at": 1793283456.8482473
+      "why": "A fix updated last_audit.review but left the history entry unreviewed, so report contradicted the stored stage after a later stage.",
+      "benefits": "report, status and last_audit agree after a fix; the history survives reloads.",
+      "risks": "contract: history review becomes authoritative after fix; dependency: none; concurrency: fix already holds the run lock; state: in-place matching entry update, no schema change.",
+      "mitigation": "Call sync_last_audit before save, pin it with a failing-first unit test, append ADR-269 and run the full gate suite."
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "reforge-host-review",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Finish the host-review pivot and remove the AI orchestration",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793275888.8514903,
-      "timestamp_str": "2026-10-29 15:11:28",
-      "agent": "opencode:reforge-scope",
-      "impact_assessment": {
-        "why": "Reforge accumulated an AI review subsystem (model budgets, argv attachment, request caps, redaction and evidence rules) that duplicated what the driving agent already does; the operator wants the host agent to analyze the packet directly, with no subagents.",
-        "benefits": "One explicit packet/findings contract; no model calls or credentials; less code and fewer failure modes; the widening-window engine, safe repairs and delivery stay.",
-        "risks": "contract: CLI AI options disappear and state key ai becomes review; dependency: no new deps; concurrency: unchanged per-project lock; state: schema 2 stays readable, new entries use review and old ai entries are read as fallback.",
-        "mitigation": "Keep run/audit/fix semantics, add findings-file validation tests, update README/architecture/services/SKILL, append one superseding ADR, and run the full gate triad."
-      }
-    },
     {
       "task_id": "reforge-host-review",
       "phase": "in_progress",
@@ -262,6 +250,41 @@
       "timestamp": 1793283456.8482494,
       "timestamp_str": "2026-10-29 17:17:36",
       "agent": "opencode:reforge-scope"
+    },
+    {
+      "task_id": "task-reforge-fix-history-sync-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/3] Plan: persist a fix's review status into the matching run history entry so report/status agree with last_audit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793283987.2063732,
+      "timestamp_str": "2026-10-29 17:26:27",
+      "agent": "opencode:reforge-followup",
+      "impact_assessment": {
+        "why": "run_pipeline fix mode updates last_audit.review and saves, but never syncs the matching history entry; after a later stage, report shows an already-reviewed stage as unreviewed, so the audit trail is wrong",
+        "benefits": "report and status reflect completed host reviews for every stage, history survives later stages and reloads, no schema or CLI change",
+        "risks": "contract: history review status becomes authoritative after fix, state schema unchanged; dependency: none; concurrency: fix already holds run_lock; state: in-place update of the matching history entry then atomic save",
+        "mitigation": "failing-first test that runs fix, reloads state, and asserts history.review; full AIKit test and gate suite; ADR-269 records the invariant"
+      }
+    },
+    {
+      "task_id": "task-reforge-fix-history-sync-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Persist a fix's reviewed status into the matching run history entry",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793284113.4960604,
+      "timestamp_str": "2026-10-29 17:28:33",
+      "agent": "opencode:reforge-scope",
+      "impact_assessment": {
+        "why": "A fix updated last_audit.review but left the history entry unreviewed, so report contradicted the stored stage after a later stage.",
+        "benefits": "report, status and last_audit agree after a fix; the history survives reloads.",
+        "risks": "contract: history review becomes authoritative after fix; dependency: none; concurrency: fix already holds the run lock; state: in-place matching entry update, no schema change.",
+        "mitigation": "Call sync_last_audit before save, pin it with a failing-first unit test, append ADR-269 and run the full gate suite."
+      },
+      "continued_from": "opencode:reforge-followup"
     }
   ]
 }
