@@ -8599,6 +8599,38 @@ class TestReforgeCore(unittest.TestCase):
         audit = project_media.audit_media(root, dossier=dossier)
         self.assertTrue(audit["ok"], audit["problems"])
 
+    def test_apply_media_refuses_a_dossier_manifest_it_does_not_own(self):
+        # The AegeanWorks site builder owns docs/media/*.json at schema 2 with a social preview,
+        # commit-stamped captures and digests. AIKit writes schema 1, so rewriting that manifest
+        # used to delete all of it and the published dossier silently lost its media.
+        root = self.project("clobber-demo")
+        (root / "index.html").write_text("<html><body><main>demo</main></body></html>",
+                                          encoding="utf-8")
+        with mock.patch.object(project_media, "_head", return_value=""):
+            project_media.seed_media_assets(root, "clobber-demo")
+        project_media.review_media(
+            root, "logo", "approve", "agent:unit", "structural", "monogram and palette fit")
+        dossier = self.root()
+        media = dossier / "docs" / "media"
+        media.mkdir(parents=True)
+        manifest = media / "Clobber-Demo.json"
+        owned = {
+            "schema": 2,
+            "repo": "Clobber-Demo",
+            "screenshots": [{"src": "media/Clobber-Demo/shot.webp", "digest": "sha256:abc"}],
+            "logo": {"src": "media/Clobber-Demo/logo.webp", "digest": "sha256:def"},
+            "preview": {"src": "media/Clobber-Demo/social-preview.webp", "digest": "sha256:ghi"},
+        }
+        manifest.write_text(json.dumps(owned, indent=2) + "\n", encoding="utf-8")
+        before = manifest.read_text(encoding="utf-8")
+        with self.assertRaises(ProjectError) as caught:
+            project_media.apply_media(root, "clobber-demo", dossier=dossier)
+        self.assertEqual(caught.exception.exit_code, 1)
+        self.assertIn("schema 2", str(caught.exception))
+        self.assertIn("build_dossier_media.py", caught.exception.fix)
+        self.assertEqual(manifest.read_text(encoding="utf-8"), before)
+        self.assertFalse((media / "Clobber-Demo" / "logo.svg").exists())
+
     def test_a_repository_without_a_ledger_records_nothing_and_does_not_fail(self):
         from reforge.ledger import ledger_artifacts, record_event
 

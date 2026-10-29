@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `736`
-- **Total Class Methods**: `812`
-- **Total Source Lines**: `31481`
+- **Total Class Methods**: `813`
+- **Total Source Lines**: `31528`
 
 ---
 
@@ -940,7 +940,7 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `834` lines (`37036` bytes)
+**Size**: `849` lines (`38032` bytes)
 
 **Functions:**
 - `def media_path(root)`
@@ -1425,7 +1425,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9240` lines (`522222` bytes)
+**Size**: `9272` lines (`524154` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2127,6 +2127,7 @@
   - Method `.test_new_projects_get_license_topic_metadata()`
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
   - Method `.test_aegeanworks_keeps_its_own_badge_set()`
+  - Method `.test_apply_media_refuses_a_dossier_manifest_it_does_not_own()`
   - Method `.test_a_repository_without_a_ledger_records_nothing_and_does_not_fail()`
   - Method `.test_aikit_ledger_is_found_even_though_reforge_created_dot_aikit()`
   - Method `.test_a_stage_checkpoint_is_appended_without_becoming_the_active_task()`
