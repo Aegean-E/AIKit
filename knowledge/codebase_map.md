@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
 - **Total Top-Level Functions**: `734`
-- **Total Class Methods**: `804`
-- **Total Source Lines**: `31398`
+- **Total Class Methods**: `806`
+- **Total Source Lines**: `31442`
 
 ---
 
@@ -220,7 +220,7 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `587` lines (`26050` bytes)
+**Size**: `595` lines (`26562` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -231,7 +231,7 @@
 - `def brief_budget(model)` - *The character budget for one review request, from the model's documented window.*
 - `def _hunk_blocks(path, diff)` - *Split one file diff into per-hunk blocks, each labelled with its path.*
 - `def _split_large(block, limit)` - *Split one over-sized block into consecutive line windows that each fit `limit`.*
-- `def build_briefs(repo, plan, reviewed, redacted, budget)` - *Every changed hunk of the stage, in one request when the model can hold it.*
+- `def build_briefs(repo, plan, reviewed, redacted, budget, pairs)` - *Every changed hunk of the stage, in one request when the model can hold it.*
 - `def build_brief(repo, plan, reviewed, redacted, budget)` - *The first request of `build_briefs`, kept for callers that only need one prompt.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
@@ -1423,7 +1423,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9140` lines (`518686` bytes)
+**Size**: `9176` lines (`520526` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2149,6 +2149,8 @@
   - Method `.stage()` - *A minimal stage plan for brief-building tests.*
   - Method `.test_a_stage_that_fits_is_one_request_and_loses_nothing()`
   - Method `.test_an_oversized_stage_is_split_but_stays_complete()`
+  - Method `.test_a_stage_above_the_request_cap_is_refused_not_fanned_out()`
+  - Method `.test_a_stage_without_text_changes_is_skipped_cleanly()`
   - Method `.test_a_large_brief_is_attached_as_a_file_not_passed_as_argv()`
   - Method `.test_a_small_brief_still_travels_inline()`
   - Method `.test_the_brief_budget_follows_the_model_context_window()`

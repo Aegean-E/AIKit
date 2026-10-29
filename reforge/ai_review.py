@@ -228,7 +228,8 @@ def _split_large(block: str, limit: int) -> List[str]:
 def build_briefs(repo: Path, plan: StagePlan,
                  reviewed: Optional[List[str]] = None,
                  redacted: Optional[List[int]] = None,
-                 budget: Optional[int] = None
+                 budget: Optional[int] = None,
+                 pairs: Optional[Sequence[Tuple[str, str]]] = None
                  ) -> Tuple[List[Dict[str, object]], bool]:
     """Every changed hunk of the stage, in one request when the model can hold it.
 
@@ -239,7 +240,7 @@ def build_briefs(repo: Path, plan: StagePlan,
     """
     limit = int(budget or DEFAULT_BRIEF_CHARS)
     fit = max(limit - 300, 4_000)  # room for the per-request "covers:" footer
-    pairs = _changed_paths(repo, plan)
+    pairs = list(pairs) if pairs is not None else _changed_paths(repo, plan)
     units: List[Tuple[str, str]] = []
     for sha, path in pairs:
         diff = _file_diff(repo, plan, path)
@@ -269,8 +270,6 @@ def build_briefs(repo: Path, plan: StagePlan,
     if current:
         requests.append({"text": PROMPT_PREFIX + head + "\n".join(current),
                          "files": list(current_paths)})
-    if not requests:  # a stage whose only change is an empty diff still gets one prompt
-        requests.append({"text": PROMPT_PREFIX + head, "files": []})
     if reviewed is not None:
         for request in requests:
             reviewed.extend(request["files"])
@@ -507,7 +506,8 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
     reviewed: List[str] = []
     redacted: List[int] = []
     limit = int(budget or brief_budget(model))
-    requests, split = build_briefs(repo, plan, reviewed, redacted, limit)
+    changed = _changed_paths(repo, plan)
+    requests, split = build_briefs(repo, plan, reviewed, redacted, limit, changed)
     result: Dict[str, object] = {
         "status": "skipped",
         "model": model or DEFAULT_AI_MODEL,
@@ -524,10 +524,18 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
         "seconds": 0.0,
         "reason": "",
     }
-    if not requests:
+    if not reviewed:
         result["reason"] = "the stage changed no text file"
         return result
-    commit_of = {path: sha for sha, path in _changed_paths(repo, plan)}
+    if len(requests) > MAX_REQUESTS:
+        # PRINCIPLE-012 R6: an autonomous loop needs a step cap. Refuse rather than fan out
+        # without bound, and tell the operator how to make the stage fit.
+        result.update(status="failed", requests=len(requests),
+                      reason=(f"the stage needs {len(requests)} requests, above the cap of "
+                              f"{MAX_REQUESTS}; audit a smaller window (lower --start/--step) "
+                              f"or raise --ai-budget"))
+        return result
+    commit_of = {path: sha for sha, path in changed}
     base, head = _stage_base(repo, plan), plan.new_shas[0]
     touched: Dict[str, set] = {}
     runner = runner or _delegate_runner(repo, timeout)

@@ -8905,6 +8905,42 @@ class TestReforgeCore(unittest.TestCase):
         covered = {name for request in requests for name in request["files"]}
         self.assertEqual(covered, {path for _, path in pairs})
 
+    def test_a_stage_above_the_request_cap_is_refused_not_fanned_out(self):
+        # PRINCIPLE-012 R6: an autonomous loop must have a step cap. Over the cap, Reforge stops
+        # and says how to make the stage fit instead of spawning unbounded model calls.
+        from reforge import ai_review
+
+        calls = []
+        many = [{"text": "brief", "files": [f"f{index}.py"]}
+                for index in range(ai_review.MAX_REQUESTS + 1)]
+
+        def fake_briefs(repo, plan, reviewed=None, redacted=None, budget=None, pairs=None):
+            if reviewed is not None:
+                reviewed.extend(f"f{index}.py" for index in range(ai_review.MAX_REQUESTS + 1))
+            return many, True
+
+        with mock.patch.object(ai_review, "build_briefs", fake_briefs), \
+                mock.patch.object(ai_review, "_changed_paths", return_value=[]):
+            report = ai_review.review_stage(
+                self.root(), self.stage(),
+                runner=lambda prompt, model: calls.append(prompt) or (0, '{"findings": []}'))
+        self.assertEqual(report["status"], "failed")
+        self.assertIn("above the cap", report["reason"])
+        self.assertEqual(calls, [], "no request may run once the cap is exceeded")
+
+    def test_a_stage_without_text_changes_is_skipped_cleanly(self):
+        from reforge import ai_review
+
+        calls = []
+        with mock.patch.object(ai_review, "_changed_paths", return_value=[]), \
+                mock.patch.object(ai_review, "build_briefs", return_value=([], False)):
+            report = ai_review.review_stage(
+                self.root(), self.stage(),
+                runner=lambda prompt, model: calls.append(prompt) or (0, "{}"))
+        self.assertEqual(report["status"], "skipped")
+        self.assertIn("no text file", report["reason"])
+        self.assertEqual(calls, [])
+
     def test_a_large_brief_is_attached_as_a_file_not_passed_as_argv(self):
         # Windows caps a command line at 32,767 characters; a big review must never be an argv.
         from reforge import ai_review
