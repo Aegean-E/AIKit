@@ -3014,3 +3014,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `packet_path` includes `plan.run_id`, producing `stage-<run-id>-<stage>-<head>.md`. The review report also counts only known hunk ids as reported coverage, so an unknown id cannot make `reported` exceed `total`.
 - **Consequences**: Independent runs at the same commit keep separate packets, and coverage arithmetic is honest. Existing state entries keep their old path; only future packets use the namespaced name.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-003 (the stored path identifies the right review), PRINCIPLE-010 (bounded generated files), and PRINCIPLE-014 (unit tests pin distinct paths and coverage counts).
+
+### ADR-275: Register Implemented Ideas from Commit References
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: Implemented ideas were being marked `Integrated` by a manual `set-status` call after delivery. That is easy to forget, and the register then still shows shipped work as `Proposed`, so the next planning pass can re-select it.
+- **Decision**: Add `idea_catcher/auto_register.py`. A commit message that names `IDEA-NNN` is the implementation signal: the idea must belong to the pushed project's target and must not be Integrated, Superseded or Rejected. `aikit check --push` scans the project's newest commits after a successful push and marks matches `Integrated` with the commit and project as evidence; `idea-catcher sync --repo <path> --project <target>` exposes the same scan on demand, with `--dry-run`. Auto-registration is best-effort and never fails a delivered push.
+- **Consequences**: Delivery records implementation without a second manual step, and the scan is idempotent. A commit that merely discusses an idea is treated as implementation evidence, so the commit-message convention matters; the privacy boundary is unchanged because the register stays local and git-ignored.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-006 (delivery and task state agree), PRINCIPLE-016 (the register stays synchronized), and PRINCIPLE-018 (the push remains the delivery boundary).

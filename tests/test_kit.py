@@ -7979,6 +7979,7 @@ class TestTestTierBudgetGate(unittest.TestCase):
     """PRINCIPLE-010 R6: both tier budgets are measured by a gate instead of assumed."""
 
     UNIT = "tests.test_kit"
+    AUTO = "tests.test_auto_register"
     INTEG = "tests.test_integration"
 
     def fake_runner(self, table):
@@ -7992,6 +7993,7 @@ class TestTestTierBudgetGate(unittest.TestCase):
         return 0, f"...\nRan {tests} tests in {seconds}s\n\nOK\n"
 
     def gate(self, table, retry_delay=0):
+        table.setdefault(self.AUTO, self.ok(1, 0.01))
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             code = run_budget_check(runner=self.fake_runner(table), retry_delay=retry_delay)
@@ -8018,6 +8020,8 @@ class TestTestTierBudgetGate(unittest.TestCase):
             if module == self.UNIT:
                 calls["unit"] += 1
                 return self.ok(100, 2.5 if calls["unit"] == 1 else 0.9)
+            if module == self.AUTO:
+                return self.ok(1, 0.01)
             return self.ok(45, 1.0)
 
         buf = io.StringIO()
@@ -8039,6 +8043,8 @@ class TestTestTierBudgetGate(unittest.TestCase):
             if module == self.UNIT:
                 calls["unit"] += 1
                 return 1, "Ran 10 tests in 0.010s\n\nFAILED (failures=1)\n"
+            if module == self.AUTO:
+                return self.ok(1, 0.01)
             return self.ok(45, 1.0)
 
         buf = io.StringIO()

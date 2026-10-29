@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `54`
-- **Total Classes**: `121`
-- **Total Top-Level Functions**: `753`
-- **Total Class Methods**: `827`
-- **Total Source Lines**: `32099`
+- **Total Python Modules**: `56`
+- **Total Classes**: `122`
+- **Total Top-Level Functions**: `758`
+- **Total Class Methods**: `837`
+- **Total Source Lines**: `32358`
 
 ---
 
@@ -34,6 +34,13 @@
 > *`python -m idea_catcher`: the module entry point.*
 
 **Size**: `8` lines (`157` bytes)
+
+---
+
+### [`idea_catcher/auto_register.py`](idea_catcher/auto_register.py)
+> *One-way compatibility re-export for the idea auto-registration engine.*
+
+**Size**: `14` lines (`480` bytes)
 
 ---
 
@@ -91,7 +98,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2079` lines (`91488` bytes)
+**Size**: `2199` lines (`96884` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -136,6 +143,10 @@
 - `def _history_entry(*, field, before, after, by, at, reason)`
 - `def set_tags(root, idea_id, *, add, remove, by, reason)` - *Add and remove analysis tags; a new verification tag replaces the previous one.*
 - `def set_status(root, idea_id, *, status, reason, decided_at, decided_by, evidence, target, superseded_by)`
+- `def parse_idea_ids(message)` - *Every distinct IDEA-NNN token in one commit message, sorted.*
+- `def git_commits(repo_path, limit)` - *(sha, subject, body) for the newest commits, newest first.*
+- `def register_from_commits(root, project, commits, dry_run)` - *Mark matching ideas Integrated; return one record per change.*
+- `def register_from_repo(repo_path, project, root, limit, dry_run)` - *Scan one repository's newest commits and register matching IDEA-NNN references.*
 - `def _parse_ts(value)`
 - `def _lease_expired(review, now)`
 - `def validate_reviews(payload, root, *, ideas_payload)`
@@ -593,7 +604,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1318` lines (`66335` bytes)
+**Size**: `1327` lines (`66871` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -742,7 +753,7 @@
 ### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
 > *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
 
-**Size**: `224` lines (`9049` bytes)
+**Size**: `225` lines (`9087` bytes)
 
 **Classes:**
 - `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
@@ -1304,6 +1315,29 @@
 
 ---
 
+### [`tests/test_auto_register.py`](tests/test_auto_register.py)
+> *Unit tests for automatic idea registration from commit messages.*
+
+**Size**: `109` lines (`5053` bytes)
+
+**Classes:**
+- `class TestAutoRegister`
+  - Method `.setUp()`
+  - Method `.test_commit_reference_marks_the_matching_idea_integrated()`
+  - Method `.test_running_twice_is_idempotent()`
+  - Method `.test_a_different_target_is_untouched()`
+  - Method `.test_body_references_are_read_and_dry_run_does_not_write()`
+  - Method `.test_idea_ids_are_deduplicated()`
+  - Method `.test_git_log_records_are_parsed_without_spawning()`
+  - Method `.test_repo_scan_uses_the_stored_commits()`
+  - Method `.test_a_corrupt_register_is_reported_instead_of_ignored()`
+  - Method `.test_sync_cli_reports_registered_ideas()`
+
+**Functions:**
+- `def make_register(root, status, target)`
+
+---
+
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
@@ -1443,7 +1477,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9493` lines (`536004` bytes)
+**Size**: `9499` lines (`536248` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*

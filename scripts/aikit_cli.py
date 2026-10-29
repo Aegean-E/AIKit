@@ -565,6 +565,15 @@ def cmd_check(args: argparse.Namespace) -> int:
             return 1
         if push_report:
             print(push_report)
+        try:
+            from idea_catcher.auto_register import register_from_repo
+            registered = register_from_repo(project.path, project.name)
+            if registered:
+                print("[OK] idea-catcher: registered "
+                      + ", ".join(row["id"] for row in registered)
+                      + " from the pushed commits.")
+        except Exception as exc:  # auto-registration must never fail a delivered push
+            print(f"[WARN] idea-catcher auto-registration skipped: {exc}", file=sys.stderr)
     return 0
 
 

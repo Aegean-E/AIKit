@@ -74,6 +74,7 @@ portable_agent_kit/
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── registry.py
+│   ├── auto_register.py          <- Automatic idea registration from commit references
 │   ├── claim_audit.py
 │   ├── concept_map.py
 │   ├── upstream_check.py
@@ -139,6 +140,7 @@ portable_agent_kit/
 │   └── verify_commit.py          <- Verifies a commit alone in a throwaway worktree
 ├── tests/
 │   ├── test_kit.py               <- Unit tier (<=20ms per test)
+│   ├── test_auto_register.py     <- Unit tier: idea registration from commits
 │   └── test_integration.py       <- Integration tier: concurrency, CLI contracts
 └── knowledge/
     ├── INDEX.md                  <- Knowledge base table of contents
@@ -248,8 +250,14 @@ repository (ADR-252). `IDEA_CATCHER_ROOT` points the tool at a different registe
 python aikit.py idea-catcher status             # full register counts per target
 python aikit.py idea-catcher validate           # targets, ideas, dossiers and matrix
 python aikit.py idea-catcher render --check     # fail when MATRIX.md is stale
+python aikit.py idea-catcher sync --repo . --project <target>  # register IDEA-NNN commit references
 python aikit.py idea-catcher reviews --stale
 ```
+
+A commit message that names `IDEA-NNN` is the automatic implementation signal. `aikit check
+--push` scans the pushed project's newest commits and marks matching ideas `Integrated` with the
+commit as evidence; `idea-catcher sync` does the same on demand, and `--dry-run` previews it. The
+idea must belong to the project's target; already closed ideas are untouched.
 
 A review leases its repository and reserves idea ids, so parallel analyses cannot collide.
 Dossiers name a `Source` from `IDEA-632` onward; tags, target and status changes append to each

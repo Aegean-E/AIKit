@@ -39,6 +39,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 # and the integration ceiling is 500ms, both approved in ADR-244.
 TIER_BUDGETS_MS: Dict[str, float] = {
     "tests.test_kit": 20.0,
+    "tests.test_auto_register": 20.0,
     "tests.test_integration": 500.0,
 }
 

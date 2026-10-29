@@ -33,11 +33,12 @@ import datetime
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Sequence, Tuple
 
 try:  # ``python tools/idea_catcher.py`` runs the module as a script.
     from . import claim_audit, concept_map, upstream_check
@@ -1097,6 +1098,95 @@ def set_status(
 
 
 # ---------------------------------------------------------------------------
+# Automatic registration from commit references
+# ---------------------------------------------------------------------------
+
+COMMIT_IDEA_RE = re.compile(r"\bIDEA-\d{3}\b")
+COMMIT_RECORD_SEPARATOR = "\x1e"
+COMMIT_FIELD_SEPARATOR = "\x1f"
+GIT_LOG_TIMEOUT_SECONDS = 30
+
+
+def parse_idea_ids(message: str) -> List[str]:
+    """Every distinct IDEA-NNN token in one commit message, sorted."""
+    return sorted(set(COMMIT_IDEA_RE.findall(message)))
+
+
+def git_commits(repo_path: Path, limit: int = 200) -> List[Tuple[str, str, str]]:
+    """(sha, subject, body) for the newest commits, newest first."""
+    done = subprocess.run(
+        ["git", "-C", str(repo_path), "log", f"-n{max(limit, 1)}",
+         f"--format=%H{COMMIT_FIELD_SEPARATOR}%s{COMMIT_FIELD_SEPARATOR}"
+         f"%b{COMMIT_RECORD_SEPARATOR}"],
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=GIT_LOG_TIMEOUT_SECONDS,
+    )
+    if done.returncode != 0:
+        raise ValueError(f"git log failed in {repo_path}: {done.stderr.strip()}")
+    commits: List[Tuple[str, str, str]] = []
+    for record in done.stdout.split(COMMIT_RECORD_SEPARATOR):
+        record = record.strip("\n")
+        if not record:
+            continue
+        parts = record.split(COMMIT_FIELD_SEPARATOR, 2)
+        if len(parts) != 3:
+            continue
+        commits.append((parts[0].strip(), parts[1].strip(), parts[2]))
+    return commits
+
+
+def register_from_commits(
+    root: Path,
+    project: str,
+    commits: Sequence[Tuple[str, str, str]],
+    dry_run: bool = False,
+) -> List[dict]:
+    """Mark matching ideas Integrated; return one record per change.
+
+    A missing register is an empty one only at :func:`register_from_repo`; an existing but
+    unreadable register raises, so ``idea-catcher sync`` reports it instead of claiming there is
+    nothing to register. The ``check --push`` caller catches the error and keeps the push green.
+    """
+    payload = load_ideas(root)
+    ideas = {str(idea.get("id", "")): idea for idea in payload.get("ideas", [])
+             if isinstance(idea, dict)}
+    updated: List[dict] = []
+    for sha, subject, body in commits:
+        for idea_id in parse_idea_ids(f"{subject}\n{body}"):
+            idea = ideas.get(idea_id)
+            if idea is None or str(idea.get("target", "")) != project:
+                continue
+            if idea.get("status") in {"Integrated", "Superseded", "Rejected"}:
+                continue
+            record = {"id": idea_id, "commit": sha, "subject": subject}
+            if dry_run:
+                updated.append(record)
+                continue
+            reason = f"Implemented by commit {sha[:12]}: {subject}".strip()
+            set_status(
+                root, idea_id, status="Integrated", reason=reason,
+                decided_by="aikit:auto-register", evidence=f"{sha}; {project}",
+            )
+            idea["status"] = "Integrated"
+            updated.append(record)
+    return updated
+
+
+def register_from_repo(
+    repo_path: Path,
+    project: str,
+    root: Path | None = None,
+    limit: int = 200,
+    dry_run: bool = False,
+) -> List[dict]:
+    """Scan one repository's newest commits and register matching IDEA-NNN references."""
+    root = default_root() if root is None else Path(root)
+    if not (root / IDEAS_FILE).is_file():
+        return []
+    return register_from_commits(root, project, git_commits(Path(repo_path), limit), dry_run)
+
+
+# ---------------------------------------------------------------------------
 # Repository review ledger
 # ---------------------------------------------------------------------------
 
@@ -1599,6 +1689,12 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     render = sub.add_parser("render", help="write MATRIX.md from the registry")
     render.add_argument("--check", action="store_true", help="fail instead of writing when stale")
     sub.add_parser("status", help="print the full register's idea and proposed counts")
+    sync = sub.add_parser("sync", help="register ideas named by IDEA-NNN commit messages")
+    sync.add_argument("--repo", default=".", help="git repository to scan (default: current folder)")
+    sync.add_argument("--project", default="", help="idea target id; defaults to the repository folder name")
+    sync.add_argument("--limit", type=int, default=200, help="newest commits to scan (default 200)")
+    sync.add_argument("--dry-run", action="store_true", help="show changes without writing")
+    sync.add_argument("--json", action="store_true")
     add = sub.add_parser("add-target", help="register a new routing target")
     add.add_argument("--id", required=True)
     add.add_argument("--name", required=True)
@@ -1750,6 +1846,30 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
             )
             print(f"[OK] registered {idea['id']} in {idea['dossier']} -> {idea['target']}")
             print("     next: python tools/idea_catcher.py render")
+            return 0
+        if args.command == "sync":
+            repo = Path(args.repo).expanduser().resolve()
+            project = args.project or repo.name
+            try:
+                updated = register_from_repo(
+                    repo, project, root=root, limit=args.limit, dry_run=args.dry_run,
+                )
+            except (OSError, ValueError) as exc:
+                print(f"Error: {exc}", file=sys.stderr)
+                print("Why: the Git history could not be read, or the register refused an update.",
+                      file=sys.stderr)
+                print("Fix: pass an existing Git checkout with `--repo <path>`; run "
+                      "`idea-catcher validate` if the register is invalid.", file=sys.stderr)
+                return 1
+            if args.json:
+                print(json.dumps({"ok": True, "result": {"project": project, "updated": updated}},
+                                 indent=2))
+            elif not updated:
+                print("No new IDEA-NNN commit references to register.")
+            else:
+                for row in updated:
+                    print(f"[OK] {row['id']} <- {row['commit'][:12]} {row['subject']}")
+                print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "set-status":
             idea = set_status(
