@@ -5045,6 +5045,15 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertTrue((folder / "licenses" / "LicenseRef-AL-1.1.txt").is_file())
         self.assertIn("LicenseRef-AL-1.1", (folder / "REUSE.toml").read_text(encoding="utf-8"))
 
+    @unittest.skipIf(os.name == "nt", "case-sensitive directories only")
+    def test_reuse_metadata_prefers_an_exact_uppercase_licenses_directory(self):
+        from scripts.project_registry import _reuse_licenses_dir
+        folder = Path(tempfile.mkdtemp(prefix="test_reuse_precedence_"))
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        (folder / "LICENSES").mkdir()
+        (folder / "licenses").mkdir()
+        self.assertEqual(_reuse_licenses_dir(folder).name, "LICENSES")
+
     def test_license_switch_keeps_the_readme_tree_contiguous(self):
         # The template tree line ended in a newline, so every switch left a blank line in the tree.
         readme = ("# app\n\n```text\napp/\n├── LICENSE                   <- old license\n"
@@ -8801,6 +8810,16 @@ class TestReforgeCore(unittest.TestCase):
                          [("unclosed-code-fence", 3)])
         closed = "# title\n\n```bash\necho hi\n```\n"
         self.assertEqual(detect_text("doc.md", closed, "sha"), [])
+
+    def test_text_review_does_not_mix_fence_styles(self):
+        from reforge.textdetect import detect_text
+
+        mixed = "# title\n\n```bash\necho hi\n~~~\nstill code\n```\n"
+        self.assertEqual(detect_text("doc.md", mixed, "sha"), [])
+        tilde = "# title\n\n~~~\necho hi\n```\nstill code\n~~~\n"
+        self.assertEqual(detect_text("doc.md", tilde, "sha"), [])
+        nested = "# title\n\n```bash\necho hi\n```python\nstill code\n```\n"
+        self.assertEqual(detect_text("doc.md", nested, "sha"), [])
 
     def test_a_project_without_a_shared_banner_is_not_asked_for_badges(self):
         root = self.project("badge-free")

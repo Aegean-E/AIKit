@@ -85,9 +85,16 @@ def _invalid_toml(path: str, source: str, lines: Sequence[str], commit: str) -> 
 
 def _unclosed_fence(path: str, lines: Sequence[str], commit: str) -> List[Finding]:
     opened: Optional[int] = None
+    opener: Optional[str] = None
     for number, text in enumerate(lines, 1):
-        if text.strip().startswith(FENCE_MARKERS):
-            opened = None if opened is not None else number
+        stripped = text.strip()
+        marker = next((item for item in FENCE_MARKERS if stripped.startswith(item)), None)
+        if marker is None:
+            continue
+        if opener is None:
+            opener, opened = marker, number
+        elif stripped.startswith(opener) and set(stripped) == {opener[0]}:
+            opener, opened = None, None
     return [_finding("unclosed-code-fence", path, opened, lines, commit)] if opened else []
 
 

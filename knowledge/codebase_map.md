@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `750`
-- **Total Class Methods**: `820`
-- **Total Source Lines**: `31849`
+- **Total Class Methods**: `822`
+- **Total Source Lines**: `31878`
 
 ---
 
@@ -544,7 +544,7 @@
 ### [`reforge/textdetect.py`](reforge/textdetect.py)
 > *Structural review of changed text files that need no language front end.*
 
-**Size**: `106` lines (`4032` bytes)
+**Size**: `113` lines (`4311` bytes)
 
 **Functions:**
 - `def is_text(source)` - *Whether a file revision can be reviewed as text instead of skipped as binary.*
@@ -696,7 +696,7 @@
 ### [`scripts/check_reachability.py`](scripts/check_reachability.py)
 > *Invariant Reachability Shield (PRINCIPLE-014 Rule 7)*
 
-**Size**: `351` lines (`14871` bytes)
+**Size**: `354` lines (`15133` bytes)
 
 **Functions:**
 - `def parse_module(path)` - *Parse a module once per content. Every analysis below walks the same files, and parsing each*
@@ -1440,7 +1440,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9394` lines (`530827` bytes)
+**Size**: `9413` lines (`531857` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1850,6 +1850,7 @@
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
   - Method `.test_reuse_metadata_reuses_an_existing_lowercase_licenses_directory()`
+  - Method `.test_reuse_metadata_prefers_an_exact_uppercase_licenses_directory()`
   - Method `.test_license_switch_keeps_the_readme_tree_contiguous()`
   - Method `.test_license_switch_labels_a_bare_license_tree_line()`
   - Method `.test_license_switch_replaces_a_differently_titled_license_section()`
@@ -2155,6 +2156,7 @@
   - Method `.test_text_review_flags_a_committed_conflict_marker()`
   - Method `.test_text_review_validates_json_and_toml()`
   - Method `.test_text_review_flags_an_unclosed_markdown_fence()`
+  - Method `.test_text_review_does_not_mix_fence_styles()`
   - Method `.test_a_project_without_a_shared_banner_is_not_asked_for_badges()`
   - Method `.test_media_review_refuses_an_unresolvable_screenshot_commit()`
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`
