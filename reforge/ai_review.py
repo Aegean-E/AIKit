@@ -68,6 +68,11 @@ with `-` was removed by it and is NOT in the file, and a leading space marks unc
 Every `evidence` must quote a line that exists in the file after the change (a `+` line or context),
 verbatim. Never report a removed line as a current problem.
 
+The diff may cover only some of the changed files, and a block may end with `[truncated]`. A file
+that is not shown is unknown to you: never claim that a feature, check or field is unimplemented,
+missing or unchanged outside the lines you were given. If the only way to judge a claim is to read
+code you were not given, do not report it.
+
 Every path must be one of the changed files below. Respond with JSON only.
 """
 
@@ -145,10 +150,12 @@ def build_brief(repo: Path, plan: StagePlan,
         total += len(block)
     if reviewed is not None:
         reviewed.extend(included)
-    files = ", ".join(included)
+    files = ", ".join(path for _, path in pairs) or "none"
+    omitted = [path for _, path in pairs if path not in included]
+    note = ("\nOmitted from the diff (unknown to you): " + ", ".join(omitted)) if omitted else ""
     brief = (PROMPT_PREFIX
-             + f"\nAudited repository: {repo}\nChanged files: {files or 'none'}\n\n"
-             + "\n".join(blocks))
+             + f"\nAudited repository: {repo}\nChanged files: {files}\n\n"
+             + "\n".join(blocks) + note)
     return brief, truncated
 
 

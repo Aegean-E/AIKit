@@ -54,8 +54,9 @@ stage reports only genuinely binary paths as not analysed and prints how many fi
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. `reforge/ai_review.py` then sends a bounded diff to a read-only `architect`
 sub-agent on a free model; the brief is redacted with the project's secret scanner, every path and
-line must belong to the stage, the quoted evidence must exist in the current file, and every
-suggested replacement must occur exactly once and parse, after which `repair.apply_text_patches`
+line must belong to the stage, the quoted evidence must exist in the current file, a file the
+brief omitted is treated as unknown, and every suggested replacement must occur exactly once
+and parse, after which `repair.apply_text_patches`
 applies it and the same tests, gates and diff review decide whether it survives. `--no-ai` skips the
 review; an unavailable OpenCode or model is reported as skipped, never as a failed audit. A
 separate `fix` refreshes the history entry `report` reads, a second `fix --commit` delivers an

@@ -210,10 +210,11 @@ first: every credential-shaped span the project's secret scanner recognises is r
 text leaves the machine, and the stage prints how many were redacted. The diff still leaves the
 machine for a third-party endpoint, so unredacted history is a reason to run `--no-ai`. A finding
 must also quote a line that exists in the file now: an answer that quotes a line the commit removed
-is dropped as unverifiable. A finding may carry an exact replacement; Reforge accepts it only
-when the path was in the stage, the line exists, the quoted text occurs exactly once, and that text overlaps a line the stage added, then
-applies it, parses Python results, reviews the diff and rolls everything back if a test or gate
-fails. `--no-ai` skips
+is dropped as unverifiable, and a file left out of the bounded brief is treated as unknown rather
+than as absent code. A finding may carry an exact replacement; Reforge accepts it only when
+the path was in the stage, the line exists, the quoted text occurs exactly once, and that text
+overlaps a line the stage added, then applies it, parses Python results, reviews the diff and
+rolls everything back if a test or gate fails. `--no-ai` skips
 the review, and an unavailable model is reported as skipped instead of failing the audit.
 
 A patch must survive the project's tests and gates; a red result restores the exact bytes. Each

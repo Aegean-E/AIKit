@@ -8846,7 +8846,8 @@ class TestReforgeCore(unittest.TestCase):
             brief, truncated = ai_review.build_brief(self.root(), object(), reviewed)
         self.assertEqual(len(reviewed), ai_review.MAX_FILES)
         self.assertTrue(truncated)
-        self.assertNotIn(f"f{ai_review.MAX_FILES}.py", brief)
+        self.assertIn("Omitted from the diff (unknown to you): f", brief)
+        self.assertIn("never claim that a feature, check or field is unimplemented", brief)
 
     def test_the_brief_redacts_a_credential_before_it_leaves(self):
         from reforge import ai_review

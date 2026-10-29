@@ -10,7 +10,7 @@
 - **Total Classes**: `120`
 - **Total Top-Level Functions**: `721`
 - **Total Class Methods**: `792`
-- **Total Source Lines**: `30909`
+- **Total Source Lines**: `30917`
 
 ---
 
@@ -220,7 +220,7 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `382` lines (`16554` bytes)
+**Size**: `389` lines (`17081` bytes)
 
 **Functions:**
 - `def _changed_paths(repo, plan)` - *(commit, path) for every readable text file the stage's new commits changed.*
@@ -1408,7 +1408,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8988` lines (`510839` bytes)
+**Size**: `8989` lines (`510943` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
