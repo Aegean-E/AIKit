@@ -207,8 +207,13 @@ rather than reported, the same convention AIKit's own hygiene scan uses.
 
 A read-only AI agent then reviews that whole stage change (ADR-254). It runs on a free model
 (`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the stage's net
-diff (from the commit before the stage to its last commit, each file whole) as its whole
-input, and reports what a reviewer would with a line of evidence. The brief is redacted
+diff (from the commit before the stage to its last commit, every changed hunk) and reports two
+things with a line of evidence: defects the change introduces, and concrete improvements — an
+unhandled case, a missing test for a new branch, a simpler correct implementation (ADR-261).
+The brief is sized to the reviewer: one request holds the whole stage on a large-window model
+(about 2.2M characters for `gemini-3.8-flash`), a smaller model gets its own documented
+window, and only a stage larger than that is split, by hunk and by line, so nothing is
+dropped; `--ai-budget` overrides the size. The brief is redacted
 first: every credential-shaped span the project's secret scanner recognises is replaced before the
 text leaves the machine, and the stage prints how many were redacted; when the scanner cannot be
 loaded the review is skipped rather than sent unredacted. The diff still leaves the machine

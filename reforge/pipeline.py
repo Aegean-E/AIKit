@@ -227,7 +227,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                  start: Optional[int] = None, step: Optional[int] = None,
                  stop: Optional[int] = None, ai: bool = False,
                  ai_model: Optional[str] = None, ai_timeout: int = AI_TIMEOUT_SECONDS,
-                 ai_runner=None) -> Dict[str, object]:
+                 ai_runner=None, ai_budget: Optional[int] = None) -> Dict[str, object]:
     """Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`)."""
     root = Path(root)
     with run_lock(root):
@@ -310,7 +310,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         skipped: List[str] = []
         reviewed: List[str] = []
         findings = audit_window(root, plan, run.get("history") or [], skipped, reviewed)
-        ai_report = _ai_report(root, plan, ai, ai_model, ai_timeout, ai_runner)
+        ai_report = _ai_report(root, plan, ai, ai_model, ai_timeout, ai_runner, ai_budget)
         findings = merge_findings(findings, ai_report.get("findings") or [])
         ai_meta = _serialize_ai(ai_report)
         if mode == "audit":
@@ -333,12 +333,13 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
 
 
 def _ai_report(root: Path, plan: StagePlan, enabled: bool, model: Optional[str],
-               timeout: int, runner) -> Dict[str, object]:
+               timeout: int, runner,
+               budget: Optional[int] = None) -> Dict[str, object]:
     """Run the optional AI review; the findings stay objects until the caller serialises them."""
     if not enabled:
         return {"status": "skipped", "findings": [], "rejected": [], "files": [],
                 "reason": "disabled with --no-ai"}
-    return review_stage(root, plan, model=model, timeout=timeout, runner=runner)
+    return review_stage(root, plan, model=model, timeout=timeout, runner=runner, budget=budget)
 
 
 def _serialize_ai(report: Dict[str, object]) -> Dict[str, object]:

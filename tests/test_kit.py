@@ -8864,30 +8864,80 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual((run.ai_model, run.ai_timeout), ("opencode/demo-free", 90))
         self.assertFalse(run.no_ai)
 
-    def test_the_brief_counts_only_the_files_it_includes(self):
+    @staticmethod
+    def stage():
+        """A minimal stage plan for brief-building tests."""
+        from types import SimpleNamespace
+
+        return SimpleNamespace(stage=1, window=3, run_id="run-1")
+
+    def test_a_stage_that_fits_is_one_request_and_loses_nothing(self):
+        # With a large-context reviewer the whole stage rides in one request: no chunking, no
+        # dropped file. Splitting is only an overflow guard, never the normal path.
         from reforge import ai_review
 
-        pairs = [("sha", f"f{index}.py") for index in range(ai_review.MAX_FILES + 3)]
+        pairs = [("sha", f"f{index}.py") for index in range(40)]
+        diff = "@@ -1,2 +1,2 @@\n-old\n+new\n"
         with mock.patch.object(ai_review, "_changed_paths", return_value=pairs), \
-                mock.patch.object(ai_review, "_file_diff", return_value="+change\n"):
+                mock.patch.object(ai_review, "_file_diff", return_value=diff):
             reviewed = []
-            brief, truncated = ai_review.build_brief(self.root(), object(), reviewed)
-        self.assertEqual(len(reviewed), ai_review.MAX_FILES)
-        self.assertTrue(truncated)
-        self.assertIn("Omitted from the diff (unknown to you): f", brief)
-        self.assertIn("Never claim that a feature, check", brief)
-        self.assertIn("unimplemented, missing or unchanged", brief)
+            requests, split = ai_review.build_briefs(
+                self.root(), self.stage(), reviewed, budget=2_000_000)
+        self.assertFalse(split)
+        self.assertEqual(len(requests), 1)
+        self.assertIn("defect|improvement", requests[0]["text"])
+        self.assertEqual(set(requests[0]["files"]), {path for _, path in pairs})
+
+    def test_an_oversized_stage_is_split_but_stays_complete(self):
+        from reforge import ai_review
+
+        pairs = [("sha", f"f{index}.py") for index in range(40)]
+        diff = "@@ -1,2 +1,2 @@\n" + "".join(f"+line {n}\n" for n in range(120))
+        with mock.patch.object(ai_review, "_changed_paths", return_value=pairs), \
+                mock.patch.object(ai_review, "_file_diff", return_value=diff):
+            reviewed = []
+            requests, split = ai_review.build_briefs(
+                self.root(), self.stage(), reviewed, budget=16_000)
+        self.assertTrue(split)
+        self.assertGreater(len(requests), 1)
+        for request in requests:
+            self.assertLessEqual(len(request["text"]), 16_000)
+        covered = {name for request in requests for name in request["files"]}
+        self.assertEqual(covered, {path for _, path in pairs})
+
+    def test_the_brief_budget_follows_the_model_context_window(self):
+        # PRINCIPLE-012 R8: size the brief to the chosen model, using the documented window.
+        from reforge import ai_review
+
+        self.assertEqual(ai_review.brief_budget("gemini/gemini-3.8-flash"), 2_202_009)
+        self.assertEqual(ai_review.brief_budget("opencode/deepseek-v4.1-flash-free"), 268_800)
+        self.assertEqual(ai_review.brief_budget("unknown/model"), ai_review.DEFAULT_BRIEF_CHARS)
+        self.assertGreater(ai_review.brief_budget(None), ai_review.DEFAULT_BRIEF_CHARS)
+
+    def test_a_large_file_is_split_by_hunk_not_dropped(self):
+        from reforge.ai_review import _hunk_blocks
+
+        diff = ("diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n"
+                "@@ -1,2 +1,2 @@\n-x = 1\n+x = 2\n"
+                "@@ -50,2 +50,2 @@\n-y = 1\n+y = 2\n")
+        blocks = _hunk_blocks("a.py", diff)
+        self.assertEqual(len(blocks), 2)
+        self.assertTrue(all(block.startswith("--- a.py ---") for block in blocks))
+        self.assertIn("-x = 1", blocks[0])
+        self.assertIn("-y = 1", blocks[1])
 
     def test_the_brief_redacts_a_credential_before_it_leaves(self):
         from reforge import ai_review
 
         leaked = '+TOKEN = "ghp_' + "a" * 36 + '"\n'
         with mock.patch.object(ai_review, "_changed_paths", return_value=[("sha", "conf.py")]), \
-                mock.patch.object(ai_review, "_file_diff", return_value=leaked):
+                mock.patch.object(ai_review, "_file_diff",
+                                  return_value="@@ -1,1 +1,1 @@\n" + leaked):
             redacted = []
-            brief, _ = ai_review.build_brief(self.root(), object(), [], redacted)
-        self.assertNotIn("ghp_" + "a" * 36, brief)
-        self.assertIn("[REDACTED]", brief)
+            requests, _ = ai_review.build_briefs(self.root(), self.stage(), [], redacted)
+        text = "\n".join(str(request["text"]) for request in requests)
+        self.assertNotIn("ghp_" + "a" * 36, text)
+        self.assertIn("[REDACTED]", text)
         self.assertEqual(sum(redacted), 1)
 
     def test_a_patch_must_overlap_a_line_the_stage_added(self):

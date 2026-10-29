@@ -53,8 +53,11 @@ standard library, refuses an unclosed Markdown code fence and flags a committed 
 stage reports only genuinely binary paths as not analysed and prints how many files it reviewed;
 a finding whose line carries the project's `hygiene: allow <reason>` marker is dropped. The
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
-`unsafe-yaml-load`. `reforge/ai_review.py` then sends the stage's net diff (base..head, each
-file whole or omitted) to a read-only `architect` sub-agent on a free model; the brief is
+`unsafe-yaml-load`. `reforge/ai_review.py` then sends the stage's net diff (base..head, every
+changed hunk) to a read-only `architect` sub-agent on a free model, reporting defects and
+concrete improvements; the request budget is the model's documented context window
+(`brief_budget`), so a whole stage fits one request and only a larger one is split, by hunk
+and line, with nothing dropped; the brief is
 redacted with the project's secret scanner (the review is skipped when that scanner is
 unavailable), every path and line must belong to the stage, the quoted evidence must exist in
 the current file, a file the brief omitted is treated as unknown, and every suggested

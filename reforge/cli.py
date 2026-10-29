@@ -32,6 +32,8 @@ def _add_ai_options(command) -> None:
                          help="free model for the review (default: opencode/deepseek-v4.1-flash-free)")
     command.add_argument("--ai-timeout", type=int, metavar="SECONDS", default=300,
                          help="bound the AI review process tree (default 300)")
+    command.add_argument("--ai-budget", type=int, metavar="CHARS",
+                         help="characters per review request; defaults to the model's context window")
 
 
 def add_commands(subparsers) -> None:
@@ -196,7 +198,7 @@ def _print_ai(report: Dict[str, object]) -> None:
         return
     model = report.get("model") or ""
     if status == "reviewed":
-        extra = " (truncated)" if report.get("truncated") else ""
+        extra = f" in {report.get('requests')} request(s)" if int(report.get("requests") or 1) > 1 else ""
         rejected = len(report.get("rejected") or [])
         detail = f", {rejected} dropped" if rejected else ""
         redacted = int(report.get("redacted") or 0)
@@ -325,6 +327,7 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         stop=getattr(args, "stop", None), ai=not getattr(args, "no_ai", False),
         ai_model=getattr(args, "ai_model", None),
         ai_timeout=int(getattr(args, "ai_timeout", 300) or 300),
+        ai_budget=getattr(args, "ai_budget", None),
     )
     do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:

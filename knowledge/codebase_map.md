@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `728`
-- **Total Class Methods**: `797`
-- **Total Source Lines**: `31101`
+- **Total Top-Level Functions**: `733`
+- **Total Class Methods**: `801`
+- **Total Source Lines**: `31288`
 
 ---
 
@@ -220,7 +220,7 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `425` lines (`18505` bytes)
+**Size**: `558` lines (`24767` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -228,13 +228,18 @@
 - `def _file_diff(repo, plan, path)` - *The path's net diff across the whole stage.*
 - `def scrubber_available()` - *Whether the project's secret scanner can redact the brief.*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
-- `def build_brief(repo, plan, reviewed, redacted)` - *A bounded, redacted prompt holding the stage's net diff.*
+- `def brief_budget(model)` - *The character budget for one review request, from the model's documented window.*
+- `def _hunk_blocks(path, diff)` - *Split one file diff into per-hunk blocks, each labelled with its path.*
+- `def _split_large(block, limit)` - *Split one over-sized block into consecutive line windows that each fit `limit`.*
+- `def build_briefs(repo, plan, reviewed, redacted, budget)` - *Every changed hunk of the stage, in one request when the model can hold it.*
+- `def build_brief(repo, plan, reviewed, redacted, budget)` - *The first request of `build_briefs`, kept for callers that only need one prompt.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
 - `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
 - `def findings_from_payload(repo, payload, allowed, commit_of, touched, omitted)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
 - `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
-- `def review_stage(repo, plan, model, timeout, runner)` - *Ask the AI to review this stage; never raises, and always says what happened.*
+- `def review_stage(repo, plan, model, timeout, runner, budget)` - *Ask the AI to review this stage; never raises, and always says what happened.*
+- `def _dedupe(findings)` - *One finding per (path, line, code), because overlapping requests can repeat a hunk.*
 - `def merge_findings(proven, reviewed)` - *Deterministic findings first, then AI findings the detectors did not already name.*
 
 ---
@@ -260,7 +265,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `382` lines (`18545` bytes)
+**Size**: `385` lines (`18808` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -426,7 +431,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `478` lines (`22557` bytes)
+**Size**: `479` lines (`22661` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -439,8 +444,8 @@
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
 - `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, ai)`
 - `def _review_error(run, pending)`
-- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
-- `def _ai_report(root, plan, enabled, model, timeout, runner)` - *Run the optional AI review; the findings stay objects until the caller serialises them.*
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner, ai_budget)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def _ai_report(root, plan, enabled, model, timeout, runner, budget)` - *Run the optional AI review; the findings stay objects until the caller serialises them.*
 - `def _serialize_ai(report)` - *The small JSON-safe form of an AI review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
@@ -1416,7 +1421,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9048` lines (`514220` bytes)
+**Size**: `9098` lines (`516710` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2139,7 +2144,11 @@
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`
   - Method `.test_the_parser_declares_the_ai_review_options()`
-  - Method `.test_the_brief_counts_only_the_files_it_includes()`
+  - Method `.stage()` - *A minimal stage plan for brief-building tests.*
+  - Method `.test_a_stage_that_fits_is_one_request_and_loses_nothing()`
+  - Method `.test_an_oversized_stage_is_split_but_stays_complete()`
+  - Method `.test_the_brief_budget_follows_the_model_context_window()`
+  - Method `.test_a_large_file_is_split_by_hunk_not_dropped()`
   - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
   - Method `.test_a_patch_must_overlap_a_line_the_stage_added()`
   - Method `.test_the_review_is_skipped_when_the_secret_scanner_is_missing()`
