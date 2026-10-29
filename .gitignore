@@ -59,3 +59,6 @@ references/
 # Transient workspace scratch and build artifacts
 scratch/
 .vite/
+
+# Reforge's own audit state at the AIKit root: a tool state folder, not AIKit memory (ADR-253).
+/.aikit/

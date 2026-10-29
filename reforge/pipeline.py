@@ -5,12 +5,18 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from reforge.audit import audit_window, plan_next_stage, summarize, window_for_stage
+from reforge.ai_review import AI_TIMEOUT_SECONDS, merge_findings, review_stage
 from reforge.errors import ReforgeError
 from reforge.git_history import dirty_paths, head_sha
 from reforge.ledger import ledger_artifacts, record_event, stage_files
 from reforge.locking import LOCK_REL, run_lock
 from reforge.model import Finding, Repair, StagePlan
-from reforge.repair import regression_test_path, repair_findings, repair_paths
+from reforge.repair import (
+    apply_text_patches,
+    regression_test_path,
+    repair_findings,
+    repair_paths,
+)
 from reforge.state import (
     DEFAULT_START,
     DEFAULT_STEP,
@@ -117,7 +123,12 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
         return [], {}, {}
     snapshots = _snapshot(root, targets)
     try:
-        repairs = repair_findings(root, targets, add_tests=add_tests)
+        # Deterministic rules keep their proven edit; AI findings carry an exact text patch that
+        # was validated against the file when the answer was parsed, and is re-checked here.
+        rule_findings = [item for item in targets if not item.patch_old]
+        patch_findings = [item for item in targets if item.patch_old]
+        repairs = repair_findings(root, rule_findings, add_tests=add_tests)
+        repairs.extend(apply_text_patches(root, patch_findings))
         applied = [repair for repair in repairs if repair.applied]
         tests: Dict[str, object] = {}
         gates: Dict[str, object] = {}
@@ -172,7 +183,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
              findings: Sequence[Finding], repairs: Sequence[Repair], tests: Dict[str, object],
              gates: Dict[str, object], skipped: Sequence[str] = (),
              ledger: Optional[Dict[str, object]] = None,
-             reviewed: int = 0) -> Dict[str, object]:
+             reviewed: int = 0, ai: Optional[Dict[str, object]] = None) -> Dict[str, object]:
     applied = sum(1 for repair in repairs if repair.applied)
     return {
         "mode": mode,
@@ -188,6 +199,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
         "reviewed": reviewed,
+        "ai": ai or {},
         "skipped": list(skipped),
         "ledger": ledger or {},
         "tests": tests,
@@ -213,7 +225,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                  gate_runner: Optional[GateRunner] = None,
                  allow_dirty: bool = False, run_id: Optional[str] = None,
                  start: Optional[int] = None, step: Optional[int] = None,
-                 stop: Optional[int] = None) -> Dict[str, object]:
+                 stop: Optional[int] = None, ai: bool = False,
+                 ai_model: Optional[str] = None, ai_timeout: int = AI_TIMEOUT_SECONDS,
+                 ai_runner=None) -> Dict[str, object]:
     """Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`)."""
     root = Path(root)
     with run_lock(root):
@@ -253,7 +267,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 return _payload(root, mode, plan, run, all_findings, applied,
                                 last.get("tests") or {}, last.get("gates") or {},
                                 last.get("skipped") or [],
-                                reviewed=int(last.get("reviewed") or 0))
+                                reviewed=int(last.get("reviewed") or 0),
+                                ai=last.get("ai") or {})
             _clean_before_repair(root, allow_dirty)
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner)
@@ -263,7 +278,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
             return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,
-                            last.get("skipped") or [])
+                            last.get("skipped") or [],
+                            reviewed=int(last.get("reviewed") or 0),
+                            ai=last.get("ai") or {})
 
         if mode not in {"audit", "run"}:
             raise ReforgeError(
@@ -293,23 +310,42 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         skipped: List[str] = []
         reviewed: List[str] = []
         findings = audit_window(root, plan, run.get("history") or [], skipped, reviewed)
+        ai_report = _ai_report(root, plan, ai, ai_model, ai_timeout, ai_runner)
+        findings = merge_findings(findings, ai_report.get("findings") or [])
+        ai_meta = _serialize_ai(ai_report)
         if mode == "audit":
             entry = entry_from_stage(plan, findings, [], skipped=skipped,
-                                    reviewed=len(reviewed))
+                                     reviewed=len(reviewed), ai=ai_meta)
             record_stage(root, state, run, entry)
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
                             _note_stage(root, run, plan, entry, findings, skipped),
-                            reviewed=len(reviewed))
+                            reviewed=len(reviewed), ai=ai_meta)
         _clean_before_repair(root, allow_dirty)
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
                                                  test_command, gate_runner)
         entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped,
-                                 reviewed=len(reviewed))
+                                 reviewed=len(reviewed), ai=ai_meta)
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
                         _note_stage(root, run, plan, entry, findings, skipped),
-                        reviewed=len(reviewed))
+                        reviewed=len(reviewed), ai=ai_meta)
+
+
+def _ai_report(root: Path, plan: StagePlan, enabled: bool, model: Optional[str],
+               timeout: int, runner) -> Dict[str, object]:
+    """Run the optional AI review; the findings stay objects until the caller serialises them."""
+    if not enabled:
+        return {"status": "skipped", "findings": [], "rejected": [], "files": [],
+                "reason": "disabled with --no-ai"}
+    return review_stage(root, plan, model=model, timeout=timeout, runner=runner)
+
+
+def _serialize_ai(report: Dict[str, object]) -> Dict[str, object]:
+    """The small JSON-safe form of an AI review kept in state and printed by the CLI."""
+    meta = {key: value for key, value in report.items() if key != "findings"}
+    meta["findings"] = [item.as_dict() for item in report.get("findings") or []]
+    return meta
 
 
 def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict[str, object],

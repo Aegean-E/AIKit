@@ -68,7 +68,7 @@ portable_agent_kit/
 │   ├── logo.jpg
 │   └── social-preview.png
 ├── reforge.py                    <- Aegean Reforge CLI entry point (and `aikit.py reforge`)
-├── reforge/                      <- Progressive Git history auditor & safe repair engine
+├── reforge/                      <- AI-assisted Git history auditor & safe repair engine
 ├── idea_catcher.py               <- Idea Catcher CLI entry point (and `aikit.py idea-catcher`)
 ├── idea_catcher/                 <- Target registry, idea ledger, review ledger and matrix renderer
 │   ├── __init__.py
@@ -180,7 +180,7 @@ python aikit.py license my-app [--suggest|--set game|--restrict]  # AL-1.1, AGL-
 ```
 A project's memory is `.aikit/`; ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 character README description; `license` picks AL-1.1, AGL-1.1 or ASL-1.1. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
 
-## 🔁 Aegean Reforge: History Audit & Safe Repair
+## 🔁 Aegean Reforge: AI Review & Safe Repair
 
 Reforge audits history in widening windows and repairs only what it can prove. It lives in
 `reforge/` and `reforge.py`: `aikit.py reforge` uses the project registry, `python -m reforge`
@@ -188,9 +188,10 @@ the bare engine. The standalone repository is archived (ADR-248).
 
 ```bash
 python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # new independent run
-python aikit.py reforge audit my-app       # analyse the next window, cite evidence
+python aikit.py reforge audit my-app       # review the next window with detectors and AI
 python aikit.py reforge fix my-app         # repair safe findings, add regression tests
-python aikit.py reforge run my-app --push  # audit, fix, verify, then commit and push
+python aikit.py reforge run my-app --push  # review, fix, verify, then commit and push
+python aikit.py reforge run my-app --no-ai # deterministic detectors only
 ```
 
 Window N is `start + step*(N-1)`, capped by `stop`: stage 1 reads the first `start` commits and each
@@ -200,11 +201,22 @@ shell/exec, deserialisation, mutable defaults, timeouts, secrets and control flo
 mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`),
 each earning a regression test. Every changed text file is reviewed, not only Python: JSON and TOML
 must parse, a Markdown code fence must close, and a committed conflict marker is a defect; only a
-binary file is reported as not analysed, and the stage prints how many files it reviewed. A patch must
-survive the project's tests and gates; a
-red result restores the exact bytes, and `--commit`/`--push` stage only reviewed paths plus
-`.aikit/reforge.json`, never forcing. Runs are independent (`settings`, `stop`, `resume`, `runs`,
-`report`); state is crash-safe and a per-project lock refuses concurrent work.
+binary file is reported as not analysed, and the stage prints how many files it reviewed.
+
+A read-only AI agent then reviews the same diff (ADR-254). It runs on a free model
+(`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the bounded diff as
+its whole input, and reports what a reviewer would with a line of evidence. A finding may carry an
+exact replacement; Reforge accepts it only when the path was in the stage, the line exists, and the
+quoted text occurs exactly once, then applies it, parses Python results, reviews the diff and rolls
+everything back if a test or gate fails. `--no-ai` skips the review, and an unavailable model is
+reported as skipped instead of failing the audit.
+
+A patch must survive the project's tests and gates; a red result restores the exact bytes, and
+`--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`, never forcing. Each
+project has its own lock, state and history, so several projects audit at the same time while a
+second operation on one is refused; a target is resolved first, so two spellings of one checkout
+share one lock. Runs are independent (`settings`, `stop`, `resume`, `runs`, `report`) and state is
+crash-safe. AIKit's own state lives in the git-ignored `.aikit/` folder at its root.
 
 Where the repository has an AIKit ledger, every run also appends checkpoints under the
 `reforge:<run-id>` task, so `disruption_recovery.py --resume` shows an open audit and a

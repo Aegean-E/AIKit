@@ -8827,6 +8827,81 @@ class TestReforgeCore(unittest.TestCase):
         runs = parser.parse_args(["runs", "x", "--json"])
         self.assertEqual((runs.command, runs.json), ("runs", True))
 
+    def test_the_parser_declares_the_ai_review_options(self):
+        parser = build_reforge_parser()
+        audit = parser.parse_args(["audit", "x", "--no-ai"])
+        self.assertTrue(audit.no_ai)
+        run = parser.parse_args(["run", "x", "--ai-model", "opencode/demo-free",
+                                 "--ai-timeout", "90"])
+        self.assertEqual((run.ai_model, run.ai_timeout), ("opencode/demo-free", 90))
+        self.assertFalse(run.no_ai)
+
+    def test_an_ai_answer_is_validated_against_the_stage(self):
+        from reforge.ai_review import findings_from_payload
+
+        root = self.root()
+        (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
+        payload = {"findings": [
+            {"path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
+             "message": "the function subtracts although its name promises addition",
+             "fix": {"old": "return a - b", "new": "return a + b"}},
+            {"path": "outside.py", "line": 1, "code": "x", "message": "not in the stage"},
+            {"path": "app.py", "line": 99, "code": "x", "message": "line does not exist"},
+            {"path": "app.py", "line": 1, "code": "x", "message": "unusable patch",
+             "fix": {"old": "text that is absent", "new": "replacement"}},
+        ]}
+        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
+        self.assertEqual(len(findings), 2, "a dropped patch keeps the finding for manual review")
+        finding = next(item for item in findings if item.fixable)
+        self.assertEqual((finding.source, finding.category, finding.code),
+                         ("ai", "review", "ai-wrong-operator"))
+        self.assertEqual((finding.patch_old, finding.patch_new),
+                         ("return a - b", "return a + b"))
+        self.assertEqual(len(rejected), 3)
+
+    def test_an_ai_patch_must_apply_once_and_must_parse(self):
+        from reforge.ai_review import findings_from_payload
+        from reforge.repair import apply_text_patches
+
+        root = self.root()
+        (root / "app.py").write_text("VALUE = 1\nVALUE = 1\n", encoding="utf-8")
+        payload = {"findings": [{"path": "app.py", "line": 1, "code": "dupe",
+                                 "message": "ambiguous", "fix": {"old": "VALUE = 1",
+                                                                 "new": "VALUE = 2"}}]}
+        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
+        self.assertEqual(len(findings), 1)
+        self.assertFalse(findings[0].fixable, "an ambiguous patch is dropped, not applied")
+        self.assertIn("occurs 2 times", rejected[0])
+        (root / "app.py").write_text("def f(:\n    pass\n", encoding="utf-8")
+        payload = {"findings": [{"path": "app.py", "line": 1, "code": "syntax",
+                                 "message": "still broken", "fix": {"old": "def f(:",
+                                                                    "new": "def f(:"}}]}
+        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
+        self.assertEqual(len(findings), 1)
+        self.assertFalse(findings[0].fixable)
+        self.assertTrue(rejected)
+        self.assertEqual(apply_text_patches(root, []), [])
+
+    def test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left(self):
+        from reforge.model import Finding
+        from reforge.repair import apply_text_patches
+
+        root = self.root()
+        (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
+        (root / "notes.md").write_text("same\nsame\n", encoding="utf-8")
+        patch = Finding(code="ai-operator", category="review", severity="high", path="app.py",
+                        line=2, message="subtracts instead of adds", evidence="", commit="sha",
+                        source="ai", fixable=True, patch_old="return a - b",
+                        patch_new="return a + b")
+        ambiguous = Finding(code="ai-note", category="review", severity="low", path="notes.md",
+                            line=1, message="ambiguous", evidence="", commit="sha", source="ai",
+                            fixable=True, patch_old="same", patch_new="different")
+        repairs = apply_text_patches(root, [patch, ambiguous])
+        self.assertTrue(any(item.applied and item.path == "app.py" for item in repairs))
+        self.assertFalse(any(item.applied and item.path == "notes.md" for item in repairs))
+        self.assertIn("return a + b", (root / "app.py").read_text(encoding="utf-8"))
+        self.assertEqual((root / "notes.md").read_text(encoding="utf-8"), "same\nsame\n")
+
 
 class TestIdeaCatcherShip(unittest.TestCase):
     """PRINCIPLE-014: Idea Catcher ships complete and keeps its register private."""

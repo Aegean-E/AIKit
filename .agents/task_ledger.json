@@ -1,45 +1,16 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-review-changes",
+    "task_id": "reforge-ai-multiproject",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793253365.611338,
-    "owner": "kilo:reforge-review",
-    "started_by": "kilo:reforge-review",
-    "continuations": [],
-    "completed_at": 1793253365.773103
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1793255469.0042844,
+    "owner": "kilo:reforge-ai",
+    "started_by": "kilo:reforge-ai",
+    "continuations": []
   },
   "checkpoints": [
-    {
-      "task_id": "project-creation-media",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Make project creation follow the reviewed-media pipeline and fix README provenance text",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793205495.4402857,
-      "timestamp_str": "2026-10-28 19:38:15",
-      "agent": "kilo:creation-media",
-      "impact_assessment": {
-        "why": "The user rejected the placeholder disclosure and asked every new project to follow the media steps.",
-        "benefits": "Automatic UI/media candidates on new, proper AI-generated asset disclosure, single social banner, no logo hero, commit/date-only screenshot captions, and publish blocked until media review.",
-        "risks": "contract: new and publish behavior change; dependency: optional image-model key; concurrency: sequential project commits; state: new media manifests start pending.",
-        "mitigation": "Explicit --no-media opt-out, media blockers tested, individual vision reviews retained, and full Phase 4 gates."
-      }
-    },
-    {
-      "task_id": "project-creation-media",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Delivered proper disclosure text, single-banner READMEs, no logo hero, commit/date captions, old-banner migration (AegeanWorks keeps new preview), automatic model/local media on new, and a hard publish gate; 37 projects + Reforge pushed, idea-catcher local; all gates pass.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793205495.5786684,
-      "timestamp_str": "2026-10-28 19:38:15",
-      "agent": "kilo:creation-media"
-    },
     {
       "task_id": "project-creation-media",
       "phase": "completed",
@@ -266,6 +237,34 @@
       "timestamp": 1793253365.7731047,
       "timestamp_str": "2026-10-29 08:56:05",
       "agent": "kilo:reforge-review"
+    },
+    {
+      "task_id": "reforge-ai-multiproject",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Make Reforge AI-driven and concurrency-safe: per-project isolation, AI review of stage changes, validated AI fixes",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793253763.8593776,
+      "timestamp_str": "2026-10-29 09:02:43",
+      "agent": "kilo:reforge-ai",
+      "impact_assessment": {
+        "why": "The user wants Reforge usable on several projects at once and wants it to analyse changes with AI before applying fixes, not only run static detectors",
+        "benefits": "Independent projects audit concurrently with isolated locks and state; a stage is reviewed by a read-only AI agent with a bounded diff; validated AI suggestions become applied, tested, reviewable repairs",
+        "risks": "contract: audit/run gain AI flags and payload/state fields, findings gain source/patch fields; dependency: optional opencode CLI and free model, no new Python deps; concurrency: several opencode subprocesses and per-project locks; state: additive schema keys only",
+        "mitigation": "Resolve roots before locking, keep AI optional and gracefully skipped, validate every AI path/line/patch against the stage, run tests and gates with rollback, and pin each behaviour with tests and ADR-254"
+      }
+    },
+    {
+      "task_id": "reforge-ai-multiproject",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[5/5] Reforge reviews each stage with a read-only AI agent on a free model and applies only validated patches; per-project resolved locks keep parallel audits isolated; 604 unit + 69 integration tests and every gate pass; ADR-254; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793255469.0042844,
+      "timestamp_str": "2026-10-29 09:31:09",
+      "agent": "kilo:reforge-ai"
     }
   ]
 }

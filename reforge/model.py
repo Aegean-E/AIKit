@@ -32,6 +32,9 @@ class Finding:
     fixable: bool = False
     interaction: str = ""
     repaired: bool = False
+    source: str = "ast"
+    patch_old: str = ""
+    patch_new: str = ""
 
     def key(self) -> Tuple[str, str, int, str]:
         """Stable identity for a finding inside one audit stage."""
@@ -53,6 +56,9 @@ class Finding:
             "fixable": self.fixable,
             "interaction": self.interaction,
             "repaired": self.repaired,
+            "source": self.source,
+            "patch_old": self.patch_old,
+            "patch_new": self.patch_new,
         }
 
 

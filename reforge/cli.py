@@ -25,6 +25,15 @@ def _add_window_settings(command, defaults: bool) -> None:
                          help="stop after this window size; 0 means unlimited")
 
 
+def _add_ai_options(command) -> None:
+    command.add_argument("--no-ai", action="store_true",
+                         help="skip the AI review; deterministic detectors still run")
+    command.add_argument("--ai-model", metavar="MODEL",
+                         help="free model for the review (default: opencode/deepseek-v4.1-flash-free)")
+    command.add_argument("--ai-timeout", type=int, metavar="SECONDS", default=300,
+                         help="bound the AI review process tree (default 300)")
+
+
 def add_commands(subparsers) -> None:
     """Declare every Reforge command once, for either top-level CLI."""
     audit = subparsers.add_parser("audit", help="analyse the next window of a run")
@@ -33,6 +42,7 @@ def add_commands(subparsers) -> None:
     audit.add_argument("--run", dest="run_id", metavar="ID",
                        help="audit run id (default: active run, else a new run)")
     _add_window_settings(audit, defaults=False)
+    _add_ai_options(audit)
 
     for name, text in (("fix", "repair the active run's safe findings"),
                        ("run", "audit the next window, then repair it")):
@@ -54,6 +64,7 @@ def add_commands(subparsers) -> None:
                              help="commit, then push without force (implies --commit)")
         if name == "run":
             _add_window_settings(command, defaults=False)
+            _add_ai_options(command)
 
     start = subparsers.add_parser("start", help="start an independent audit run")
     start.add_argument("target")
@@ -138,8 +149,9 @@ def _print_findings(payload: Dict[str, object]) -> None:
           f"(window {plan.get('window')}, {len(plan.get('new_commits') or [])} new commit(s))")
     for item in findings:
         interaction = f" [{item['interaction']}]" if item.get("interaction") else ""
+        origin = " (ai)" if item.get("source") == "ai" else ""
         print(f"  [{item['category']}/{item['severity']}] {item['path']}:{item['line']} "
-              f"{item['code']}: {item['message']}{interaction}")
+              f"{item['code']}: {item['message']}{origin}{interaction}")
         if item.get("evidence"):
             print(f"      evidence: {item['evidence']}")
     for repair in payload.get("repairs") or []:
@@ -151,6 +163,7 @@ def _print_findings(payload: Dict[str, object]) -> None:
     reviewed = int(payload.get("reviewed") or 0)
     if reviewed:
         print(f"  reviewed {reviewed} changed file(s)")
+    _print_ai(payload.get("ai") or {})
     if not findings:
         print("  no introduced findings")
     skipped = payload.get("skipped") or []
@@ -174,6 +187,24 @@ def _start_payload(payload: Dict[str, object]) -> None:
           f"step={payload['run']['step']}, stop={payload['run']['stop'] or 'none'}).")
     _print_runs(payload.get("runs") or [])
     _print_ledger(payload)
+
+
+def _print_ai(report: Dict[str, object]) -> None:
+    """Say whether the AI reviewed the stage, and why not when it did not."""
+    status = str(report.get("status") or "")
+    if not status:
+        return
+    model = report.get("model") or ""
+    if status == "reviewed":
+        extra = " (truncated)" if report.get("truncated") else ""
+        rejected = len(report.get("rejected") or [])
+        detail = f", {rejected} dropped" if rejected else ""
+        print(f"  [AI] reviewed {len(report.get('files') or [])} file(s) with {model}"
+              f" in {report.get('seconds')}s{detail}{extra}")
+    elif status == "skipped":
+        print(f"  [AI] skipped: {report.get('reason') or 'not requested'}")
+    else:
+        print(f"  [AI] failed: {report.get('reason') or 'unknown error'}")
 
 
 def _print_ledger(payload: Dict[str, object]) -> None:
@@ -288,7 +319,9 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         test_command=getattr(args, "test_command", None), gate_runner=gate_runner,
         allow_dirty=getattr(args, "allow_dirty", False), run_id=getattr(args, "run_id", None),
         start=getattr(args, "start", None), step=getattr(args, "step", None),
-        stop=getattr(args, "stop", None),
+        stop=getattr(args, "stop", None), ai=not getattr(args, "no_ai", False),
+        ai_model=getattr(args, "ai_model", None),
+        ai_timeout=int(getattr(args, "ai_timeout", 300) or 300),
     )
     do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:
@@ -316,6 +349,7 @@ def dispatch(args, aikit_root: Optional[Path] = None, project_root: Optional[Pat
     as_json = bool(getattr(args, "json", False))
     try:
         root = Path(project_root) if project_root else Path(getattr(args, "target", ""))
+        root = root.expanduser().resolve()
         if not root.is_dir():
             raise ReforgeError(
                 f"{root} is not a directory.",

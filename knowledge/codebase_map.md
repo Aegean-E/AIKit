@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `53`
+- **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `705`
-- **Total Class Methods**: `781`
-- **Total Source Lines**: `30181`
+- **Total Top-Level Functions**: `719`
+- **Total Class Methods**: `788`
+- **Total Source Lines**: `30777`
 
 ---
 
@@ -204,7 +204,7 @@
 ---
 
 ### [`reforge/__init__.py`](reforge/__init__.py)
-> *Aegean Reforge: progressive Git history auditing and autonomous safe repair.*
+> *Aegean Reforge: progressive Git history auditing, AI review and safe repair.*
 
 **Size**: `5` lines (`151` bytes)
 
@@ -214,6 +214,24 @@
 > *`python -m reforge`: the standalone entry point.*
 
 **Size**: `8` lines (`146` bytes)
+
+---
+
+### [`reforge/ai_review.py`](reforge/ai_review.py)
+> *AI review of the changes one audit stage introduces, then validated fixes.*
+
+**Size**: `313` lines (`13199` bytes)
+
+**Functions:**
+- `def _changed_paths(repo, plan, reviewed)` - *(commit, path) for every readable text file the stage's new commits changed.*
+- `def _file_diff(repo, sha, path)`
+- `def build_brief(repo, plan, reviewed)` - *A bounded prompt holding the stage diff; `truncated` says a file or the total was cut.*
+- `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
+- `def _patch_problem(repo, relative, old, new)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
+- `def findings_from_payload(repo, payload, allowed, commit_of)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
+- `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
+- `def review_stage(repo, plan, model, timeout, runner)` - *Ask the AI to review this stage; never raises, and always says what happened.*
+- `def merge_findings(proven, reviewed)` - *Deterministic findings first, then AI findings the detectors did not already name.*
 
 ---
 
@@ -238,7 +256,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `345` lines (`16737` bytes)
+**Size**: `379` lines (`18410` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -247,6 +265,7 @@
 **Functions:**
 - `def _add_run_selection(command)`
 - `def _add_window_settings(command, defaults)`
+- `def _add_ai_options(command)`
 - `def add_commands(subparsers)` - *Declare every Reforge command once, for either top-level CLI.*
 - `def build_parser()`
 - `def _report_error(error, as_json)`
@@ -254,6 +273,7 @@
 - `def _print_runs(runs)`
 - `def _print_findings(payload)`
 - `def _start_payload(payload)`
+- `def _print_ai(report)` - *Say whether the AI reviewed the stage, and why not when it did not.*
 - `def _print_ledger(payload)` - *Say where the run was recorded: the ledger is how a cold start finds an open audit.*
 - `def _workspace(args, root, gate_runner)`
 - `def dispatch(args, aikit_root, project_root, gate_runner)` - *Run one parsed request; every failure is reported as a triad or a JSON envelope.*
@@ -368,10 +388,10 @@
 ### [`reforge/locking.py`](reforge/locking.py)
 > *A per-project advisory lock so one project never runs two Reforge operations at once.*
 
-**Size**: `68` lines (`2666` bytes)
+**Size**: `74` lines (`3031` bytes)
 
 **Functions:**
-- `def lock_path(root)`
+- `def lock_path(root)` - *The lock inside the audited root itself, resolved so one repository has one lock.*
 - `def run_lock(root, wait_seconds)` - *Hold the project's run lock; refuse immediately when another process already holds it.*
 
 ---
@@ -379,7 +399,7 @@
 ### [`reforge/model.py`](reforge/model.py)
 > *Immutable values shared by Reforge's audit, repair, persistence and CLI layers.*
 
-**Size**: `110` lines (`2946` bytes)
+**Size**: `116` lines (`3135` bytes)
 
 **Classes:**
 - `class CommitInfo` - *One commit in the window Reforge is auditing.*
@@ -397,7 +417,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `442` lines (`20596` bytes)
+**Size**: `478` lines (`22557` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -408,9 +428,11 @@
 - `def _restore(root, snapshots)`
 - `def _clean_before_repair(root, allow_dirty)`
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
-- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, ai)`
 - `def _review_error(run, pending)`
-- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def _ai_report(root, plan, enabled, model, timeout, runner)` - *Run the optional AI review; the findings stay objects until the caller serialises them.*
+- `def _serialize_ai(report)` - *The small JSON-safe form of an AI review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
@@ -425,7 +447,7 @@
 ### [`reforge/repair.py`](reforge/repair.py)
 > *Smallest-safe automatic repairs, generated regression tests and repair verification.*
 
-**Size**: `409` lines (`17449` bytes)
+**Size**: `473` lines (`20541` bytes)
 
 **Classes:**
 - `class _Edit`
@@ -452,6 +474,7 @@
 - `def regression_test_path(root)`
 - `def _add_regression_tests(root, repairs)`
 - `def repair_findings(root, findings, add_tests)` - *Apply safe repairs per file, then add one regression test per repaired rule and file.*
+- `def apply_text_patches(root, findings)` - *Apply AI-proposed exact replacements, one per finding, only when each is unambiguous.*
 - `def repair_paths(repairs, root)` - *The source and test paths a repair touched, for an explicit commit and patch review.*
 
 ---
@@ -459,7 +482,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `451` lines (`17546` bytes)
+**Size**: `453` lines (`17631` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -478,7 +501,7 @@
 - `def load_state(root)` - *Read the state; a missing file is fresh, schema 1 migrates in memory, corrupt is refused.*
 - `def _local_atomic_write(path, text)`
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
-- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
+- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed, ai)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
 - `def run_complete(run, window)`
 - `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
@@ -495,7 +518,7 @@
 ### [`reforge/textdetect.py`](reforge/textdetect.py)
 > *Structural review of changed text files that need no language front end.*
 
-**Size**: `104` lines (`3922` bytes)
+**Size**: `105` lines (`3945` bytes)
 
 **Functions:**
 - `def is_text(source)` - *Whether a file revision can be reviewed as text instead of skipped as binary.*
@@ -1250,7 +1273,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1513` lines (`77485` bytes)
+**Size**: `1572` lines (`80257` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1364,6 +1387,9 @@
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
+  - Method `.test_ai_review_adds_and_applies_a_validated_fix()`
+  - Method `.test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled()`
+  - Method `.test_three_projects_audit_concurrently_with_separate_locks_and_state()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
   - Method `.test_status_reads_the_register_named_by_the_root_override()`
@@ -1380,7 +1406,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8853` lines (`503031` bytes)
+**Size**: `8928` lines (`507747` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2100,6 +2126,10 @@
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`
+  - Method `.test_the_parser_declares_the_ai_review_options()`
+  - Method `.test_an_ai_answer_is_validated_against_the_stage()`
+  - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`
+  - Method `.test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left()`
 - `class TestIdeaCatcherShip` - *PRINCIPLE-014: Idea Catcher ships complete and keeps its register private.*
   - Method `.test_the_root_override_selects_a_register()`
   - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`

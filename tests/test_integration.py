@@ -1462,6 +1462,65 @@ class TestReforgeHistory(unittest.TestCase):
         for root in (first, second):
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
+    def test_ai_review_adds_and_applies_a_validated_fix(self):
+        # Reforge reviews the stage with an AI agent; a validated suggestion becomes a real,
+        # reviewable repair that the normal tests and patch review still have to accept.
+        import json as jsonlib
+
+        from reforge.pipeline import run_pipeline, start_audit
+
+        root = self.repository(defects=False)
+        (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
+        self.git(root, "add", "app.py")
+        self.git(root, "commit", "-q", "-m", "feat: add")
+        start_audit(root, start=2, step=1)
+        prompts = []
+
+        def runner(prompt, model):
+            prompts.append(prompt)
+            return 0, jsonlib.dumps({"findings": [{
+                "path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
+                "message": "add() subtracts, so every caller gets the wrong total",
+                "evidence": "return a - b",
+                "fix": {"old": "return a - b", "new": "return a + b"},
+            }]})
+
+        report = run_pipeline(root, "run", run_tests=False, ai=True, ai_runner=runner)
+        self.assertTrue(prompts and "def add(a, b):" in prompts[0])
+        self.assertEqual(report["ai"]["status"], "reviewed")
+        self.assertIn("return a + b", (root / "app.py").read_text(encoding="utf-8"))
+        self.assertEqual(report["repaired"], 1)
+        self.assertTrue(any(item["source"] == "ai" for item in report["findings"]))
+        self.assertIn("app.py", report["commit_paths"])
+
+    def test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled(self):
+        from reforge.pipeline import run_pipeline, start_audit
+
+        root = self.repository(defects=False)
+        start_audit(root, start=2, step=1)
+        calls = []
+
+        def runner(prompt, model):
+            calls.append(prompt)
+            return 0, '{"findings": []}'
+
+        report = run_pipeline(root, "audit", ai=False, ai_runner=runner)
+        self.assertEqual(report["ai"]["status"], "skipped")
+        self.assertEqual(calls, [])
+
+    def test_three_projects_audit_concurrently_with_separate_locks_and_state(self):
+        from reforge.locking import lock_path
+        from reforge.pipeline import run_pipeline
+
+        roots = [self.simple_repository(1) for _ in range(3)]
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            reports = list(pool.map(
+                lambda root: run_pipeline(root, "audit", run_tests=False), roots))
+        self.assertEqual([report["stage"] for report in reports], [1, 1, 1])
+        self.assertEqual(len({str(lock_path(root)) for root in roots}), 3)
+        for root in roots:
+            self.assertTrue((root / ".aikit" / "reforge.json").is_file())
+
     def test_aikit_reforge_status_reaches_the_registry_and_state(self):
         from scripts.project_registry import write_memory
 

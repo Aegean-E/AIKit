@@ -53,6 +53,7 @@ def _finding(code: str, path: str, line: int, lines: Sequence[str], commit: str)
         evidence=f"{path}:{int(line)}: {_snippet(lines, int(line))}",
         commit=commit,
         reproducible=code.startswith("invalid-"),
+        source="text",
     )
 
 

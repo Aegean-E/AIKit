@@ -38,9 +38,10 @@ AIKit is the folder a person opens in an AI host; the software it builds lives i
 the only copy of the working source. `aikit.py reforge` reaches it through AIKit's registry, gates,
 secret scanner and atomic persistence; `reforge.py` and `python -m reforge` are the same engine
 without the project registry. The layers run one direction: `cli` -> `pipeline` ->
-`audit`/`repair`/`verification`/`state`/`delivery` -> `model`.
+`audit`/`ai_review`/`repair`/`verification`/`state`/`delivery` -> `model`.
 Each project has independent runs stored together with a per-project run lock: several projects
-audit concurrently, while a second operation on one project is refused. A run's window is
+audit concurrently, while a second operation on one project is refused. A target is resolved before
+the lock is taken, so two spellings of one checkout cannot create two locks. A run's window is
 `start + step*(N-1)`, capped by `stop`; independent runs can audit the same history with different
 settings, and a stopped or completed run keeps its history when another begins. Within a run, every
 previously audited SHA stays in view for interaction evidence; only mechanical repairs are applied,
@@ -50,7 +51,12 @@ other changed text file goes through `reforge/textdetect.py`, which validates JS
 standard library, refuses an unclosed Markdown code fence and flags a committed conflict marker, so a
 stage reports only genuinely binary paths as not analysed and prints how many files it reviewed. The
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
-`unsafe-yaml-load`. A separate `fix` refreshes the history entry `report` reads, a second
+`unsafe-yaml-load`. `reforge/ai_review.py` then sends a bounded diff to a read-only `architect`
+sub-agent on a free model; every path and line must belong to the stage and every suggested
+replacement must occur exactly once and parse, after which `repair.apply_text_patches` applies it and
+the same tests, gates and diff review decide whether it survives. `--no-ai` skips the review; an
+unavailable OpenCode or model is reported as skipped, never as a failed audit. A separate `fix`
+refreshes the history entry `report` reads, a second
 `fix --commit` delivers an already-reviewed patch, and raising `--stop` reopens a completed run.
 Run lifecycle events are mirrored into the repository's AIKit task ledger by `reforge/ledger.py`
 under a `reforge:<run-id>` task: entries are appended under the ledger lock with `active_task`

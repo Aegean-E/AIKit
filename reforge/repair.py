@@ -397,6 +397,70 @@ def repair_findings(root: Path, findings: Sequence[Finding],
     return repairs
 
 
+def apply_text_patches(root: Path, findings: Sequence[Finding]) -> List[Repair]:
+    """Apply AI-proposed exact replacements, one per finding, only when each is unambiguous.
+
+    A patch is text, so it is applied to the file's own line endings without normalising anything
+    else. When any replacement for a file fails (the quoted text vanished or appears twice, or a
+    Python result would not parse) nothing is written for that file and every finding there is
+    reported as left for review.
+    """
+    root = Path(root)
+    by_path: Dict[str, List[Finding]] = {}
+    for finding in findings:
+        if finding.patch_old:
+            by_path.setdefault(finding.path, []).append(finding)
+    applied: List[Repair] = []
+    for relative, items in sorted(by_path.items()):
+        path = root / relative
+        try:
+            with open(path, "r", encoding="utf-8", newline="") as handle:
+                original = handle.read()
+        except (OSError, UnicodeDecodeError) as exc:
+            applied.extend(Repair(item.code, relative, item.line,
+                                  f"not repaired: the file cannot be read ({exc})", "", False)
+                           for item in items)
+            continue
+        updated = original
+        made: List[Repair] = []
+        failed = False
+        for finding in sorted(items, key=lambda item: item.line, reverse=True):
+            old, new = finding.patch_old, finding.patch_new
+            count = updated.count(old) if old else 0
+            if count != 1:
+                made.append(Repair(finding.code, relative, finding.line,
+                                   f"not repaired: the quoted text occurs {count} times", "", False))
+                failed = True
+                continue
+            candidate = updated.replace(old, new, 1)
+            if relative.lower().endswith(".py"):
+                try:
+                    ast.parse(candidate, filename=relative)
+                except SyntaxError as exc:
+                    made.append(Repair(finding.code, relative, finding.line,
+                                       f"not repaired: the patch does not parse ({exc.msg})", "", False))
+                    failed = True
+                    continue
+            if candidate == updated:
+                made.append(Repair(finding.code, relative, finding.line,
+                                   "not repaired: the patch changed nothing", "", False))
+                failed = True
+                continue
+            updated = candidate
+            made.append(Repair(finding.code, relative, finding.line,
+                               f"applied AI suggestion: {finding.message[:80]}", "", True))
+        if failed or updated == original:
+            for item in made:
+                applied.append(
+                    Repair(item.code, item.path, item.line,
+                           "left for review: the file held an unusable AI patch", "", False)
+                    if item.applied else item)
+            continue
+        _write_text(path, updated, newline="")
+        applied.extend(made)
+    return applied
+
+
 def repair_paths(repairs: Sequence[Repair], root: Path) -> List[str]:
     """The source and test paths a repair touched, for an explicit commit and patch review."""
     paths = {item.path for item in repairs if item.applied}

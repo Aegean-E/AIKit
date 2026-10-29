@@ -14,7 +14,13 @@ STALE_SECONDS = 3600.0
 
 
 def lock_path(root: Path) -> Path:
-    return Path(root) / LOCK_REL
+    """The lock inside the audited root itself, resolved so one repository has one lock.
+
+    A relative target (`demo`, `./demo`), a trailing separator and a Windows case variant all
+    name the same checkout; resolving first keeps them from creating two locks for one project
+    while leaving every other project on its own lock.
+    """
+    return Path(root).expanduser().resolve() / LOCK_REL
 
 
 @contextmanager
