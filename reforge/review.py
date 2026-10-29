@@ -255,7 +255,8 @@ def packet_text(repo: Path, plan: StagePlan,
 def packet_path(root: Path, plan: StagePlan) -> Path:
     """Where the packet for this stage is written, inside the git-ignored state folder."""
     head = plan.new_shas[0][:12] if plan.new_shas else "empty"
-    return Path(root) / PACKET_DIR / f"stage-{plan.stage}-{head}.md"
+    run = plan.run_id or "run"
+    return Path(root) / PACKET_DIR / f"stage-{run}-{plan.stage}-{head}.md"
 
 
 def _write_text(path: Path, text: str) -> None:
@@ -363,7 +364,7 @@ def coverage_for_payload(repo: Path, plan: StagePlan, payload: object) -> Dict[s
     known = {str(hunk["id"]) for hunk in hunks}
     seen = {str(item) for item in reported}
     return {
-        "reported": len(seen),
+        "reported": len(seen & known),
         "total": len(known),
         "missing": sorted(known - seen),
         "unknown": sorted(seen - known),

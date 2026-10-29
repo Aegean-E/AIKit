@@ -9202,9 +9202,18 @@ class TestReforgeCore(unittest.TestCase):
         with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
             coverage = review.coverage_for_payload(
                 self.root(), plan, {"reviewed_hunks": ["a", "x"]})
+        self.assertEqual(coverage["reported"], 1)
         self.assertEqual(coverage["total"], 2)
         self.assertEqual(coverage["missing"], ["b"])
         self.assertEqual(coverage["unknown"], ["x"])
+
+    def test_independent_runs_write_different_packet_paths(self):
+        from reforge import review
+
+        first, second = self.stage_plan(), self.stage_plan()
+        first.run_id, second.run_id = "run-1", "run-2"
+        self.assertNotEqual(review.packet_path(self.root(), first),
+                            review.packet_path(self.root(), second))
 
     def test_a_review_improvement_is_its_own_category(self):
         from reforge import review
