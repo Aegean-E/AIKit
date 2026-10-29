@@ -20,12 +20,13 @@ Exit codes:
   0 the commit is green    1 a gate failed or the worktree could not be made    2 CLI argument misuse
 """
 
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # A whole gate set runs inside the worktree; past this the run is hung, not slow.
@@ -35,6 +36,13 @@ GIT_TIMEOUT_SECONDS = 120
 FAILURE_TAIL_LINES = 12
 
 Runner = Callable[[List[str], Path], Tuple[int, str]]
+# An overwritten file passes every gate, so a commit leaving a modified file under half its parent
+# size is named (IDEA-262, ADR-282). Small files churn freely; added and deleted files are their
+# own decision; a task ledger is pruned by its own commands and keeps a .bak.
+SHRINK_RATIO = 0.5
+SHRINK_MIN_BYTES = 400
+SHRINK_EXEMPT = ("task_ledger.json",)
+_SHRINK_OK = re.compile(r"(?im)^shrink-ok:[ \t]*\S.{5,}$")
 
 
 def run_command(argv: List[str], cwd: Path) -> Tuple[int, str]:
@@ -81,6 +89,49 @@ def scanned_range(repo: Path, ref: str, run: Runner) -> str:
     code, parent = run(["git", "rev-parse", f"{ref}^"], repo)
     parent = parent.strip() if code == 0 else ""
     return f"{parent}..{head}" if parent else head
+
+
+def shrunk_files(sizes: Dict[str, Tuple[int, int]], ratio: float = SHRINK_RATIO,
+                 min_bytes: int = SHRINK_MIN_BYTES) -> List[str]:
+    """Each path, from (old, new) sizes, that fell below `ratio` of an old size of at least `min_bytes`."""
+    return [f"{path}: {old:,} -> {new:,} bytes" for path, (old, new) in sorted(sizes.items())
+            if old >= min_bytes and new < old * ratio and not path.endswith(SHRINK_EXEMPT)]
+
+
+def tree_sizes(ref: str, repo: Path, run: Runner) -> Dict[str, int]:
+    """Blob sizes in `ref`'s tree by path; empty when git cannot list it."""
+    code, output = run(["git", "ls-tree", "-r", "-l", "-z", ref], repo)
+    sizes: Dict[str, int] = {}
+    if code != 0:
+        return sizes
+    for record in output.split("\0"):
+        meta, _, path = record.partition("\t")
+        fields = meta.split()
+        if path and len(fields) == 4 and fields[1] == "blob" and fields[3].isdigit():
+            sizes[path] = int(fields[3])
+    return sizes
+
+
+def shrink_warnings(ref: str, repo: Path, run: Runner) -> List[str]:
+    """
+    `[WARN]` lines for files `ref` cut below half their parent size, with Why/Fix; none for a root
+    commit or one whose message carries `shrink-ok: <reason>`. A warning, never a failure.
+    """
+    if run(["git", "rev-parse", f"{ref}^"], repo)[0] != 0:
+        return []
+    code, message = run(["git", "log", "-1", "--format=%B", ref], repo)
+    if code == 0 and _SHRINK_OK.search(message):
+        return []
+    before, after = tree_sizes(f"{ref}^", repo, run), tree_sizes(ref, repo, run)
+    flagged = shrunk_files({path: (before[path], size) for path, size in after.items() if path in before})
+    if not flagged:
+        return []
+    return [f"[WARN] {line}" for line in flagged] + [
+        "Why: a modified file at under half its previous size is often content that was overwritten, "
+        "and no other gate notices (IDEA-262).",
+        "Fix: if the cut is intended, add a `shrink-ok: <reason>` line to the commit message; "
+        "otherwise restore what was lost before pushing.",
+    ]
 
 
 def recovery_fix(ref: str, resolved: str, repo: Path, run: Runner) -> str:
@@ -147,6 +198,7 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
             run(["git", "worktree", "remove", "--force", str(worktree)], repo)
         shutil.rmtree(tree, ignore_errors=True)
 
+    report += shrink_warnings(ref, repo, run)
     if failures:
         return 1, report + [
             f"Error: commit {resolved} does not pass on its own: {', '.join(failures)}.",
@@ -165,7 +217,9 @@ Usage:
   python scripts/verify_commit.py [OPTIONS]
 
 Checks out a commit into a throwaway worktree and runs the whole gate set there, so a commit
-that holds less than the tree it was tested in is caught while it is still local.
+that holds less than the tree it was tested in is caught while it is still local. It also warns,
+without failing, when the commit leaves a modified file under half its parent size; a
+`shrink-ok: <reason>` line in the commit message records that the cut was intended.
 
 Options:
   --ref <commit>   The commit to verify (default: HEAD)

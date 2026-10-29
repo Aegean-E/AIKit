@@ -196,7 +196,7 @@ def render_report(
         "",
         "**Generated file.** This report is derived from [`ideas.json`](ideas.json) and the "
         "dossiers. It is a review artefact, not a gate: regenerate it with "
-        "`python tools/idea_catcher.py concepts --write`.",
+        "`python aikit.py idea-catcher concepts --write`.",
         "",
         f"{documents} dossier(s) · {len(terms)} term(s) · {len(graph)} edge(s) · "
         f"{shared_pair_count(graph, threshold)} strong pair(s) at weight >= {threshold}",

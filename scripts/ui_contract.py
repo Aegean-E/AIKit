@@ -259,7 +259,7 @@ def load_contract(root: Path) -> UiContract:
     if not isinstance(snapshot, str):
         raise _error("The UI snapshot command is malformed.",
                       "the snapshot command prints the live UI's inventory for the proof.",
-                      'write "commands": {"snapshot": "python inventory.py"}.', exit_code=2)
+                      'write "commands": {"snapshot": "python inventory.py"}.', exit_code=2)  # hygiene: allow example command in the user's project
     snapshot_timeout = commands.get("snapshot_timeout", FAST_TIMEOUT_SECONDS)
     if not isinstance(snapshot_timeout, int) or not 1 <= snapshot_timeout <= 600:
         raise _error("The UI snapshot timeout is invalid.",

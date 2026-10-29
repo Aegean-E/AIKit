@@ -54,6 +54,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 import scripts.sync_principles as sync_principles_module
 from scripts.sync_principles import (
+    RUNBOOK_MIRRORS,
     parse_principles,
     citing_principles,
     principle_sections,
@@ -127,7 +128,7 @@ from scripts.disruption_recovery import (
     workspace_ledger_path,
 )
 from scripts.aikit_cli import build_parser, main as aikit_main
-from scripts.verify_commit import scanned_range, verify_commit
+from scripts.verify_commit import scanned_range, shrunk_files, verify_commit
 from scripts.subagent_delegate import (answer_text, delegate_subagent, direct_executable, is_free_model,
                                        opencode_command, subagent_roles)
 from scripts.project_publish import (
@@ -166,6 +167,7 @@ import scripts.project_ui as project_ui
 
 
 from scripts.project_gates import Gate, failure_tail, resolve_gates, run_gates
+from scripts.marked_blocks import block_span, fenced, replace_block
 from scripts.project_license import (
     _licensed_readme,
     _restricted_readme,
@@ -247,6 +249,9 @@ from scripts.update_knowledge_base import (
     README_MAX_CHARS,
     README_TEMPLATE,
     audit_readme,
+    audit_script_references,
+    build_digest,
+    script_reference_sources,
     check_readme,
     audit_adr_register,
     audit_lazy_code,
@@ -710,6 +715,79 @@ class TestPrincipleSync(unittest.TestCase):
         self.assertEqual(audit_readme(readme_content, None, lambda rel: (ROOT_DIR / rel).exists(),
                                       script_source), [])
         self.assertIn(".gitignore", parse_readme_tree(readme_content))
+
+
+class TestScriptReferenceGate(unittest.TestCase):
+    """IDEA-406: every `python <path>.py` in AIKit's code and instructions names an existing file."""
+
+    def audit(self, sources):
+        return audit_script_references(sources, {"aikit.py", "scripts/tool.py"}.__contains__)
+
+    def test_a_reference_to_an_existing_script_passes(self):
+        self.assertEqual(self.audit({"README.md": "run `python aikit.py list`\nor python scripts/tool.py"}), [])
+
+    def test_a_moved_entry_point_fails_with_its_file_and_line(self):
+        source = {"idea_catcher/registry.py": 'x = 1\nprint("next: python tools/idea_catcher.py render")\n'}
+        self.assertEqual(self.audit(source),
+                         ["idea_catcher/registry.py:2 runs 'tools/idea_catcher.py', which does not exist"])
+
+    def test_an_allow_marker_on_the_line_or_the_line_above_exempts_it(self):
+        same_line = {"a.py": 'msg = "python inventory.py"  # hygiene: allow example command\n'}
+        line_above = {"b.md": "<!-- hygiene: allow path in another project -->\npython tools/x.py\n"}
+        self.assertEqual(self.audit(same_line), [])
+        self.assertEqual(self.audit(line_above), [])
+
+    def test_history_tests_and_other_repositories_are_not_scanned(self):
+        tracked = ["knowledge/decisions.md", "knowledge/architecture.md", "tests/test_kit.py",
+                   "projects/x/README.md", "scripts/tool.py", ".cursorrules", "assets/logo.png"]
+        self.assertEqual(script_reference_sources(tracked),
+                         [".cursorrules", "knowledge/architecture.md", "scripts/tool.py"])
+
+
+class TestCodebaseDigest(unittest.TestCase):
+    """IDEA-005: one bounded read orients an agent; a cut is stated, never silent."""
+
+    ROWS = [("app/views.py", 300, 1, 4, "Pages."), ("core/store.py", 120, 2, 3, "Atomic state files."),
+            ("main.py", 40, 0, 1, None), ("utils/text.py", 80, 0, 6, "Text helpers.\nMore detail.")]
+
+    def test_every_module_is_listed_with_its_size_symbols_and_purpose(self):
+        digest = build_digest(self.ROWS)
+        self.assertIn("core/store.py  120L 2C 3F  Atomic state files.", digest)
+        self.assertIn("main.py  40L 0C 1F  -", digest, "a module without a docstring says so")
+        self.assertIn("utils/text.py  80L 0C 6F  Text helpers.", digest)
+        self.assertNotIn("More detail", digest, "only the docstring's first line")
+        self.assertNotIn("truncated", digest)
+
+    def test_shared_code_comes_first_and_a_cut_is_stated(self):
+        digest = build_digest(self.ROWS, max_lines=4)
+        lines = digest.splitlines()
+        self.assertLessEqual(len(lines), 4)
+        self.assertEqual([l.split()[0] for l in lines[1:3]], ["core/store.py", "utils/text.py"])
+        self.assertTrue(lines[-1].startswith("truncated: 2 module(s) omitted"), digest)
+
+    def test_the_character_budget_holds_and_output_is_deterministic(self):
+        digest = build_digest(self.ROWS, max_chars=150)
+        self.assertLessEqual(len(digest), 150)
+        self.assertIn("truncated:", digest)
+        self.assertEqual(build_digest(list(reversed(self.ROWS))), build_digest(self.ROWS))
+
+
+class TestMarkedBlocks(unittest.TestCase):
+    """IDEA-398: a generator rewrites only the text between its markers in a user-owned file."""
+
+    TEXT = "# app\n\nMine above.\n<!-- aegean:x:start -->\nold\n<!-- aegean:x:end -->\nMine below.\n"
+
+    def test_a_replacement_changes_nothing_outside_the_markers(self):
+        self.assertEqual(replace_block(self.TEXT, "x", "\nnew\n"),
+                         "# app\n\nMine above.\n<!-- aegean:x:start -->\nnew\n<!-- aegean:x:end -->\nMine below.\n")
+
+    def test_a_missing_or_reversed_pair_is_not_a_block(self):
+        self.assertIsNone(replace_block("# app\n", "x", "new"))
+        self.assertIsNone(block_span("<!-- aegean:x:end -->\n<!-- aegean:x:start -->\n", "x"))
+        self.assertIsNone(block_span(self.TEXT, "y"), "each generator owns only its own name")
+
+    def test_fenced_output_round_trips(self):
+        self.assertEqual(replace_block(fenced("x", "body"), "x", "body"), fenced("x", "body"))
 
 
 class TestPrinciple005ReadmeGate(unittest.TestCase):
@@ -1362,7 +1440,8 @@ class TestKnowledgeCitations(unittest.TestCase):
               ("INDEX.md", "architecture.md", "services.md", "data_models.md", "state_and_ui.md",
                "host_clients.md", "model_benchmarks.md")]
     # Rule citations only: these also name environment variables and abbreviations (ADR-117).
-    CITATIONS_ONLY = [".agents/skills/aikit/SKILL.md", ".agents/agents/opencode_worker.md",
+    CITATIONS_ONLY = [".agents/skills/aikit/SKILL.md", ".agents/skills/aikit/projects.md",
+                      ".agents/skills/aikit/delegation.md", ".agents/agents/opencode_worker.md",
                       "knowledge/principles_audit_ledger.md"]
 
     def test_every_rule_citation_names_an_existing_rule(self):
@@ -2238,6 +2317,22 @@ class TestPrinciple001Unambiguity(unittest.TestCase):
                                 f"{rel} has no runbook pointer line")
         self.assertTrue((ROOT_DIR / ".agents" / "skills" / "aikit" / "SKILL.md").is_file(),
                         "the Tier 1 header points at a runbook that does not exist")
+
+    def test_the_runbook_index_is_bounded_and_its_topic_files_are_mirrored(self):
+        # IDEA-210: the runbook loads whole on every trigger; at 16.8 KB it sat at PRINCIPLE-012's
+        # payload cap, half of it project detail an AIKit-only task never reads.
+        skill = ROOT_DIR / ".agents" / "skills" / "aikit"
+        index = (skill / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(index), 9_000, "SKILL.md is the always-loaded index; detail goes to topic files")
+        topics = sorted(set(re.findall(r"`([a-z_]+\.md)`", index)) - {"SKILL.md"})
+        self.assertIn("projects.md", topics)
+        for name in topics:
+            with self.subTest(topic=name):
+                source = skill / name
+                mirror = ROOT_DIR / ".claude" / "skills" / "aikit" / name
+                self.assertTrue(source.is_file(), f"SKILL.md names {name}, which does not exist")
+                self.assertIn(f".claude/skills/aikit/{name}", RUNBOOK_MIRRORS)
+                self.assertEqual(mirror.read_text(encoding="utf-8"), source.read_text(encoding="utf-8"))
 
     def test_tier1_header_does_not_repeat_the_generator_name(self):
         # The header spent 32 of the budget's last characters naming its own generator, which the
@@ -5081,6 +5176,18 @@ class TestProjectRegistry(unittest.TestCase):
             self.assertEqual(len(re.findall(r"(?m)^## .*Licen[cs]e\s*$", restricted)), 1, heading)
         kept = _licensed_readme("# app\n\n## Commercial Licensing\n\nTiers.\n", "\n", "software")
         self.assertIn("## Commercial Licensing", kept, "only a plain License heading is replaced")
+
+    def test_a_note_the_user_adds_to_the_license_section_survives_a_later_switch(self):
+        # IDEA-398: a switch replaced everything from the License heading to the next `## `, so a
+        # user's own subsection there was deleted; only the marked generated paragraph is AIKit's.
+        first = _licensed_readme("# app\n\n## License\n\nMIT.\n", "\n", "software")
+        noted = first.rstrip("\n") + "\n\n### Third-party assets\n\nFonts are under the OFL.\n"
+        for switched in (_licensed_readme(noted, "\n", "game"), _restricted_readme(noted, "\n")):
+            self.assertIn("### Third-party assets\n\nFonts are under the OFL.", switched)
+            self.assertEqual(len(re.findall(r"(?m)^## .*Licen[cs]e\s*$", switched)), 1)
+            self.assertNotIn("Aegean License 1.1 (AL-1.1); see", switched)
+        self.assertIn("Aegean Game License 1.1 (AGL-1.1)", _licensed_readme(noted, "\n", "game"))
+        self.assertEqual(_licensed_readme(first, "\n", "software"), first, "a refresh is idempotent")
 
     def test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade(self):
         folder = create_project("legacy-app", workspace=self.kit, git_start=lambda root: None,
@@ -8140,6 +8247,36 @@ class TestPostCommitVerification(unittest.TestCase):
     def ran(self, fragment):
         return [(argv, cwd) for argv, cwd in self.calls if any(fragment in str(a) for a in argv)]
 
+    def test_a_file_cut_below_half_its_size_is_flagged_and_small_or_growing_ones_are_not(self):
+        self.assertEqual(shrunk_files({"README.md": (10_000, 3_000), "tiny.txt": (300, 10),
+                                       "grown.py": (1_000, 4_000), "trimmed.py": (1_000, 600),
+                                       ".agents/task_ledger.json": (9_578, 62)}),
+                         ["README.md: 10,000 -> 3,000 bytes"])
+
+    def test_a_shrinking_commit_warns_without_failing_unless_the_message_says_shrink_ok(self):
+        def tree(*entries):
+            return "\0".join(f"100644 blob {'a' * 40} {size:>7}\t{path}" for path, size in entries) + "\0"
+
+        for message, warned in (("fix(docs): tidy", True),
+                                ("fix(docs): tidy\n\nshrink-ok: removed the duplicated tree", False)):
+            base = self.runner()
+
+            def run(argv, cwd, message=message):
+                joined = " ".join(str(a) for a in argv)
+                if "ls-tree" in joined:
+                    parent = str(argv[-1]).endswith("^")
+                    return 0, tree(("README.md", 9_000 if parent else 2_000), ("new.py", 50))
+                if joined.startswith("git log"):
+                    return 0, message
+                return base(argv, cwd)
+
+            with self.subTest(message=message):
+                code, report = verify_commit(repo=Path("/repo"), runner=run)
+                text = "\n".join(report)
+                self.assertEqual(code, 0, "a shrink warns; it never fails the commit")
+                self.assertEqual("[WARN] README.md: 9,000 -> 2,000 bytes" in text, warned, text)
+                self.assertEqual("shrink-ok" in text, warned, "the warning names its escape")
+
     def test_a_green_commit_passes_and_every_gate_runs_in_the_worktree(self):
         code, report = verify_commit(repo=Path("/repo"), runner=self.runner())
         self.assertEqual(code, 0, report)
@@ -9334,6 +9471,17 @@ class TestIdeaCatcherShip(unittest.TestCase):
         package = Path(idea_registry.__file__).resolve().parent
         self.assertFalse((package / "repo_sync.py").exists())
         self.assertFalse((package.parent / "idea-catcher-sync.json").exists())
+
+    def test_the_stale_matrix_hint_names_a_command_that_exists(self):
+        root = Path(tempfile.mkdtemp(prefix="idea_matrix_"))
+        self.addCleanup(shutil.rmtree, str(root), True)
+        (root / idea_registry.MATRIX_FILE).write_text("stale\n", encoding="utf-8")
+        ok, message = idea_registry.matrix_matches(root, [], {"ideas": []})
+        self.assertFalse(ok)
+        script = re.search(r"python ([\w./-]+\.py)", message)
+        self.assertIsNotNone(script, message)
+        kit_root = Path(idea_registry.__file__).resolve().parent.parent
+        self.assertTrue((kit_root / script.group(1)).is_file(), message)
 
     def test_the_deep_checked_tag_is_part_of_the_vocabulary(self):
         self.assertIn("deep-checked", idea_registry.TAG_SPECS)

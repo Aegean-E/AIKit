@@ -40,7 +40,7 @@ import time
 from pathlib import Path
 from typing import Any, List, Sequence, Tuple
 
-try:  # ``python tools/idea_catcher.py`` runs the module as a script.
+try:  # ``python idea_catcher/registry.py`` runs the module as a script.
     from . import claim_audit, concept_map, upstream_check
 except ImportError:  # pragma: no cover - exercised by the CLI entry point
     import claim_audit  # type: ignore[no-redef]
@@ -667,7 +667,7 @@ def render_matrix(
         "",
         "**Generated file.** This register is rendered from [`ideas.json`](ideas.json), "
         "[`targets.json`](targets.json) and [`reviews.json`](reviews.json). Edit those inputs, then run "
-        "`python tools/idea_catcher.py render`; `render --check` fails when the committed copy drifts.",
+        "`python aikit.py idea-catcher render`; `render --check` fails when the committed copy drifts.",
         "",
         f"{len(ideas)} ideas · {len(targets)} routing targets · {_status_counts(ideas)}",
         "",
@@ -706,7 +706,7 @@ def render_matrix(
         "",
         "Tags record how far an analysis can be trusted and sit next to the status, never instead of "
         "it. A decided status also shows as a lowercase tag, and an idea with no verification tag is "
-        "`unverified`. Set them with `python tools/idea_catcher.py tag IDEA-NNN --add verified`.",
+        "`unverified`. Set them with `python aikit.py idea-catcher tag IDEA-NNN --add verified`.",
         "",
         "| Tag | Kind | Meaning |",
         "|---|---|---|",
@@ -809,7 +809,7 @@ def matrix_matches(
     expected_rows = MATRIX_ROW_RE.findall(expected)
     if len(actual_rows) != len(expected_rows):
         return False, f"{MATRIX_FILE} lists {len(actual_rows)} ideas; the register has {len(expected_rows)}"
-    return False, f"{MATRIX_FILE} is stale; run `python tools/idea_catcher.py render`"
+    return False, f"{MATRIX_FILE} is stale; run `python aikit.py idea-catcher render`"
 
 
 def write_matrix(
@@ -1872,7 +1872,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 require_path=not args.allow_missing_path,
             )
             print(f"[OK] registered target {args.id!r}; {len(targets)} targets now route ideas")
-            print("     next: python tools/idea_catcher.py render")
+            print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "add-idea":
             idea = add_idea(
@@ -1886,7 +1886,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 review_id=args.review,
             )
             print(f"[OK] registered {idea['id']} in {idea['dossier']} -> {idea['target']}")
-            print("     next: python tools/idea_catcher.py render")
+            print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "sync":
             repo = Path(args.repo).expanduser().resolve()
@@ -1930,7 +1930,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 superseded_by=args.superseded_by,
             )
             print(f"[OK] {idea['id']} is now {idea['status']}")
-            print("     next: python tools/idea_catcher.py render")
+            print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "tag":
             idea = set_tags(
@@ -1938,7 +1938,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 by=args.by, reason=args.reason,
             )
             print(f"[OK] {idea['id']} tags: {', '.join(effective_tags(idea))}")
-            print("     next: python tools/idea_catcher.py render")
+            print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "review-start":
             review = review_start(
@@ -1975,7 +1975,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 f"[OK] review {review['review_id']} finished {review['slug']} "
                 f"at order #{review['order']}"
             )
-            print("     next: python tools/idea_catcher.py render")
+            print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "review-abandon":
             review = review_abandon(root, args.review_id, reason=args.reason)

@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 KNOWLEDGE_DIR = ROOT_DIR / "knowledge"
@@ -256,6 +256,59 @@ def find_python_files(root: Path) -> List[Path]:
         dirnames[:] = [d for d in dirnames if d not in skipped]
         py_files += [Path(dirpath) / name for name in filenames if name.endswith(".py")]
     return sorted(py_files)
+
+
+# The map is 2,275 lines here and 6,872 in neurocore, past what PRINCIPLE-004 lets one read take
+# and PRINCIPLE-012's payload cap, so `--digest` gives one line per module inside both (IDEA-005).
+DIGEST_MAX_LINES = 100
+DIGEST_MAX_CHARS = 16_000
+DIGEST_PURPOSE_CHARS = 80
+# Folders whose code is meant for reuse come first, so a cut drops app code before shared code (IDEA-044).
+DIGEST_SHARED_HINTS = ("util", "helper", "lib", "common", "shared", "core", "service", "schema")
+DigestRow = Tuple[str, int, int, int, Optional[str]]
+
+
+def build_digest(rows: List[DigestRow], max_lines: int = DIGEST_MAX_LINES,
+                 max_chars: int = DIGEST_MAX_CHARS, map_name: str = "codebase_map.md") -> str:
+    """
+    `path  <lines>L <classes>C <functions>F  purpose` per module, within both budgets, shared-code
+    folders first. Pure and deterministic; anything cut is counted on a closing `truncated:` line.
+    """
+    def shared(path: str) -> bool:
+        return any(hint in part for part in path.split("/")[:-1] for hint in DIGEST_SHARED_HINTS)
+
+    def row_line(row: DigestRow) -> str:
+        path, lines, classes, functions, docstring = row
+        purpose = (docstring or "").strip().split("\n")[0] or "-"
+        if len(purpose) > DIGEST_PURPOSE_CHARS:
+            purpose = purpose[:DIGEST_PURPOSE_CHARS - 3] + "..."
+        return f"{path}  {lines}L {classes}C {functions}F  {purpose}"
+
+    def cut(count: int) -> str:
+        return f"truncated: {count} module(s) omitted; {map_name} lists every symbol"
+
+    ordered = sorted(rows, key=lambda row: (not shared(row[0]), row[0]))
+    out = [f"# {len(rows)} modules, {sum(row[1] for row in rows):,} lines (full symbols: {map_name})"]
+    for index, row in enumerate(ordered):
+        rest = len(ordered) - index - 1
+        candidate = out + [row_line(row)] + ([cut(rest)] if rest else [])
+        if len(candidate) > max_lines or len("\n".join(candidate)) > max_chars:
+            out.append(cut(len(ordered) - index))
+            break
+        out.append(row_line(row))
+    return "\n".join(out)
+
+
+def digest_rows(root: Path) -> List[DigestRow]:
+    """One digest row per Python module under `root`, from the AST extractor the map uses."""
+    rows: List[DigestRow] = []
+    for file_path in find_python_files(root):
+        info = extract_python_symbols(file_path, strict=False)
+        rel = file_path.relative_to(root).as_posix()
+        docstring = "(syntax error: not catalogued)" if "error" in info else info.get("docstring")
+        rows.append((rel, info.get("line_count", 0), len(info.get("classes", [])),
+                     len(info.get("functions", [])), docstring))
+    return rows
 
 
 def generate_codebase_map(root: Optional[Path] = None, strict: bool = True) -> str:
@@ -798,19 +851,94 @@ def audit_readme(
     return sorted(set(errors))
 
 
+# Any `python <path>.py`, not only `scripts/*.py`: the README rule above never saw the ten
+# idea-catcher hints naming `tools/idea_catcher.py` after ADR-252 removed it (IDEA-406).
+_PYTHON_SCRIPT_REF = re.compile(r"python3?\s+(?:-I\s+)?((?:[\w.-]+/)*[\w-]+\.py)\b")
+# The marker check_project_hygiene.py honours: an example, or a path relative to a named project.
+_REFERENCE_ALLOW = re.compile(r"hygiene:\s*allow\s+\S{3,}")
+_REFERENCE_SUFFIXES = (".py", ".md", ".mdc", ".jsonc")
+_REFERENCE_HOST_FILES = {".clinerules", ".cursorrules", ".windsurfrules"}
+# The ADR register is append-only history that may name what has since moved; tests build dead
+# references on purpose; the rest are other repositories or vendored text.
+_REFERENCE_SKIP = ("knowledge/decisions.md", "tests/", "projects/", "references/", "scratch/", "licenses/")
+
+
+def script_reference_sources(tracked: List[str]) -> List[str]:
+    """The tracked files whose `python <path>.py` references must resolve: code and instructions."""
+    return sorted(rel for rel in tracked
+                  if not rel.startswith(_REFERENCE_SKIP)
+                  and (rel.endswith(_REFERENCE_SUFFIXES) or rel in _REFERENCE_HOST_FILES))
+
+
+def audit_script_references(sources: Dict[str, str], exists: Callable[[str], bool]) -> List[str]:
+    """
+    One error per `python <path>.py` naming a file that does not exist, as `file:line`. Pure. A
+    `hygiene: allow <reason>` marker on the line or the line above exempts it.
+    """
+    errors: List[str] = []
+    for rel, text in sorted(sources.items()):
+        lines = text.splitlines()
+        for number, line in enumerate(lines, 1):
+            for match in _PYTHON_SCRIPT_REF.finditer(line):
+                script = match.group(1)
+                allowed = _REFERENCE_ALLOW.search(line) or (number > 1 and _REFERENCE_ALLOW.search(lines[number - 2]))
+                if not exists(script) and not allowed:
+                    errors.append(f"{rel}:{number} runs '{script}', which does not exist")
+    return errors
+
+
+def tracked_files(root: Path) -> Optional[List[str]]:
+    """`git ls-files` for `root` (bounded, PRINCIPLE-010 R3), or None when git is unavailable."""
+    try:
+        listing = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True,
+                                 text=True, encoding="utf-8", errors="replace", timeout=10)
+        if listing.returncode == 0:
+            return [p for p in listing.stdout.split("\0") if p]
+    except (OSError, subprocess.SubprocessError):  # hygiene: allow git is optional here; the caller prints the WARN that follows
+        pass
+    return None
+
+
+def check_script_references(root: Path = ROOT_DIR) -> Optional[List[str]]:
+    """Run `audit_script_references` over `root`'s tracked sources; None when git is unavailable."""
+    tracked = tracked_files(root)
+    if tracked is None:
+        return None
+    sources: Dict[str, str] = {}
+    for rel in script_reference_sources(tracked):
+        path = root / rel
+        if path.is_file():
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                sources[rel] = handle.read()
+    return audit_script_references(sources, lambda rel: (root / rel).is_file())
+
+
+def report_script_references(errors: Optional[List[str]]) -> bool:
+    """Print dead `python <path>.py` references with Why/Fix (PRINCIPLE-011 R6); True when clean."""
+    if errors is None:
+        print("[WARN] git is unavailable, so python script references were not checked (IDEA-406).")
+        return True
+    if not errors:
+        print("[OK] Every `python <path>.py` in AIKit's code and instructions names an existing file.")
+        return True
+    print(f"[FAIL] {len(errors)} reference(s) name a python script that does not exist:")
+    for error in errors[:20]:
+        print(f"   - {error}")
+    if len(errors) > 20:
+        print(f"   ... and {len(errors) - 20} more")
+    print("   Why: an agent or user who runs a printed or documented command that names a missing file "
+          "gets an error instead of the fix it promised.")
+    print("   Fix: point each line at the current entry point, or mark an example or a path relative to "
+          "another project with `hygiene: allow <reason>` on that line or the line above.")
+    return False
+
+
 def check_readme(root: Path = ROOT_DIR) -> List[str]:
     """Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3)."""
     readme_path = root / "README.md"
     if not readme_path.is_file():
         return ["README.md does not exist (R1)"]
-    tracked: Optional[List[str]] = None
-    try:
-        listing = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True,
-                                 text=True, encoding="utf-8", errors="replace", timeout=10)
-        if listing.returncode == 0:
-            tracked = [p for p in listing.stdout.split("\0") if p]
-    except (OSError, subprocess.SubprocessError):  # hygiene: allow git is optional here; the caller prints the WARN that follows
-        pass
+    tracked = tracked_files(root)
     if tracked is None:
         print("[WARN] git is unavailable, so README tree completeness was not checked (PRINCIPLE-005 R5).")
 
@@ -912,6 +1040,10 @@ def check_workspace(root: Path = ROOT_DIR) -> bool:
             print(f"[FAIL] {rel} is stale. Fix: run `{remedy}`.")
             ok = False
     ok = report_readme(check_readme(root)) and ok
+    if root == ROOT_DIR:
+        # Only AIKit: a project's docs name AIKit's own `aikit.py` and `scripts/`, which live in
+        # the AIKit folder, so every project would fail on them (44 of 44 measured).
+        ok = report_script_references(check_script_references(root)) and ok
     ok = report_lazy_code(check_lazy_code(root)) and ok
     ok = report_architecture(check_architecture(root)) and ok
     guidelines = memory / "guidelines.md"
@@ -939,7 +1071,7 @@ def check_workspace(root: Path = ROOT_DIR) -> bool:
     return ok
 
 
-KNOWN_FLAGS = {"--check", "--lenient", "--workspace", "--help", "-h"}
+KNOWN_FLAGS = {"--check", "--digest", "--lenient", "--workspace", "--help", "-h"}
 
 HELP_TEXT = """AIKit Knowledge Base Auto-Updater (PRINCIPLE-016)
 
@@ -956,6 +1088,8 @@ Options:
                      (PRINCIPLE-009), and no subprocess call lacks timeout= and no open()
                      runs outside a with statement (PRINCIPLE-010), and no code reads os.environ[...] (PRINCIPLE-011 R3);
                      exits 1 on any of them
+  --digest           Print one line per module (path, lines, classes, functions, purpose) within
+                     100 lines and 16k chars, shared-code folders first; a cut is stated. Writes nothing
   --workspace <dir>  Run checks against the project workspace at <dir> (e.g. projects/<name>)
   --lenient          Downgrade AST syntax and link integrity failures from errors to warnings
   -h, --help         Show this help message and exit
@@ -1013,6 +1147,12 @@ if __name__ == "__main__":
             print("Why: the audits read that folder's files and git repository.", file=sys.stderr)
             print("Fix: pass an existing project folder, e.g. --workspace projects/<name>.", file=sys.stderr)
             sys.exit(2)
+
+    if "--digest" in sys.argv:
+        # Read-only, and before every write path: a digest must never refresh the map.
+        map_rel = (memory_dir(target_root) / "codebase_map.md").relative_to(target_root).as_posix()
+        print(build_digest(digest_rows(target_root), map_name=map_rel))
+        sys.exit(0)
 
     if "--check" in sys.argv:
         try:

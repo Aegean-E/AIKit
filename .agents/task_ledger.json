@@ -1,206 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-reuse-hardening",
-    "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793297605.7556531,
-    "owner": "opencode:reforge-hardening",
-    "started_by": "opencode:reforge-hardening",
+    "task_id": "land-completed-idea-batch",
+    "last_phase": "planning",
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793304254.6636102,
+    "owner": "opencode:land-batch",
+    "started_by": "opencode:land-batch",
     "continuations": [],
-    "completed_at": 1793297605.9222944
+    "impact_assessment": {
+      "why": "Five AIKit tasks completed with green gates but were left uncommitted because commit delivery was not authorized; the user has now authorized a push",
+      "benefits": "The runbook split, map digest, marked-block helper, script-reference audit and commit shrink guard reach main; the working tree becomes clean",
+      "risks": "contract: no principle change; dependency: stdlib only; concurrency: single writer; state: the ledger gains this delivery task",
+      "mitigation": "Run the full Phase 4 gates and verify_commit on the exact commit before pushing; stage only named files"
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "reforge-reuse-hardening",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Harden Reforge dirty-target delivery and REUSE blanket matching",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297433.4744298,
-      "timestamp_str": "2026-10-29 21:10:33",
-      "agent": "opencode:reforge-hardening",
-      "impact_assessment": {
-        "why": "Stage 9 found two defects: a direct fix-then-commit never records pre-existing dirty targets, and a REUSE refresh accepts a matching identifier from an asset annotation while the blanket annotation names another license.",
-        "benefits": "A later commit cannot publish another session's edit, and a same-identifier REUSE refresh always keeps the matching blanket annotation.",
-        "risks": "contract: Reforge state gains dirty_targets in fix mode and REUSE refresh keeps fewer stale files; dependency: none; concurrency: existing locks remain; state: dirty_targets is additive",
-        "mitigation": "Failing-first regression tests cover both paths; the fixes are small and use the existing state and lock modules."
-      }
-    },
-    {
-      "task_id": "reforge-reuse-hardening",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/3] Made the REUSE blanket check block-aware; the Reforge dirty-target concern was rejected after the existing fix --commit test already refused the commit",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297605.5954258,
-      "timestamp_str": "2026-10-29 21:13:25",
-      "agent": "opencode:reforge-hardening"
-    },
-    {
-      "task_id": "reforge-reuse-hardening",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Verified: 643 unit, 75 integration, budget, sync, KB, licenses, secrets, reachability and dogfood pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297605.7556531,
-      "timestamp_str": "2026-10-29 21:13:25",
-      "agent": "opencode:reforge-hardening"
-    },
-    {
-      "task_id": "reforge-reuse-hardening",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reforge-reuse-hardening' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793297605.922296,
-      "timestamp_str": "2026-10-29 21:13:25",
-      "agent": "opencode:reforge-hardening"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 10",
-      "phase_num": 3,
-      "description": "Reforge stage 10: window 30, 1 commit(s), 4 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297639.7915874,
-      "timestamp_str": "2026-10-29 21:13:59",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 11",
-      "phase_num": 3,
-      "description": "Reforge stage 11: window 33, 1 commit(s), 0 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297695.7079184,
-      "timestamp_str": "2026-10-29 21:14:55",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 12",
-      "phase_num": 3,
-      "description": "Reforge stage 12: window 36, 3 commit(s), 19 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297733.1403813,
-      "timestamp_str": "2026-10-29 21:15:33",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-2",
-      "phase": "reforge stage 12",
-      "phase_num": 3,
-      "description": "Reforge stage 12: run stopped at stage 12; resume it with `reforge resume`",
-      "files_affected": [],
-      "status": "suspended",
-      "timestamp": 1793297912.8132906,
-      "timestamp_str": "2026-10-29 21:18:32",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge run",
-      "phase_num": 3,
-      "description": "run started (start=36, step=30, stop=None)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297913.2604122,
-      "timestamp_str": "2026-10-29 21:18:33",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 1",
-      "phase_num": 3,
-      "description": "Reforge stage 1: window 36, 36 commit(s), 38 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793297951.142537,
-      "timestamp_str": "2026-10-29 21:19:11",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 2",
-      "phase_num": 3,
-      "description": "Reforge stage 2: window 66, 30 commit(s), 46 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793298114.0587385,
-      "timestamp_str": "2026-10-29 21:21:54",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 3",
-      "phase_num": 3,
-      "description": "Reforge stage 3: window 96, 30 commit(s), 84 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired, 2 binary not analysed",
-      "files_affected": [
-        "assets/logo.jpg",
-        "assets/social-preview.png"
-      ],
-      "status": "in_progress",
-      "timestamp": 1793298307.6651013,
-      "timestamp_str": "2026-10-29 21:25:07",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 4",
-      "phase_num": 3,
-      "description": "Reforge stage 4: window 126, 30 commit(s), 32 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793298610.6704288,
-      "timestamp_str": "2026-10-29 21:30:10",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 5",
-      "phase_num": 3,
-      "description": "Reforge stage 5: window 156, 30 commit(s), 36 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793298749.124817,
-      "timestamp_str": "2026-10-29 21:32:29",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 6",
-      "phase_num": 3,
-      "description": "Reforge stage 6: window 186, 30 commit(s), 47 file(s) reviewed (unreviewed), 2 finding(s), 0 repaired (reliability=2)",
-      "files_affected": [
-        "scripts/disruption_recovery.py",
-        "tests/test_integration.py"
-      ],
-      "status": "in_progress",
-      "timestamp": 1793298910.5452619,
-      "timestamp_str": "2026-10-29 21:35:10",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 7",
-      "phase_num": 3,
-      "description": "Reforge stage 7: window 216, 30 commit(s), 51 file(s) reviewed (unreviewed), 1 finding(s), 0 repaired (reliability=1)",
-      "files_affected": [
-        "scripts/sync_principles.py"
-      ],
-      "status": "in_progress",
-      "timestamp": 1793299084.6829963,
-      "timestamp_str": "2026-10-29 21:38:04",
-      "agent": "opencode"
-    },
     {
       "task_id": "reforge:run-3",
       "phase": "reforge stage 8",
@@ -255,6 +71,213 @@
       "timestamp": 1793299892.462669,
       "timestamp_str": "2026-10-29 21:51:32",
       "agent": "opencode"
+    },
+    {
+      "task_id": "idea-406-command-refs",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Fix stale tools/idea_catcher.py hints; [2/2] check that python <path>.py references in AIKit sources and instruction files resolve (IDEA-406)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793300245.585087,
+      "timestamp_str": "2026-10-29 21:57:25",
+      "agent": "claude-code:05aa96e5",
+      "impact_assessment": {
+        "why": "idea-catcher tells users to run python tools/idea_catcher.py in ~10 places; tools/ was removed by ADR-252, and the README-only check matches only scripts/*.py so it never saw it",
+        "benefits": "every printed or documented python command in AIKit resolves; a moved entry point fails --check instead of shipping dead hints",
+        "risks": "contract: --check gains a failure class; dependency: none (stdlib re, git ls-files); concurrency: none, read-only scan; state: none written",
+        "mitigation": "scope to the AIKit root (projects name AIKit's aikit.py, 44/44 would false-positive); skip append-only knowledge/decisions.md and tests/; honour hygiene: allow markers for examples and paths relative to a named project"
+      }
+    },
+    {
+      "task_id": "idea-406-command-refs",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/2] Stale tools/idea_catcher.py hints fixed; --check audits python <path>.py references (ADR-280). Phase 4 green: 732 tests in budget, all read-only gates, dogfood 5/5. checklists: passed. Uncommitted: commit delivery not authorized (host restriction, PRINCIPLE-018 R1)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301231.7491734,
+      "timestamp_str": "2026-10-29 22:13:51",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-406-command-refs",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-406-command-refs' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793301364.1105547,
+      "timestamp_str": "2026-10-29 22:16:04",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-398-marked-blocks",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Shared marked-block helper; media README markers use it unchanged. [2/2] License section writes its generated paragraph between aegean:license markers and later refreshes replace only that (IDEA-398)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301364.3046384,
+      "timestamp_str": "2026-10-29 22:16:04",
+      "agent": "claude-code:05aa96e5",
+      "impact_assessment": {
+        "why": "a license switch replaces everything from the License heading to the next ## heading, so a user's own subsection there is deleted; three past fixes (4ec9ffa, 3c3b23c, 38bc4e6) were generators overwriting user content",
+        "benefits": "text a user adds around AIKit's generated license paragraph survives every refresh; one marker helper instead of three hand-written copies in project_media",
+        "risks": "contract: README gains two invisible HTML comments in the License section; dependency: none; concurrency: none; state: existing READMEs migrate once via the old heading match",
+        "mitigation": "fall back to the current heading regex when markers are absent so existing READMEs keep working; failing-first test for a user subsection surviving a second switch; media refactor covered by its existing tests"
+      }
+    },
+    {
+      "task_id": "idea-398-marked-blocks",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[2/2] marked_blocks.py helper; License paragraph fenced by aegean:license so user notes survive a switch; media/screenshots/brand blocks use the helper (20-case differential identical) (ADR-281). Phase 4 green: 736 tests in budget, all gates, dogfood 5/5. checklists: passed. Uncommitted: commit not authorized (PRINCIPLE-018 R1)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301610.4048624,
+      "timestamp_str": "2026-10-29 22:20:10",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-398-marked-blocks",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-398-marked-blocks' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793301610.5839012,
+      "timestamp_str": "2026-10-29 22:20:10",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-262-shrink-guard",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] verify_commit warns when a commit leaves a modified file under half its parent size (>=400 bytes), unless the message says shrink-ok: <reason> (IDEA-262)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301674.2549567,
+      "timestamp_str": "2026-10-29 22:21:14",
+      "agent": "claude-code:05aa96e5",
+      "impact_assessment": {
+        "why": "an overwritten file looks like an ordinary edit to every gate; the README rewrite repaired in 4ec9ffa is the recorded case, and PRINCIPLE-013 treats lost content as data loss",
+        "benefits": "a commit that silently drops most of a file is named with both sizes before the push, while R5's cheap undo still applies",
+        "risks": "contract: verify_commit output gains WARN lines, exit code unchanged; dependency: none; concurrency: none; state: read-only git object reads (3 calls)",
+        "mitigation": "warn, never block (the R3 gate list and principle text stay as they are); ignore files under 400 bytes and added/deleted files; shrink-ok reason in the message clears it; measure the warning rate over recent history before finishing"
+      }
+    },
+    {
+      "task_id": "idea-262-shrink-guard",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] verify_commit warns on a modified file cut below half its parent size (>=400 B, ledgers exempt), shrink-ok: <reason> clears it; 3/334 historical commits warn, all intended (ADR-282). Phase 4 green: 738 tests in budget, R3 gates, dogfood 5/5; hygiene --workspace . flags only projects/research-engine/engine/cli.py, another agent's in-progress edit. checklists: passed. Uncommitted: commit not authorized",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301951.4166822,
+      "timestamp_str": "2026-10-29 22:25:51",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-262-shrink-guard",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-262-shrink-guard' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793301951.5630364,
+      "timestamp_str": "2026-10-29 22:25:51",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-005-map-digest",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] update_knowledge_base.py --digest prints one line per module (path, lines, classes/functions, purpose) within 100 lines and 16k chars, shared-code folders first, ending with an explicit truncated: line (IDEA-005, absorbs IDEA-044/077)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793301995.0572176,
+      "timestamp_str": "2026-10-29 22:26:35",
+      "agent": "claude-code:05aa96e5",
+      "impact_assessment": {
+        "why": "knowledge/codebase_map.md is 2,275 lines / 150 KB (neurocore's 6,872), far past the 100-line read and 16k-char payload rules (PRINCIPLE-004/012), so a cold-start agent cannot read the map it is told to use",
+        "benefits": "one bounded read orients an agent in any workspace; truncation is stated, never silent",
+        "risks": "contract: new read-only flag, no file written, no existing output changes; dependency: none (existing AST extractor); concurrency: none; state: none",
+        "mitigation": "pure build_digest with unit tests for budget, ordering, truncation and determinism; --digest prints and exits before any write path"
+      }
+    },
+    {
+      "task_id": "idea-005-map-digest",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] update_knowledge_base.py --digest: one line per module within 100 lines/16k chars, shared code first, explicit truncated: line; AIKit 58 lines, neurocore 100 with 188 omitted stated; runbook and README name it (ADR-283). Phase 4 green: 741 tests in budget, R3 gates, dogfood 5/5. checklists: passed. Uncommitted: commit not authorized",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793302145.1575906,
+      "timestamp_str": "2026-10-29 22:29:05",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-005-map-digest",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-005-map-digest' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793302145.297933,
+      "timestamp_str": "2026-10-29 22:29:05",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-210-runbook-index",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] SKILL.md keeps the lifecycle and the binding project rules; the project command matrix moves to projects.md and sub-agent delegation to delegation.md, both mirrored to .claude by sync_principles (IDEA-210)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793302194.0432043,
+      "timestamp_str": "2026-10-29 22:29:54",
+      "agent": "claude-code:05aa96e5",
+      "impact_assessment": {
+        "why": "the runbook is 231 lines / 16.8 KB and loads whole on every trigger, at PRINCIPLE-012's 16k payload cap; half of it (8.2 KB) is the project command matrix that AIKit-only tasks never use",
+        "benefits": "every skill trigger loads about half the text; project and delegation detail is read only when that work starts",
+        "risks": "contract: hosts that load SKILL.md see less inline and must open a topic file; dependency: none; concurrency: none; state: two new mirrored files",
+        "mitigation": "binding one-line project rules stay in SKILL.md; topic files are mirrored by the same generator and checked by sync --check; a test bounds SKILL.md and requires every named topic file in both skill folders; citation test covers the new files"
+      }
+    },
+    {
+      "task_id": "idea-210-runbook-index",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[1/1] SKILL.md 16.7 KB -> 8.3 KB index; projects.md (7.1 KB) and delegation.md (2.1 KB) moved verbatim, mirrored via RUNBOOK_TOPICS, binding rules kept in the index (ADR-284). Phase 4 green: 742 tests in budget, R3 gates, dogfood 5/5. checklists: passed. Uncommitted: commit not authorized",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793302323.9592752,
+      "timestamp_str": "2026-10-29 22:32:03",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "idea-210-runbook-index",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-210-runbook-index' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793302324.1282442,
+      "timestamp_str": "2026-10-29 22:32:04",
+      "agent": "claude-code:05aa96e5"
+    },
+    {
+      "task_id": "land-completed-idea-batch",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/1] Commit and push the five completed AIKit idea tasks plus the idea-catcher delivery",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793304254.6636102,
+      "timestamp_str": "2026-10-29 23:04:14",
+      "agent": "opencode:land-batch",
+      "impact_assessment": {
+        "why": "Five AIKit tasks completed with green gates but were left uncommitted because commit delivery was not authorized; the user has now authorized a push",
+        "benefits": "The runbook split, map digest, marked-block helper, script-reference audit and commit shrink guard reach main; the working tree becomes clean",
+        "risks": "contract: no principle change; dependency: stdlib only; concurrency: single writer; state: the ledger gains this delivery task",
+        "mitigation": "Run the full Phase 4 gates and verify_commit on the exact commit before pushing; stage only named files"
+      }
     }
   ]
 }

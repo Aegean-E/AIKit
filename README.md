@@ -36,7 +36,8 @@
 | **Find Principles to Read**| `python scripts/sync_principles.py --involved <paths/commands/output>`| Same answer for every agent (PRINCIPLE-001 R3)|
 | **Cross-Principle Check Set**| `python scripts/sync_principles.py --citing <PRINCIPLE-NNN>`| Principles a rule change must be checked against (PRINCIPLE-000 R3)|
 | **Update AST & Knowledge**| `python scripts/update_knowledge_base.py`| Rewrites the codebase map, then runs every audit of `--check` below; exits 1 on a syntax error (Python 3.10 grammar) or any audit failure|
-| **Verify AST Map Freshness**| `python scripts/update_knowledge_base.py --check`| Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011)|
+| **Codebase Digest**| `python scripts/update_knowledge_base.py --digest`| Read-only; one line per module in at most 100 lines, shared code first; a cut is stated|
+| **Verify AST Map Freshness**| `python scripts/update_knowledge_base.py --check`| Read-only; exits 1 on a stale codebase map, README drift (PRINCIPLE-005), a `python <path>.py` naming a missing file, an ADR ID out of order, unfinished code (PRINCIPLE-007 R3) or a code-structure violation (PRINCIPLE-009 to PRINCIPLE-011)|
 | **Classify Lifecycle Track**| `python scripts/disruption_recovery.py --track`| Prints Track A/B/C of current changes (PRINCIPLE-002 R3)|
 | **Audit Disruption Recovery**| `python scripts/disruption_recovery.py --audit`| Clean status check; detects surviving uncommitted files|
 | **Resume Interrupted Task**| `python scripts/disruption_recovery.py --resume`| Cold-start command: every `--audit` finding, then the interrupted task, its plan and resumption phase|
@@ -45,7 +46,7 @@
 | **Reset Active Task**| `python scripts/disruption_recovery.py --reset [reason]`| Abandons/clears in-progress task in ledger|
 | **Purge Temp Buffers**| `python scripts/disruption_recovery.py --clean`| Deletes orphaned `*.tmp_*` buffers older than 60 s; younger ones may be a write in progress|
 | **Secret Scan Gate**| `python scripts/check_secrets.py --staged\|--commits <range> [--workspace <project>]`| Exits 1 on a credential pattern in the staged diff or agent memory, or when any surface could not be scanned (PRINCIPLE-019)|
-| **Verify the Commit Itself**| `python scripts/verify_commit.py`| Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7)|
+| **Verify the Commit Itself**| `python scripts/verify_commit.py`| Runs every gate against the commit alone in a throwaway worktree; exits 1 when the commit holds less than the tree it was tested in (PRINCIPLE-018 R7); warns on a file cut below half its size unless the message says `shrink-ok: <reason>`|
 | **Reachability Shield**| `python scripts/check_reachability.py`| No unwired capability or phantom state key (PRINCIPLE-014 R7)|
 | **Operational Dogfood Gate**| `python scripts/dogfood.py`| 5/5 tracks pass; zero host mutation (PRINCIPLE-015)|
 | **Discover Any CLI**| `python scripts/<script>.py --help`| Prints usage and exits `0` in <250ms as a fresh process, writing nothing|
@@ -96,7 +97,9 @@ portable_agent_kit/
 │   ├── settings.json             <- no agent may edit a task ledger
 │   └── skills/
 │       └── aikit/
-│           └── SKILL.md          <- Claude Code runbook (native skill)
+│           ├── SKILL.md          <- Claude Code runbook (native skill)
+│           ├── projects.md       <- Project command matrix (read on demand)
+│           └── delegation.md     <- Sub-agent delegation (read on demand)
 ├── .agents/
 │   ├── rules/
 │   │   ├── principles.md         <- Antigravity / Agent IDE workspace rules
@@ -105,7 +108,9 @@ portable_agent_kit/
 │   │   └── readme_quickref.md.template <- Adopter README Quick Reference & tree (PRINCIPLE-005 R6)
 │   ├── skills/
 │   │   └── aikit/
-│   │       └── SKILL.md          <- Antigravity operational runbook & command matrix
+│   │       ├── SKILL.md          <- Operational runbook index (source of the copies)
+│   │       ├── projects.md       <- Project command matrix and Reforge protocol
+│   │       └── delegation.md     <- Sub-agents, aikit delegate, headless OpenCode
 │   ├── agents/
 │   │   └── opencode_worker.md    <- OpenCode subagent spec for free models
 │   └── task_ledger.json          <- Disruption ledger for power-loss resilience (WAL)
@@ -122,6 +127,7 @@ portable_agent_kit/
 │   ├── check_test_budgets.py     <- Test tier budget gate (per-test ceilings)
 │   ├── project_registry.py       <- Project discovery, stack detection, memory
 │   ├── project_license.py        <- License tiers and restrict
+│   ├── marked_blocks.py          <- aegean:<name> blocks a generator owns in user files
 │   ├── project_gates.py          <- A project's gates: detection, overrides
 │   ├── check_project_hygiene.py  <- Source, asset & artifact hygiene
 │   ├── ui_contract.py            <- Bounded UI-surface guard (opt-in .aikit/ui.json)

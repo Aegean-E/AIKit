@@ -21,6 +21,7 @@ from xml.etree import ElementTree
 from xml.sax.saxutils import escape as xml_escape
 
 from scripts.disruption_recovery import ROOT_DIR, atomic_write_json, file_lock
+from scripts.marked_blocks import block_span, fenced, replace_block
 from scripts.project_license import license_state
 from scripts.project_publish import extract_readme_description, get_project_repo_url, run_command
 from scripts.project_registry import (
@@ -42,14 +43,11 @@ LOGO_REL = Path("assets") / "logo.svg"
 SOCIAL_REL = Path("assets") / "social-preview.svg"
 SOCIAL_PNG_REL = Path("assets") / "social-preview.png"
 SCREENSHOT_DIR = Path("assets") / "screenshots"
-MEDIA_MARKER_START = "<!-- aegean:media:start -->"
-MEDIA_MARKER_END = "<!-- aegean:media:end -->"
+MEDIA_BLOCK = "media"
 ASSET_DISCLOSURE = ("The banner and logo are **AI-generated brand assets**. They are illustrative "
                     "and may not literally depict every feature or the full project scope.")
-BRAND_SECTION_START = "<!-- aegean:brand-assets:start -->"
-BRAND_SECTION_END = "<!-- aegean:brand-assets:end -->"
-SHOT_MARKER_START = "<!-- aegean:screenshots:start -->"
-SHOT_MARKER_END = "<!-- aegean:screenshots:end -->"
+BRAND_BLOCK = "brand-assets"
+SHOT_BLOCK = "screenshots"
 MAX_SCREENSHOTS = 12
 PROCESS_TIMEOUT = 90
 REVIEWER_PATTERN = re.compile(r"^(agent|subagent|human):[A-Za-z0-9_.:-]+$")
@@ -620,7 +618,7 @@ def apply_media(project_root: Path, name: str, dossier: Optional[Path] = None) -
                     "rewrite would delete its preview, screenshots, commit stamps and digests, and "
                     "the published page would silently lose the project's media.",
                     "record this asset with the dossier's builder (for AegeanWorks, "
-                    "`python tools/build_dossier_media.py ingest`), or delete the manifest "
+                    "`python tools/build_dossier_media.py ingest`), or delete the manifest "  # hygiene: allow path inside the AegeanWorks project, not AIKit
                     "deliberately before applying.",
                 )
             existing_manifest = existing
@@ -708,10 +706,14 @@ def _update_readme(readme: Path, repo: str, data: Dict[str, object],
         badges = _badge_row(readme.parent, repo)
         if badges:
             pieces.append(badges)
-    block = ""
     if pieces:
-        block = f"{MEDIA_MARKER_START}\n" + "\n".join(pieces) + f"\n{MEDIA_MARKER_END}\n"
-    shot_block = ""
+        body = "\n".join(pieces)
+        replaced = replace_block(text, MEDIA_BLOCK, body)
+        if replaced is None:
+            lines = text.splitlines(keepends=True)
+            at = next((index + 1 for index, line in enumerate(lines) if line.startswith("# ")), 0)
+            replaced = "".join(lines[:at]) + "\n" + fenced(MEDIA_BLOCK, body) + "\n" + "".join(lines[at:])
+        text = replaced
     if shots:
         cells = []
         for shot in shots:
@@ -721,28 +723,14 @@ def _update_readme(readme: Path, repo: str, data: Dict[str, object],
                 f'alt="{xml_escape(shot["alt"])}"></a>\n\n'
                 f'*commit `{shot["commit"]}` · {shot["taken_at"]}*'
             )
-        shot_block = (f"\n{SHOT_MARKER_START}\n## Screenshots\n\n" + "\n\n".join(cells)
-                      + f"\n{SHOT_MARKER_END}\n")
-    if block:
-        if MEDIA_MARKER_START in text and MEDIA_MARKER_END in text:
-            start = text.index(MEDIA_MARKER_START)
-            end = text.index(MEDIA_MARKER_END) + len(MEDIA_MARKER_END)
-            text = text[:start] + block.rstrip("\n") + text[end:]
-        else:
-            lines = text.splitlines(keepends=True)
-            at = next((index + 1 for index, line in enumerate(lines) if line.startswith("# ")), 0)
-            text = "".join(lines[:at]) + "\n" + block + "".join(lines[at:])
-    if shot_block:
-        if SHOT_MARKER_START in text and SHOT_MARKER_END in text:
-            start = text.index(SHOT_MARKER_START)
-            end = text.index(SHOT_MARKER_END) + len(SHOT_MARKER_END)
-            text = text[:start] + shot_block.strip("\n") + text[end:]
-        else:
-            text = text.rstrip("\n") + "\n" + shot_block
-    elif SHOT_MARKER_START in text and SHOT_MARKER_END in text:
-        start = text.index(SHOT_MARKER_START)
-        end = text.index(SHOT_MARKER_END) + len(SHOT_MARKER_END)
-        text = text[:start].rstrip("\n") + "\n" + text[end:].lstrip("\n")
+        body = "## Screenshots\n\n" + "\n\n".join(cells)
+        replaced = replace_block(text, SHOT_BLOCK, body)
+        text = replaced if replaced is not None else (
+            text.rstrip("\n") + "\n\n" + fenced(SHOT_BLOCK, body) + "\n")
+    else:
+        span = block_span(text, SHOT_BLOCK)
+        if span is not None:
+            text = text[:span[0]].rstrip("\n") + "\n" + text[span[1]:].lstrip("\n")
     # An older banner line would duplicate the single social preview. Remove legacy banner embeds
     # outside our marker, leaving ordinary prose that merely mentions a banner untouched.
     lines = []
@@ -759,13 +747,11 @@ def _update_readme(readme: Path, repo: str, data: Dict[str, object],
             continue
         lines.append(line)
     text = "".join(lines)
-    section = (f"{BRAND_SECTION_START}\n## 🎨 Brand Assets\n\n"
-               f"> **AI-Generated Brand Artwork.** {ASSET_DISCLOSURE}\n"
-               f"{BRAND_SECTION_END}\n")
-    if BRAND_SECTION_START in text and BRAND_SECTION_END in text:
-        start = text.index(BRAND_SECTION_START)
-        end = text.index(BRAND_SECTION_END) + len(BRAND_SECTION_END)
-        text = text[:start] + section.rstrip("\n") + text[end:]
+    body = f"## 🎨 Brand Assets\n\n> **AI-Generated Brand Artwork.** {ASSET_DISCLOSURE}"
+    section = fenced(BRAND_BLOCK, body) + "\n"
+    replaced = replace_block(text, BRAND_BLOCK, body)
+    if replaced is not None:
+        text = replaced
     else:
         license_heading = re.search(r"(?im)^##[^\n]*licen[cs]e[^\n]*\n", text)
         if license_heading:
@@ -815,7 +801,7 @@ def audit_media(project_root: Path, dossier: Optional[Path] = None) -> Dict[str,
         problems.append("README does not reference the approved social preview")
     if _approved(assets.get("logo")) and "assets/logo" in readme_text:
         problems.append("README shows the logo hero; only the social preview belongs there")
-    if BRAND_SECTION_START not in readme_text or "## 🎨 Brand Assets" not in readme_text:
+    if block_span(readme_text, BRAND_BLOCK) is None or "## 🎨 Brand Assets" not in readme_text:
         problems.append("README lacks the Brand Assets section")
     if "ai-generated brand assets" not in readme_text.lower():
         problems.append("README lacks the generated-asset disclosure")

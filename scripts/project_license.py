@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from scripts.disruption_recovery import atomic_write_json, file_lock
+from scripts.marked_blocks import fenced, replace_block
 from scripts.project_publish import run_command
 from scripts.project_registry import (
     LICENSE_CHOICES,
@@ -54,6 +55,7 @@ _TREE_COMMERCIAL = re.compile(_TREE_ENTRY.format(r"COMMERCIAL\.md"))
 # before AIKit is switched in place instead of gaining a second section; `## Commercial
 # Licensing` and other titled sections are left alone.
 _LICENSE_SECTION = re.compile(r"^## (?:[^\w\s]+\s+)?Licen[cs]e[ \t]*\n.*?(?=^## |\Z)", re.M | re.S)
+LICENSE_BLOCK = "license"
 RESTRICTED_LICENSE_SECTION = (
     f"{LICENSE_HEADING}\n\n"
     "All Rights Reserved. This project is in the Aegean restricted tier and is not licensed for "
@@ -136,7 +138,17 @@ def suggest_license(project_root: Path) -> dict:
 
 
 def _with_license_section(text: str, section: str) -> str:
-    """`text` (LF) with its first License section replaced by `section` and any later one removed."""
+    """
+    `text` (LF) naming `section`'s license. AIKit owns only the paragraph between the
+    `aegean:license` markers, so a note the user adds to the section survives a switch (IDEA-398).
+    A README without them has its first License section replaced once, now marked, and any later
+    one removed.
+    """
+    heading, _, body = section.partition("\n\n")
+    replaced = replace_block(text, LICENSE_BLOCK, body)
+    if replaced is not None:
+        return replaced
+    section = f"{heading}\n\n{fenced(LICENSE_BLOCK, body)}\n"
     found = list(_LICENSE_SECTION.finditer(text))
     if not found:
         return text.rstrip("\n") + "\n\n" + section

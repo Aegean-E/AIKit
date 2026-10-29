@@ -282,8 +282,12 @@ def validate_triad_consistency(
 # The operational runbook every Tier 1 header names (ADR-176), and the hosts that load skills
 # only from their own folder: generated copy -> source, relative to the repository.
 RUNBOOK_PATH = ".agents/skills/aikit/SKILL.md"
+# SKILL.md loads whole on every trigger, so detail one kind of task needs lives in topic files it
+# names and the agent opens on demand (IDEA-210, ADR-284); each is mirrored like the index.
+RUNBOOK_TOPICS = ("projects.md", "delegation.md")
 RUNBOOK_MIRRORS: Dict[str, str] = {
     ".claude/skills/aikit/SKILL.md": RUNBOOK_PATH,
+    **{f".claude/skills/aikit/{name}": f".agents/skills/aikit/{name}" for name in RUNBOOK_TOPICS},
 }
 
 # Claude Code sub-agents, generated from AIKit's role profiles in `.opencode/agents/` so one role

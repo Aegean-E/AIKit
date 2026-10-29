@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `56`
-- **Total Classes**: `124`
-- **Total Top-Level Functions**: `764`
-- **Total Class Methods**: `852`
-- **Total Source Lines**: `32716`
+- **Total Python Modules**: `57`
+- **Total Classes**: `127`
+- **Total Top-Level Functions**: `778`
+- **Total Class Methods**: `868`
+- **Total Source Lines**: `33100`
 
 ---
 
@@ -98,7 +98,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2243` lines (`98566` bytes)
+**Size**: `2243` lines (`98569` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -866,6 +866,19 @@
 
 ---
 
+### [`scripts/marked_blocks.py`](scripts/marked_blocks.py)
+> *Generated text inside a file the user owns, fenced by `<!-- aegean:<name>:start -->` and*
+
+**Size**: `40` lines (`1749` bytes)
+
+**Functions:**
+- `def markers(name)` - *The start and end comments of block `name`; HTML comments, so a rendered README hides them.*
+- `def block_span(text, name)` - *Where block `name` starts and ends in `text`, markers included; None unless both are in order.*
+- `def fenced(name, body)` - *`body` between the markers of block `name`, one per line, without a trailing newline.*
+- `def replace_block(text, name, body)` - *`text` with block `name` holding `body` and nothing outside it changed; None when it has no block.*
+
+---
+
 ### [`scripts/project_artwork.py`](scripts/project_artwork.py)
 > *Image-model brand artwork for projects (ADR-239).*
 
@@ -947,7 +960,7 @@
 ### [`scripts/project_license.py`](scripts/project_license.py)
 > *Project license tiers (ADR-214).*
 
-**Size**: `311` lines (`15393` bytes)
+**Size**: `323` lines (`15908` bytes)
 
 **Classes:**
 - `class LicenseState`
@@ -956,7 +969,7 @@
 - `def render_restricted_license(name, since, since_commit)` - *The canonical All Rights Reserved notice, filled for a project restricted from its cutoff on.*
 - `def license_state(project_root)` - *The project's tier, personal-license kind and version: the restriction, else what LICENSE says.*
 - `def suggest_license(project_root)` - *What an AI should choose for this project, with the current file and the evidence.*
-- `def _with_license_section(text, section)` - *`text` (LF) with its first License section replaced by `section` and any later one removed.*
+- `def _with_license_section(text, section)` - *`text` (LF) naming `section`'s license. AIKit owns only the paragraph between the*
 - `def _licensed_readme(text, newline, kind, assets_manifest)` - *`text` with its tree's LICENSE line and License section naming the chosen personal license.*
 - `def apply_license_kind(project_root, name, kind)` - *Switch a personal-tier project to software (AL-1.1), game (AGL-1.1) or science (ASL-1.1)*
 - `def public_remote_refusal(project_root, name, runner)` - *The error that stops a push of a restricted project, or None. Only a remote GitHub reports as*
@@ -968,7 +981,7 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `849` lines (`38032` bytes)
+**Size**: `835` lines (`37191` bytes)
 
 **Functions:**
 - `def media_path(root)`
@@ -1177,7 +1190,7 @@
 ### [`scripts/sync_principles.py`](scripts/sync_principles.py)
 > *Principles Auto-Sync Tool (PRINCIPLE-017)*
 
-**Size**: `822` lines (`41127` bytes)
+**Size**: `826` lines (`41466` bytes)
 
 **Functions:**
 - `def is_generated_target(text)` - *True when `text` carries this tool's generated-file header (current or legacy).*
@@ -1210,7 +1223,7 @@
 ### [`scripts/ui_contract.py`](scripts/ui_contract.py)
 > *Bounded UI-surface edits against a committed `.aikit/ui.json` contract (opt-in).*
 
-**Size**: `781` lines (`38421` bytes)
+**Size**: `781` lines (`38477` bytes)
 
 **Classes:**
 - `class UiContract` - *One project's committed UI contract: surfaces, protected paths, commands and limits.*
@@ -1271,7 +1284,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1058` lines (`49798` bytes)
+**Size**: `1198` lines (`57105` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -1282,6 +1295,8 @@
 - `def _extract_symbols_uncached(file_path, content, strict)` - *AST extraction proper; see extract_python_symbols().*
 - `def gitignored_top_dirs(root)` - *The top-level directories `root/.gitignore` excludes by name. Git never tracks them, so their*
 - `def find_python_files(root)` - *Every Python file under `root`, skipping `IGNORE_DIRS`. Ignored directories are pruned while*
+- `def build_digest(rows, max_lines, max_chars, map_name)` - *`path  <lines>L <classes>C <functions>F  purpose` per module, within both budgets, shared-code*
+- `def digest_rows(root)` - *One digest row per Python module under `root`, from the AST extractor the map uses.*
 - `def generate_codebase_map(root, strict)` - *Generate the markdown content for knowledge/codebase_map.md with AST validation (PRINCIPLE-003).*
 - `def validate_knowledge_links(knowledge_dir)` - *Verify that all relative file links in knowledge/INDEX.md physically exist on disk (PRINCIPLE-016).*
 - `def audit_adr_register(decisions)` - *ADR IDs must be unique and consecutive (PRINCIPLE-016 R3, PRINCIPLE-000 R3). Two sessions that*
@@ -1298,6 +1313,11 @@
 - `def quick_reference_errors(readme)` - *The structure PRINCIPLE-005 R1 states, not just its words: a heading, then inside its section*
 - `def parse_readme_tree(readme)` - *Paths in the first ```text block after "What's Inside" (PRINCIPLE-005 R5), relative to the*
 - `def audit_readme(readme, tracked, exists, script_source)` - *Every PRINCIPLE-005 rule a program can decide, as one error per violation. Pure: the caller*
+- `def script_reference_sources(tracked)` - *The tracked files whose `python <path>.py` references must resolve: code and instructions.*
+- `def audit_script_references(sources, exists)` - *One error per `python <path>.py` naming a file that does not exist, as `file:line`. Pure. A*
+- `def tracked_files(root)` - *`git ls-files` for `root` (bounded, PRINCIPLE-010 R3), or None when git is unavailable.*
+- `def check_script_references(root)` - *Run `audit_script_references` over `root`'s tracked sources; None when git is unavailable.*
+- `def report_script_references(errors)` - *Print dead `python <path>.py` references with Why/Fix (PRINCIPLE-011 R6); True when clean.*
 - `def check_readme(root)` - *Run `audit_readme` on `root`, listing tracked files with git (bounded, PRINCIPLE-010 R3).*
 - `def report_readme(errors)` - *Print README findings with the remediation triad (PRINCIPLE-011 R6); True when clean.*
 - `def guideline_errors(text)` - *Problems in a project's `.aikit/guidelines.md`: over the size limit, a line under `## Rules`*
@@ -1310,12 +1330,15 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `222` lines (`10674` bytes)
+**Size**: `276` lines (`13412` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
 - `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the*
 - `def scanned_range(repo, ref, run)` - *The commits this verification covers, as resolved SHAs: everything past the upstream when one*
+- `def shrunk_files(sizes, ratio, min_bytes)` - *Each path, from (old, new) sizes, that fell below `ratio` of an old size of at least `min_bytes`.*
+- `def tree_sizes(ref, repo, run)` - *Blob sizes in `ref`'s tree by path; empty when git cannot list it.*
+- `def shrink_warnings(ref, repo, run)` - *`[WARN]` lines for files `ref` cut below half their parent size, with Why/Fix; none for a root*
 - `def recovery_fix(ref, resolved, repo, run)` - *The Fix line for a commit that fails on its own, chosen by where that commit is.*
 - `def verify_commit(ref, repo, runner)` - *Run every gate against `ref` checked out on its own; returns (exit code, report lines).*
 
@@ -1491,7 +1514,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9582` lines (`539787` bytes)
+**Size**: `9730` lines (`548603` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1523,6 +1546,20 @@
   - Method `.test_tier_1b_domain_rules_injection()`
   - Method `.test_domain_rules_template_validity()`
   - Method `.test_readme_cold_start_orientation_and_script_parity()`
+- `class TestScriptReferenceGate` - *IDEA-406: every `python <path>.py` in AIKit's code and instructions names an existing file.*
+  - Method `.audit(sources)`
+  - Method `.test_a_reference_to_an_existing_script_passes()`
+  - Method `.test_a_moved_entry_point_fails_with_its_file_and_line()`
+  - Method `.test_an_allow_marker_on_the_line_or_the_line_above_exempts_it()`
+  - Method `.test_history_tests_and_other_repositories_are_not_scanned()`
+- `class TestCodebaseDigest` - *IDEA-005: one bounded read orients an agent; a cut is stated, never silent.*
+  - Method `.test_every_module_is_listed_with_its_size_symbols_and_purpose()`
+  - Method `.test_shared_code_comes_first_and_a_cut_is_stated()`
+  - Method `.test_the_character_budget_holds_and_output_is_deterministic()`
+- `class TestMarkedBlocks` - *IDEA-398: a generator rewrites only the text between its markers in a user-owned file.*
+  - Method `.test_a_replacement_changes_nothing_outside_the_markers()`
+  - Method `.test_a_missing_or_reversed_pair_is_not_a_block()`
+  - Method `.test_fenced_output_round_trips()`
 - `class TestPrinciple005ReadmeGate` - *PRINCIPLE-005: every README rule a program can decide is decided by `audit_readme`.*
   - Method `.audit(readme, tracked, exists)`
   - Method `.test_a_correct_readme_passes()`
@@ -1653,6 +1690,7 @@
   - Method `.test_tier1_header_mirrors_r3_triggers_and_r1_precedence()`
   - Method `.test_every_agent_rule_reaches_tier1()`
   - Method `.test_every_tier1_target_names_the_operational_runbook()`
+  - Method `.test_the_runbook_index_is_bounded_and_its_topic_files_are_mirrored()`
   - Method `.test_tier1_header_does_not_repeat_the_generator_name()`
   - Method `.test_precedence_never_contradicts_another_principle()`
   - Method `.test_open_terms_are_defined()`
@@ -1905,6 +1943,7 @@
   - Method `.test_license_switch_keeps_the_readme_tree_contiguous()`
   - Method `.test_license_switch_labels_a_bare_license_tree_line()`
   - Method `.test_license_switch_replaces_a_differently_titled_license_section()`
+  - Method `.test_a_note_the_user_adds_to_the_license_section_survives_a_later_switch()`
   - Method `.test_a_license_1_0_project_is_still_recognized_and_offered_an_upgrade()`
   - Method `.test_archived_game_and_science_headers_still_map_to_their_kind()`
   - Method `.test_topics_command_records_what_the_ai_chooses()`
@@ -2148,6 +2187,8 @@
 - `class TestPostCommitVerification` - *PRINCIPLE-018 R7: the commit itself is verified, not the tree it was tested in (ADR-149).*
   - Method `.runner(failing, worktree_fails, pushed, remote_contains)` - *A scripted git/gate stand-in; records every call so order and cwd can be asserted.*
   - Method `.ran(fragment)`
+  - Method `.test_a_file_cut_below_half_its_size_is_flagged_and_small_or_growing_ones_are_not()`
+  - Method `.test_a_shrinking_commit_warns_without_failing_unless_the_message_says_shrink_ok()`
   - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
   - Method `.test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas()`
   - Method `.test_the_scanned_range_is_what_this_verification_covers()`
@@ -2243,6 +2284,7 @@
   - Method `.test_the_root_override_selects_a_register()`
   - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`
   - Method `.test_the_standalone_sync_layer_is_gone()`
+  - Method `.test_the_stale_matrix_hint_names_a_command_that_exists()`
   - Method `.test_the_deep_checked_tag_is_part_of_the_vocabulary()`
 - `class TestIdeaCatcherHiddenListing` - *PRINCIPLE-007: rejected and duplicate ideas leave the default target listing.*
   - Method `._idea(idea_id, status, tags)`
