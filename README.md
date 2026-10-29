@@ -241,7 +241,7 @@ that path is git-ignored, so the ideas it has collected never enter a commit or 
 repository (ADR-252). `IDEA_CATCHER_ROOT` points the tool at a different register.
 
 ```bash
-python aikit.py idea-catcher status             # counts per target and decision state
+python aikit.py idea-catcher status             # full register counts per target
 python aikit.py idea-catcher validate           # targets, ideas, dossiers and matrix
 python aikit.py idea-catcher render --check     # fail when MATRIX.md is stale
 python aikit.py idea-catcher reviews --stale
@@ -250,8 +250,10 @@ python aikit.py idea-catcher reviews --stale
 A review leases its repository and reserves idea ids, so parallel analyses cannot collide.
 Dossiers name a `Source` from `IDEA-632` onward; tags, target and status changes append to each
 idea's history. `ideas --target <id>` hides `Rejected` rows and rows tagged `duplicate`; pass
-`--include-rejected` or `--include-duplicates` for the full audit view. `MATRIX.md` keeps both,
-and a reviewer may reject a harmful idea directly with a recorded reason and author (ADR-264).
+`--include-rejected` or `--include-duplicates` for the full audit view. The flags are alternatives:
+either one also shows a row that belongs to both categories. `status` always reports the full
+register, while `ideas` is the filtered working list. `MATRIX.md` keeps both, and a reviewer may
+reject a harmful idea directly with a recorded reason and author (ADR-264, ADR-267).
 
 `ui-id` stores `has_ui`, `ui_kind` and `ui_evidence`. `topics --brief` gives an AI the evidence;
 `--from-file` records its tags and `--apply` publishes them, capped at 20. `media init --art` uses

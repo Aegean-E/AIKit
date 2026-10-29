@@ -9211,6 +9211,35 @@ class TestIdeaCatcherHiddenListing(unittest.TestCase):
             ["IDEA-004", "IDEA-005"],
         )
 
+    def test_a_rejected_duplicate_is_shown_by_either_include_flag(self) -> None:
+        payload = {"ideas": [
+            self._idea("IDEA-001"),
+            self._idea("IDEA-002", "Rejected", tags=("duplicate",)),
+        ]}
+        self.assertEqual([row["id"] for row in idea_registry.list_ideas(payload)],
+                         ["IDEA-001"])
+        for options in ({"include_rejected": True}, {"include_duplicates": True}):
+            with self.subTest(options=options):
+                self.assertEqual(
+                    [row["id"] for row in idea_registry.list_ideas(payload, **options)],
+                    ["IDEA-001", "IDEA-002"],
+                )
+        for options in ({"status": "Rejected"}, {"tag": "duplicate"}):
+            with self.subTest(options=options):
+                self.assertEqual(
+                    [row["id"] for row in idea_registry.list_ideas(payload, **options)],
+                    ["IDEA-002"],
+                )
+
+    def test_status_counts_the_full_register(self) -> None:
+        root = self._register()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = idea_registry.main(["status"], root=root)
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("5 idea(s)", out.getvalue())
+        self.assertIn("3 proposed", out.getvalue())
+
     def test_cli_hides_both_and_reports_the_count(self) -> None:
         root = self._register()
         out = io.StringIO()

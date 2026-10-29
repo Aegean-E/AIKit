@@ -1526,7 +1526,8 @@ def list_ideas(
 
     ``Rejected`` rows and rows tagged ``duplicate`` are hidden unless the matching
     ``include_*`` flag is set, ``status='Rejected'`` asks for a rejected row explicitly, or
-    ``tag='duplicate'`` asks for duplicates explicitly. They stay in the register and in
+    ``tag='duplicate'`` asks for duplicates explicitly. The include flags are alternatives:
+    either one shows a row that belongs to both categories. They stay in the register and in
     ``MATRIX.md``; they only leave the default working list.
     """
     rows: list[dict[str, Any]] = []
@@ -1536,9 +1537,11 @@ def list_ideas(
         if status and idea.get("status") != status:
             continue
         tags = effective_tags(idea)
-        if not include_rejected and status != "Rejected" and idea.get("status") == "Rejected":
-            continue
-        if not include_duplicates and tag != "duplicate" and "duplicate" in tags:
+        rejected = idea.get("status") == "Rejected"
+        duplicate = "duplicate" in tags
+        show_rejected = rejected and (include_rejected or status == "Rejected")
+        show_duplicate = duplicate and (include_duplicates or tag == "duplicate")
+        if (rejected or duplicate) and not (show_rejected or show_duplicate):
             continue
         if dossier and idea.get("dossier") != dossier:
             continue
@@ -1591,7 +1594,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     sub.add_parser("validate", help="validate targets.json, ideas.json, dossiers and MATRIX.md")
     render = sub.add_parser("render", help="write MATRIX.md from the registry")
     render.add_argument("--check", action="store_true", help="fail instead of writing when stale")
-    sub.add_parser("status", help="print idea counts per decision state")
+    sub.add_parser("status", help="print the full register's idea and proposed counts")
     add = sub.add_parser("add-target", help="register a new routing target")
     add.add_argument("--id", required=True)
     add.add_argument("--name", required=True)
@@ -2031,7 +2034,8 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 print(f"reserved idea numbers: {', '.join(f'IDEA-{n:03d}' for n in sorted(held))}")
             for target in targets:
                 target_id = str(target["id"])
-                rows = list_ideas(payload, target=target_id)
+                rows = list_ideas(payload, target=target_id, include_rejected=True,
+                                  include_duplicates=True)
                 proposed = sum(1 for row in rows if row.get("status") == "Proposed")
                 print(f"  {target_id:<22} {len(rows):>3} idea(s), {proposed:>3} proposed")
             return 0

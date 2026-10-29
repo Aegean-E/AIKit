@@ -85,8 +85,10 @@ idea-catcher` reaches the same `idea_catcher.registry.run` dispatcher as `idea_c
 `IDEA_CATCHER_ROOT`. There is no second copy or sync marker any more: the archived standalone
 repository pointed here instead (ADR-246, ADR-252). `ideas` hides `Rejected` rows and rows
 tagged `duplicate` unless `--include-rejected` / `--include-duplicates` or an explicit
-`--status Rejected` / `--tag duplicate` asks for them; `MATRIX.md` keeps the full audit record
-(ADR-264).
+`--status Rejected` / `--tag duplicate` asks for them; the two include flags are alternatives, so
+either one shows a row that belongs to both categories. `MATRIX.md` keeps the full audit record,
+and `status` counts the full register while `ideas` remains the filtered working list (ADR-264,
+ADR-267).
 
 ## 🖼️ UI Identity, AI Topic Briefs and Reviewed Media
 `scripts/project_ui.py` writes `has_ui`/`ui_kind`/`ui_evidence` into each project's

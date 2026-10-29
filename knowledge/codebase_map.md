@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `736`
-- **Total Class Methods**: `813`
-- **Total Source Lines**: `31528`
+- **Total Class Methods**: `815`
+- **Total Source Lines**: `31561`
 
 ---
 
@@ -91,7 +91,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2071` lines (`90977` bytes)
+**Size**: `2075` lines (`91303` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -1425,7 +1425,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9272` lines (`524154` bytes)
+**Size**: `9301` lines (`525497` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2173,6 +2173,8 @@
   - Method `.test_list_ideas_hides_rejected_and_duplicate_by_default()`
   - Method `.test_list_ideas_can_include_each_hidden_kind()`
   - Method `.test_explicit_status_or_tag_still_lists_that_kind()`
+  - Method `.test_a_rejected_duplicate_is_shown_by_either_include_flag()`
+  - Method `.test_status_counts_the_full_register()`
   - Method `.test_cli_hides_both_and_reports_the_count()`
   - Method `.test_cli_can_include_each_hidden_kind()`
   - Method `.test_cli_json_hides_both_by_default()`
