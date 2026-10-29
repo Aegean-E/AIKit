@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
 - **Total Top-Level Functions**: `719`
-- **Total Class Methods**: `788`
-- **Total Source Lines**: `30777`
+- **Total Class Methods**: `789`
+- **Total Source Lines**: `30791`
 
 ---
 
@@ -220,10 +220,10 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `313` lines (`13199` bytes)
+**Size**: `315` lines (`13171` bytes)
 
 **Functions:**
-- `def _changed_paths(repo, plan, reviewed)` - *(commit, path) for every readable text file the stage's new commits changed.*
+- `def _changed_paths(repo, plan)` - *(commit, path) for every readable text file the stage's new commits changed.*
 - `def _file_diff(repo, sha, path)`
 - `def build_brief(repo, plan, reviewed)` - *A bounded prompt holding the stage diff; `truncated` says a file or the total was cut.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
@@ -1406,7 +1406,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8928` lines (`507747` bytes)
+**Size**: `8940` lines (`508376` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2127,6 +2127,7 @@
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`
   - Method `.test_the_parser_declares_the_ai_review_options()`
+  - Method `.test_the_brief_counts_only_the_files_it_includes()`
   - Method `.test_an_ai_answer_is_validated_against_the_stage()`
   - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`
   - Method `.test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left()`

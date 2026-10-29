@@ -66,8 +66,7 @@ Every path must be one of the changed files below. Respond with JSON only.
 """
 
 
-def _changed_paths(repo: Path, plan: StagePlan,
-                   reviewed: Optional[List[str]] = None) -> List[Tuple[str, str]]:
+def _changed_paths(repo: Path, plan: StagePlan) -> List[Tuple[str, str]]:
     """(commit, path) for every readable text file the stage's new commits changed."""
     pairs: List[Tuple[str, str]] = []
     seen = set()
@@ -80,8 +79,6 @@ def _changed_paths(repo: Path, plan: StagePlan,
                 continue
             seen.add(path)
             pairs.append((sha, path))
-    if reviewed is not None:
-        reviewed.extend(path for _, path in pairs)
     return pairs
 
 
@@ -98,9 +95,11 @@ def build_brief(repo: Path, plan: StagePlan,
                 reviewed: Optional[List[str]] = None) -> Tuple[str, bool]:
     """A bounded prompt holding the stage diff; `truncated` says a file or the total was cut."""
     blocks: List[str] = []
+    included: List[str] = []
     total = 0
-    truncated = False
-    for sha, path in _changed_paths(repo, plan, reviewed)[:MAX_FILES]:
+    pairs = _changed_paths(repo, plan)
+    truncated = len(pairs) > MAX_FILES
+    for sha, path in pairs[:MAX_FILES]:
         diff = _file_diff(repo, sha, path)
         if not diff.strip():
             continue
@@ -113,8 +112,11 @@ def build_brief(repo: Path, plan: StagePlan,
             truncated = True
         block = f"--- {path} (commit {sha[:12]}) ---\n{diff}"
         blocks.append(block)
+        included.append(path)
         total += len(block)
-    files = ", ".join(path for _, path in _changed_paths(repo, plan))
+    if reviewed is not None:
+        reviewed.extend(included)
+    files = ", ".join(included)
     brief = (PROMPT_PREFIX
              + f"\nAudited repository: {repo}\nChanged files: {files or 'none'}\n\n"
              + "\n".join(blocks))

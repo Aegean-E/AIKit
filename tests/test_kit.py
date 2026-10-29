@@ -8836,6 +8836,18 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual((run.ai_model, run.ai_timeout), ("opencode/demo-free", 90))
         self.assertFalse(run.no_ai)
 
+    def test_the_brief_counts_only_the_files_it_includes(self):
+        from reforge import ai_review
+
+        pairs = [("sha", f"f{index}.py") for index in range(ai_review.MAX_FILES + 3)]
+        with mock.patch.object(ai_review, "_changed_paths", return_value=pairs), \
+                mock.patch.object(ai_review, "_file_diff", return_value="+change\n"):
+            reviewed = []
+            brief, truncated = ai_review.build_brief(self.root(), object(), reviewed)
+        self.assertEqual(len(reviewed), ai_review.MAX_FILES)
+        self.assertTrue(truncated)
+        self.assertNotIn(f"f{ai_review.MAX_FILES}.py", brief)
+
     def test_an_ai_answer_is_validated_against_the_stage(self):
         from reforge.ai_review import findings_from_payload
 
