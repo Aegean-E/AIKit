@@ -9060,7 +9060,7 @@ class TestReforgeCore(unittest.TestCase):
         """A minimal stage plan for packet and findings tests."""
         from types import SimpleNamespace
 
-        return SimpleNamespace(stage=1, window=3, run_id="run-1",
+        return SimpleNamespace(stage=1, window=3, run_id="run-1", commits=(),
                                new_shas=("newest", "older"))
 
     def test_a_packet_skips_files_only_prior_commits_changed(self):
@@ -9081,37 +9081,51 @@ class TestReforgeCore(unittest.TestCase):
             pairs = review._changed_paths(self.root(), plan)
         self.assertEqual({path for _, path in pairs}, {"new.py", "old.py"})
 
-    def test_the_packet_reviews_the_net_stage_diff_once_per_file(self):
+    def test_the_packet_reviews_each_commit_hunk_in_order(self):
+        from types import SimpleNamespace
+
         from reforge import review
 
         seen = []
 
-        def file_diff(repo, plan, path):
-            seen.append((plan.new_shas[0], path))
-            return "@@ -1,1 +1,1 @@\n-old value\n+new value\n"
+        def commit_diff(repo, sha, path):
+            seen.append((sha, path))
+            return f"@@ -1,1 +1,1 @@\n-{sha}\n+{sha} value\n"
 
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths",
                                   return_value=[("newest", "README.md")]), \
                 mock.patch.object(review, "_binary_paths", return_value=[]), \
-                mock.patch.object(review, "_file_diff", side_effect=file_diff):
+                mock.patch.object(review, "changed_files",
+                                  return_value=[("M", "README.md")]), \
+                mock.patch.object(review, "commit_info",
+                                  side_effect=lambda repo, sha: SimpleNamespace(subject=sha)), \
+                mock.patch.object(review, "_commit_diff", side_effect=commit_diff):
             text, redacted = review.packet_text(self.root(), self.stage_plan())
-        self.assertEqual(seen, [("newest", "README.md")])
-        self.assertEqual(text.count("--- README.md ---"), 1)
-        self.assertIn("+new value", text)
+        self.assertEqual(seen, [("older", "README.md"), ("newest", "README.md")])
+        self.assertEqual(text.count("--- README.md ---"), 2)
+        self.assertLess(text.index("### commit older"), text.index("### commit newest"))
+        self.assertIn("+newest value", text)
         self.assertIn("commits base..newest", text)
         self.assertEqual(redacted, 0)
 
     def test_the_packet_redacts_a_credential_before_an_agent_reads_it(self):
+        from types import SimpleNamespace
+
         from reforge import review
 
         leaked = '+TOKEN = "ghp_' + "a" * 36 + '"\n'
+        plan = self.stage_plan()
+        plan.new_shas = ("newest",)
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths", return_value=[("newest", "conf.py")]), \
                 mock.patch.object(review, "_binary_paths", return_value=[]), \
-                mock.patch.object(review, "_file_diff",
+                mock.patch.object(review, "changed_files", return_value=[("M", "conf.py")]), \
+                mock.patch.object(review, "commit_info",
+                                  return_value=SimpleNamespace(subject="config")), \
+                mock.patch.object(review, "_commit_diff",
                                   return_value="@@ -1,1 +1,1 @@\n" + leaked):
-            text, redacted = review.packet_text(self.root(), self.stage_plan())
+            text, redacted = review.packet_text(self.root(), plan)
         self.assertNotIn("ghp_" + "a" * 36, text)
         self.assertIn("[REDACTED]", text)
         self.assertEqual(redacted, 1)

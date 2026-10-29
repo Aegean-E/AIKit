@@ -57,10 +57,10 @@ reviewing, in any language and for both defects and improvements. The cheap rule
 prints how many files it reviewed; a finding whose line carries the project's
 `hygiene: allow <reason>` marker is dropped. The five fixable rules are `bare-except`,
 `mutable-default`, `shell-true`, `verify-false` and `unsafe-yaml-load`.
-`reforge/review.py` writes the stage's net diff (base..head, every file a new commit touched once,
-complete) to `.aikit/reforge.reviews/`, redacted with the project's secret scanner, and reads the reviewer's
+`reforge/review.py` writes every new commit's own hunks, oldest to newest, to
+`.aikit/reforge.reviews/`, redacted with the project's secret scanner, and reads the reviewer's
 JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
-file, and a suggested replacement must occur exactly once, overlap a line the stage added, and parse,
+file, and a suggested replacement must occur exactly once, overlap a line a new commit added, and parse,
 after which `repair.apply_text_patches` applies it and the same tests, gates and diff review decide
 whether it survives. There is no model call, API key or subagent anywhere in the loop; `audit` writes
 the packet, `fix --findings` applies the answer, and `run --findings` does both. A separate `fix`

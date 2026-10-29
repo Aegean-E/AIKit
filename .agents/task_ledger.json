@@ -1,61 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "aikit-project-protocol",
+    "task_id": "reforge-hunk-packet",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793286499.8531625,
-    "owner": "opencode:reforge-main",
-    "started_by": "opencode:aikit-protocol",
-    "continuations": [
-      {
-        "agent": "opencode:reforge-main",
-        "from": "opencode:aikit-protocol",
-        "at": 1793286436.4717863
-      }
-    ],
-    "completed_at": 1793286499.984093
+    "active_phase": 2,
+    "status": "in_progress",
+    "updated_at": 1793287153.2596054,
+    "owner": "opencode:reforge-hunk",
+    "started_by": "opencode:reforge-hunk",
+    "continuations": [],
+    "impact_assessment": {
+      "why": "The packet collapsed each changed file into one net diff, so a minute bug introduced and partly corrected across commits could hide; the operator asked for a hunk-by-hunk pass over every commit.",
+      "benefits": "Every new commit's own hunks appear in order, with commit identity, while findings still validate against the current file and the lines new commits added.",
+      "risks": "contract: packet layout changes from net-per-file to per-commit hunks; dependency: none; concurrency: read-only history; state: no schema change.",
+      "mitigation": "Render each new commit oldest-first with git show per path, keep binary/bookkeeping filters, update unit and integration tests, and append an ADR."
+    }
   },
   "checkpoints": [
-    {
-      "task_id": "task-reforge-fix-history-sync-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-reforge-fix-history-sync-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793284260.1683555,
-      "timestamp_str": "2026-10-29 17:31:00",
-      "agent": "opencode:reforge-scope"
-    },
-    {
-      "task_id": "task-aikit-gate-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Plan: sync the drifted license catalog and bring the integration tier back inside its 500 ms budget without losing coverage",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793284576.4485192,
-      "timestamp_str": "2026-10-29 17:36:16",
-      "agent": "opencode:reforge-followup",
-      "impact_assessment": {
-        "why": "The integration tier fails its average budget (564.9 ms/test vs 500 ms) and dogfood fails because licenses/CATALOG.md differs from the aegean-licensing project copy",
-        "benefits": "Phase 4 and dogfood return green on the committed tree; the license catalog is a pinned copy again; the integration budget is honest rather than flaky",
-        "risks": "contract: license text copy and possibly the documented budget change; dependency: none; concurrency: tests unchanged; state: no runtime state change",
-        "mitigation": "review the license diff line by line; optimize or, only with explicit approval, raise the ceiling via ADR and sync_principles; run the full Phase 4 triad before commit"
-      }
-    },
-    {
-      "task_id": "task-aikit-gate-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[1/2] License catalog synced from aegean-licensing (one catalog paragraph) and dogfood is 5/5; next: cache immutable Git history reads to return the integration tier under 500 ms without changing the ceiling",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793284753.2325459,
-      "timestamp_str": "2026-10-29 17:39:13",
-      "agent": "opencode:reforge-followup"
-    },
     {
       "task_id": "task-aikit-gate-fixes-v1",
       "phase": "in_progress",
@@ -254,6 +215,48 @@
       "timestamp": 1793286499.9840972,
       "timestamp_str": "2026-10-29 18:08:19",
       "agent": "opencode:reforge-main"
+    },
+    {
+      "task_id": "reforge-hunk-packet",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Make the Reforge packet a commit-ordered, hunk-by-hunk review",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793287153.2596054,
+      "timestamp_str": "2026-10-29 18:19:13",
+      "agent": "opencode:reforge-hunk",
+      "impact_assessment": {
+        "why": "The packet collapsed each changed file into one net diff, so a minute bug introduced and partly corrected across commits could hide; the operator asked for a hunk-by-hunk pass over every commit.",
+        "benefits": "Every new commit's own hunks appear in order, with commit identity, while findings still validate against the current file and the lines new commits added.",
+        "risks": "contract: packet layout changes from net-per-file to per-commit hunks; dependency: none; concurrency: read-only history; state: no schema change.",
+        "mitigation": "Render each new commit oldest-first with git show per path, keep binary/bookkeeping filters, update unit and integration tests, and append an ADR."
+      }
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 6",
+      "phase_num": 3,
+      "description": "Reforge stage 6: window 55, 10 commit(s), 67 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired, 2 binary not analysed",
+      "files_affected": [
+        "assets/logo.jpg",
+        "assets/social-preview.png"
+      ],
+      "status": "in_progress",
+      "timestamp": 1793287229.6554203,
+      "timestamp_str": "2026-10-29 18:20:29",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 6",
+      "phase_num": 3,
+      "description": "Reforge stage 6: run stopped at stage 6; resume it with `reforge resume`",
+      "files_affected": [],
+      "status": "suspended",
+      "timestamp": 1793287283.5061765,
+      "timestamp_str": "2026-10-29 18:21:23",
+      "agent": "opencode"
     }
   ]
 }

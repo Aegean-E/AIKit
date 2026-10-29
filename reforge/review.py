@@ -24,6 +24,7 @@ from reforge.git_history import (
     added_lines_range,
     changed_files,
     changed_files_range,
+    commit_info,
     file_at,
     parent_sha,
     range_diff,
@@ -68,9 +69,10 @@ with `-` was removed by it and is NOT in the file, and a leading space marks unc
 Every `evidence` must quote a line that exists in the file after the change, verbatim. Never report
 a removed line as a current problem.
 
-The diff is the stage's net change: from the commit before the stage to its last commit, each file
-once. Every changed text file is included. A binary file is named at the end because it cannot be
-reviewed as text.
+The packet lists every new commit oldest to newest, with that commit's own hunks. A later commit
+may correct or replace an earlier hunk, so judge the current file: every `evidence` must quote a
+line that still exists, verbatim, and a suggested replacement must land on a line one of these
+commits added. A binary file is named at the end because it cannot be reviewed as text.
 """
 
 
@@ -134,11 +136,9 @@ def _binary_paths(repo: Path, plan: StagePlan) -> List[str]:
     return binary
 
 
-def _file_diff(repo: Path, plan: StagePlan, path: str) -> str:
-    """The path's net diff across the whole stage."""
-    if not plan.new_shas:
-        return ""
-    return range_diff(repo, _stage_base(repo, plan), plan.new_shas[0], path)
+def _commit_diff(repo: Path, sha: str, path: str) -> str:
+    """One commit's hunks for a path, against its first parent (root commits included)."""
+    return range_diff(repo, parent_sha(repo, sha), sha, path)
 
 
 def _scrub(text: str) -> Tuple[str, int]:
@@ -159,20 +159,30 @@ def _scrub(text: str) -> Tuple[str, int]:
 
 def packet_text(repo: Path, plan: StagePlan,
                 files: Optional[List[str]] = None) -> Tuple[str, int]:
-    """The full review packet for one stage, and how many credential spans were masked."""
+    """The full hunk-by-hunk review packet for one stage, and credential spans masked."""
     pairs = _changed_paths(repo, plan)
+    current = [path for _, path in pairs]
     blocks: List[str] = []
     redactions = 0
-    for _, path in pairs:
-        diff = _file_diff(repo, plan, path)
-        if diff.strip():
+    by_sha = {commit.sha: commit for commit in plan.commits}
+    for sha in reversed(plan.new_shas):
+        info = by_sha.get(sha) or commit_info(repo, sha)
+        subject = info.subject if info else ""
+        commit_blocks: List[str] = []
+        for status, path in changed_files(repo, sha):
+            if status == "D" or is_bookkeeping(path) or path not in current:
+                continue
+            diff = _commit_diff(repo, sha, path)
+            if not diff.strip():
+                continue
             diff, masked = _scrub(diff)
             redactions += masked
-            blocks.append(f"--- {path} ---\n{diff}")
-        else:
-            blocks.append(f"--- {path} ---\n(no text diff; the file was rewritten or renamed)")
-        if files is not None:
-            files.append(path)
+            commit_blocks.append(f"--- {path} ---\n{diff}")
+        if commit_blocks:
+            blocks.append(f"### commit {sha[:12]} {subject}".rstrip() + "\n"
+                          + "\n".join(commit_blocks))
+    if files is not None:
+        files.extend(path for path in current if path not in files)
     head = plan.new_shas[0] if plan.new_shas else ""
     base = _stage_base(repo, plan) or "(root commit)"
     binary = _binary_paths(repo, plan)

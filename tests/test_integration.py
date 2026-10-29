@@ -1477,9 +1477,9 @@ class TestReforgeHistory(unittest.TestCase):
         for root in roots:
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
-    def test_the_packet_holds_the_net_stage_diff_not_an_old_commit(self):
-        # A stage spans several commits. A packet built from the oldest commit's diff would show
-        # a hunk that later commits already replaced, which is how stale findings were produced.
+    def test_the_packet_shows_each_commit_hunk_in_order(self):
+        # Every new commit keeps its own hunks. Collapsing them into one net diff hides the
+        # intermediate change and the minute detail a review is meant to catch.
         from reforge.audit import plan_next_stage
         from reforge.pipeline import start_audit
         from reforge.review import packet_text
@@ -1499,8 +1499,9 @@ class TestReforgeHistory(unittest.TestCase):
         packet, _ = packet_text(root, plan_next_stage(root, run))
         self.assertIn("State: second", packet)
         self.assertIn("-State: first", packet)
-        self.assertNotIn("-State: second", packet, "an intermediate hunk must not be reviewed")
-        self.assertEqual(packet.count("--- README.md"), 1, "a file must appear once")
+        self.assertNotIn("-State: second", packet, "a later hunk cannot delete its own text")
+        self.assertEqual(packet.count("--- README.md"), 2, "every commit hunk appears")
+        self.assertEqual(packet.count("### commit "), 2)
 
     def test_a_findings_file_adds_and_applies_a_validated_fix(self):
         # The host agent reads the packet and returns JSON; a validated replacement becomes a real,

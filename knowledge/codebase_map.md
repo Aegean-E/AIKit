@@ -10,7 +10,7 @@
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `750`
 - **Total Class Methods**: `822`
-- **Total Source Lines**: `31878`
+- **Total Source Lines**: `31903`
 
 ---
 
@@ -482,7 +482,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `382` lines (`15932` bytes)
+**Size**: `392` lines (`16623` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -490,9 +490,9 @@
 - `def _new_added_lines(repo, plan, path)` - *Lines the stage's new commits add to a path, ignoring an earlier stage's lines.*
 - `def _changed_paths(repo, plan)` - *(head, path) for every readable text file the new commits changed, once each.*
 - `def _binary_paths(repo, plan)` - *Changed paths that cannot be reviewed as text, named so the packet is honest about them.*
-- `def _file_diff(repo, plan, path)` - *The path's net diff across the whole stage.*
+- `def _commit_diff(repo, sha, path)` - *One commit's hunks for a path, against its first parent (root commits included).*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
-- `def packet_text(repo, plan, files)` - *The full review packet for one stage, and how many credential spans were masked.*
+- `def packet_text(repo, plan, files)` - *The full hunk-by-hunk review packet for one stage, and credential spans masked.*
 - `def packet_path(root, plan)` - *Where the packet for this stage is written, inside the git-ignored state folder.*
 - `def _write_text(path, text)` - *Write a generated packet through a temp file and an atomic replace.*
 - `def write_packet(root, plan, files)` - *Write the packet and return (path, redacted span count).*
@@ -1304,7 +1304,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1652` lines (`84855` bytes)
+**Size**: `1653` lines (`84879` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1418,7 +1418,7 @@
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
-  - Method `.test_the_packet_holds_the_net_stage_diff_not_an_old_commit()`
+  - Method `.test_the_packet_shows_each_commit_hunk_in_order()`
   - Method `.test_a_findings_file_adds_and_applies_a_validated_fix()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
@@ -1440,7 +1440,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9413` lines (`531857` bytes)
+**Size**: `9427` lines (`532635` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2176,7 +2176,7 @@
   - Method `.test_the_parser_declares_the_findings_option()`
   - Method `.stage_plan()` - *A minimal stage plan for packet and findings tests.*
   - Method `.test_a_packet_skips_files_only_prior_commits_changed()`
-  - Method `.test_the_packet_reviews_the_net_stage_diff_once_per_file()`
+  - Method `.test_the_packet_reviews_each_commit_hunk_in_order()`
   - Method `.test_the_packet_redacts_a_credential_before_an_agent_reads_it()`
   - Method `.test_a_review_answer_is_validated_against_the_stage()`
   - Method `.test_a_review_improvement_is_its_own_category()`

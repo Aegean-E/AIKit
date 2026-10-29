@@ -206,11 +206,12 @@ deliberate finding marked `hygiene: allow <reason>` on its line or the line abov
 rather than reported, the same convention AIKit's own hygiene scan uses. The rule pass is opt-in
 (`--rules`) because the host review covers the same ground without inventing a second linter.
 
-`audit` and `run` write a review packet under `.aikit/reforge.reviews/` (ADR-263). The packet is the
-stage's net diff, from the commit before the stage to its last commit, with every changed text file
-once and complete, the binary files named at the end, and the JSON answer schema. Only files a new
-commit touched appear; files that only an earlier stage changed are not repeated. Credential-shaped
-spans are redacted with the project's secret scanner before the packet is written. Reforge makes no
+`audit` and `run` write a review packet under `.aikit/reforge.reviews/` (ADR-263, ADR-272). The
+packet lists every new commit oldest to newest with that commit's own hunks, so a later commit
+cannot hide an earlier minute change; a file can appear once per commit. Only files a new commit
+touched appear, and files that only an earlier stage changed are not repeated. Binary files are
+named at the end and the JSON answer schema follows. Credential-shaped spans are redacted with the
+project's secret scanner before the packet is written. Reforge makes no
 model call and starts no subagent: the agent or person driving the session reads the packet and
 returns a findings file. Each finding names a path the stage changed, a line that exists, a severity,
 `kind` `defect` or `improvement`, and optional `fix.old`/`fix.new`. Reforge accepts a fix only when
