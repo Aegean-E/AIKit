@@ -8878,6 +8878,24 @@ class TestReforgeCore(unittest.TestCase):
         self.assertTrue(findings[0].fixable)
         self.assertEqual(rejected, [])
 
+    def test_a_finding_quoting_a_removed_line_is_dropped(self):
+        from reforge.ai_review import findings_from_payload
+
+        root = self.root()
+        (root / "doc.md").write_text("The new sentence is here.\n", encoding="utf-8")
+        payload = {"findings": [{
+            "path": "doc.md", "line": 1, "code": "stale-claim",
+            "message": "quotes the removed wording",
+            "evidence": "the old sentence that was deleted",
+        }]}
+        findings, rejected = findings_from_payload(root, payload, ["doc.md"], {"doc.md": "sha"})
+        self.assertEqual(findings, [])
+        self.assertIn("not in the current file", rejected[0])
+        payload["findings"][0]["evidence"] = "The new sentence is here."
+        findings, rejected = findings_from_payload(root, payload, ["doc.md"], {"doc.md": "sha"})
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(rejected, [])
+
     def test_an_ai_answer_is_validated_against_the_stage(self):
         from reforge.ai_review import findings_from_payload
 

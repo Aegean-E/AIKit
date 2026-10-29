@@ -208,9 +208,10 @@ A read-only AI agent then reviews the same diff (ADR-254). It runs on a free mod
 its whole input, and reports what a reviewer would with a line of evidence. The brief is redacted
 first: every credential-shaped span the project's secret scanner recognises is replaced before the
 text leaves the machine, and the stage prints how many were redacted. The diff still leaves the
-machine for a third-party endpoint, so unredacted history is a reason to run `--no-ai`. A finding may
-carry an exact replacement; Reforge accepts it only when the path was in the stage, the line
-exists, the quoted text occurs exactly once, and that text overlaps a line the stage added, then
+machine for a third-party endpoint, so unredacted history is a reason to run `--no-ai`. A finding
+must also quote a line that exists in the file now: an answer that quotes a line the commit removed
+is dropped as unverifiable. A finding may carry an exact replacement; Reforge accepts it only
+when the path was in the stage, the line exists, the quoted text occurs exactly once, and that text overlaps a line the stage added, then
 applies it, parses Python results, reviews the diff and rolls everything back if a test or gate
 fails. `--no-ai` skips
 the review, and an unavailable model is reported as skipped instead of failing the audit.

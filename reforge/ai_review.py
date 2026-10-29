@@ -62,6 +62,12 @@ Return one JSON object and nothing else:
 
 `fix` is optional. Include it only when the replacement is exact, minimal and safe. Use the file's
 real line endings and whitespace in `old`. An empty findings list is a valid answer: {"findings": []}.
+
+Read the unified diff as it is: a line starting with `+` exists after the commit, a line starting
+with `-` was removed by it and is NOT in the file, and a leading space marks unchanged context.
+Every `evidence` must quote a line that exists in the file after the change (a `+` line or context),
+verbatim. Never report a removed line as a current problem.
+
 Every path must be one of the changed files below. Respond with JSON only.
 """
 
@@ -197,6 +203,11 @@ def _patch_problem(repo: Path, relative: str, old: str, new: str,
     return ""
 
 
+def _line_set(text: str) -> set:
+    """Every non-blank line of a file, stripped, for verifying a quoted evidence line."""
+    return {line.strip() for line in text.splitlines() if line.strip()}
+
+
 def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
                           commit_of: Dict[str, str],
                           touched: Optional[Dict[str, set]] = None
@@ -226,16 +237,23 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
             rejected.append(f"{relative}: line is not a number")
             continue
         try:
-            length = len((Path(repo) / relative).read_text(encoding="utf-8").splitlines())
+            text = (Path(repo) / relative).read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             rejected.append(f"{relative}: the file cannot be read")
             continue
-        if not 1 <= line <= max(length, 1):
+        if not 1 <= line <= max(len(text.splitlines()), 1):
             rejected.append(f"{relative}:{line}: line is outside the file")
             continue
         message = " ".join(str(raw.get("message", "")).split())[:MAX_MESSAGE_CHARS]
         if not message:
             rejected.append(f"{relative}:{line}: no message")
+            continue
+        raw_evidence = str(raw.get("evidence", "")).strip()
+        if raw_evidence and raw_evidence not in _line_set(text):
+            # A model reading a diff often quotes a `-` line as though it were the file. The fix
+            # it describes does not exist, so the finding is dropped rather than shown as work.
+            rejected.append(f"{relative}:{line}: the evidence is not in the current file "
+                            "(it may quote a removed line)")
             continue
         severity = str(raw.get("severity", "medium")).lower()
         if severity not in SEVERITIES:
