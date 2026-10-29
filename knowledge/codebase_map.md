@@ -9,8 +9,8 @@
 - **Total Python Modules**: `56`
 - **Total Classes**: `124`
 - **Total Top-Level Functions**: `764`
-- **Total Class Methods**: `850`
-- **Total Source Lines**: `32666`
+- **Total Class Methods**: `851`
+- **Total Source Lines**: `32702`
 
 ---
 
@@ -1119,7 +1119,7 @@
 ### [`scripts/project_ui.py`](scripts/project_ui.py)
 > *Project UI identifier (ADR-233): does this project have a user interface a screenshot can show?*
 
-**Size**: `292` lines (`11874` bytes)
+**Size**: `314` lines (`12772` bytes)
 
 **Functions:**
 - `def _scan_files(root)`
@@ -1491,7 +1491,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9556` lines (`538472` bytes)
+**Size**: `9570` lines (`539082` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2182,6 +2182,7 @@
   - Method `.project(name, readme)`
   - Method `.test_ui_identity_detects_web_game_and_cli_projects()`
   - Method `.test_ui_work_refreshes_the_identifier()`
+  - Method `.test_refresh_keeps_the_checked_date_when_the_identifier_is_unchanged()`
   - Method `.test_ui_identity_can_be_set_manually_and_reported()`
   - Method `.test_the_ai_brief_supplies_evidence_but_chooses_nothing()`
   - Method `.test_ai_choice_is_added_on_top_and_never_auto_filled()`

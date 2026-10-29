@@ -3038,3 +3038,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: A present `+4,0` count stays zero; only a missing count defaults to one. The packet labels a zero-count hunk as `deletes after line 4` instead of a fake `new lines 4..4`.
 - **Consequences**: Pure deletion hunks keep their real shape; unit tests pin the zero count. Hunk IDs and review validation are unchanged.
 - **Cross-principle check**: no principle section changed. Serves PRINCIPLE-003 (line metadata matches the diff) and PRINCIPLE-014 (the regression is pinned).
+
+### ADR-278: A UI Refresh Preserves the Checked Date When the Identifier Is Unchanged
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: `ui begin`, `ui verify` and `ui finish` call `refresh_ui_identifier()`, which rewrote `.aikit/project.json` with today's `ui_checked_at` even when the identifier had not changed. Because that file is outside the bounded UI surface, the next `ui verify` failed with "path outside surface" and recorded a strike; the guard dirtied its own clean baseline.
+- **Decision**: `refresh_ui_identifier()` compares `has_ui`, `ui_kind`, `ui_evidence` and `ui_source` with the stored identity. When all match, it preserves `ui_checked_at`; `write_ui_identity()` skips the atomic write when the whole record is unchanged. A real identity change still stamps today and writes.
+- **Consequences**: UI guard commands no longer dirty project memory on a date-only refresh, and a clean UI task records zero strikes. `ui_checked_at` records the last identity write or change, not every guard command. A changing identity still requires a commit before the next bounded task.
+- **Cross-principle check**: no principle section changed. Serves PRINCIPLE-003 (the guard baseline matches the inspected tree), PRINCIPLE-006 (strikes reflect real drift), PRINCIPLE-013 (state is written only when it changes), and PRINCIPLE-014 (a failing-first test pins the behavior).

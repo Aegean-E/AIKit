@@ -8463,6 +8463,20 @@ class TestReforgeCore(unittest.TestCase):
         self.assertIn(refreshed["kind"], {"web", "desktop", "game", "mobile"})
         self.assertEqual(project_ui.ui_payload(root)["source"], "manual")
 
+    def test_refresh_keeps_the_checked_date_when_the_identifier_is_unchanged(self):
+        root = self.project()
+        (root / "index.html").write_text("<!doctype html><html><body></body></html>",
+                                         encoding="utf-8")
+        detected = project_ui.detect_ui(root)
+        detected["checked_at"] = "2026-01-01"
+        project_ui.write_ui_identity(root, detected)
+        config_path = root / ".aikit" / "project.json"
+        before = config_path.read_bytes()
+
+        project_ui.refresh_ui_identifier(root)
+
+        self.assertEqual(config_path.read_bytes(), before)
+
     def test_ui_identity_can_be_set_manually_and_reported(self):
         root = self.project()
         project_ui.set_ui_manual(root, True, "desktop")

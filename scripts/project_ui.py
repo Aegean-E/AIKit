@@ -197,11 +197,16 @@ def write_ui_identity(project_root: Path, result: Dict[str, object]) -> Dict[str
         raise FileNotFoundError(path)
     with file_lock(path):
         config = load_config(project_root)
-        config["has_ui"] = bool(result.get("has_ui"))
-        config["ui_kind"] = str(result.get("kind") or UI_LIBRARY)
-        config["ui_evidence"] = list(result.get("evidence") or [])
-        config["ui_checked_at"] = result.get("checked_at") or ""
-        config["ui_source"] = str(result.get("source") or "detected")
+        updated = {
+            "has_ui": bool(result.get("has_ui")),
+            "ui_kind": str(result.get("kind") or UI_LIBRARY),
+            "ui_evidence": list(result.get("evidence") or []),
+            "ui_checked_at": result.get("checked_at") or "",
+            "ui_source": str(result.get("source") or "detected"),
+        }
+        if all(config.get(key) == value for key, value in updated.items()):
+            return config
+        config.update(updated)
         atomic_write_json(path, config)
     return config
 
@@ -227,11 +232,28 @@ def auto_ui(project_root: Path) -> Dict[str, object]:
 
 def refresh_ui_identifier(project_root: Path) -> Dict[str, object]:
     """Re-detect after UI work; a UI command or capture proves a screenshotable surface exists."""
-    result = auto_ui(project_root)
-    if not result["has_ui"]:
-        kind = str(result["kind"])
-        result = set_ui_manual(project_root, True, "web" if kind == UI_LIBRARY else kind)
-    return result
+    detected = detect_ui(project_root, respect_manual=False)
+    if not detected["has_ui"]:
+        kind = str(detected["kind"])
+        detected = {
+            "has_ui": True,
+            "kind": "web" if kind == UI_LIBRARY else kind,
+            "evidence": detected["evidence"],
+            "source": "manual",
+        }
+    config = load_config(project_root)
+    unchanged = (
+        bool(config.get("has_ui")) == bool(detected["has_ui"])
+        and str(config.get("ui_kind") or "") == str(detected["kind"] or UI_LIBRARY)
+        and list(config.get("ui_evidence") or []) == list(detected["evidence"] or [])
+        and str(config.get("ui_source") or "") == str(detected["source"] or "detected")
+    )
+    if unchanged:
+        detected["checked_at"] = config.get("ui_checked_at") or time.strftime("%Y-%m-%d")
+    else:
+        detected.setdefault("checked_at", time.strftime("%Y-%m-%d"))
+    write_ui_identity(project_root, detected)
+    return detected
 
 
 def ui_payload(project_root: Path) -> Dict[str, object]:

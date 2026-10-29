@@ -113,7 +113,8 @@ analyse (ADR-250). `active_task` is never written, so the operator's task surviv
 
 ### Project Presentation Fields (`<project>/.aikit/project.json`)
 `has_ui` (bool), `ui_kind` (`web`, `desktop`, `game`, `mobile`, `cli`, `library`, `service`),
-`ui_evidence` (relative marker paths), `ui_checked_at` and `ui_source` (`detected` or `manual`).
+`ui_evidence` (relative marker paths), `ui_checked_at` (the last identity write or change) and
+`ui_source` (`detected` or `manual`).
 `topics` is the AI-chosen list; AIKit validates it, never fills it. `license_topics` records the
 mandatory license metadata tags for the project's AL/AGL/ASL/restricted tier. `ui_required` remains the
 separate opt-in contract that makes `check --strict` enforce `.aikit/ui.json`; `fix` sets it when it
