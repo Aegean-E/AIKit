@@ -14,8 +14,6 @@ import json
 import os
 import re
 import tempfile
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -319,6 +317,10 @@ def run_revalidation(
 
 def github_fetch(url: str) -> dict[str, Any]:
     """Default network fetch: stdlib only, optional token, polite timeout."""
+    # Imported here so `aikit.py --help` does not pay for http.client/ssl on every start.
+    import urllib.error
+    import urllib.request
+
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "idea-catcher-revalidate",
