@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `727`
-- **Total Class Methods**: `795`
-- **Total Source Lines**: `31051`
+- **Total Top-Level Functions**: `728`
+- **Total Class Methods**: `797`
+- **Total Source Lines**: `31101`
 
 ---
 
@@ -301,7 +301,7 @@
 ### [`reforge/detectors.py`](reforge/detectors.py)
 > *AST detectors for the defect, security and reliability classes Reforge can evidence.*
 
-**Size**: `305` lines (`14282` bytes)
+**Size**: `326` lines (`15071` bytes)
 
 **Classes:**
 - `class Rule` - *Catalogue entry: what a code means and whether a safe repair exists.*
@@ -331,6 +331,7 @@
 - `def _function_ranges(tree)`
 - `def symbol_at(tree, line)` - *The innermost function or class containing `line`, for interaction evidence.*
 - `def symbols_in_source(source)`
+- `def allow_marker(lines, line)` - *Whether the project marked this line as a deliberate finding.*
 - `def detect_source(path, source, commit)` - *Every rule hit in one file revision, deduplicated and ordered by line.*
 
 ---
@@ -526,7 +527,7 @@
 ### [`reforge/textdetect.py`](reforge/textdetect.py)
 > *Structural review of changed text files that need no language front end.*
 
-**Size**: `105` lines (`3945` bytes)
+**Size**: `106` lines (`4032` bytes)
 
 **Functions:**
 - `def is_text(source)` - *Whether a file revision can be reviewed as text instead of skipped as binary.*
@@ -1415,7 +1416,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9020` lines (`512560` bytes)
+**Size**: `9048` lines (`514220` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2120,6 +2121,8 @@
   - Method `.test_aikit_ledger_is_found_even_though_reforge_created_dot_aikit()`
   - Method `.test_a_stage_checkpoint_is_appended_without_becoming_the_active_task()`
   - Method `.test_a_completed_stage_is_not_offered_as_resumable()`
+  - Method `.test_a_documented_hygiene_allow_marker_suppresses_a_finding()`
+  - Method `.test_a_marker_two_lines_away_does_not_suppress()`
   - Method `.test_ledger_artifacts_cover_the_backup_its_writer_leaves()`
   - Method `.test_text_review_flags_a_committed_conflict_marker()`
   - Method `.test_text_review_validates_json_and_toml()`

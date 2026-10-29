@@ -50,7 +50,8 @@ generated per repaired rule/file, the real diff is reviewed, the project's tests
 result rolls the patch back. Python files go through the AST detectors; every
 other changed text file goes through `reforge/textdetect.py`, which validates JSON and TOML with the
 standard library, refuses an unclosed Markdown code fence and flags a committed conflict marker, so a
-stage reports only genuinely binary paths as not analysed and prints how many files it reviewed. The
+stage reports only genuinely binary paths as not analysed and prints how many files it reviewed;
+a finding whose line carries the project's `hygiene: allow <reason>` marker is dropped. The
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. `reforge/ai_review.py` then sends the stage's net diff (base..head, each
 file whole or omitted) to a read-only `architect` sub-agent on a free model; the brief is

@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from reforge.detectors import RULES
+from reforge.detectors import RULES, allow_marker
 from reforge.model import Finding
 
 try:  # Python 3.11+ ships TOML in the standard library; older runtimes check nothing.
@@ -102,4 +102,5 @@ def detect_text(path: str, source: str, commit: str) -> List[Finding]:
         findings += _invalid_toml(path, source, lines, commit)
     if suffix in MARKDOWN_SUFFIXES:
         findings += _unclosed_fence(path, lines, commit)
-    return sorted(findings, key=lambda item: (item.line, item.code))
+    kept = [item for item in findings if not allow_marker(lines, item.line)]
+    return sorted(kept, key=lambda item: (item.line, item.code))

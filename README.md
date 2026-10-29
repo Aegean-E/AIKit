@@ -201,7 +201,9 @@ shell/exec, deserialisation, mutable defaults, timeouts, secrets and control flo
 mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`),
 each earning a regression test. Every changed text file is reviewed, not only Python: JSON and TOML
 must parse, a Markdown code fence must close, and a committed conflict marker is a defect; only a
-binary file is reported as not analysed, and the stage prints how many files it reviewed.
+binary file is reported as not analysed, and the stage prints how many files it reviewed. A
+deliberate finding marked `hygiene: allow <reason>` on its line or the line above is honoured
+rather than reported, the same convention AIKit's own hygiene scan uses.
 
 A read-only AI agent then reviews that whole stage change (ADR-254). It runs on a free model
 (`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the stage's net

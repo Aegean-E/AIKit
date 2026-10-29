@@ -1,6 +1,7 @@
 """AST detectors for the defect, security and reliability classes Reforge can evidence."""
 
 import ast
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -119,6 +120,24 @@ def symbol_at(tree: ast.Module, line: int) -> str:
 
 def symbols_in_source(source: str) -> List[Tuple[str, int, int]]:
     return _function_ranges(ast.parse(source))
+
+
+ALLOW_MARKER = re.compile(r"hygiene:\s*allow\s+\S{3,}")
+
+
+def allow_marker(lines: Sequence[str], line: int) -> bool:
+    """Whether the project marked this line as a deliberate finding.
+
+    AIKit's own hygiene scan accepts `hygiene: allow <reason>` on the finding's line or the line
+    directly above it (ADR-147). Reforge honours the same marker so a reviewed, documented decision
+    is not reported again as a defect. One line above only, never further: a marker cannot drift
+    away from what it excuses.
+    """
+    if not 1 <= line <= len(lines):
+        return False
+    if ALLOW_MARKER.search(lines[line - 1]):
+        return True
+    return line >= 2 and bool(ALLOW_MARKER.search(lines[line - 2]))
 
 
 class _Visitor(ast.NodeVisitor):
@@ -301,5 +320,7 @@ def detect_source(path: str, source: str, commit: str) -> List[Finding]:
     visitor.visit(tree)
     unique: Dict[Tuple[str, str, int, str], Finding] = {}
     for finding in visitor.findings:
+        if allow_marker(lines, finding.line):
+            continue
         unique.setdefault(finding.key(), finding)
     return sorted(unique.values(), key=lambda item: (item.line, item.code))

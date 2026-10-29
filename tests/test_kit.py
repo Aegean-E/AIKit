@@ -8637,6 +8637,34 @@ class TestReforgeCore(unittest.TestCase):
         paused = resumable_tasks(json.loads(ledger.read_text(encoding="utf-8")))
         self.assertEqual([task["task_id"] for task in paused], ["reforge:run-2"])
 
+    def test_a_documented_hygiene_allow_marker_suppresses_a_finding(self):
+        # AIKit's hygiene scan accepts `hygiene: allow <reason>` on the finding's line or the one
+        # above (ADR-147). Reforge honours the same marker instead of re-reporting a decision.
+        from reforge.detectors import detect_source
+        from reforge.textdetect import detect_text
+
+        marked = ("def f():\n    try:\n        g()\n"
+                  "    except OSError:  # hygiene: allow cleanup cannot fail the write\n"
+                  "        pass\n")
+        self.assertEqual(detect_source("a.py", marked, "sha"), [])
+        above = ("def f():\n    try:\n        g()\n"
+                 "    # hygiene: allow release is best effort\n"
+                 "    except OSError:\n        pass\n")
+        self.assertEqual(detect_source("a.py", above, "sha"), [])
+        plain = "def f():\n    try:\n        g()\n    except OSError:\n        pass\n"
+        self.assertEqual([item.code for item in detect_source("a.py", plain, "sha")],
+                         ["swallowed-exception"])
+        conflict = "<<<<<<< HEAD  # hygiene: allow the fixture keeps the marker\n"
+        self.assertEqual(detect_text("fixture.md", conflict, "sha"), [])
+
+    def test_a_marker_two_lines_away_does_not_suppress(self):
+        from reforge.detectors import detect_source
+
+        source = ("# hygiene: allow far away from the code it would excuse\n"
+                  "def f():\n    try:\n        g()\n    except OSError:\n        pass\n")
+        self.assertEqual([item.code for item in detect_source("a.py", source, "sha")],
+                         ["swallowed-exception"])
+
     def test_ledger_artifacts_cover_the_backup_its_writer_leaves(self):
         from reforge.ledger import ledger_artifacts
 
