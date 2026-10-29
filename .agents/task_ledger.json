@@ -3,8 +3,8 @@
   "active_task": {
     "task_id": "reforge-host-review",
     "last_phase": "in_progress",
-    "active_phase": 2,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793277677.4003012,
     "owner": "opencode:reforge-scope",
     "started_by": "opencode:reforge-scope",
@@ -14,7 +14,8 @@
       "benefits": "One atomic, gate-passing commit instead of intermediate states whose docs still describe the deleted AI review.",
       "risks": "contract: the CLI drops AI options and state key ai becomes review; dependency: none; concurrency: unchanged; state: schema 2 remains readable with legacy ai fallback.",
       "mitigation": "Full Phase 4 triad passed; explicit staging; ADR-263 records the removed path and the new packet contract."
-    }
+    },
+    "completed_at": 1793277774.95387
   },
   "checkpoints": [
     {
@@ -50,6 +51,16 @@
         "risks": "contract: the CLI drops AI options and state key ai becomes review; dependency: none; concurrency: unchanged; state: schema 2 remains readable with legacy ai fallback.",
         "mitigation": "Full Phase 4 triad passed; explicit staging; ADR-263 records the removed path and the new packet contract."
       }
+    },
+    {
+      "task_id": "reforge-host-review",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'reforge-host-review' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793277774.9538717,
+      "timestamp_str": "2026-10-29 15:42:54",
+      "agent": "opencode:reforge-scope"
     }
   ]
 }
