@@ -44,9 +44,10 @@ audit concurrently, while a second operation on one project is refused. A target
 the lock is taken, so two spellings of one checkout cannot create two locks. A run's window is
 `start + step*(N-1)`, capped by `stop`; independent runs can audit the same history with different
 settings, and a stopped or completed run keeps its history when another begins. Within a run, every
-previously audited SHA stays in view for interaction evidence; only mechanical repairs are applied,
-one regression test is generated per repaired rule/file, the real diff is reviewed, the project's
-tests run, and a red result rolls the patch back. Python files go through the AST detectors; every
+previously audited SHA stays in view for interaction evidence; a mechanical repair is applied by rule,
+an AI patch only after it was validated against the lines the stage added, one regression test is
+generated per repaired rule/file, the real diff is reviewed, the project's tests run, and a red
+result rolls the patch back. Python files go through the AST detectors; every
 other changed text file goes through `reforge/textdetect.py`, which validates JSON and TOML with the
 standard library, refuses an unclosed Markdown code fence and flags a committed conflict marker, so a
 stage reports only genuinely binary paths as not analysed and prints how many files it reviewed. The
