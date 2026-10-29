@@ -26,6 +26,9 @@ Written once by `write_memory` in `scripts/project_registry.py` when a project i
 | `name` | string | The project name: 1-64 of `a-z 0-9 - _`, starting with a letter or digit. |
 | `test_command` | string or null | Overrides the detected test command; null means detect from the project's files on every call. |
 | `gates` | object | Gate name to shell command (adds or replaces a gate) or null (disables a detected one); `secrets` cannot be named. Absent in records written before ADR-122, read as empty. |
+| `ui_required` | bool | When true, `check --strict`/`publish` require a usable `.aikit/ui.json` and surface evidence (ADR-166). |
+| `mechanics_required` | bool | When true, `check` requires the `mechanics` contract below (ADR-271). |
+| `mechanics` | object or absent | A game/project's headless core: `core` is a list of existing relative paths, `test` is the command that exercises it; `check` adds that command as a gate. |
 | `created` | string | Creation date, `YYYY-MM-DD`. |
 
 The project's decision register is `<project>/.aikit/decisions.md`, created from `DECISIONS_TEMPLATE` with the same entry format as `knowledge/decisions.md`; `latest_decision` ignores the template's commented example.
@@ -112,7 +115,9 @@ analyse (ADR-250). `active_task` is never written, so the operator's task surviv
 `ui_evidence` (relative marker paths), `ui_checked_at` and `ui_source` (`detected` or `manual`).
 `topics` is the AI-chosen list; AIKit validates it, never fills it. `license_topics` records the
 mandatory license metadata tags for the project's AL/AGL/ASL/restricted tier. `ui_required` remains the
-separate opt-in contract that makes `check --strict` enforce `.aikit/ui.json`.
+separate opt-in contract that makes `check --strict` enforce `.aikit/ui.json`; `fix` sets it when it
+adopts a detected UI with a test command. `mechanics_required` and `mechanics` declare a game's
+headless core and its test command, so the UI and an agent can call the same mechanics (ADR-271).
 
 ### Project Media Manifest (`<project>/.aikit/media.json`)
 Schema 1; `name`, `repo`, `has_ui`, `ui_kind`, `palette`, `motif`, `layout`, `assets` (`logo`, `social_preview`,

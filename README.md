@@ -173,12 +173,12 @@ python aikit.py ui begin my-app --surface menu  # bound edits to one declared UI
 python aikit.py ui verify my-app       # scope, budget, fast + snapshot proofs, style drift
 python aikit.py ui allow my-app "Btn*" --reason "<why>"  # intended inventory removal
 python aikit.py ui finish my-app --reviewed  # close after review; evidence in .aikit/ui_history.json
-python aikit.py fix my-app          # restore memory/README, migrate the AIKit link, refresh map, then check
+python aikit.py fix my-app          # restore memory/README, adopt UI, refresh map, then check
 python aikit.py guideline my-app "money is integer cents" --source user  # project rule
 python aikit.py publish my-app [--owner ORG] [--license auto]  # repo, description, recorded AI topics
 python aikit.py license my-app [--suggest|--set game|--restrict]  # AL-1.1, AGL-1.1 (DRM-free games) or ASL-1.1 (science)
 ```
-A project's memory is `.aikit/`; ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 character README description; `license` picks AL-1.1, AGL-1.1 or ASL-1.1. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
+A project's memory is `.aikit/`; ledger commands take `--workspace projects/<name>`. `publish` needs a 10-350 character README description; `license` picks AL-1.1, AGL-1.1 or ASL-1.1. Before a commit `check` wants `checklists: passed`; deliberate hygiene findings need `hygiene: allow <reason>`. `ui` (opt-in `.aikit/ui.json`) bounds surfaces and proofs; `finish` needs `--reviewed` (ADR-160..166). `fix` adopts a detected UI project when it has a test command: it writes a conservative `.aikit/ui.json`, marks `ui_required`, and never invents a proof when no test command exists. A game project can declare a headless mechanics contract in `.aikit/project.json` (`mechanics.core` paths and `mechanics.test`); `check` validates it and runs it as a gate, so the same mechanics are testable by an agent and callable by the UI. `check`/`fix`/`publish` run a project's commands unsandboxed: attach trusted repositories.
 
 ## 🔁 Aegean Reforge: Host Review & Safe Repair
 

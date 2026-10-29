@@ -125,7 +125,13 @@ def resolve_gates(project: Project) -> List[Gate]:
     for stack in project.stacks:
         for name, command in EXTRA_GATES.get(stack.name, lambda root: [])(project.path):
             gates.setdefault(name, Gate(name, command, f"detected ({stack.name})"))
-    overrides = load_config(project.path).get("gates", {})
+    config = load_config(project.path)
+    overrides = config.get("gates", {})
+    mechanics = config.get("mechanics")
+    if isinstance(mechanics, dict):
+        command = mechanics.get("test")
+        if isinstance(command, str) and command.strip():
+            gates.setdefault("mechanics", Gate("mechanics", command.strip(), "project.json"))
     if not isinstance(overrides, dict):
         raise ProjectError(
             f"{project.path / '.aikit' / 'project.json'}: 'gates' is not a mapping.",

@@ -5571,6 +5571,18 @@ class TestProjectRegistry(unittest.TestCase):
         self.assertIn("unfilled '<FILL:' placeholder", "".join(audit(readme)))
         self.assertEqual(audit(re.sub(r"<FILL:[^>]*>", "Python 3.10+ and git", readme)), [])
 
+    def test_fix_adopts_a_detected_ui_contract(self):
+        folder = self.make_folder(
+            ("index.html", "<html><body><main id='app'></main></body></html>"),
+            (".gitignore", ""))
+        attach_project(folder, "ui-fix", test_command="python -m unittest", workspace=self.kit)
+        with mock.patch("scripts.aikit_cli.cmd_check", return_value=0):
+            code, out, _ = self.run_cli("fix", "ui-fix")
+        self.assertEqual(code, 0, out)
+        self.assertIn("wrote .aikit/ui.json", out)
+        self.assertTrue((folder / ".aikit" / "ui.json").is_file())
+        self.assertTrue(load_config(folder)["ui_required"])
+
     def test_fix_reconciles_omitted_tracked_files_in_readme_tree(self):
         folder = self.make_folder(
             ("README.md",
@@ -6006,6 +6018,45 @@ class TestProjectRegistry(unittest.TestCase):
             (folder / ".aikit" / "codebase_map.md").write_text("# map\n", encoding="utf-8")
             code, _, _ = self.run_cli("check", "mapapp", "--strict", "--no-push")
             self.assertEqual(code, 0)
+
+    def test_ui_adoption_writes_a_contract_and_requires_it(self):
+        folder = self.make_folder(
+            ("index.html", "<html><body><main id='app'></main></body></html>"),
+            (".gitignore", ""))
+        attach_project(folder, "ui-demo", workspace=self.kit)
+        result = project_ui.adopt_ui(folder, "python -m unittest")
+        self.assertTrue(result["adopted"])
+        contract = json.loads((folder / ".aikit" / "ui.json").read_text(encoding="utf-8"))
+        self.assertIn("app", contract["surfaces"])
+        self.assertTrue(load_config(folder)["ui_required"])
+
+    def test_ui_adoption_does_not_invent_a_proof(self):
+        folder = self.make_folder(
+            ("index.html", "<html><body><main id='app'></main></body></html>"),
+            (".gitignore", ""))
+        attach_project(folder, "ui-demo", workspace=self.kit)
+        result = project_ui.adopt_ui(folder, "")
+        self.assertFalse(result["adopted"])
+        self.assertFalse((folder / ".aikit" / "ui.json").exists())
+        self.assertFalse(load_config(folder).get("ui_required"))
+
+    def test_a_mechanics_contract_is_validated_and_becomes_a_gate(self):
+        from scripts.project_registry import mechanics_errors
+
+        folder = self.make_folder(("game.py", "def step():\n    return 1\n"), (".gitignore", ""))
+        attach_project(folder, "game-demo", workspace=self.kit)
+        config = load_config(folder)
+        config["mechanics_required"] = True
+        (folder / ".aikit" / "project.json").write_text(json.dumps(config), encoding="utf-8")
+        self.assertTrue(mechanics_errors(folder, config))
+        (folder / "core").mkdir()
+        (folder / "core" / "mechanics.py").write_text("def step():\n    return 1\n",
+                                                      encoding="utf-8")
+        config["mechanics"] = {"core": ["core"], "test": "python -m unittest"}
+        (folder / ".aikit" / "project.json").write_text(json.dumps(config), encoding="utf-8")
+        self.assertEqual(mechanics_errors(folder, config), [])
+        project = find_project("game-demo", workspace=self.kit)
+        self.assertTrue(any(gate.name == "mechanics" for gate in resolve_gates(project)))
 
     def test_ui_required_blocks_strict_and_publish_without_a_contract(self):
         folder = self.make_folder()

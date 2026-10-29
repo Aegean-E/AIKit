@@ -95,7 +95,7 @@ EXTERNAL_SCHEMA_KEYS: Set[str] = {"scripts", "test", "build", "ui:snapshot", "pr
                                   # Environment variables `resolve_agent` reads; hosts set them (ADR-209).
                                   "AIKIT_AGENT", "AI_AGENT", "CLAUDE_CODE_SESSION_ID",
                                   # GitHub's topics response names (project_topics, ADR-234).
-                                  "names"}
+                                  "names", "core"}
 
 # Generator/content functions referenced only through data structures or f-strings.
 DYNAMIC_DISPATCH_PREFIXES = ("generate_", "track_", "test_", "_")

@@ -62,8 +62,10 @@ from scripts.project_registry import (
     license_topics,
     list_projects,
     load_config,
+    mechanics_errors,
     migrate_aikit_links,
     normalize_topics,
+    is_game_project,
     project_guidelines,
     reconcile_readme_tree,
     seed_readme,
@@ -462,6 +464,7 @@ def project_baseline_errors(project: Project, audit: dict) -> List[str]:
                     errors.extend(ui_contract.surface_evidence_errors(project.path))
                 except ProjectError as exc:
                     errors.append(f"the UI evidence is unusable: {exc}")
+    errors.extend(mechanics_errors(project.path, config))
     if find_python_files(project.path) and not (project.path / ".aikit" / "codebase_map.md").is_file():
         errors.append("Python sources exist but .aikit/codebase_map.md is missing")
     return errors
@@ -507,6 +510,15 @@ def cmd_check(args: argparse.Namespace) -> int:
     strict = bool(getattr(args, "strict", False))
     for error in baseline_errors:
         print(f"[{'FAIL' if strict else 'WARN'}] {error}")
+    identity = project_ui.ui_payload(project.path)
+    if (identity.get("has_ui")
+            and not (project.path / ui_contract.CONTRACT_REL).is_file()):
+        print("[WARN] UI detected but .aikit/ui.json is missing; run `python aikit.py fix "
+              f"{project.name}` or `python aikit.py ui init {project.name}`.")
+    game_config = load_config(project.path)
+    if is_game_project(game_config) and not isinstance(game_config.get("mechanics"), dict):
+        print("[WARN] Game detected but .aikit/project.json has no mechanics contract; declare "
+              "`mechanics.core` and `mechanics.test` for a headless AI-testable core.")
     if audit.get("ledger_error") or (strict and baseline_errors):
         print("Error: the project is not delivery-ready.", file=sys.stderr)
         print("Why: a passing gate run must describe the committed tree, not an unverified working copy.",
@@ -584,6 +596,12 @@ def cmd_fix(args: argparse.Namespace) -> int:
         fixes.append("regenerated .aikit/codebase_map.md")
     identity = project_ui.auto_ui(project.path)
     fixes.append(f"refreshed UI identifier (has_ui={identity['has_ui']}, kind={identity['kind']})")
+    test_command = project.test_command or str(load_config(project.path).get("test_command") or "")
+    adoption = project_ui.adopt_ui(project.path, test_command)
+    if adoption["adopted"]:
+        fixes.append("wrote .aikit/ui.json and marked the UI contract required")
+    elif identity["has_ui"]:
+        print(f"[WARN] UI contract not adopted: {adoption['reason']}")
     for fix in fixes:
         print(f"[FIXED] {fix}")
     print(f"Checking '{project.name}' after {len(fixes)} repair(s):")

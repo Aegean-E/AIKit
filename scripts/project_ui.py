@@ -245,3 +245,48 @@ def ui_payload(project_root: Path) -> Dict[str, object]:
         "checked_at": config.get("ui_checked_at") or "",
         "ui_required": bool(config.get("ui_required")),
     }
+
+
+def _surface_paths(project_root: Path, evidence: List[str]) -> List[str]:
+    """The smallest practical surface: detected entry files plus a source tree if one exists."""
+    paths: List[str] = []
+    for relative in evidence:
+        if (project_root / relative).is_file() and relative not in paths:
+            paths.append(relative)
+    for relative, pattern in (("src", "src/**"), ("game.js", "game.js"), ("public", "public/**")):
+        if (project_root / relative).exists() and pattern not in paths:
+            paths.append(pattern)
+    return paths
+
+
+def adopt_ui(project_root: Path, test_command: str = "") -> Dict[str, object]:
+    """Adopt a detected UI project into the bounded UI contract, without guessing a proof.
+
+    A contract is written only when the project already has a test command to act as its fast
+    proof; otherwise the caller gets the reason and can run `aikit ui init` with a real command.
+    Existing contracts are kept and only marked required.
+    """
+    project_root = Path(project_root)
+    identity = auto_ui(project_root)
+    if not identity.get("has_ui"):
+        return {"adopted": False, "reason": "no UI detected"}
+    from scripts import ui_contract
+
+    contract = project_root / ui_contract.CONTRACT_REL
+    adopted = False
+    if not contract.is_file():
+        paths = _surface_paths(project_root, list(identity.get("evidence") or []))
+        if not test_command.strip():
+            return {"adopted": False,
+                    "reason": "UI detected but the project has no test command; run aikit ui init"}
+        if not paths:
+            return {"adopted": False,
+                    "reason": "UI detected but no surface path could be bounded; run aikit ui init"}
+        ui_contract.scaffold_contract(project_root, "app", fast=test_command.strip(),
+                                      paths=paths, snapshot="")
+        adopted = True
+    config = load_config(project_root)
+    if config.get("ui_required") is not True:
+        config["ui_required"] = True
+        atomic_write_json(config_path(project_root), config)
+    return {"adopted": adopted, "reason": ""}

@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
-- **Total Top-Level Functions**: `746`
-- **Total Class Methods**: `816`
-- **Total Source Lines**: `31688`
+- **Total Top-Level Functions**: `750`
+- **Total Class Methods**: `820`
+- **Total Source Lines**: `31849`
 
 ---
 
@@ -590,7 +590,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1300` lines (`65214` bytes)
+**Size**: `1318` lines (`66335` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -904,7 +904,7 @@
 ### [`scripts/project_gates.py`](scripts/project_gates.py)
 > *Project gates: the checks a project's own configuration declares, run as its Phase 4 (ADR-122).*
 
-**Size**: `205` lines (`9102` bytes)
+**Size**: `211` lines (`9389` bytes)
 
 **Classes:**
 - `class Gate` - *A named check and the shell command that runs it; `source` says where it came from.*
@@ -1013,7 +1013,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1157` lines (`53659` bytes)
+**Size**: `1198` lines (`55591` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -1053,6 +1053,8 @@
 - `def projects_dir(workspace)`
 - `def config_path(project_root)`
 - `def load_config(project_root)` - *A project's `.aikit/project.json`; a missing, unreadable or newer file is an error.*
+- `def is_game_project(config)` - *Whether the project's own metadata classifies it as a game.*
+- `def mechanics_errors(project_root, config)` - *Validate an optional mechanics contract: a headless core and the command that tests it.*
 - `def _ensure_gitignore(project_root)` - *Append the transient-state patterns the project's `.gitignore` does not yet list.*
 - `def write_memory(project_root, name, test_command, topics)` - *Create the project's `.aikit/project.json`, `.aikit/decisions.md` and `.aikit/task_ledger.json`*
 - `def _attached_path(workspace)`
@@ -1097,7 +1099,7 @@
 ### [`scripts/project_ui.py`](scripts/project_ui.py)
 > *Project UI identifier (ADR-233): does this project have a user interface a screenshot can show?*
 
-**Size**: `247` lines (`9748` bytes)
+**Size**: `292` lines (`11874` bytes)
 
 **Functions:**
 - `def _scan_files(root)`
@@ -1112,6 +1114,8 @@
 - `def auto_ui(project_root)`
 - `def refresh_ui_identifier(project_root)` - *Re-detect after UI work; a UI command or capture proves a screenshotable surface exists.*
 - `def ui_payload(project_root)`
+- `def _surface_paths(project_root, evidence)` - *The smallest practical surface: detected entry files plus a source tree if one exists.*
+- `def adopt_ui(project_root, test_command)` - *Adopt a detected UI project into the bounded UI contract, without guessing a proof.*
 
 ---
 
@@ -1436,7 +1440,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9343` lines (`527991` bytes)
+**Size**: `9394` lines (`530827` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1885,6 +1889,7 @@
   - Method `.run_cli(*argv)` - *`aikit` in-process against this test's kit; returns (exit code, stdout, stderr).*
   - Method `.stale(path)`
   - Method `.test_fix_restores_memory_and_readme_and_removes_only_stale_buffers()`
+  - Method `.test_fix_adopts_a_detected_ui_contract()`
   - Method `.test_fix_reconciles_omitted_tracked_files_in_readme_tree()`
   - Method `.test_fix_reconciles_a_name_that_is_a_substring_of_another_entry()`
   - Method `.test_project_ledger_commands_keep_the_impact_gate()`
@@ -1907,6 +1912,9 @@
   - Method `.test_conflicted_check_skips_auto_push_and_strict_fails()`
   - Method `.test_open_ui_task_check_skips_auto_push_and_strict_fails()`
   - Method `.test_strict_requires_a_codebase_map()`
+  - Method `.test_ui_adoption_writes_a_contract_and_requires_it()`
+  - Method `.test_ui_adoption_does_not_invent_a_proof()`
+  - Method `.test_a_mechanics_contract_is_validated_and_becomes_a_gate()`
   - Method `.test_ui_required_blocks_strict_and_publish_without_a_contract()`
   - Method `.test_publish_requires_a_usable_sentence_cased_readme_description()`
   - Method `.test_ui_verify_json_emits_stable_codes()`

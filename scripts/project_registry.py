@@ -517,6 +517,9 @@ def _reuse_licenses_dir(project_root: Path) -> Path:
         if path.name == REUSE_LICENSES_DIR:
             return path
     for path in children:
+        if path.name == "licenses":
+            return path
+    for path in children:
         if path.name.lower() == REUSE_LICENSES_DIR.lower():
             return path
     return project_root / REUSE_LICENSES_DIR
@@ -835,6 +838,42 @@ def load_config(project_root: Path) -> Dict[str, object]:
     return config
 
 
+def is_game_project(config: Dict[str, object]) -> bool:
+    """Whether the project's own metadata classifies it as a game."""
+    topics = {str(topic).lower() for topic in config.get("topics", []) or []}
+    license_topics = {str(topic).lower() for topic in config.get("license_topics", []) or []}
+    return (str(config.get("ui_kind") or "") == "game" or "game" in topics
+            or "aegean-game-license" in license_topics)
+
+
+def mechanics_errors(project_root: Path, config: Dict[str, object]) -> List[str]:
+    """Validate an optional mechanics contract: a headless core and the command that tests it.
+
+    A project opts in with `"mechanics_required": true`; a declared contract is validated even
+    when the flag is false, so a half-written contract cannot look testable to an agent.
+    """
+    mechanics = config.get("mechanics")
+    required = config.get("mechanics_required") is True
+    if mechanics is None:
+        return ["mechanics_required is true but .aikit/project.json has no mechanics contract"] \
+            if required else []
+    if not isinstance(mechanics, dict):
+        return ["the mechanics contract is not a mapping"]
+    errors: List[str] = []
+    core = mechanics.get("core")
+    if not isinstance(core, list) or not core:
+        errors.append("the mechanics contract has no core path list")
+    else:
+        missing = [str(path) for path in core if not (Path(project_root) / str(path)).exists()]
+        if missing:
+            errors.append(f"mechanics core path(s) do not exist: {', '.join(missing)}")
+    test = mechanics.get("test")
+    if not isinstance(test, str) or not test.strip():
+        errors.append("the mechanics contract has no test command")
+    return errors
+
+
+
 def _ensure_gitignore(project_root: Path) -> None:
     """Append the transient-state patterns the project's `.gitignore` does not yet list."""
     path = project_root / ".gitignore"
@@ -882,6 +921,8 @@ def write_memory(project_root: Path, name: str, test_command: Optional[str] = No
         "gates": {},
         # Opt-in: strict delivery and publish require .aikit/ui.json (ADR-166).
         "ui_required": False,
+        # Opt-in: a game/project declares a headless mechanics core and its test command.
+        "mechanics_required": False,
         "created": time.strftime("%Y-%m-%d"),
     })
     return True
