@@ -1114,13 +1114,16 @@ def parse_idea_ids(message: str) -> List[str]:
 
 def git_commits(repo_path: Path, limit: int = 200) -> List[Tuple[str, str, str]]:
     """(sha, subject, body) for the newest commits, newest first."""
-    done = subprocess.run(
-        ["git", "-C", str(repo_path), "log", f"-n{max(limit, 1)}",
-         f"--format=%H{COMMIT_FIELD_SEPARATOR}%s{COMMIT_FIELD_SEPARATOR}"
-         f"%b{COMMIT_RECORD_SEPARATOR}"],
-        stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
-        errors="replace", timeout=GIT_LOG_TIMEOUT_SECONDS,
-    )
+    try:
+        done = subprocess.run(
+            ["git", "-C", str(repo_path), "log", f"-n{max(limit, 1)}",
+             f"--format=%H{COMMIT_FIELD_SEPARATOR}%s{COMMIT_FIELD_SEPARATOR}"
+             f"%b{COMMIT_RECORD_SEPARATOR}"],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=GIT_LOG_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError(f"git log failed in {repo_path}: {exc}") from exc
     if done.returncode != 0:
         raise ValueError(f"git log failed in {repo_path}: {done.stderr.strip()}")
     commits: List[Tuple[str, str, str]] = []

@@ -9,8 +9,8 @@
 - **Total Python Modules**: `56`
 - **Total Classes**: `122`
 - **Total Top-Level Functions**: `758`
-- **Total Class Methods**: `837`
-- **Total Source Lines**: `32358`
+- **Total Class Methods**: `838`
+- **Total Source Lines**: `32369`
 
 ---
 
@@ -98,7 +98,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2199` lines (`96884` bytes)
+**Size**: `2202` lines (`97053` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -1318,7 +1318,7 @@
 ### [`tests/test_auto_register.py`](tests/test_auto_register.py)
 > *Unit tests for automatic idea registration from commit messages.*
 
-**Size**: `109` lines (`5053` bytes)
+**Size**: `117` lines (`5454` bytes)
 
 **Classes:**
 - `class TestAutoRegister`
@@ -1329,6 +1329,7 @@
   - Method `.test_body_references_are_read_and_dry_run_does_not_write()`
   - Method `.test_idea_ids_are_deduplicated()`
   - Method `.test_git_log_records_are_parsed_without_spawning()`
+  - Method `.test_a_git_timeout_is_a_reported_value_error()`
   - Method `.test_repo_scan_uses_the_stored_commits()`
   - Method `.test_a_corrupt_register_is_reported_instead_of_ignored()`
   - Method `.test_sync_cli_reports_registered_ideas()`

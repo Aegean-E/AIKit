@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -81,6 +82,13 @@ class TestAutoRegister(unittest.TestCase):
         with mock.patch("idea_catcher.registry.subprocess.run", return_value=done):
             commits = auto_register.git_commits(Path("."))
         self.assertEqual(commits, [(self.sha, "Implement IDEA-001", "body")])
+
+    def test_a_git_timeout_is_a_reported_value_error(self):
+        with mock.patch("idea_catcher.registry.subprocess.run",
+                        side_effect=subprocess.TimeoutExpired(["git", "log"], 30)):
+            with self.assertRaises(ValueError) as raised:
+                auto_register.git_commits(Path("."))
+        self.assertIn("git log failed", str(raised.exception))
 
     def test_repo_scan_uses_the_stored_commits(self):
         with mock.patch("idea_catcher.registry.git_commits",
