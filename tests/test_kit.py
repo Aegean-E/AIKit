@@ -8735,6 +8735,33 @@ class TestReforgeCore(unittest.TestCase):
                          [".aikit/task_ledger.json", ".aikit/task_ledger.json.bak",
                           ".aikit/task_ledger.json.lock"])
 
+    def test_audit_window_reviews_text_and_skips_only_binary(self):
+        from reforge import audit
+        from reforge.model import CommitInfo, StagePlan
+
+        plan = StagePlan(
+            stage=1, window=1,
+            commits=(CommitInfo("sha", "subject", "author", "date"),),
+            new_shas=("sha",), prior_shas=())
+        files = [("A", "app.py"), ("A", "app.js"), ("A", "NOTES.md"), ("A", "logo.bin")]
+        content = {
+            "app.py": "def load(value):\n    return value\n",
+            "app.js": "const answer = 42;\n",
+            "NOTES.md": "# notes\n\n```bash\necho hi\n",
+            "logo.bin": "\x00\x01binary",
+        }
+        skipped: list = []
+        reviewed: list = []
+        with mock.patch.object(audit, "changed_files", return_value=files), \
+                mock.patch.object(audit, "file_at",
+                                  side_effect=lambda repo, sha, path: content[path]), \
+                mock.patch.object(audit, "added_lines", return_value={1}):
+            findings = audit.audit_window(self.root(), plan, [], skipped, reviewed, True)
+        self.assertEqual(skipped, ["logo.bin"])
+        self.assertEqual(reviewed, ["NOTES.md", "app.js", "app.py"])
+        self.assertEqual([(item.code, item.path) for item in findings],
+                         [("unclosed-code-fence", "NOTES.md")])
+
     def test_text_review_flags_a_committed_conflict_marker(self):
         from reforge.textdetect import detect_text
 

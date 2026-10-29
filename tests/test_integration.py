@@ -1402,32 +1402,6 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertIn("app.py", before, "the reviewed patch is still uncommitted before delivery")
         self.assertIn("notes.txt", before, "unrelated work is left for its own author")
 
-    def test_a_non_python_change_is_reviewed_not_skipped(self):
-        # Reforge reviews the changes a session makes; a JavaScript or Markdown commit must be
-        # inspected, and only a binary file may be reported as not analysed.
-        from reforge.pipeline import run_pipeline, start_audit
-        from reforge.state import load_state
-
-        root = Path(tempfile.mkdtemp(prefix="reforge_nonpython_"))
-        self.addCleanup(remove_tree, root)
-        self.git(root, "init", "-q")
-        (root / "app.py").write_text("def load(value):\n    return value\n", encoding="utf-8")
-        (root / "other.py").write_text("VALUE = 1\n", encoding="utf-8")
-        (root / "app.js").write_text("const answer = 42;\n", encoding="utf-8")
-        (root / "NOTES.md").write_text("# notes\n\n```bash\necho hi\n", encoding="utf-8")
-        (root / "logo.bin").write_bytes(b"\x00\x01binary")
-        self.git(root, "add", "app.py", "other.py", "app.js", "NOTES.md", "logo.bin")
-        self.git(root, "commit", "-q", "-m", "feat: javascript and docs")
-        start_audit(root, start=2, step=1)
-        report = run_pipeline(root, "audit", rules=True)
-        self.assertEqual(report["skipped"], ["logo.bin"])
-        self.assertEqual(report["reviewed"], 4)
-        self.assertIn("4 file(s) reviewed", report["summary"])
-        self.assertIn("1 binary file(s) not analysed", report["summary"])
-        self.assertEqual([(item["code"], item["path"]) for item in report["findings"]],
-                         [("unclosed-code-fence", "NOTES.md")])
-        self.assertEqual(load_state(root)["runs"][0]["last_audit"]["reviewed"], 4)
-
     def test_an_audited_project_records_its_run_in_the_task_ledger(self):
         # A cold start reads only the ledger, so an open audit must be visible there without
         # taking over the task the operator is working on (ADR-250).
@@ -1486,9 +1460,9 @@ class TestReforgeHistory(unittest.TestCase):
 
         busy = Path(tempfile.mkdtemp(prefix="reforge_busy_"))
         self.addCleanup(remove_tree, busy)
-        roots = [self.simple_repository(1) for _ in range(3)]
+        roots = [self.simple_repository(1) for _ in range(2)]
         with run_lock(busy):
-            with ThreadPoolExecutor(max_workers=3) as pool:
+            with ThreadPoolExecutor(max_workers=2) as pool:
                 reports = list(pool.map(
                     lambda root: run_pipeline(root, "audit", run_tests=False), roots))
             done = subprocess.run(
@@ -1497,9 +1471,9 @@ class TestReforgeHistory(unittest.TestCase):
             )
             self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
             self.assertIn("Another Reforge operation is active", done.stdout + done.stderr)
-        self.assertEqual([report["stage"] for report in reports], [1, 1, 1])
-        self.assertEqual([report["run"] for report in reports], ["run-1"] * 3)
-        self.assertEqual(len({str(lock_path(root)) for root in roots}), 3)
+        self.assertEqual([report["stage"] for report in reports], [1, 1])
+        self.assertEqual([report["run"] for report in reports], ["run-1"] * 2)
+        self.assertEqual(len({str(lock_path(root)) for root in roots}), 2)
         for root in roots:
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 

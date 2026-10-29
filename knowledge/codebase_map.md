@@ -10,7 +10,7 @@
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `738`
 - **Total Class Methods**: `815`
-- **Total Source Lines**: `31610`
+- **Total Source Lines**: `31611`
 
 ---
 
@@ -1292,7 +1292,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1628` lines (`83867` bytes)
+**Size**: `1602` lines (`82238` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1403,7 +1403,6 @@
   - Method `.one_commit_repository(source)` - *One commit with one Python file, for a repair test that needs no long history.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
-  - Method `.test_a_non_python_change_is_reviewed_not_skipped()`
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
@@ -1425,7 +1424,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9353` lines (`528347` bytes)
+**Size**: `9380` lines (`529698` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2135,6 +2134,7 @@
   - Method `.test_a_documented_hygiene_allow_marker_suppresses_a_finding()`
   - Method `.test_a_marker_two_lines_away_does_not_suppress()`
   - Method `.test_ledger_artifacts_cover_the_backup_its_writer_leaves()`
+  - Method `.test_audit_window_reviews_text_and_skips_only_binary()`
   - Method `.test_text_review_flags_a_committed_conflict_marker()`
   - Method `.test_text_review_validates_json_and_toml()`
   - Method `.test_text_review_flags_an_unclosed_markdown_fence()`
