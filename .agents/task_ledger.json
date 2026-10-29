@@ -3,8 +3,8 @@
   "active_task": {
     "task_id": "reforge-hunk-packet",
     "last_phase": "in_progress",
-    "active_phase": 2,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793287153.2596054,
     "owner": "opencode:reforge-hunk",
     "started_by": "opencode:reforge-hunk",
@@ -14,21 +14,10 @@
       "benefits": "Every new commit's own hunks appear in order, with commit identity, while findings still validate against the current file and the lines new commits added.",
       "risks": "contract: packet layout changes from net-per-file to per-commit hunks; dependency: none; concurrency: read-only history; state: no schema change.",
       "mitigation": "Render each new commit oldest-first with git show per path, keep binary/bookkeeping filters, update unit and integration tests, and append an ADR."
-    }
+    },
+    "completed_at": 1793287443.399953
   },
   "checkpoints": [
-    {
-      "task_id": "task-aikit-gate-fixes-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/2] Cache immutable Git reads, move the repo-wide f-string scan to the integration tier, refresh the map/KB, and return both tiers inside budget without raising a ceiling",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793285017.5829685,
-      "timestamp_str": "2026-10-29 17:43:37",
-      "agent": "opencode:reforge-main",
-      "continued_from": "opencode:reforge-followup"
-    },
     {
       "task_id": "reforge:run-1",
       "phase": "reforge stage 3",
@@ -257,6 +246,16 @@
       "timestamp": 1793287283.5061765,
       "timestamp_str": "2026-10-29 18:21:23",
       "agent": "opencode"
+    },
+    {
+      "task_id": "reforge-hunk-packet",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'reforge-hunk-packet' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793287443.399954,
+      "timestamp_str": "2026-10-29 18:24:03",
+      "agent": "opencode:reforge-hunk"
     }
   ]
 }
