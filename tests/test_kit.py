@@ -8848,6 +8848,36 @@ class TestReforgeCore(unittest.TestCase):
         self.assertTrue(truncated)
         self.assertNotIn(f"f{ai_review.MAX_FILES}.py", brief)
 
+    def test_the_brief_redacts_a_credential_before_it_leaves(self):
+        from reforge import ai_review
+
+        leaked = '+TOKEN = "ghp_' + "a" * 36 + '"\n'
+        with mock.patch.object(ai_review, "_changed_paths", return_value=[("sha", "conf.py")]), \
+                mock.patch.object(ai_review, "_file_diff", return_value=leaked):
+            redacted = []
+            brief, _ = ai_review.build_brief(self.root(), object(), [], redacted)
+        self.assertNotIn("ghp_" + "a" * 36, brief)
+        self.assertIn("[REDACTED]", brief)
+        self.assertEqual(sum(redacted), 1)
+
+    def test_a_patch_must_overlap_a_line_the_stage_added(self):
+        from reforge.ai_review import findings_from_payload
+
+        root = self.root()
+        (root / "app.py").write_text("OLD = 1\nNEW = 2\n", encoding="utf-8")
+        payload = {"findings": [{"path": "app.py", "line": 1, "code": "outside",
+                                 "message": "rewrites an untouched line",
+                                 "fix": {"old": "OLD = 1", "new": "OLD = 9"}}]}
+        findings, rejected = findings_from_payload(
+            root, payload, ["app.py"], {"app.py": "sha"}, {"app.py": {2}})
+        self.assertEqual(len(findings), 1)
+        self.assertFalse(findings[0].fixable)
+        self.assertIn("outside the lines this stage added", rejected[0])
+        findings, rejected = findings_from_payload(
+            root, payload, ["app.py"], {"app.py": "sha"}, {"app.py": {1}})
+        self.assertTrue(findings[0].fixable)
+        self.assertEqual(rejected, [])
+
     def test_an_ai_answer_is_validated_against_the_stage(self):
         from reforge.ai_review import findings_from_payload
 

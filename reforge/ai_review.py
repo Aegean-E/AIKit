@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from reforge.audit import is_bookkeeping
-from reforge.git_history import changed_files, file_at, parent_sha, run_git
+from reforge.git_history import added_lines, changed_files, file_at, parent_sha, run_git
 from reforge.model import Finding, StagePlan
 from reforge.textdetect import is_text
 
@@ -91,9 +91,29 @@ def _file_diff(repo: Path, sha: str, path: str) -> str:
     return out if code == 0 else ""
 
 
+def _scrub(text: str) -> Tuple[str, int]:
+    """The diff with credential-shaped spans redacted, and how many detectors fired.
+
+    The brief leaves this machine for a third-party free model, and the audited history is exactly
+    where a leaked key lives. PRINCIPLE-019 R4/R5 treats a written credential as already lost, so
+    the scrub happens here, at the boundary, and never depends on the model or the user.
+    """
+    try:
+        from scripts.check_secrets import scrub_text
+    except ImportError:  # a checkout without AIKit's scanner still reviews, unredacted by contract
+        return text, 0
+    scrubbed, detectors = scrub_text(text)
+    return scrubbed, len(detectors)
+
+
 def build_brief(repo: Path, plan: StagePlan,
-                reviewed: Optional[List[str]] = None) -> Tuple[str, bool]:
-    """A bounded prompt holding the stage diff; `truncated` says a file or the total was cut."""
+                reviewed: Optional[List[str]] = None,
+                redacted: Optional[List[int]] = None) -> Tuple[str, bool]:
+    """A bounded, redacted prompt holding the stage diff.
+
+    `truncated` says a file or the total was cut, `reviewed` collects the files really included and
+    `redacted` collects one count per carried detector, so the caller can report both honestly.
+    """
     blocks: List[str] = []
     included: List[str] = []
     total = 0
@@ -103,6 +123,9 @@ def build_brief(repo: Path, plan: StagePlan,
         diff = _file_diff(repo, sha, path)
         if not diff.strip():
             continue
+        diff, redactions = _scrub(diff)
+        if redactions and redacted is not None:
+            redacted.append(redactions)
         budget = min(MAX_FILE_CHARS, MAX_BRIEF_CHARS - total)
         if budget <= 200:
             truncated = True
@@ -138,8 +161,14 @@ def _json_payload(text: str) -> Optional[object]:
     return None
 
 
-def _patch_problem(repo: Path, relative: str, old: str, new: str) -> str:
-    """Why a proposed replacement cannot be applied, or an empty string when it can."""
+def _patch_problem(repo: Path, relative: str, old: str, new: str,
+                   touched: Optional[set] = None) -> str:
+    """Why a proposed replacement cannot be applied, or an empty string when it can.
+
+    `touched` is the set of line numbers the stage added to this path. When it is given, the
+    quoted text must overlap one of them: validating the path alone would let a hostile diff
+    steer an edit into any uniquely quotable line of a staged file.
+    """
     if not old or old == new:
         return "the replacement is empty or unchanged"
     if len(old) > MAX_PATCH_CHARS or len(new) > MAX_PATCH_CHARS:
@@ -154,6 +183,12 @@ def _patch_problem(repo: Path, relative: str, old: str, new: str) -> str:
     count = text.count(old)
     if count != 1:
         return f"the quoted text occurs {count} times in the file"
+    if touched is not None:
+        start = text.find(old)
+        first = text.count("\n", 0, start) + 1
+        span = range(first, first + old.count("\n") + 1)
+        if not touched.intersection(span):
+            return "the quoted text is outside the lines this stage added"
     if relative.lower().endswith(".py"):
         try:
             ast.parse(text.replace(old, new, 1), filename=relative)
@@ -163,8 +198,14 @@ def _patch_problem(repo: Path, relative: str, old: str, new: str) -> str:
 
 
 def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
-                          commit_of: Dict[str, str]) -> Tuple[List[Finding], List[str]]:
-    """Validate the model's answer against the stage; returns (findings, rejected reasons)."""
+                          commit_of: Dict[str, str],
+                          touched: Optional[Dict[str, set]] = None
+                          ) -> Tuple[List[Finding], List[str]]:
+    """Validate the model's answer against the stage; returns (findings, rejected reasons).
+
+    `touched` maps each changed path to the line numbers the stage added; a replacement must
+    overlap them, so the model's help stays inside the change under review.
+    """
     items = payload.get("findings") if isinstance(payload, dict) else payload
     if not isinstance(items, list):
         return [], ["the answer has no findings list"]
@@ -213,7 +254,8 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
         if isinstance(fix, dict):
             old = str(fix.get("old", ""))
             new = str(fix.get("new", ""))
-            problem = _patch_problem(repo, relative, old, new)
+            problem = _patch_problem(repo, relative, old, new,
+                                     None if touched is None else touched.get(relative, set()))
             if problem:
                 rejected.append(f"{relative}:{line}: suggestion dropped ({problem})")
                 old = new = ""
@@ -263,7 +305,8 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
     """Ask the AI to review this stage; never raises, and always says what happened."""
     repo = Path(repo)
     reviewed: List[str] = []
-    brief, truncated = build_brief(repo, plan, reviewed)
+    redacted: List[int] = []
+    brief, truncated = build_brief(repo, plan, reviewed, redacted)
     result: Dict[str, object] = {
         "status": "skipped",
         "model": model or DEFAULT_AI_MODEL,
@@ -272,6 +315,7 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
         "rejected": [],
         "files": reviewed,
         "truncated": truncated,
+        "redacted": sum(redacted),
         "prompt_chars": len(brief),
         "seconds": 0.0,
         "reason": "",
@@ -296,7 +340,12 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
         result.update(status="failed", reason="the answer held no JSON object")
         return result
     commit_of = {path: sha for sha, path in _changed_paths(repo, plan)}
-    findings, rejected = findings_from_payload(repo, payload, reviewed, commit_of)
+    touched: Dict[str, set] = {}
+    for sha in plan.new_shas:
+        for status, path in changed_files(repo, sha):
+            if status != "D" and path in reviewed:
+                touched.setdefault(path, set()).update(added_lines(repo, sha, path))
+    findings, rejected = findings_from_payload(repo, payload, reviewed, commit_of, touched)
     result.update(status="reviewed", findings=findings, rejected=rejected)
     if not findings:
         result["reason"] = "the review found nothing it could prove"

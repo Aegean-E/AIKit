@@ -205,18 +205,21 @@ binary file is reported as not analysed, and the stage prints how many files it 
 
 A read-only AI agent then reviews the same diff (ADR-254). It runs on a free model
 (`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the bounded diff as
-its whole input, and reports what a reviewer would with a line of evidence. A finding may carry an
-exact replacement; Reforge accepts it only when the path was in the stage, the line exists, and the
-quoted text occurs exactly once, then applies it, parses Python results, reviews the diff and rolls
-everything back if a test or gate fails. `--no-ai` skips the review, and an unavailable model is
-reported as skipped instead of failing the audit.
+its whole input, and reports what a reviewer would with a line of evidence. The brief is redacted
+first: every credential-shaped span the project's secret scanner recognises is replaced before the
+text leaves the machine, and the stage prints how many were redacted. A finding may carry an exact
+replacement; Reforge accepts it only when the path was in the stage, the line exists, the quoted
+text occurs exactly once, and that text overlaps a line the stage added, then applies it, parses
+Python results, reviews the diff and rolls everything back if a test or gate fails. `--no-ai` skips
+the review, and an unavailable model is reported as skipped instead of failing the audit.
 
-A patch must survive the project's tests and gates; a red result restores the exact bytes, and
-`--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`, never forcing. Each
+A patch must survive the project's tests and gates; a red result restores the exact bytes. Each
 project has its own lock, state and history, so several projects audit at the same time while a
 second operation on one is refused; a target is resolved first, so two spellings of one checkout
 share one lock. Runs are independent (`settings`, `stop`, `resume`, `runs`, `report`) and state is
-crash-safe. AIKit's own state lives in the git-ignored `.aikit/` folder at its root.
+crash-safe. In a project, `--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`
+and never force. AIKit's own `.aikit/` folder is a git-ignored tool-state directory, so auditing
+AIKit itself records state locally and commits only the reviewed source paths.
 
 Where the repository has an AIKit ledger, every run also appends checkpoints under the
 `reforge:<run-id>` task, so `disruption_recovery.py --resume` shows an open audit and a

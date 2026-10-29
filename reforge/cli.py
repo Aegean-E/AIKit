@@ -199,6 +199,9 @@ def _print_ai(report: Dict[str, object]) -> None:
         extra = " (truncated)" if report.get("truncated") else ""
         rejected = len(report.get("rejected") or [])
         detail = f", {rejected} dropped" if rejected else ""
+        redacted = int(report.get("redacted") or 0)
+        if redacted:
+            detail += f", {redacted} secret span(s) redacted"
         print(f"  [AI] reviewed {len(report.get('files') or [])} file(s) with {model}"
               f" in {report.get('seconds')}s{detail}{extra}")
     elif status == "skipped":

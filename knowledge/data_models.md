@@ -134,10 +134,10 @@ Schema 2; `next_run_id`, `active_run`, `last_run`, `runs` and mirrored top-level
 `window`, `audited_commits`, `last_audit`, `history`) so schema-1 readers stay readable. Each run
 holds `id`, `start`, `step`, `stop`, `status`, its audited SHAs and a bounded history of stage
 entries; a stage entry also records `reviewed` (files inspected), `skipped` (binary files only) and
-`ai` (review status, model, seconds, rejected suggestions) (ADR-253, ADR-254). A finding now carries
-`source` (`ast`/`text`/`ai`), and an AI finding may carry `patch_old`/`patch_new`, an exact
-replacement validated before it is applied. Reforge has no sync config or standalone marker any more
-(ADR-248).
+`ai` (review status, model, seconds, rejected suggestions, redacted span count) (ADR-253, ADR-254,
+ADR-255). A finding now carries `source` (`ast`/`text`/`ai`), and an AI finding may carry
+`patch_old`/`patch_new`, an exact replacement validated against the stage's added lines before it is
+applied. Reforge has no sync config or standalone marker any more (ADR-248).
 
 ### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
 Schema 1, stored as private local data under `.idea-catcher/` at the AIKit root and never in Git.

@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `719`
-- **Total Class Methods**: `789`
-- **Total Source Lines**: `30791`
+- **Total Top-Level Functions**: `720`
+- **Total Class Methods**: `791`
+- **Total Source Lines**: `30873`
 
 ---
 
@@ -220,15 +220,16 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `315` lines (`13171` bytes)
+**Size**: `364` lines (`15513` bytes)
 
 **Functions:**
 - `def _changed_paths(repo, plan)` - *(commit, path) for every readable text file the stage's new commits changed.*
 - `def _file_diff(repo, sha, path)`
-- `def build_brief(repo, plan, reviewed)` - *A bounded prompt holding the stage diff; `truncated` says a file or the total was cut.*
+- `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
+- `def build_brief(repo, plan, reviewed, redacted)` - *A bounded, redacted prompt holding the stage diff.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
-- `def _patch_problem(repo, relative, old, new)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
-- `def findings_from_payload(repo, payload, allowed, commit_of)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
+- `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
+- `def findings_from_payload(repo, payload, allowed, commit_of, touched)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
 - `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
 - `def review_stage(repo, plan, model, timeout, runner)` - *Ask the AI to review this stage; never raises, and always says what happened.*
 - `def merge_findings(proven, reviewed)` - *Deterministic findings first, then AI findings the detectors did not already name.*
@@ -256,7 +257,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `379` lines (`18410` bytes)
+**Size**: `382` lines (`18545` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -1406,7 +1407,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `8940` lines (`508376` bytes)
+**Size**: `8970` lines (`509926` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2128,6 +2129,8 @@
   - Method `.test_the_parser_declares_run_management_commands()`
   - Method `.test_the_parser_declares_the_ai_review_options()`
   - Method `.test_the_brief_counts_only_the_files_it_includes()`
+  - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
+  - Method `.test_a_patch_must_overlap_a_line_the_stage_added()`
   - Method `.test_an_ai_answer_is_validated_against_the_stage()`
   - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`
   - Method `.test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left()`
