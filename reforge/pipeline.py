@@ -124,9 +124,10 @@ def _preexisting_dirty(root: Path, ignore: Sequence[str] = ()) -> set:
 
 
 def _owned_repairs(last: Dict[str, object]) -> set:
-    """Paths Reforge itself repaired in the stage, so their dirt is not another session's work."""
+    """Paths Reforge repaired itself, excluding targets that were dirty before the repair."""
+    dirty = {str(path) for path in (last.get("dirty_targets") or [])}
     return {str(item.get("path") or "") for item in (last.get("repairs") or [])
-            if item.get("applied") and item.get("path")}
+            if item.get("applied") and item.get("path")} - dirty
 
 
 def _check_commit_targets(root: Path, targets: Sequence[str], allow_dirty: bool,
@@ -389,9 +390,11 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 last["counts"] = summarize(all_findings)
                 last["review"] = review_meta
             fixable = [item for item in all_findings if item.fixable]
+            guard = {item.path for item in fixable if not item.repaired}
+            guard |= {str(item.get("path")) for item in (last.get("repairs") or [])
+                      if item.get("applied") and item.get("path")}
             _check_commit_targets(
-                root, [item.path for item in fixable if not item.repaired],
-                allow_dirty, deliver, (findings_rel,), _owned_repairs(last))
+                root, sorted(guard), allow_dirty, deliver, (findings_rel,), _owned_repairs(last))
             if not fixable:
                 if findings_file:
                     sync_last_audit(run)
@@ -417,6 +420,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                                 last.get("tests") or {}, last.get("gates") or {},
                                 skipped, reviewed=reviewed, review=review_meta)
             preexisting = _preexisting_dirty(root, (findings_rel,))
+            targets = [item.path for item in fixable if not item.repaired]
+            if targets:
+                last["dirty_targets"] = sorted(set(targets) & preexisting)
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner,
                                                      extra_allowed=(findings_rel,),
@@ -478,6 +484,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                                                  preexisting=preexisting)
         entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped,
                                  reviewed=len(reviewed), review=review_meta)
+        entry["dirty_targets"] = sorted(
+            {item.path for item in findings if item.fixable} & preexisting)
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,

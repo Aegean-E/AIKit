@@ -1477,6 +1477,21 @@ class TestReforgeHistory(unittest.TestCase):
         for root in roots:
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
+    def test_a_commit_refuses_a_target_that_was_dirty_when_repaired(self):
+        from reforge.errors import ReforgeError
+        from reforge.pipeline import run_pipeline, start_audit
+
+        root = self.one_commit_repository(
+            "def load(value):\n    try:\n        return value\n    except:\n        pass\n")
+        app = root / "app.py"
+        app.write_text(app.read_text(encoding="utf-8") + "# another session's note\n",
+                       encoding="utf-8")
+        start_audit(root, start=2, step=1)
+        report = run_pipeline(root, "run", run_tests=False, rules=True)
+        self.assertTrue(report["repaired"] >= 1)
+        with self.assertRaises(ReforgeError):
+            run_pipeline(root, "fix", run_tests=False, deliver=True)
+
     def test_the_packet_shows_each_commit_hunk_in_order(self):
         # Every new commit keeps its own hunks. Collapsing them into one net diff hides the
         # intermediate change and the minute detail a review is meant to catch.

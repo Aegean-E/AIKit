@@ -9,8 +9,8 @@
 - **Total Python Modules**: `56`
 - **Total Classes**: `122`
 - **Total Top-Level Functions**: `758`
-- **Total Class Methods**: `838`
-- **Total Source Lines**: `32369`
+- **Total Class Methods**: `839`
+- **Total Source Lines**: `32392`
 
 ---
 
@@ -423,7 +423,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `601` lines (`28695` bytes)
+**Size**: `609` lines (`29228` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -434,7 +434,7 @@
 - `def _restore(root, snapshots)`
 - `def _relative_inside(root, path)` - *The repository-relative form of a supplied file, or an empty string when it is outside.*
 - `def _preexisting_dirty(root, ignore)` - *Paths already dirty before Reforge repairs; its own state and artifacts are excluded.*
-- `def _owned_repairs(last)` - *Paths Reforge itself repaired in the stage, so their dirt is not another session's work.*
+- `def _owned_repairs(last)` - *Paths Reforge repaired itself, excluding targets that were dirty before the repair.*
 - `def _check_commit_targets(root, targets, allow_dirty, deliver, ignore, owned)` - *Refuse a commit whose target file already held work Reforge did not make.*
 - `def _fingerprint(path)`
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner, extra_allowed, preexisting)`
@@ -1342,7 +1342,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1653` lines (`84879` bytes)
+**Size**: `1668` lines (`85640` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1456,6 +1456,7 @@
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
+  - Method `.test_a_commit_refuses_a_target_that_was_dirty_when_repaired()`
   - Method `.test_the_packet_shows_each_commit_hunk_in_order()`
   - Method `.test_a_findings_file_adds_and_applies_a_validated_fix()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
