@@ -9559,6 +9559,18 @@ class ReuseMetadataTest(unittest.TestCase):
         self.assertIn('SPDX-License-Identifier = "LicenseRef-AGL-1.0"', text)
         self.assertNotIn("LicenseRef-All-Rights-Reserved", text)
 
+    def test_an_asset_annotation_does_not_satisfy_the_blanket(self):
+        text = PROJECT_REUSE.replace(
+            'SPDX-License-Identifier = "LicenseRef-All-Rights-Reserved"',
+            'SPDX-License-Identifier = "LicenseRef-AGL-1.0"',
+        )
+        (self.root / "REUSE.toml").write_text(text, encoding="utf-8")
+        self.assertTrue(self.write_reuse(self.root, "LicenseRef-AGL-1.0"))
+        updated = (self.root / "REUSE.toml").read_text(encoding="utf-8")
+        self.assertIn('SPDX-License-Identifier = "LicenseRef-AGL-1.0"', updated)
+        self.assertNotIn('SPDX-License-Identifier = "LicenseRef-AGL-1.1"', updated)
+        self.assertNotIn("LicenseRef-All-Rights-Reserved", updated)
+
     def test_a_missing_license_refuses_the_write(self):
         (self.root / "LICENSE").unlink()
         self.assertFalse(self.write_reuse(self.root, "LicenseRef-AGL-1.1"))

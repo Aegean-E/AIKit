@@ -526,14 +526,16 @@ def _reuse_licenses_dir(project_root: Path) -> Path:
 
 
 def _reuse_keeps_project_annotations(path: Path, identifier: str) -> bool:
-    """Whether `REUSE.toml` already names `identifier` and adds project annotations."""
+    """Whether `REUSE.toml`'s blanket annotation already names `identifier`."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return False
-    if text.count("[[annotations]]") < 2:
+    blocks = text.split("[[annotations]]")[1:]
+    if len(blocks) < 2:
         return False
-    return f'SPDX-License-Identifier = "{identifier}"' in text
+    needle = f'SPDX-License-Identifier = "{identifier}"'
+    return any(needle in block and ('"**"' in block or "'**'" in block) for block in blocks)
 
 
 def write_reuse_metadata(project_root: Path, identifier: str,

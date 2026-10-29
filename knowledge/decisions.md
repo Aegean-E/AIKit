@@ -3046,3 +3046,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: `refresh_ui_identifier()` compares `has_ui`, `ui_kind`, `ui_evidence` and `ui_source` with the stored identity. When all match, it preserves `ui_checked_at`; `write_ui_identity()` skips the atomic write when the whole record is unchanged. A real identity change still stamps today and writes.
 - **Consequences**: UI guard commands no longer dirty project memory on a date-only refresh, and a clean UI task records zero strikes. `ui_checked_at` records the last identity write or change, not every guard command. A changing identity still requires a commit before the next bounded task.
 - **Cross-principle check**: no principle section changed. Serves PRINCIPLE-003 (the guard baseline matches the inspected tree), PRINCIPLE-006 (strikes reflect real drift), PRINCIPLE-013 (state is written only when it changes), and PRINCIPLE-014 (a failing-first test pins the behavior).
+
+### ADR-279: A REUSE Refresh Matches the Blanket Annotation, Not Any Table
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: Reforge stage 9 found that `_reuse_keeps_project_annotations` accepted the requested SPDX identifier anywhere in `REUSE.toml`. If an asset-specific `[[annotations]]` table already named the new identifier while the blanket `path = ["**"]` table named the old license, a same-identifier refresh kept the stale blanket metadata instead of rewriting it.
+- **Decision**: Split `REUSE.toml` into annotation blocks and keep the existing file only when one block contains both the requested `SPDX-License-Identifier` and a `"**"` path value. A match in an asset-only block no longer counts.
+- **Consequences**: A main-license change always refreshes the blanket annotation, while a project's extra asset annotations survive a refresh that keeps the same blanket identifier. The check remains textual, so it follows REUSE's generated layout rather than parsing every TOML form; quoted `'**'` is accepted.
+- **Cross-principle check**: no principle section changed. Serves PRINCIPLE-003 (the license boundary is decided from the block that owns it), PRINCIPLE-013 (generated metadata is not kept stale), PRINCIPLE-016 (the license register and code agree), and PRINCIPLE-014 (a failing-first test covers the asset-only match).
