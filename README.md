@@ -255,9 +255,10 @@ python aikit.py idea-catcher reviews --stale
 ```
 
 A commit message that names `IDEA-NNN` is the automatic implementation signal. `aikit check
---push` scans the pushed project's newest commits and marks matching ideas `Integrated` with the
-commit as evidence; `idea-catcher sync` does the same on demand, and `--dry-run` previews it. The
-idea must belong to the project's target; already closed ideas are untouched.
+--push` and `aikit publish` scan the delivered project's newest commits and mark matching ideas
+`Integrated` with the commit as evidence; the generated `MATRIX.md` is refreshed in the same
+step. `idea-catcher sync` does the same on demand, and `--dry-run` previews it. The idea must
+belong to the project's target; already closed ideas are untouched.
 
 A review leases its repository and reserves idea ids, so parallel analyses cannot collide.
 Dossiers name a `Source` from `IDEA-632` onward; tags, target and status changes append to each

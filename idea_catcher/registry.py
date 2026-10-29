@@ -213,9 +213,8 @@ def load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> None:
+def write_text_atomic(path: Path, text: str) -> None:
     """Write atomically: temp file in the same directory, fsync, then replace."""
-    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
@@ -226,6 +225,11 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Write one registry JSON document atomically."""
+    write_text_atomic(path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
 
 
 def load_targets(root: Path = ROOT) -> list[dict[str, Any]]:
@@ -808,6 +812,25 @@ def matrix_matches(
     return False, f"{MATRIX_FILE} is stale; run `python tools/idea_catcher.py render`"
 
 
+def write_matrix(
+    root: Path,
+    targets: list[dict[str, Any]],
+    payload: dict[str, Any],
+    reviews: Mapping[str, Any] | None = None,
+) -> Path:
+    """Render the matrix from already-loaded inputs and replace it atomically."""
+    text = render_matrix(targets, payload, reviews)
+    path = root / MATRIX_FILE
+    with registry_lock(root):
+        write_text_atomic(path, text)
+    return path
+
+
+def render_to_disk(root: Path = ROOT) -> Path:
+    """Refresh ``MATRIX.md`` from the register's three source documents."""
+    return write_matrix(root, load_targets(root), load_ideas(root), load_reviews(root))
+
+
 # ---------------------------------------------------------------------------
 # Writes
 # ---------------------------------------------------------------------------
@@ -1182,11 +1205,26 @@ def register_from_repo(
     limit: int = 200,
     dry_run: bool = False,
 ) -> List[dict]:
-    """Scan one repository's newest commits and register matching IDEA-NNN references."""
+    """Scan one repository's commits and register matching IDEA-NNN references.
+
+    A non-dry-run update also refreshes ``MATRIX.md``, so the generated register never lags the
+    status it just recorded. A missing register is still an empty one: a project without Idea
+    Catcher data pushes exactly as before. A project with no idea routed to it returns before
+    spawning Git, so an ordinary push pays nothing for the feature.
+    """
     root = default_root() if root is None else Path(root)
     if not (root / IDEAS_FILE).is_file():
         return []
-    return register_from_commits(root, project, git_commits(Path(repo_path), limit), dry_run)
+    payload = load_ideas(root)
+    if not any(str(idea.get("target", "")) == project
+               for idea in payload.get("ideas", []) if isinstance(idea, dict)):
+        return []
+    updated = register_from_commits(
+        root, project, git_commits(Path(repo_path), limit), dry_run,
+    )
+    if updated and not dry_run:
+        render_to_disk(root)
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -1868,11 +1906,16 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 print(json.dumps({"ok": True, "result": {"project": project, "updated": updated}},
                                  indent=2))
             elif not updated:
-                print("No new IDEA-NNN commit references to register.")
+                print(f"No new IDEA-NNN commit references for target '{project}'.")
+                if not args.project:
+                    print("     If that is not this repository's target id, pass `--project <id>`.")
             else:
                 for row in updated:
                     print(f"[OK] {row['id']} <- {row['commit'][:12]} {row['subject']}")
-                print("     next: python aikit.py idea-catcher render")
+                if args.dry_run:
+                    print("     dry run: no files written")
+                else:
+                    print(f"     matrix refreshed: {MATRIX_FILE}")
             return 0
         if args.command == "set-status":
             idea = set_status(
@@ -2174,9 +2217,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                     return 0
                 print(f"[FAIL] {message}")
                 return 1
-            text = render_matrix(targets, payload, reviews)
-            with registry_lock(root):
-                (root / MATRIX_FILE).write_text(text, encoding="utf-8", newline="\n")
+            write_matrix(root, targets, payload, reviews)
             print(f"[OK] wrote {MATRIX_FILE}")
             return 0
         errors = validate_targets(targets) + validate_ideas(payload, targets, root, reviews)

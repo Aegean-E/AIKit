@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `56`
-- **Total Classes**: `123`
-- **Total Top-Level Functions**: `759`
-- **Total Class Methods**: `845`
-- **Total Source Lines**: `32464`
+- **Total Classes**: `124`
+- **Total Top-Level Functions**: `764`
+- **Total Class Methods**: `850`
+- **Total Source Lines**: `32666`
 
 ---
 
@@ -98,7 +98,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2202` lines (`97053` bytes)
+**Size**: `2243` lines (`98566` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -111,7 +111,8 @@
 **Functions:**
 - `def default_root()` - *The private register this AIKit checkout serves.*
 - `def load_json(path)` - *Read one registry file, refusing a missing or non-object document by name.*
-- `def write_json(path, payload)` - *Write atomically: temp file in the same directory, fsync, then replace.*
+- `def write_text_atomic(path, text)` - *Write atomically: temp file in the same directory, fsync, then replace.*
+- `def write_json(path, payload)` - *Write one registry JSON document atomically.*
 - `def load_targets(root)`
 - `def file_lock(path, *, timeout)` - *Hold an exclusive cross-process lock on ``path`` for the ``with`` block.*
 - `def registry_lock(root, *, timeout)` - *Serialise one read-modify-write cycle over the registry.*
@@ -138,6 +139,8 @@
 - `def _status_counts(ideas)`
 - `def render_matrix(targets, payload, reviews)`
 - `def matrix_matches(root, targets, payload, reviews)`
+- `def write_matrix(root, targets, payload, reviews)` - *Render the matrix from already-loaded inputs and replace it atomically.*
+- `def render_to_disk(root)` - *Refresh ``MATRIX.md`` from the register's three source documents.*
 - `def add_target(root, *, target, require_path)`
 - `def add_idea(root, *, dossier, target, impact, effort, idea_id, concept, review_id)` - *Register a dossier section as an idea, taking the title from the heading.*
 - `def _history_entry(*, field, before, after, by, at, reason)`
@@ -146,7 +149,7 @@
 - `def parse_idea_ids(message)` - *Every distinct IDEA-NNN token in one commit message, sorted.*
 - `def git_commits(repo_path, limit)` - *(sha, subject, body) for the newest commits, newest first.*
 - `def register_from_commits(root, project, commits, dry_run)` - *Mark matching ideas Integrated; return one record per change.*
-- `def register_from_repo(repo_path, project, root, limit, dry_run)` - *Scan one repository's newest commits and register matching IDEA-NNN references.*
+- `def register_from_repo(repo_path, project, root, limit, dry_run)` - *Scan one repository's commits and register matching IDEA-NNN references.*
 - `def _parse_ts(value)`
 - `def _lease_expired(review, now)`
 - `def validate_reviews(payload, root, *, ideas_payload)`
@@ -604,10 +607,12 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1327` lines (`66871` bytes)
+**Size**: `1341` lines (`67482` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
+- `def _register_delivered_ideas(project_path, project_name)` - *Register ideas named by the project's delivered commits; raises on a bad register.*
+- `def _report_registered_ideas(project_path, project_name)` - *Best-effort registration after a push; delivery already succeeded, so never fail it.*
 - `def resolve_gates(project)`
 - `def run_gates(path, gates)`
 - `def present_project(name, workspace)` - *The registered project `name`, refusing one whose folder or record is gone.*
@@ -1319,7 +1324,7 @@
 ### [`tests/test_auto_register.py`](tests/test_auto_register.py)
 > *Unit tests for automatic idea registration from commit messages.*
 
-**Size**: `117` lines (`5454` bytes)
+**Size**: `106` lines (`4985` bytes)
 
 **Classes:**
 - `class TestAutoRegister`
@@ -1331,9 +1336,8 @@
   - Method `.test_idea_ids_are_deduplicated()`
   - Method `.test_git_log_records_are_parsed_without_spawning()`
   - Method `.test_a_git_timeout_is_a_reported_value_error()`
-  - Method `.test_repo_scan_uses_the_stored_commits()`
+  - Method `.test_a_dry_run_does_not_write_the_matrix()`
   - Method `.test_a_corrupt_register_is_reported_instead_of_ignored()`
-  - Method `.test_sync_cli_reports_registered_ideas()`
 
 **Functions:**
 - `def make_register(root, status, target)`
@@ -1343,7 +1347,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1668` lines (`85640` bytes)
+**Size**: `1826` lines (`94466` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1463,6 +1467,13 @@
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
   - Method `.test_status_reads_the_register_named_by_the_root_override()`
+- `class TestIdeaAutoRegistration` - *The CLI, the private register and the generated matrix move together.*
+  - Method `.register()`
+  - Method `.test_sync_cli_registers_and_refreshes_the_matrix()`
+  - Method `.test_repo_scan_refreshes_the_matrix()`
+  - Method `.test_delivered_registration_is_best_effort()`
+  - Method `.test_check_push_reports_registered_ideas()`
+  - Method `.test_publish_reports_registered_ideas_only_after_success()`
 - `class TestFstringsParseOnPython310` - *Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside*
   - Method `.rejected_on_310(src)`
   - Method `.test_the_check_flags_what_310_rejects_and_nothing_it_accepts()`

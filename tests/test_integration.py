@@ -1614,6 +1614,164 @@ class TestIdeaCatcherCli(unittest.TestCase):
         self.assertIn("0 ideas", out.getvalue())
 
 
+class TestIdeaAutoRegistration(unittest.TestCase):
+    """The CLI, the private register and the generated matrix move together."""
+
+    def register(self):
+        from tests.test_auto_register import make_register
+        root = Path(tempfile.mkdtemp(prefix="test_auto_register_it_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        make_register(root)
+        return root
+
+    def test_sync_cli_registers_and_refreshes_the_matrix(self):
+        from idea_catcher import registry
+        root = self.register()
+        sha = "a" * 40
+        with mock.patch("idea_catcher.registry.git_commits",
+                        return_value=[(sha, "Implement IDEA-001", "")]):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = registry.main(["sync", "--repo", ".", "--project", "demo", "--json"],
+                                     root=root)
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn('"IDEA-001"', out.getvalue())
+        matrix = (root / "MATRIX.md").read_text(encoding="utf-8")
+        self.assertIn("IDEA-001", matrix)
+        self.assertIn("Integrated", matrix)
+        matches, message = registry.matrix_matches(
+            root, registry.load_targets(root), registry.load_ideas(root),
+            registry.load_reviews(root))
+        self.assertTrue(matches, message)
+
+    def test_repo_scan_refreshes_the_matrix(self):
+        from idea_catcher import auto_register
+        root = self.register()
+        sha = "a" * 40
+        with mock.patch("idea_catcher.registry.git_commits",
+                        return_value=[(sha, "Implement IDEA-001", "")]):
+            updated = auto_register.register_from_repo(Path("."), "demo", root=root)
+        self.assertEqual([row["id"] for row in updated], ["IDEA-001"])
+        self.assertIn("Integrated", (root / "MATRIX.md").read_text(encoding="utf-8"))
+
+    def test_delivered_registration_is_best_effort(self):
+        from scripts import aikit_cli
+        err = io.StringIO()
+        with mock.patch("scripts.aikit_cli._register_delivered_ideas",
+                        side_effect=ValueError("bad register")):
+            with contextlib.redirect_stderr(err):
+                aikit_cli._report_registered_ideas(Path("."), "demo")
+        self.assertIn("auto-registration skipped", err.getvalue())
+
+    def test_check_push_reports_registered_ideas(self):
+        import argparse
+        from scripts import aikit_cli
+
+        project = mock.Mock()
+        project.path = Path(tempfile.mkdtemp(prefix="test_check_push_"))
+        project.name = "demo"
+        self.addCleanup(shutil.rmtree, project.path, ignore_errors=True)
+        gate = mock.MagicMock()
+        gate.passed = True
+        gate.seconds = 0.1
+        gate.gate.name = "test"
+        gate.gate.source = "detected"
+        gate.gate.command = "dummy"
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        args = argparse.Namespace(name="demo", workspace=Path("."), push=True, strict=False)
+        with mock.patch("scripts.aikit_cli.present_project", return_value=project), \
+             mock.patch("scripts.aikit_cli.public_remote_refusal", return_value=None), \
+             mock.patch("scripts.aikit_cli.run_gates", return_value=[gate]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.project_baseline_errors", return_value=[]), \
+             mock.patch("scripts.aikit_cli.project_ui.ui_payload", return_value={}), \
+             mock.patch("scripts.aikit_cli.load_config", return_value={}), \
+             mock.patch("scripts.aikit_cli.is_game_project", return_value=False), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(0, "Pushed")), \
+             mock.patch("scripts.aikit_cli._report_registered_ideas") as report:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = aikit_cli.cmd_check(args)
+        self.assertEqual(code, 0)
+        report.assert_called_once_with(project.path, "demo")
+
+        with mock.patch("scripts.aikit_cli.present_project", return_value=project), \
+             mock.patch("scripts.aikit_cli.public_remote_refusal", return_value=None), \
+             mock.patch("scripts.aikit_cli.run_gates", return_value=[gate]), \
+             mock.patch("scripts.aikit_cli.resolve_gates", return_value=[]), \
+             mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean), \
+             mock.patch("scripts.aikit_cli.project_baseline_errors", return_value=[]), \
+             mock.patch("scripts.aikit_cli.project_ui.ui_payload", return_value={}), \
+             mock.patch("scripts.aikit_cli.load_config", return_value={}), \
+             mock.patch("scripts.aikit_cli.is_game_project", return_value=False), \
+             mock.patch("scripts.aikit_cli.auto_push_project", return_value=(1, "Error")), \
+             mock.patch("scripts.aikit_cli._report_registered_ideas") as report:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = aikit_cli.cmd_check(args)
+        self.assertEqual(code, 1)
+        report.assert_not_called()
+
+    def test_publish_reports_registered_ideas_only_after_success(self):
+        import argparse
+        from scripts import aikit_cli
+
+        root = Path(tempfile.mkdtemp(prefix="test_publish_register_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "README.md").write_text("# demo\n\nA project that builds things.\n",
+                                        encoding="utf-8")
+        project = mock.Mock()
+        project.path = root
+        project.name = "demo"
+        gate = mock.MagicMock()
+        gate.passed = True
+        gate.gate.name = "test"
+        clean = {"modified_files": [], "untracked_files": [], "conflicted_files": [],
+                 "ledger_error": None, "git_missing": False}
+        args = argparse.Namespace(name="demo", workspace=Path("."), public=False,
+                                  license="keep", owner=None)
+        patches = (
+            mock.patch("scripts.aikit_cli.present_project", return_value=project),
+            mock.patch("scripts.aikit_cli.get_project_repo_url", return_value=""),
+            mock.patch("scripts.aikit_cli.project_media.media_blockers", return_value=[]),
+            mock.patch("scripts.aikit_cli.extract_readme_description",
+                       return_value="A project that builds things."),
+            mock.patch("scripts.aikit_cli.license_state",
+                       return_value=mock.Mock(kind="AGL-1.1", version="1.1", tier="free")),
+            mock.patch("scripts.aikit_cli.suggest_license",
+                       return_value={"change_needed": False, "upgrade_available": False,
+                                     "kind": "AGL-1.1", "confidence": "high"}),
+            mock.patch("scripts.aikit_cli.run_disruption_audit", return_value=clean),
+            mock.patch("scripts.aikit_cli.project_baseline_errors", return_value=[]),
+            mock.patch("scripts.aikit_cli.run_gates", return_value=[gate]),
+            mock.patch("scripts.aikit_cli.resolve_gates", return_value=[]),
+            mock.patch("scripts.aikit_cli.load_config", return_value={}),
+            mock.patch("scripts.aikit_cli.publish_topics", return_value=["aikit"]),
+            mock.patch("scripts.aikit_cli.publish_project", return_value=(0, "Published")),
+        )
+        with contextlib.ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            report = stack.enter_context(
+                mock.patch("scripts.aikit_cli._report_registered_ideas"))
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = aikit_cli.cmd_publish(args)
+        self.assertEqual(code, 0)
+        report.assert_called_once_with(root, "demo")
+
+        with contextlib.ExitStack() as stack:
+            for patcher in patches[:-1]:
+                stack.enter_context(patcher)
+            stack.enter_context(mock.patch("scripts.aikit_cli.publish_project",
+                                           return_value=(1, "Error")))
+            report = stack.enter_context(
+                mock.patch("scripts.aikit_cli._report_registered_ideas"))
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = aikit_cli.cmd_publish(args)
+        self.assertEqual(code, 1)
+        report.assert_not_called()
+
+
 class TestFstringsParseOnPython310(unittest.TestCase):
     """
     Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside

@@ -1,7 +1,5 @@
 """Unit tests for automatic idea registration from commit messages."""
 
-import contextlib
-import io
 import json
 import shutil
 import subprocess
@@ -10,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from idea_catcher import auto_register, registry
+from idea_catcher import auto_register
 
 
 def make_register(root: Path, status: str = "Proposed", target: str = "demo") -> Path:
@@ -90,28 +88,19 @@ class TestAutoRegister(unittest.TestCase):
                 auto_register.git_commits(Path("."))
         self.assertIn("git log failed", str(raised.exception))
 
-    def test_repo_scan_uses_the_stored_commits(self):
+    def test_a_dry_run_does_not_write_the_matrix(self):
         with mock.patch("idea_catcher.registry.git_commits",
                         return_value=[(self.sha, "Implement IDEA-001", "")]):
-            updated = auto_register.register_from_repo(Path("."), "demo", root=self.root)
+            updated = auto_register.register_from_repo(
+                Path("."), "demo", root=self.root, dry_run=True)
         self.assertEqual([row["id"] for row in updated], ["IDEA-001"])
+        self.assertFalse((self.root / "MATRIX.md").exists())
 
     def test_a_corrupt_register_is_reported_instead_of_ignored(self):
         (self.root / "ideas.json").write_text("{", encoding="utf-8")
         with self.assertRaises(ValueError):
             auto_register.register_from_commits(
                 self.root, "demo", [(self.sha, "Implement IDEA-001", "")])
-
-    def test_sync_cli_reports_registered_ideas(self):
-        with mock.patch("idea_catcher.registry.git_commits",
-                        return_value=[(self.sha, "Implement IDEA-001", "")]):
-            out = io.StringIO()
-            with contextlib.redirect_stdout(out):
-                code = registry.main(["sync", "--repo", ".", "--project", "demo", "--json"],
-                                     root=self.root)
-        self.assertEqual(code, 0, out.getvalue())
-        self.assertIn('"IDEA-001"', out.getvalue())
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -85,8 +85,9 @@ idea-catcher` reaches the same `idea_catcher.registry.run` dispatcher as `idea_c
 `python -m idea_catcher`; the default register root is `.idea-catcher/`, overridable with
 `IDEA_CATCHER_ROOT`. There is no second copy or sync marker any more: the archived standalone
 repository pointed here instead (ADR-246, ADR-252). A commit message that names `IDEA-NNN` is
-the implementation signal: `aikit check --push` registers matching ideas as `Integrated` after a
-successful push, and `idea-catcher sync` exposes the same scan on demand (ADR-275). `ideas` hides
+the implementation signal: `aikit check --push` and `aikit publish` register matching ideas as
+`Integrated` after a successful delivery and refresh `MATRIX.md`; `idea-catcher sync` exposes the
+same scan on demand (ADR-275). `ideas` hides
 `Rejected` rows and rows
 tagged `duplicate` unless `--include-rejected` / `--include-duplicates` or an explicit
 `--status Rejected` / `--tag duplicate` asks for them; the two include flags are alternatives, so

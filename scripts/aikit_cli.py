@@ -87,6 +87,25 @@ def failure_tail(output):
     return _failure_tail(output)
 
 
+def _register_delivered_ideas(project_path: Path, project_name: str) -> List[dict]:
+    """Register ideas named by the project's delivered commits; raises on a bad register."""
+    from idea_catcher.registry import register_from_repo
+    return register_from_repo(project_path, project_name)
+
+
+def _report_registered_ideas(project_path: Path, project_name: str) -> None:
+    """Best-effort registration after a push; delivery already succeeded, so never fail it."""
+    try:
+        registered = _register_delivered_ideas(project_path, project_name)
+    except Exception as exc:  # the push is the delivery boundary; registration is bookkeeping
+        print(f"[WARN] idea-catcher auto-registration skipped: {exc}", file=sys.stderr)
+        return
+    if registered:
+        print("[OK] idea-catcher: registered "
+              + ", ".join(str(row.get("id", "")) for row in registered)
+              + " from the delivered commits; MATRIX.md refreshed.")
+
+
 def resolve_gates(project):
     from scripts.project_gates import resolve_gates as _resolve_gates
     return _resolve_gates(project)
@@ -274,6 +293,7 @@ def cmd_new(args: argparse.Namespace) -> int:
         if code != 0:
             print(f"[WARN] Project created locally at {root}, but GitHub publication failed.", file=sys.stderr)
             return code
+        _report_registered_ideas(root, args.name)
     else:
         print(f"     Next: describe what to build; work happens inside {root}.")
     return 0
@@ -565,15 +585,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             return 1
         if push_report:
             print(push_report)
-        try:
-            from idea_catcher.auto_register import register_from_repo
-            registered = register_from_repo(project.path, project.name)
-            if registered:
-                print("[OK] idea-catcher: registered "
-                      + ", ".join(row["id"] for row in registered)
-                      + " from the pushed commits.")
-        except Exception as exc:  # auto-registration must never fail a delivered push
-            print(f"[WARN] idea-catcher auto-registration skipped: {exc}", file=sys.stderr)
+        _report_registered_ideas(project.path, project.name)
     return 0
 
 
@@ -736,6 +748,8 @@ def cmd_publish(args: argparse.Namespace) -> int:
                                                          config.get("topics") or ["aikit"]),
                                    owner=getattr(args, "owner", None), description=description)
     print(report, file=sys.stdout if code == 0 else sys.stderr)
+    if code == 0:
+        _report_registered_ideas(project.path, project.name)
     return code
 
 
