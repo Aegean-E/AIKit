@@ -49,7 +49,8 @@ python aikit.py clean <name>         # clean dangling project buffers
 python aikit.py reforge start <name> --start 3 --step 3 --stop 15  # independent run; per-project lock
 python aikit.py reforge audit <name>   # next window: findings cite commit:path:line
 python aikit.py reforge fix <name>     # repair safe findings, add regression tests, verify patch
-python aikit.py reforge run <name> --push  # review first; commits explicit paths, pushes without force (ADR-230)
+python aikit.py reforge run <name>          # review, repair, verify; state is local, nothing is committed
+python aikit.py reforge run <name> --push   # also commit explicit paths and push without force (ADR-230)
 python aikit.py reforge settings|stop|resume|runs|status|report <name>  # manage runs (ADR-232, ADR-249)
 python reforge.py <path> --help        # same engine against any repo, no project registry (ADR-248)
 python aikit.py idea-catcher status     # shipped tool over the private .idea-catcher/ register (ADR-246, ADR-252)
