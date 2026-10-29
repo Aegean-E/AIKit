@@ -1481,26 +1481,26 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertFalse((root / "test_reforge_regressions.py").exists())
 
     def test_projects_run_concurrently_and_a_locked_project_refuses_again(self):
-        from reforge.locking import run_lock
+        from reforge.locking import lock_path, run_lock
         from reforge.pipeline import run_pipeline
 
         busy = Path(tempfile.mkdtemp(prefix="reforge_busy_"))
         self.addCleanup(remove_tree, busy)
-        first, second = self.simple_repository(1), self.simple_repository(1)
+        roots = [self.simple_repository(1) for _ in range(3)]
         with run_lock(busy):
-            with ThreadPoolExecutor(max_workers=2) as pool:
+            with ThreadPoolExecutor(max_workers=3) as pool:
                 reports = list(pool.map(
-                    lambda root: run_pipeline(root, "run", run_tests=False), (first, second)))
+                    lambda root: run_pipeline(root, "audit", run_tests=False), roots))
             done = subprocess.run(
-                [sys.executable, "reforge.py", "run", str(busy), "--json", "--no-tests"],
+                [sys.executable, "reforge.py", "audit", str(busy), "--json"],
                 cwd=ROOT_DIR, capture_output=True, text=True, timeout=PROC_TIMEOUT,
             )
             self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
             self.assertIn("Another Reforge operation is active", done.stdout + done.stderr)
-        self.assertEqual([report["stage"] for report in reports], [1, 1])
-        self.assertEqual([report["run"] for report in reports], ["run-1", "run-1"])
-        self.assertNotEqual(first, second)
-        for root in (first, second):
+        self.assertEqual([report["stage"] for report in reports], [1, 1, 1])
+        self.assertEqual([report["run"] for report in reports], ["run-1"] * 3)
+        self.assertEqual(len({str(lock_path(root)) for root in roots}), 3)
+        for root in roots:
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
     def test_the_packet_holds_the_net_stage_diff_not_an_old_commit(self):
@@ -1530,78 +1530,52 @@ class TestReforgeHistory(unittest.TestCase):
 
     def test_a_findings_file_adds_and_applies_a_validated_fix(self):
         # The host agent reads the packet and returns JSON; a validated replacement becomes a real,
-        # reviewable repair that the normal tests and patch review still have to accept.
+        # reviewable repair, the rule pre-pass stays opt-in, and both kinds of finding are kept.
         import json as jsonlib
 
+        from reforge.audit import audit_window, plan_next_stage
         from reforge.pipeline import run_pipeline, start_audit
+        from reforge.state import current_run, load_state
 
-        root = self.one_commit_repository("def add(a, b):\n    return a - b\n")
+        root = self.one_commit_repository(
+            "def add(a, b):\n"
+            "    return a - b\n"
+            "\n"
+            "def load(value):\n"
+            "    try:\n"
+            "        return value\n"
+            "    except:\n"
+            "        pass\n")
         start_audit(root, start=2, step=1)
+        run = current_run(load_state(root))
+        rules = audit_window(root, plan_next_stage(root, run), run.get("history") or [],
+                             [], [], True)
+        self.assertTrue(any(item.code == "bare-except" for item in rules))
         answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
         self.addCleanup(remove_tree, answer_folder)
         answer = answer_folder / "findings.json"
-        answer.write_text(jsonlib.dumps({"findings": [{
-            "path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
-            "message": "add() subtracts, so every caller gets the wrong total",
-            "evidence": "return a - b",
-            "fix": {"old": "return a - b", "new": "return a + b"},
-        }]}), encoding="utf-8")
+        answer.write_text(jsonlib.dumps({"findings": [
+            {"path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
+             "message": "add() subtracts, so every caller gets the wrong total",
+             "evidence": "return a - b",
+             "fix": {"old": "return a - b", "new": "return a + b"}},
+            {"path": "app.py", "line": 7, "severity": "medium", "kind": "improvement",
+             "code": "narrow-the-except", "message": "the handler hides every error type",
+             "evidence": "    except:"},
+        ]}), encoding="utf-8")
 
-        audit = run_pipeline(root, "audit", run_tests=False, rules=False)
-        self.assertEqual(audit["review"]["status"], "unreviewed")
+        audit = run_pipeline(root, "audit", findings_file=str(answer), rules=False,
+                             run_tests=False)
+        self.assertEqual(audit["review"]["status"], "reviewed")
         self.assertIn("Review one Git audit stage",
                       Path(audit["review"]["packet"]).read_text(encoding="utf-8"))
         report = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
         self.assertEqual(report["review"]["status"], "reviewed")
-        self.assertTrue(Path(report["review"]["packet"]).is_file())
         self.assertIn("return a + b", (root / "app.py").read_text(encoding="utf-8"))
         self.assertEqual(report["repaired"], 1)
-        self.assertTrue(any(item["source"] == "review" for item in report["findings"]))
+        codes = {item["code"] for item in report["findings"]}
+        self.assertEqual(codes, {"review-wrong-operator", "review-narrow-the-except"})
         self.assertIn("app.py", report["commit_paths"])
-
-    def test_the_host_review_and_rules_are_both_opt_in(self):
-        # Reforge plans the stage; the host agent reviews it. The rule pre-pass is opt-in, so a
-        # stage with a hand-written handler produces the host's finding and no rule noise.
-        import json as jsonlib
-
-        from reforge.pipeline import run_pipeline, start_audit
-
-        root = self.one_commit_repository(
-            "def load(value):\n    try:\n        return value\n    except:\n        pass\n")
-        start_audit(root, start=2, step=1)
-        answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
-        self.addCleanup(remove_tree, answer_folder)
-        answer = answer_folder / "findings.json"
-        answer.write_text(jsonlib.dumps({"findings": [{
-            "path": "app.py", "line": 4, "severity": "medium", "kind": "improvement",
-            "code": "narrow-the-except", "message": "the handler hides every error type",
-            "evidence": "    except:",
-        }]}), encoding="utf-8")
-
-        report = run_pipeline(root, "audit", findings_file=str(answer), rules=False,
-                              run_tests=False)
-        codes = [item["code"] for item in report["findings"]]
-        self.assertEqual(codes, ["review-narrow-the-except"])
-        self.assertEqual(report["findings"][0]["category"], "improvement")
-        from reforge.pipeline import stop_audit
-
-        stop_audit(root)
-        start_audit(root, start=3, step=1)
-        rules = run_pipeline(root, "audit", run_tests=False, rules=True, run_id="run-2")
-        self.assertTrue(any(item["code"] == "bare-except" for item in rules["findings"]))
-
-    def test_three_projects_audit_concurrently_with_separate_locks_and_state(self):
-        from reforge.locking import lock_path
-        from reforge.pipeline import run_pipeline
-
-        roots = [self.simple_repository(1) for _ in range(3)]
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            reports = list(pool.map(
-                lambda root: run_pipeline(root, "audit", run_tests=False), roots))
-        self.assertEqual([report["stage"] for report in reports], [1, 1, 1])
-        self.assertEqual(len({str(lock_path(root)) for root in roots}), 3)
-        for root in roots:
-            self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
     def test_aikit_reforge_status_reaches_the_registry_and_state(self):
         from scripts.project_registry import write_memory

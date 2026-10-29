@@ -208,7 +208,8 @@ rather than reported, the same convention AIKit's own hygiene scan uses. The rul
 
 `audit` and `run` write a review packet under `.aikit/reforge.reviews/` (ADR-263). The packet is the
 stage's net diff, from the commit before the stage to its last commit, with every changed text file
-once and complete, the binary files named at the end, and the JSON answer schema. Credential-shaped
+once and complete, the binary files named at the end, and the JSON answer schema. Only files a new
+commit touched appear; files that only an earlier stage changed are not repeated. Credential-shaped
 spans are redacted with the project's secret scanner before the packet is written. Reforge makes no
 model call and starts no subagent: the agent or person driving the session reads the packet and
 returns a findings file. Each finding names a path the stage changed, a line that exists, a severity,

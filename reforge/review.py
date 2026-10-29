@@ -22,6 +22,7 @@ from typing import List, Optional, Sequence, Tuple
 from reforge.audit import is_bookkeeping
 from reforge.git_history import (
     added_lines_range,
+    changed_files,
     changed_files_range,
     file_at,
     parent_sha,
@@ -80,15 +81,34 @@ def _stage_base(repo: Path, plan: StagePlan) -> str:
     return parent_sha(repo, plan.new_shas[-1])
 
 
+def _new_paths(repo: Path, plan: StagePlan) -> set:
+    """Paths at least one new commit touched; files only an earlier stage changed stay out."""
+    paths: set = set()
+    for sha in plan.new_shas:
+        for status, path in changed_files(repo, sha):
+            if status != "D":
+                paths.add(path)
+    return paths
+
+
+def _new_added_lines(repo: Path, plan: StagePlan, path: str) -> set:
+    """Lines the stage's new commits add to a path, ignoring an earlier stage's lines."""
+    lines: set = set()
+    for sha in plan.new_shas:
+        lines |= added_lines_range(repo, parent_sha(repo, sha), sha, path)
+    return lines
+
+
 def _changed_paths(repo: Path, plan: StagePlan) -> List[Tuple[str, str]]:
-    """(head, path) for every readable text file the stage changed, once each, from the net diff."""
+    """(head, path) for every readable text file the new commits changed, once each."""
     if not plan.new_shas:
         return []
     head = plan.new_shas[0]
     base = _stage_base(repo, plan)
+    new_paths = _new_paths(repo, plan)
     pairs: List[Tuple[str, str]] = []
     for status, path in changed_files_range(repo, base, head):
-        if status == "D" or is_bookkeeping(path):
+        if status == "D" or is_bookkeeping(path) or path not in new_paths:
             continue
         source = file_at(repo, head, path)
         if source is None or not is_text(source):
@@ -103,9 +123,10 @@ def _binary_paths(repo: Path, plan: StagePlan) -> List[str]:
         return []
     head = plan.new_shas[0]
     base = _stage_base(repo, plan)
+    new_paths = _new_paths(repo, plan)
     binary: List[str] = []
     for status, path in changed_files_range(repo, base, head):
-        if status == "D" or is_bookkeeping(path):
+        if status == "D" or is_bookkeeping(path) or path not in new_paths:
             continue
         source = file_at(repo, head, path)
         if source is not None and not is_text(source):
@@ -274,8 +295,7 @@ def findings_from_payload(repo: Path, payload: object, plan: StagePlan,
     changed = _changed_paths(repo, plan)
     allowed = set(files if files is not None else [path for _, path in changed])
     commit_of = {path: sha for sha, path in changed}
-    base, head = _stage_base(repo, plan), (plan.new_shas[0] if plan.new_shas else "")
-    touched = {path: added_lines_range(repo, base, head, path) for path in allowed}
+    touched = {path: _new_added_lines(repo, plan, path) for path in allowed}
     findings: List[Finding] = []
     rejected: List[str] = []
     for raw in items[:MAX_FINDINGS]:

@@ -1,21 +1,21 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "idea-listing-or-status",
+    "task_id": "reforge-packet-scope",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793282984.4776838,
+    "updated_at": 1793283440.4764051,
     "owner": "opencode:reforge-scope",
     "started_by": "opencode:reforge-scope",
     "continuations": [],
     "impact_assessment": {
-      "why": "ADR-264 described the include flags as alternatives, but a row that was both Rejected and duplicate needed both; status also used the filtered list and under-reported the register.",
-      "benefits": "Either flag now reveals its whole category, and status describes the register while ideas remains the working list.",
-      "risks": "contract: a combined row appears under either flag; dependency: none; concurrency: unchanged; state: no schema change.",
-      "mitigation": "Unit and CLI tests pin the combined row and the full status totals; README, architecture and ADR-267 record the semantics."
+      "why": "A widening stage adds one old commit and new commits, but the packet diffed the whole window and repeated the entire stage-1 refactor (201 KB) instead of reviewing only the new work.",
+      "benefits": "Packets are bounded by the new commits, findings cannot repeat a prior stage, and patch validation only accepts lines the new commits added.",
+      "risks": "contract: packet files are the union of new-commit paths; dependency: none; concurrency: unchanged; state: no schema change.",
+      "mitigation": "Filter _changed_paths/_binary_paths by plan.new_shas, compute touched lines per new commit, add a unit test, and append ADR-268."
     },
-    "completed_at": 1793283017.8731391
+    "completed_at": 1793283456.8482473
   },
   "checkpoints": [
     {
@@ -223,6 +223,44 @@
       "status": "completed",
       "timestamp": 1793283017.8731408,
       "timestamp_str": "2026-10-29 17:10:17",
+      "agent": "opencode:reforge-scope"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 2",
+      "phase_num": 3,
+      "description": "Reforge stage 2: window 10, 5 commit(s), 15 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793283169.8167284,
+      "timestamp_str": "2026-10-29 17:12:49",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge-packet-scope",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Exclude prior-stage-only files from a widening review packet",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793283440.4764051,
+      "timestamp_str": "2026-10-29 17:17:20",
+      "agent": "opencode:reforge-scope",
+      "impact_assessment": {
+        "why": "A widening stage adds one old commit and new commits, but the packet diffed the whole window and repeated the entire stage-1 refactor (201 KB) instead of reviewing only the new work.",
+        "benefits": "Packets are bounded by the new commits, findings cannot repeat a prior stage, and patch validation only accepts lines the new commits added.",
+        "risks": "contract: packet files are the union of new-commit paths; dependency: none; concurrency: unchanged; state: no schema change.",
+        "mitigation": "Filter _changed_paths/_binary_paths by plan.new_shas, compute touched lines per new commit, add a unit test, and append ADR-268."
+      }
+    },
+    {
+      "task_id": "reforge-packet-scope",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'reforge-packet-scope' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793283456.8482494,
+      "timestamp_str": "2026-10-29 17:17:36",
       "agent": "opencode:reforge-scope"
     }
   ]

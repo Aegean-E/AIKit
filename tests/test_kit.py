@@ -8969,6 +8969,24 @@ class TestReforgeCore(unittest.TestCase):
         return SimpleNamespace(stage=1, window=3, run_id="run-1",
                                new_shas=("newest", "older"))
 
+    def test_a_packet_skips_files_only_prior_commits_changed(self):
+        from types import SimpleNamespace
+
+        from reforge import review
+
+        plan = SimpleNamespace(new_shas=("new", "old"), stage=2, window=10, run_id="run-1")
+        new_files = {"new": [("A", "new.py")], "old": [("A", "old.py")]}
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "changed_files",
+                                  side_effect=lambda repo, sha: new_files[sha]), \
+                mock.patch.object(review, "changed_files_range",
+                                  return_value=[("M", "new.py"), ("M", "old.py"),
+                                                ("M", "prior.py")]), \
+                mock.patch.object(review, "file_at", return_value="text"), \
+                mock.patch.object(review, "is_text", return_value=True):
+            pairs = review._changed_paths(self.root(), plan)
+        self.assertEqual({path for _, path in pairs}, {"new.py", "old.py"})
+
     def test_the_packet_reviews_the_net_stage_diff_once_per_file(self):
         from reforge import review
 
@@ -9022,7 +9040,7 @@ class TestReforgeCore(unittest.TestCase):
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths",
                                return_value=[("sha", "app.py")]), \
-                mock.patch.object(review, "added_lines_range", return_value={1, 2}):
+                mock.patch.object(review, "_new_added_lines", return_value={1, 2}):
             findings, rejected = review.findings_from_payload(
                 root, payload, self.stage_plan(), ["app.py"])
         self.assertEqual(len(findings), 1)
@@ -9047,7 +9065,7 @@ class TestReforgeCore(unittest.TestCase):
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths",
                                return_value=[("sha", "doc.md")]), \
-                mock.patch.object(review, "added_lines_range", return_value={1}):
+                mock.patch.object(review, "_new_added_lines", return_value={1}):
             findings, rejected = review.findings_from_payload(
                 root, payload, self.stage_plan(), ["doc.md"])
         self.assertEqual(rejected, [])
@@ -9067,7 +9085,7 @@ class TestReforgeCore(unittest.TestCase):
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths",
                                return_value=[("sha", "app.py")]), \
-                mock.patch.object(review, "added_lines_range", return_value={2}):
+                mock.patch.object(review, "_new_added_lines", return_value={2}):
             findings, rejected = review.findings_from_payload(
                 root, payload, self.stage_plan(), ["app.py"])
         self.assertEqual(len(findings), 1)
@@ -9080,7 +9098,7 @@ class TestReforgeCore(unittest.TestCase):
         with mock.patch.object(review, "_stage_base", return_value="base"), \
                 mock.patch.object(review, "_changed_paths",
                                return_value=[("sha", "app.py")]), \
-                mock.patch.object(review, "added_lines_range", return_value={1}):
+                mock.patch.object(review, "_new_added_lines", return_value={1}):
             findings, rejected = review.findings_from_payload(
                 self.root(), {"findings": []}, self.stage_plan(), ["app.py"])
         self.assertEqual((findings, rejected), ([], []))
