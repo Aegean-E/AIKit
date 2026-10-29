@@ -1516,6 +1516,36 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertTrue(any(item["source"] == "ai" for item in report["findings"]))
         self.assertIn("app.py", report["commit_paths"])
 
+    def test_the_planner_reviews_with_ai_and_rules_only_on_request(self):
+        # Reforge plans the stage; the AI does the reviewing. The rule pre-pass is opt-in, so a
+        # stage with a hand-written handler produces an AI finding and no rule noise.
+        import json as jsonlib
+
+        from reforge.pipeline import run_pipeline, start_audit
+
+        root = self.repository(defects=True)
+        start_audit(root, start=3, step=1)
+        calls = []
+
+        def runner(prompt, model):
+            calls.append(prompt)
+            return 0, jsonlib.dumps({"findings": [{
+                "path": "app.py", "line": 6, "severity": "medium", "kind": "improvement",
+                "code": "narrow-the-except", "message": "the handler hides every error type",
+                "evidence": "    except:",
+            }]})
+
+        report = run_pipeline(root, "audit", ai=True, ai_runner=runner, rules=False,
+                              run_tests=False)
+        codes = [item["code"] for item in report["findings"]]
+        self.assertEqual(codes, ["ai-narrow-the-except"])
+        self.assertEqual(report["findings"][0]["category"], "improvement")
+        self.assertTrue(calls)
+        other = self.repository(defects=True)
+        rules = run_pipeline(other, "audit", ai=False, run_tests=False, rules=True,
+                             start=3, step=1)
+        self.assertTrue(any(item["code"] == "bare-except" for item in rules["findings"]))
+
     def test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled(self):
         from reforge.pipeline import run_pipeline, start_audit
 

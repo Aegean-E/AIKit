@@ -8905,6 +8905,48 @@ class TestReforgeCore(unittest.TestCase):
         covered = {name for request in requests for name in request["files"]}
         self.assertEqual(covered, {path for _, path in pairs})
 
+    def test_a_large_brief_is_attached_as_a_file_not_passed_as_argv(self):
+        # Windows caps a command line at 32,767 characters; a big review must never be an argv.
+        from reforge import ai_review
+
+        seen = {}
+
+        def fake_delegate(role, prompt, file=None, model=None, timeout=0,
+                          output_format="json", workspace=None):
+            seen.update(prompt=prompt, file=file, role=role)
+            return 0, '{"status": "success", "output": ""}'
+
+        import scripts.subagent_delegate as delegate
+
+        with mock.patch.object(delegate, "delegate_subagent", fake_delegate), \
+                mock.patch.object(delegate, "answer_text", lambda text: text):
+            runner = ai_review._delegate_runner(self.root(), 60)
+            code, _ = runner("x" * (ai_review.ARGV_SAFE_CHARS + 10), "opencode/demo-free")
+        self.assertEqual(code, 0)
+        self.assertEqual(seen["role"], ai_review.AI_AGENT_ROLE)
+        self.assertTrue(seen["file"], "the brief must travel as an attachment")
+        self.assertEqual(seen["prompt"], ai_review.ATTACHED_BRIEF_PROMPT)
+        self.assertFalse(Path(seen["file"]).exists(), "the attachment is cleaned up")
+
+    def test_a_small_brief_still_travels_inline(self):
+        from reforge import ai_review
+
+        seen = {}
+
+        def fake_delegate(role, prompt, file=None, model=None, timeout=0,
+                          output_format="json", workspace=None):
+            seen.update(prompt=prompt, file=file)
+            return 0, '{"status": "success", "output": ""}'
+
+        import scripts.subagent_delegate as delegate
+
+        with mock.patch.object(delegate, "delegate_subagent", fake_delegate), \
+                mock.patch.object(delegate, "answer_text", lambda text: text):
+            runner = ai_review._delegate_runner(self.root(), 60)
+            runner("short brief", None)
+        self.assertIsNone(seen["file"])
+        self.assertEqual(seen["prompt"], "short brief")
+
     def test_the_brief_budget_follows_the_model_context_window(self):
         # PRINCIPLE-012 R8: size the brief to the chosen model, using the documented window.
         from reforge import ai_review

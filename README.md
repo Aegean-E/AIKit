@@ -213,7 +213,8 @@ unhandled case, a missing test for a new branch, a simpler correct implementatio
 The brief is sized to the reviewer: one request holds the whole stage on a large-window model
 (about 2.2M characters for `gemini-3.8-flash`), a smaller model gets its own documented
 window, and only a stage larger than that is split, by hunk and by line, so nothing is
-dropped; `--ai-budget` overrides the size. The brief is redacted
+dropped; `--ai-budget` overrides the size, and a brief too large for a command line is
+attached as a file so Windows' 32,767-character argv limit cannot stop it. The brief is redacted
 first: every credential-shaped span the project's secret scanner recognises is replaced before the
 text leaves the machine, and the stage prints how many were redacted; when the scanner cannot be
 loaded the review is skipped rather than sent unredacted. The diff still leaves the machine

@@ -47,10 +47,7 @@ settings, and a stopped or completed run keeps its history when another begins. 
 previously audited SHA stays in view for interaction evidence; a mechanical repair is applied by rule,
 an AI patch only after it was validated against the lines the stage added, one regression test is
 generated per repaired rule/file, the real diff is reviewed, the project's tests run, and a red
-result rolls the patch back. Python files go through the AST detectors; every
-other changed text file goes through `reforge/textdetect.py`, which validates JSON and TOML with the
-standard library, refuses an unclosed Markdown code fence and flags a committed conflict marker, so a
-stage reports only genuinely binary paths as not analysed and prints how many files it reviewed;
+result rolls the patch back. Reforge plans, records and delivers the stage; the AI agent does the reviewing, in any language and for both defects and improvements. The cheap rule pre-pass is opt-in (`--rules`); with it, Python files go through the AST detectors and other text files through `reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not analysed and prints how many files it reviewed;
 a finding whose line carries the project's `hygiene: allow <reason>` marker is dropped. The
 five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
 `unsafe-yaml-load`. `reforge/ai_review.py` then sends the stage's net diff (base..head, every

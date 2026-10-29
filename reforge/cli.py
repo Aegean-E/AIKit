@@ -27,7 +27,9 @@ def _add_window_settings(command, defaults: bool) -> None:
 
 def _add_ai_options(command) -> None:
     command.add_argument("--no-ai", action="store_true",
-                         help="skip the AI review; deterministic detectors still run")
+                         help="skip the AI review (the planner still records the stage)")
+    command.add_argument("--rules", action="store_true",
+                         help="also run the cheap rule pre-pass over the added lines")
     command.add_argument("--ai-model", metavar="MODEL",
                          help="free model for the review (default: opencode/deepseek-v4.1-flash-free)")
     command.add_argument("--ai-timeout", type=int, metavar="SECONDS", default=300,
@@ -328,6 +330,7 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         ai_model=getattr(args, "ai_model", None),
         ai_timeout=int(getattr(args, "ai_timeout", 300) or 300),
         ai_budget=getattr(args, "ai_budget", None),
+        rules=bool(getattr(args, "rules", False)),
     )
     do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:

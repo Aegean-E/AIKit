@@ -405,6 +405,8 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
         severity = str(raw.get("severity", "medium")).lower()
         if severity not in SEVERITIES:
             severity = "medium"
+        kind = "improvement" if str(raw.get("kind", "")).lower() == "improvement" else "defect"
+        category = "improvement" if kind == "improvement" else "review"
         code = re.sub(r"[^a-z0-9-]", "-", str(raw.get("code", "")).lower()).strip("-")
         if not code:
             code = "ai-review"
@@ -428,7 +430,7 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
                 fixable = True
         findings.append(Finding(
             code=code,
-            category="review",
+            category=category,
             severity=severity,
             path=relative,
             line=line,
@@ -445,15 +447,42 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
     return findings, rejected
 
 
+# A Windows command line is capped at 32,767 characters; a POSIX one near 2 MB. The brief is
+# attached as a file well before either limit, so a large-context review never becomes an argv.
+ARGV_SAFE_CHARS = 8_000
+ATTACHED_BRIEF_PROMPT = (
+    "Review the attached change brief. It holds your instructions and the complete diff of one "
+    "audit stage. Reply with the single JSON object it asks for and nothing else."
+)
+
+
+def _write_brief_file(prompt: str) -> str:
+    """Write the brief to a temporary attachment, because argv is too short for a big review."""
+    import os
+    import tempfile
+
+    handle, name = tempfile.mkstemp(prefix="reforge_brief_", suffix=".md")
+    with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(prompt)
+    return name
+
+
 def _delegate_runner(repo: Path, timeout: int) -> AiRunner:
     """The default runner: one read-only `architect` sub-agent on a free model."""
     def run(prompt: str, model: Optional[str]) -> Tuple[int, str]:
         from scripts.subagent_delegate import answer_text, delegate_subagent
 
-        code, report = delegate_subagent(
-            AI_AGENT_ROLE, prompt, model=model or DEFAULT_AI_MODEL,
-            timeout=timeout, output_format="json", workspace=AIKIT_ROOT,
-        )
+        attachment = _write_brief_file(prompt) if len(prompt) > ARGV_SAFE_CHARS else ""
+        send = ATTACHED_BRIEF_PROMPT if attachment else prompt
+        try:
+            code, report = delegate_subagent(
+                AI_AGENT_ROLE, send, file=attachment or None,
+                model=model or DEFAULT_AI_MODEL,
+                timeout=timeout, output_format="json", workspace=AIKIT_ROOT,
+            )
+        finally:
+            if attachment:
+                Path(attachment).unlink(missing_ok=True)
         try:
             envelope = json.loads(report)
         except ValueError:

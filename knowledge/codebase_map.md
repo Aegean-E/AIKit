@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `733`
-- **Total Class Methods**: `801`
-- **Total Source Lines**: `31288`
+- **Total Top-Level Functions**: `734`
+- **Total Class Methods**: `804`
+- **Total Source Lines**: `31398`
 
 ---
 
@@ -220,7 +220,7 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `558` lines (`24767` bytes)
+**Size**: `587` lines (`26050` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -237,6 +237,7 @@
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
 - `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
 - `def findings_from_payload(repo, payload, allowed, commit_of, touched, omitted)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
+- `def _write_brief_file(prompt)` - *Write the brief to a temporary attachment, because argv is too short for a big review.*
 - `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
 - `def review_stage(repo, plan, model, timeout, runner, budget)` - *Ask the AI to review this stage; never raises, and always says what happened.*
 - `def _dedupe(findings)` - *One finding per (path, line, code), because overlapping requests can repeat a hunk.*
@@ -247,7 +248,7 @@
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `221` lines (`10104` bytes)
+**Size**: `223` lines (`10255` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
@@ -256,7 +257,7 @@
 - `def _interaction(finding, prior)`
 - `def supports_source(path)` - *Whether Reforge's AST detectors can analyse this path.*
 - `def is_bookkeeping(path)` - *Reforge's own state, its backups and locks, and the task ledger it updates.*
-- `def audit_window(repo, plan, history, skipped, reviewed)` - *Deeply inspect every line the new commits add, and tie it to prior analysed work.*
+- `def audit_window(repo, plan, history, skipped, reviewed, detections)` - *Walk the stage's files and optionally run the cheap rules over the lines it adds.*
 - `def _ordered(findings)`
 - `def summarize(findings)`
 
@@ -265,7 +266,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `385` lines (`18808` bytes)
+**Size**: `388` lines (`19006` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -431,7 +432,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `479` lines (`22661` bytes)
+**Size**: `483` lines (`22890` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -444,7 +445,7 @@
 - `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
 - `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, ai)`
 - `def _review_error(run, pending)`
-- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner, ai_budget)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner, ai_budget, rules)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def _ai_report(root, plan, enabled, model, timeout, runner, budget)` - *Run the optional AI review; the findings stay objects until the caller serialises them.*
 - `def _serialize_ai(report)` - *The small JSON-safe form of an AI review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
@@ -1287,7 +1288,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1595` lines (`81555` bytes)
+**Size**: `1625` lines (`83005` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1403,6 +1404,7 @@
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
   - Method `.test_the_ai_brief_holds_the_net_stage_diff_not_an_old_commit()`
   - Method `.test_ai_review_adds_and_applies_a_validated_fix()`
+  - Method `.test_the_planner_reviews_with_ai_and_rules_only_on_request()`
   - Method `.test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled()`
   - Method `.test_three_projects_audit_concurrently_with_separate_locks_and_state()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
@@ -1421,7 +1423,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9098` lines (`516710` bytes)
+**Size**: `9140` lines (`518686` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2147,6 +2149,8 @@
   - Method `.stage()` - *A minimal stage plan for brief-building tests.*
   - Method `.test_a_stage_that_fits_is_one_request_and_loses_nothing()`
   - Method `.test_an_oversized_stage_is_split_but_stays_complete()`
+  - Method `.test_a_large_brief_is_attached_as_a_file_not_passed_as_argv()`
+  - Method `.test_a_small_brief_still_travels_inline()`
   - Method `.test_the_brief_budget_follows_the_model_context_window()`
   - Method `.test_a_large_file_is_split_by_hunk_not_dropped()`
   - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
