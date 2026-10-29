@@ -1,271 +1,65 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-ai-multiproject",
+    "task_id": "reforge-run1-fixes",
     "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793255469.0042844,
-    "owner": "kilo:reforge-ai",
-    "started_by": "kilo:reforge-ai",
+    "updated_at": 1793258821.2890434,
+    "owner": "kilo:reforge-run1",
+    "started_by": "kilo:reforge-run1",
     "continuations": [],
-    "completed_at": 1793255790.2226098
+    "completed_at": 1793258821.437337
   },
   "checkpoints": [
     {
-      "task_id": "idea-catcher-aikit",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/6] Finish idea-catcher ic-037 feature work, then ship its registry tool in AIKit as a package with a standalone sync path like Reforge",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793206780.6288965,
-      "timestamp_str": "2026-10-28 19:59:40",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "The user asked to continue idea-catcher and then implement it on AIKit like Aegean Reforge",
-        "benefits": "Completes the uncommitted registry features and makes AIKit ship the complete idea-catcher tool source, with bidirectional sync to projects/idea-catcher",
-        "risks": "contract: AIKit gains an idea_catcher package, entrypoint, sync config and CLI command; dependency: stdlib only; concurrency: package import and workspace-root resolution must not collide; state: new sync marker and standalone package copies",
-        "mitigation": "Preserve the working tool logic, keep tools/ as compatibility wrappers, add tests for CLI, sync and root resolution, then run project and AIKit gates"
-      }
-    },
-    {
-      "task_id": "idea-catcher-aikit",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[6/6] Idea Catcher ships in idea_catcher/ + idea_catcher.py with aikit.py dispatch and repo sync; package/standalone synchronized; 588 unit + 64 integration tests pass, all AIKit gates pass; project 153 tests and 4/4 gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793209377.431989,
-      "timestamp_str": "2026-10-28 20:42:57",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "idea-catcher-aikit",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'idea-catcher-aikit' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793209377.5630198,
-      "timestamp_str": "2026-10-28 20:42:57",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "project-license-brand-ceiling",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Move brand disclosure into its own section, add license tags everywhere, raise test ceilings to 20/500 ms",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793210408.1408837,
-      "timestamp_str": "2026-10-28 21:00:08",
-      "agent": "kilo:license-brand-ceiling",
-      "impact_assessment": {
-        "why": "The user rejected the inline disclosure, asked for license tags on every existing and future project, and approved 20 ms/500 ms test ceilings.",
-        "benefits": "A dedicated Brand Assets section, license metadata on all projects and new projects, and realistic test budgets under host load.",
-        "risks": "contract: README section and new/publish topic lists change; dependency: none; concurrency: sequential project metadata updates; state: license_topics added to project memory.",
-        "mitigation": "Live topic verification for all projects, pinned license/section tests, ADR-244/245, and full Phase 4 gates."
-      }
-    },
-    {
-      "task_id": "project-license-brand-ceiling",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[1/1] Delivered the Brand Assets section and fallback disclosure, license tags (AL/AGL/ASL/restricted) on all 38 projects plus automatic new-project tags, and 20 ms/500 ms ceilings; 37 projects + Reforge pushed, idea-catcher local; 588 unit + 64 integration tests and all gates pass.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793210408.275321,
-      "timestamp_str": "2026-10-28 21:00:08",
-      "agent": "kilo:license-brand-ceiling"
-    },
-    {
-      "task_id": "project-license-brand-ceiling",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-license-brand-ceiling' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793210408.4019501,
-      "timestamp_str": "2026-10-28 21:00:08",
-      "agent": "kilo:license-brand-ceiling"
-    },
-    {
-      "task_id": "aikit-readme-badges",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Add AIKit README banner, license and Python badges; keep AegeanWorks' own badge set",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793214886.9417887,
-      "timestamp_str": "2026-10-28 22:14:46",
-      "agent": "kilo:main",
-      "impact_assessment": {
-        "why": "The user asked to continue AIKit README badge updates and exempt AegeanWorks from generated AIKit/license badges",
-        "benefits": "AIKit presents its brand and license clearly; AegeanWorks keeps one curated badge block and its media audit stays clean",
-        "risks": "contract: AIKit README media block and project_media badge emission/audit; dependency: none; concurrency: none; state: README, ADR-247, tests",
-        "mitigation": "Unit test the AegeanWorks exception, keep the README under 25k, and run every gate"
-      }
-    },
-    {
-      "task_id": "aikit-readme-badges",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] AIKit README now carries its social banner, license and Python badges; AegeanWorks skips generated license/AIKit badges and audits clean; 590 unit + 65 integration tests and all gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793214905.489915,
-      "timestamp_str": "2026-10-28 22:15:05",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "aikit-readme-badges",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-readme-badges' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793214905.635258,
-      "timestamp_str": "2026-10-28 22:15:05",
-      "agent": "kilo:main"
-    },
-    {
-      "task_id": "reforge-aikit-integration",
+      "task_id": "reforge-run1-fixes",
       "phase": "planning",
       "phase_num": 2,
-      "description": "[1/4] Remove the standalone Reforge repository layer, fix the repair/delivery defects it exposed, refresh knowledge and gates",
+      "description": "[1/4] Redact the AI brief, scope AI patches to lines the stage added, and correct the commit-state docs Reforge flagged",
       "files_affected": [],
       "status": "in_progress",
-      "timestamp": 1793215738.4198003,
-      "timestamp_str": "2026-10-28 22:28:58",
-      "agent": "kilo:reforge-integration",
+      "timestamp": 1793256163.4150476,
+      "timestamp_str": "2026-10-29 09:42:43",
+      "agent": "kilo:reforge-run1",
       "impact_assessment": {
-        "why": "The user wants Reforge integrated into AIKit only; the duplicate projects/aegean-reforge checkout and one-way sync file create two sources of truth and already drifted.",
-        "benefits": "One canonical source for Reforge, no bidirectional sync conflicts, less documentation ambiguity, and a safer repair commit scope.",
-        "risks": "contract: reforge repo subcommands and reforge-sync.json disappear; dependency: none beyond stdlib; concurrency: docs/tests edited while another AIKit session may touch shared files; state: no persisted schema change.",
-        "mitigation": "Remove the layer atomically, keep reforge.py plus reforge/ as the entrypoints, update every reference and test, and re-read shared files immediately before staging."
+        "why": "Reforge run-1 on AIKit reported that its own AI review sends unredacted diffs to a free external model, that a patch may rewrite any line of a changed file, and that the README claims .aikit/reforge.json is staged although AIKit ignores it",
+        "benefits": "No credential-shaped text leaves the machine, a model cannot edit outside the reviewed hunk, and the documented commit behaviour matches the ignore rule",
+        "risks": "contract: build_brief scrubs diffs, findings_from_payload gains a touched-lines check; dependency: standard library plus the existing scrubber; concurrency: unchanged per-project lock; state: the ai report gains a redacted count",
+        "mitigation": "Keep scrubbing additive, default the new scope check to the real stage, test both, and rerun every gate"
       }
     },
     {
-      "task_id": "reforge-aikit-integration",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reforge-aikit-integration' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793217876.4310086,
-      "timestamp_str": "2026-10-28 23:04:36",
-      "agent": "kilo:reforge-integration"
-    },
-    {
-      "task_id": "idea-catcher-integration",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Integrate Idea Catcher into AIKit only: move its private register to the AIKit root, drop the repo sync layer, archive and remove projects/idea-catcher",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793227805.88696,
-      "timestamp_str": "2026-10-29 01:50:05",
-      "agent": "kilo:idea-catcher-integration",
-      "impact_assessment": {
-        "why": "The user wants the Idea Catcher tool integrated into AIKit, its found ideas kept but invisible to the public, the local standalone repo archived, and projects/idea-catcher removed",
-        "benefits": "One canonical Idea Catcher source, no bidirectional sync drift, private register data preserved outside public commits, and a smaller CLI surface",
-        "risks": "contract: repo subcommands, idea-catcher-sync.json and the projects register layout disappear; dependency: stdlib only; concurrency: shared docs/tests may be touched by another session; state: register data moves to an ignored root folder, no public schema change",
-        "mitigation": "Move data atomically, ignore it before staging, update every reference and test, archive the full repository first, then run all Phase 4 gates and verify git status carries no idea data"
-      }
-    },
-    {
-      "task_id": "idea-catcher-integration",
+      "task_id": "reforge-run1-fixes",
       "phase": "in_progress",
       "phase_num": 4,
-      "description": "[5/5] Idea Catcher integrated into AIKit only; private register moved to git-ignored .idea-catcher/; repo sync layer removed; standalone repo archived to Desktop and projects/idea-catcher deleted; 595 unit + 66 integration tests and every gate pass; checklists: passed",
+      "description": "[4/4] AI brief redacted with the project's secret scanner, AI patches must overlap the stage's added lines, README separates committed project state from AIKit's ignored .aikit/; the fourth finding is a rejected false positive; 607 unit + 69 integration tests and every gate pass; ADR-255; checklists: passed",
       "files_affected": [],
       "status": "in_progress",
-      "timestamp": 1793228794.4242477,
-      "timestamp_str": "2026-10-29 02:06:34",
-      "agent": "kilo:idea-catcher-integration"
+      "timestamp": 1793256431.433701,
+      "timestamp_str": "2026-10-29 09:47:11",
+      "agent": "kilo:reforge-run1"
     },
     {
-      "task_id": "idea-catcher-integration",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'idea-catcher-integration' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793228994.8118107,
-      "timestamp_str": "2026-10-29 02:09:54",
-      "agent": "kilo:idea-catcher-integration"
-    },
-    {
-      "task_id": "reforge-review-changes",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/4] Make Reforge review every changed file and record its run in AIKit's real task ledger",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793252181.3973248,
-      "timestamp_str": "2026-10-29 08:36:21",
-      "agent": "kilo:reforge-review",
-      "impact_assessment": {
-        "why": "Running Reforge on AIKit skipped 20 of 20 changed files as 'Python only' and reported 'no AIKit task ledger', so it could not review the agent's own step-by-step changes",
-        "benefits": "Every changed text file is inspected with structural checks, coverage is honest about binary files only, and an in-progress audit is visible to a cold start in .agents/task_ledger.json",
-        "risks": "contract: audit_window/api payload gains a reviewed count, skipped now means binary only; dependency: stdlib only (tomllib optional); concurrency: reforge state and ledger locks unchanged; state: stage entry gains an additive reviewed count",
-        "mitigation": "Keep Python AST rules byte-identical, add text rules as a separate module, test both layouts, refresh knowledge and ADR, and run every gate"
-      }
-    },
-    {
-      "task_id": "reforge-review-changes",
+      "task_id": "reforge-run1-fixes",
       "phase": "in_progress",
       "phase_num": 4,
-      "description": "[4/4] Reforge reviews every changed text file (JSON/TOML parse, Markdown fences, conflict markers) and finds the ledger by name; project memory keyed on .aikit/project.json; 600 unit + 66 integration tests and every gate pass; ADR-253; checklists: passed",
+      "description": "[4/4] Reforge run-1..run-6 findings triaged: AI brief redacted fail-closed, patches scoped to stage lines, evidence verified against the current file, omitted files declared unknown; stale/removed-line findings rejected; 609 unit + 69 integration tests and every gate pass; ADR-255..258; checklists: passed",
       "files_affected": [],
       "status": "in_progress",
-      "timestamp": 1793253365.611338,
-      "timestamp_str": "2026-10-29 08:56:05",
-      "agent": "kilo:reforge-review"
+      "timestamp": 1793258821.2890434,
+      "timestamp_str": "2026-10-29 10:27:01",
+      "agent": "kilo:reforge-run1"
     },
     {
-      "task_id": "reforge-review-changes",
+      "task_id": "reforge-run1-fixes",
       "phase": "completed",
       "phase_num": 5,
-      "description": "Task 'reforge-review-changes' completed successfully.",
+      "description": "Task 'reforge-run1-fixes' completed successfully.",
       "status": "completed",
-      "timestamp": 1793253365.7731047,
-      "timestamp_str": "2026-10-29 08:56:05",
-      "agent": "kilo:reforge-review"
-    },
-    {
-      "task_id": "reforge-ai-multiproject",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Make Reforge AI-driven and concurrency-safe: per-project isolation, AI review of stage changes, validated AI fixes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793253763.8593776,
-      "timestamp_str": "2026-10-29 09:02:43",
-      "agent": "kilo:reforge-ai",
-      "impact_assessment": {
-        "why": "The user wants Reforge usable on several projects at once and wants it to analyse changes with AI before applying fixes, not only run static detectors",
-        "benefits": "Independent projects audit concurrently with isolated locks and state; a stage is reviewed by a read-only AI agent with a bounded diff; validated AI suggestions become applied, tested, reviewable repairs",
-        "risks": "contract: audit/run gain AI flags and payload/state fields, findings gain source/patch fields; dependency: optional opencode CLI and free model, no new Python deps; concurrency: several opencode subprocesses and per-project locks; state: additive schema keys only",
-        "mitigation": "Resolve roots before locking, keep AI optional and gracefully skipped, validate every AI path/line/patch against the stage, run tests and gates with rollback, and pin each behaviour with tests and ADR-254"
-      }
-    },
-    {
-      "task_id": "reforge-ai-multiproject",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[5/5] Reforge reviews each stage with a read-only AI agent on a free model and applies only validated patches; per-project resolved locks keep parallel audits isolated; 604 unit + 69 integration tests and every gate pass; ADR-254; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793255469.0042844,
-      "timestamp_str": "2026-10-29 09:31:09",
-      "agent": "kilo:reforge-ai"
-    },
-    {
-      "task_id": "reforge-ai-multiproject",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reforge-ai-multiproject' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793255790.2226112,
-      "timestamp_str": "2026-10-29 09:36:30",
-      "agent": "kilo:reforge-ai"
+      "timestamp": 1793258821.4373386,
+      "timestamp_str": "2026-10-29 10:27:01",
+      "agent": "kilo:reforge-run1"
     }
   ]
 }
