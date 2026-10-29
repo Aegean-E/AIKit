@@ -1462,6 +1462,29 @@ class TestReforgeHistory(unittest.TestCase):
         for root in (first, second):
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
+    def test_the_ai_brief_holds_the_net_stage_diff_not_an_old_commit(self):
+        # A stage spans several commits. Reviewing the oldest commit's diff for a file shows a
+        # hunk that later commits already replaced, which is how stale findings were produced.
+        from reforge import ai_review
+        from reforge.audit import plan_next_stage
+        from reforge.pipeline import start_audit
+        from reforge.state import current_run, load_state
+
+        root = self.simple_repository(1)
+        (root / "README.md").write_text("State: first\n", encoding="utf-8")
+        self.git(root, "add", "README.md")
+        self.git(root, "commit", "-q", "-m", "docs: first")
+        (root / "README.md").write_text("State: second\n", encoding="utf-8")
+        self.git(root, "add", "README.md")
+        self.git(root, "commit", "-q", "-m", "docs: second")
+        start_audit(root, start=3, step=1)
+        run = current_run(load_state(root))
+        brief, _ = ai_review.build_brief(root, plan_next_stage(root, run))
+        self.assertIn("State: second", brief)
+        self.assertIn("-State: first", brief)
+        self.assertNotIn("-State: second", brief, "an intermediate hunk must not be reviewed")
+        self.assertEqual(brief.count("--- README.md"), 1, "a file must appear once")
+
     def test_ai_review_adds_and_applies_a_validated_fix(self):
         # Reforge reviews the stage with an AI agent; a validated suggestion becomes a real,
         # reviewable repair that the normal tests and patch review still have to accept.

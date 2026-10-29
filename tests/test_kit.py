@@ -8847,7 +8847,8 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(len(reviewed), ai_review.MAX_FILES)
         self.assertTrue(truncated)
         self.assertIn("Omitted from the diff (unknown to you): f", brief)
-        self.assertIn("never claim that a feature, check or field is unimplemented", brief)
+        self.assertIn("Never claim that a feature, check", brief)
+        self.assertIn("unimplemented, missing or unchanged", brief)
 
     def test_the_brief_redacts_a_credential_before_it_leaves(self):
         from reforge import ai_review
@@ -8890,6 +8891,24 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(report["status"], "skipped")
         self.assertIn("not sent unredacted", report["reason"])
         self.assertEqual(calls, [], "no diff may leave the machine without the scanner")
+
+    def test_a_finding_about_an_omitted_file_is_dropped(self):
+        from reforge.ai_review import findings_from_payload
+
+        root = self.root()
+        (root / "README.md").write_text("The feature is documented here.\n", encoding="utf-8")
+        payload = {"findings": [{
+            "path": "README.md", "line": 1, "code": "claims-missing-code",
+            "message": "the implementation in reforge/ai_review.py is missing",
+            "evidence": "The feature is documented here.",
+        }]}
+        findings, rejected = findings_from_payload(
+            root, payload, ["README.md"], {"README.md": "sha"}, {}, ["reforge/ai_review.py"])
+        self.assertEqual(findings, [])
+        self.assertIn("which the brief omitted", rejected[0])
+        findings, rejected = findings_from_payload(
+            root, payload, ["README.md"], {"README.md": "sha"}, {}, [])
+        self.assertEqual(len(findings), 1)
 
     def test_a_finding_quoting_a_removed_line_is_dropped(self):
         from reforge.ai_review import findings_from_payload

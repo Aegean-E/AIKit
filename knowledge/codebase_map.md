@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `722`
-- **Total Class Methods**: `793`
-- **Total Source Lines**: `30940`
+- **Total Top-Level Functions**: `727`
+- **Total Class Methods**: `795`
+- **Total Source Lines**: `31051`
 
 ---
 
@@ -220,18 +220,19 @@
 ### [`reforge/ai_review.py`](reforge/ai_review.py)
 > *AI review of the changes one audit stage introduces, then validated fixes.*
 
-**Size**: `400` lines (`17472` bytes)
+**Size**: `425` lines (`18505` bytes)
 
 **Functions:**
-- `def _changed_paths(repo, plan)` - *(commit, path) for every readable text file the stage's new commits changed.*
-- `def _file_diff(repo, sha, path)`
+- `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
+- `def _changed_paths(repo, plan)` - *(head, path) for every readable text file the stage changed, once each, from the net diff.*
+- `def _file_diff(repo, plan, path)` - *The path's net diff across the whole stage.*
 - `def scrubber_available()` - *Whether the project's secret scanner can redact the brief.*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
-- `def build_brief(repo, plan, reviewed, redacted)` - *A bounded, redacted prompt holding the stage diff.*
+- `def build_brief(repo, plan, reviewed, redacted)` - *A bounded, redacted prompt holding the stage's net diff.*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
 - `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
-- `def findings_from_payload(repo, payload, allowed, commit_of, touched)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
+- `def findings_from_payload(repo, payload, allowed, commit_of, touched, omitted)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
 - `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
 - `def review_stage(repo, plan, model, timeout, runner)` - *Ask the AI to review this stage; never raises, and always says what happened.*
 - `def merge_findings(proven, reviewed)` - *Deterministic findings first, then AI findings the detectors did not already name.*
@@ -349,7 +350,7 @@
 ### [`reforge/git_history.py`](reforge/git_history.py)
 > *Bounded Git reads used by the auditor, the repair review and delivery.*
 
-**Size**: `199` lines (`6914` bytes)
+**Size**: `243` lines (`8734` bytes)
 
 **Functions:**
 - `def run_git(repo, *args, timeout)` - *Run git with stdin closed and a timeout; returns (exit code, combined output).*
@@ -360,6 +361,10 @@
 - `def commit_count(repo)`
 - `def changed_files(repo, sha)` - *(status, relative path) pairs a commit changed; root commits included.*
 - `def added_lines(repo, sha, path)` - *Line numbers a commit adds to `path`, from a zero-context diff.*
+- `def changed_files_range(repo, base, head)` - *(status, path) for the net change between two commits; `base` empty means `head` is a root.*
+- `def added_lines_range(repo, base, head, path)` - *Line numbers the whole stage (`base`..`head`) adds to `path`, as it stands at `head`.*
+- `def range_diff(repo, base, head, path)` - *The net diff of one path across a whole stage, with three lines of context.*
+- `def _added_from_diff(diff_text)` - *Line numbers a zero-context diff adds, read from its hunk headers.*
 - `def parent_sha(repo, sha)`
 - `def file_at(repo, sha, path)`
 - `def worktree_diff(repo, paths)`
@@ -1276,7 +1281,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1572` lines (`80257` bytes)
+**Size**: `1595` lines (`81555` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1390,6 +1395,7 @@
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
+  - Method `.test_the_ai_brief_holds_the_net_stage_diff_not_an_old_commit()`
   - Method `.test_ai_review_adds_and_applies_a_validated_fix()`
   - Method `.test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled()`
   - Method `.test_three_projects_audit_concurrently_with_separate_locks_and_state()`
@@ -1409,7 +1415,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9001` lines (`511597` bytes)
+**Size**: `9020` lines (`512560` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2134,6 +2140,7 @@
   - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
   - Method `.test_a_patch_must_overlap_a_line_the_stage_added()`
   - Method `.test_the_review_is_skipped_when_the_secret_scanner_is_missing()`
+  - Method `.test_a_finding_about_an_omitted_file_is_dropped()`
   - Method `.test_a_finding_quoting_a_removed_line_is_dropped()`
   - Method `.test_an_ai_answer_is_validated_against_the_stage()`
   - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`

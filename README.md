@@ -204,8 +204,9 @@ must parse, a Markdown code fence must close, and a committed conflict marker is
 binary file is reported as not analysed, and the stage prints how many files it reviewed.
 
 A read-only AI agent then reviews the same diff (ADR-254). It runs on a free model
-(`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the bounded diff as
-its whole input, and reports what a reviewer would with a line of evidence. The brief is redacted
+(`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the stage's net
+diff (from the commit before the stage to its last commit, each file whole) as its whole
+input, and reports what a reviewer would with a line of evidence. The brief is redacted
 first: every credential-shaped span the project's secret scanner recognises is replaced before the
 text leaves the machine, and the stage prints how many were redacted; when the scanner cannot be
 loaded the review is skipped rather than sent unredacted. The diff still leaves the machine

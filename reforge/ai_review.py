@@ -25,7 +25,13 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from reforge.audit import is_bookkeeping
-from reforge.git_history import added_lines, changed_files, file_at, parent_sha, run_git
+from reforge.git_history import (
+    added_lines_range,
+    changed_files_range,
+    file_at,
+    parent_sha,
+    range_diff,
+)
 from reforge.model import Finding, StagePlan
 from reforge.textdetect import is_text
 
@@ -36,9 +42,9 @@ AI_AGENT_ROLE = "architect"
 # repository that has no agent configuration.
 AIKIT_ROOT = Path(__file__).resolve().parent.parent
 AI_TIMEOUT_SECONDS = 300
-MAX_FILES = 12
-MAX_FILE_CHARS = 6_000
-MAX_BRIEF_CHARS = 14_000
+MAX_FILES = 10
+MAX_FILE_CHARS = 8_000
+MAX_BRIEF_CHARS = 24_000
 MAX_FINDINGS = 25
 MAX_MESSAGE_CHARS = 400
 MAX_PATCH_CHARS = 4_000
@@ -68,38 +74,45 @@ with `-` was removed by it and is NOT in the file, and a leading space marks unc
 Every `evidence` must quote a line that exists in the file after the change (a `+` line or context),
 verbatim. Never report a removed line as a current problem.
 
-The diff may cover only some of the changed files, and a block may end with `[truncated]`. A file
-that is not shown is unknown to you: never claim that a feature, check or field is unimplemented,
-missing or unchanged outside the lines you were given. If the only way to judge a claim is to read
-code you were not given, do not report it.
+The diff is the stage's net change: it compares the commit before the stage with its last commit, so
+each file appears once, complete. The diff may still cover only some of the changed files, because
+the brief is bounded: a file that is not shown is unknown to you. Never claim that a feature, check
+or field is unimplemented, missing or unchanged outside the lines you were given. If the only way to
+judge a claim is to read code you were not given, do not report it.
 
 Every path must be one of the changed files below. Respond with JSON only.
 """
 
 
+def _stage_base(repo: Path, plan: StagePlan) -> str:
+    """The commit just before the stage, so one diff shows the whole stage as it now stands."""
+    if not plan.new_shas:
+        return ""
+    return parent_sha(repo, plan.new_shas[-1])
+
+
 def _changed_paths(repo: Path, plan: StagePlan) -> List[Tuple[str, str]]:
-    """(commit, path) for every readable text file the stage's new commits changed."""
+    """(head, path) for every readable text file the stage changed, once each, from the net diff."""
+    if not plan.new_shas:
+        return []
+    head = plan.new_shas[0]
+    base = _stage_base(repo, plan)
     pairs: List[Tuple[str, str]] = []
-    seen = set()
-    for sha in reversed(plan.new_shas):
-        for status, path in changed_files(repo, sha):
-            if status == "D" or is_bookkeeping(path) or path in seen:
-                continue
-            source = file_at(repo, sha, path)
-            if source is None or not is_text(source):
-                continue
-            seen.add(path)
-            pairs.append((sha, path))
+    for status, path in changed_files_range(repo, base, head):
+        if status == "D" or is_bookkeeping(path):
+            continue
+        source = file_at(repo, head, path)
+        if source is None or not is_text(source):
+            continue
+        pairs.append((head, path))
     return pairs
 
 
-def _file_diff(repo: Path, sha: str, path: str) -> str:
-    parent = parent_sha(repo, sha)
-    if parent:
-        code, out = run_git(repo, "diff", "--unified=3", parent, sha, "--", path)
-    else:
-        code, out = run_git(repo, "show", "--format=", "--unified=3", sha, "--", path)
-    return out if code == 0 else ""
+def _file_diff(repo: Path, plan: StagePlan, path: str) -> str:
+    """The path's net diff across the whole stage."""
+    if not plan.new_shas:
+        return ""
+    return range_diff(repo, _stage_base(repo, plan), plan.new_shas[0], path)
 
 
 def scrubber_available() -> bool:
@@ -126,31 +139,34 @@ def _scrub(text: str) -> Tuple[str, int]:
 def build_brief(repo: Path, plan: StagePlan,
                 reviewed: Optional[List[str]] = None,
                 redacted: Optional[List[int]] = None) -> Tuple[str, bool]:
-    """A bounded, redacted prompt holding the stage diff.
+    """A bounded, redacted prompt holding the stage's net diff.
 
-    `truncated` says a file or the total was cut, `reviewed` collects the files really included and
-    `redacted` collects one count per carried detector, so the caller can report both honestly.
+    A file is included whole or not at all, because a half-shown hunk invites a confident wrong
+    finding about code the model never saw. `truncated` says some changed file was omitted,
+    `reviewed` collects the files really included and `redacted` one count per detector hit.
     """
     blocks: List[str] = []
     included: List[str] = []
     total = 0
     pairs = _changed_paths(repo, plan)
-    truncated = len(pairs) > MAX_FILES
-    for sha, path in pairs[:MAX_FILES]:
-        diff = _file_diff(repo, sha, path)
+    truncated = False
+    for sha, path in pairs:
+        if len(included) >= MAX_FILES:
+            truncated = True
+            break
+        diff = _file_diff(repo, plan, path)
         if not diff.strip():
             continue
         diff, redactions = _scrub(diff)
         if redactions and redacted is not None:
             redacted.append(redactions)
-        budget = min(MAX_FILE_CHARS, MAX_BRIEF_CHARS - total)
-        if budget <= 200:
+        if len(diff) > MAX_FILE_CHARS:
+            truncated = True
+            continue
+        if total + len(diff) > MAX_BRIEF_CHARS:
             truncated = True
             break
-        if len(diff) > budget:
-            diff = diff[:budget] + "\n[truncated]\n"
-            truncated = True
-        block = f"--- {path} (commit {sha[:12]}) ---\n{diff}"
+        block = f"--- {path} (stage {sha[:12]}) ---\n{diff}"
         blocks.append(block)
         included.append(path)
         total += len(block)
@@ -223,12 +239,15 @@ def _line_set(text: str) -> set:
 
 def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
                           commit_of: Dict[str, str],
-                          touched: Optional[Dict[str, set]] = None
+                          touched: Optional[Dict[str, set]] = None,
+                          omitted: Sequence[str] = (),
                           ) -> Tuple[List[Finding], List[str]]:
     """Validate the model's answer against the stage; returns (findings, rejected reasons).
 
     `touched` maps each changed path to the line numbers the stage added; a replacement must
-    overlap them, so the model's help stays inside the change under review.
+    overlap them, so the model's help stays inside the change under review. `omitted` names changed
+    files the bounded brief did not carry: a finding that reasons about one of them is guessing, so
+    it is dropped rather than shown as work.
     """
     items = payload.get("findings") if isinstance(payload, dict) else payload
     if not isinstance(items, list):
@@ -267,6 +286,12 @@ def findings_from_payload(repo: Path, payload: object, allowed: Sequence[str],
             # it describes does not exist, so the finding is dropped rather than shown as work.
             rejected.append(f"{relative}:{line}: the evidence is not in the current file "
                             "(it may quote a removed line)")
+            continue
+        claim = f"{message} {raw_evidence}"
+        unseen = next((path for path in omitted
+                       if path in claim or Path(path).name in claim), "")
+        if unseen:
+            rejected.append(f"{relative}:{line}: reasons about {unseen}, which the brief omitted")
             continue
         severity = str(raw.get("severity", "medium")).lower()
         if severity not in SEVERITIES:
@@ -376,12 +401,12 @@ def review_stage(repo: Path, plan: StagePlan, model: Optional[str] = None,
         result.update(status="failed", reason="the answer held no JSON object")
         return result
     commit_of = {path: sha for sha, path in _changed_paths(repo, plan)}
-    touched: Dict[str, set] = {}
-    for sha in plan.new_shas:
-        for status, path in changed_files(repo, sha):
-            if status != "D" and path in reviewed:
-                touched.setdefault(path, set()).update(added_lines(repo, sha, path))
-    findings, rejected = findings_from_payload(repo, payload, reviewed, commit_of, touched)
+    base, head = _stage_base(repo, plan), plan.new_shas[0]
+    touched: Dict[str, set] = {path: added_lines_range(repo, base, head, path)
+                               for path in reviewed}
+    omitted = [path for _, path in _changed_paths(repo, plan) if path not in reviewed]
+    findings, rejected = findings_from_payload(repo, payload, reviewed, commit_of, touched,
+                                               omitted)
     result.update(status="reviewed", findings=findings, rejected=rejected)
     if not findings:
         result["reason"] = "the review found nothing it could prove"

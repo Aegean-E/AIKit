@@ -96,10 +96,54 @@ def added_lines(repo: Path, sha: str, path: str) -> Set[int]:
     code, out = run_git(repo, "diff", "--unified=0", parent, sha, "--", path)
     if code != 0:
         return set()
+    return _added_from_diff(out)
+
+
+def changed_files_range(repo: Path, base: str, head: str) -> List[Tuple[str, str]]:
+    """(status, path) for the net change between two commits; `base` empty means `head` is a root."""
+    if not base:
+        code, out = run_git(repo, "ls-tree", "-r", "--name-only", "-z", head)
+        return [("A", path) for path in out.split("\0") if path] if code == 0 else []
+    code, out = run_git(repo, "diff", "--name-status", "-z", "--no-renames", base, head)
+    if code != 0:
+        return []
+    parts = out.split("\0")
+    pairs: List[Tuple[str, str]] = []
+    index = 0
+    while index + 1 < len(parts):
+        status, path = parts[index], parts[index + 1]
+        if status and path:
+            pairs.append((status[:1], path))
+        index += 2
+    return pairs
+
+
+def added_lines_range(repo: Path, base: str, head: str, path: str) -> Set[int]:
+    """Line numbers the whole stage (`base`..`head`) adds to `path`, as it stands at `head`."""
+    if not base:
+        source = file_at(repo, head, path)
+        return set(range(1, len(source.splitlines()) + 1)) if source else set()
+    code, out = run_git(repo, "diff", "--unified=0", base, head, "--", path)
+    if code != 0:
+        return set()
+    return _added_from_diff(out)
+
+
+def range_diff(repo: Path, base: str, head: str, path: str) -> str:
+    """The net diff of one path across a whole stage, with three lines of context."""
+    if not base:
+        code, out = run_git(repo, "show", "--format=", "--unified=3", head, "--", path)
+        return out if code == 0 else ""
+    code, out = run_git(repo, "diff", "--unified=3", base, head, "--", path)
+    return out if code == 0 else ""
+
+
+def _added_from_diff(diff_text: str) -> Set[int]:
+    """Line numbers a zero-context diff adds, read from its hunk headers."""
     lines: Set[int] = set()
     current = 0
     hunk = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
-    for line in out.splitlines():
+    for line in diff_text.splitlines():
         match = hunk.match(line)
         if match:
             current = int(match.group(1))
