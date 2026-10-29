@@ -202,8 +202,8 @@ These close the structural gaps without pretending to be operative before counse
 2. **Operative adoption**: the asset, data/weights and OpenRAIL attachments become binding only when
    an Order Form or a project LICENSE names them; the policy documents are statements of practice,
    not a grant.
-3. **A standard permissive license text** for a granted dual-license request; today the policy
-   allows MIT or Apache-2.0 by written agreement, but no pre-approved template is included.
+3. **A bundled copy of the standard permissive license text** for a granted dual-license request;
+   the grant letter template is included, but the recipient must attach the MIT or Apache-2.0 text.
 4. **A trademark registration and watch strategy** if the marks are used commercially outside
    Türkiye.
 5. **A public security-response SLA** if a commercial customer requires one; today the response

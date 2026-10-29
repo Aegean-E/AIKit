@@ -1,7 +1,9 @@
 """Bounded Git reads used by the auditor, the repair review and delivery."""
 
+import os
 import re
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
@@ -9,6 +11,11 @@ from reforge.model import CommitInfo
 
 GIT_TIMEOUT_SECONDS = 60
 FIELD = "\x1f"
+
+
+def _repo_key(repo: Path) -> str:
+    """A stable cache key for one checkout path."""
+    return os.path.abspath(os.fspath(repo))
 
 
 def run_git(repo: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> Tuple[int, str]:
@@ -70,12 +77,12 @@ def commit_count(repo: Path) -> int:
     return int(out) if code == 0 and out.isdigit() else 0
 
 
-def changed_files(repo: Path, sha: str) -> List[Tuple[str, str]]:
-    """(status, relative path) pairs a commit changed; root commits included."""
-    code, out = run_git(repo, "diff-tree", "--root", "--no-commit-id", "--name-status",
+@lru_cache(maxsize=2048)
+def _changed_files(repo_key: str, sha: str) -> Tuple[Tuple[str, str], ...]:
+    code, out = run_git(Path(repo_key), "diff-tree", "--root", "--no-commit-id", "--name-status",
                         "-r", "--no-renames", "-z", sha)
     if code != 0:
-        return []
+        return ()
     parts = out.split("\0")
     pairs: List[Tuple[str, str]] = []
     index = 0
@@ -84,29 +91,39 @@ def changed_files(repo: Path, sha: str) -> List[Tuple[str, str]]:
         if status and path:
             pairs.append((status[:1], path))
         index += 2
-    return pairs
+    return tuple(pairs)
+
+
+def changed_files(repo: Path, sha: str) -> List[Tuple[str, str]]:
+    """(status, relative path) pairs a commit changed; root commits included."""
+    return list(_changed_files(_repo_key(repo), sha))
+
+
+@lru_cache(maxsize=4096)
+def _added_lines(repo_key: str, sha: str, path: str) -> Tuple[int, ...]:
+    parent = _parent_sha(repo_key, sha)
+    if not parent:
+        source = _file_at(repo_key, sha, path)
+        return tuple(range(1, len(source.splitlines()) + 1)) if source else ()
+    code, out = run_git(Path(repo_key), "diff", "--unified=0", parent, sha, "--", path)
+    if code != 0:
+        return ()
+    return tuple(sorted(_added_from_diff(out)))
 
 
 def added_lines(repo: Path, sha: str, path: str) -> Set[int]:
     """Line numbers a commit adds to `path`, from a zero-context diff."""
-    parent = parent_sha(repo, sha)
-    if not parent:
-        source = file_at(repo, sha, path)
-        return set(range(1, len(source.splitlines()) + 1)) if source else set()
-    code, out = run_git(repo, "diff", "--unified=0", parent, sha, "--", path)
-    if code != 0:
-        return set()
-    return _added_from_diff(out)
+    return set(_added_lines(_repo_key(repo), sha, path))
 
 
-def changed_files_range(repo: Path, base: str, head: str) -> List[Tuple[str, str]]:
-    """(status, path) for the net change between two commits; `base` empty means `head` is a root."""
+@lru_cache(maxsize=1024)
+def _changed_files_range(repo_key: str, base: str, head: str) -> Tuple[Tuple[str, str], ...]:
     if not base:
-        code, out = run_git(repo, "ls-tree", "-r", "--name-only", "-z", head)
-        return [("A", path) for path in out.split("\0") if path] if code == 0 else []
-    code, out = run_git(repo, "diff", "--name-status", "-z", "--no-renames", base, head)
+        code, out = run_git(Path(repo_key), "ls-tree", "-r", "--name-only", "-z", head)
+        return tuple(("A", path) for path in out.split("\0") if path) if code == 0 else ()
+    code, out = run_git(Path(repo_key), "diff", "--name-status", "-z", "--no-renames", base, head)
     if code != 0:
-        return []
+        return ()
     parts = out.split("\0")
     pairs: List[Tuple[str, str]] = []
     index = 0
@@ -115,18 +132,28 @@ def changed_files_range(repo: Path, base: str, head: str) -> List[Tuple[str, str
         if status and path:
             pairs.append((status[:1], path))
         index += 2
-    return pairs
+    return tuple(pairs)
+
+
+def changed_files_range(repo: Path, base: str, head: str) -> List[Tuple[str, str]]:
+    """(status, path) for the net change between two commits; `base` empty means `head` is a root."""
+    return list(_changed_files_range(_repo_key(repo), base, head))
+
+
+@lru_cache(maxsize=2048)
+def _added_lines_range(repo_key: str, base: str, head: str, path: str) -> Tuple[int, ...]:
+    if not base:
+        source = _file_at(repo_key, head, path)
+        return tuple(range(1, len(source.splitlines()) + 1)) if source else ()
+    code, out = run_git(Path(repo_key), "diff", "--unified=0", base, head, "--", path)
+    if code != 0:
+        return ()
+    return tuple(sorted(_added_from_diff(out)))
 
 
 def added_lines_range(repo: Path, base: str, head: str, path: str) -> Set[int]:
     """Line numbers the whole stage (`base`..`head`) adds to `path`, as it stands at `head`."""
-    if not base:
-        source = file_at(repo, head, path)
-        return set(range(1, len(source.splitlines()) + 1)) if source else set()
-    code, out = run_git(repo, "diff", "--unified=0", base, head, "--", path)
-    if code != 0:
-        return set()
-    return _added_from_diff(out)
+    return set(_added_lines_range(_repo_key(repo), base, head, path))
 
 
 def range_diff(repo: Path, base: str, head: str, path: str) -> str:
@@ -156,14 +183,26 @@ def _added_from_diff(diff_text: str) -> Set[int]:
     return lines
 
 
-def parent_sha(repo: Path, sha: str) -> str:
-    code, out = run_git(repo, "rev-parse", f"{sha}^")
+@lru_cache(maxsize=4096)
+def _parent_sha(repo_key: str, sha: str) -> str:
+    code, out = run_git(Path(repo_key), "rev-parse", f"{sha}^")
     return out.strip() if code == 0 else ""
 
 
-def file_at(repo: Path, sha: str, path: str) -> Optional[str]:
-    code, out = run_git(repo, "show", f"{sha}:{path}")
+def parent_sha(repo: Path, sha: str) -> str:
+    """The first parent of `sha`, or an empty string for a root commit."""
+    return _parent_sha(_repo_key(repo), sha)
+
+
+@lru_cache(maxsize=512)
+def _file_at(repo_key: str, sha: str, path: str) -> Optional[str]:
+    code, out = run_git(Path(repo_key), "show", f"{sha}:{path}")
     return out if code == 0 else None
+
+
+def file_at(repo: Path, sha: str, path: str) -> Optional[str]:
+    """One file's complete text at a commit, or None when it did not exist there."""
+    return _file_at(_repo_key(repo), sha, path)
 
 
 def worktree_diff(repo: Path, paths: Sequence[str]) -> str:

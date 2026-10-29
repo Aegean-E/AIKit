@@ -1598,5 +1598,55 @@ class TestIdeaCatcherCli(unittest.TestCase):
         self.assertIn("0 ideas", out.getvalue())
 
 
+class TestFstringsParseOnPython310(unittest.TestCase):
+    """
+    Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside
+    `{}`; each is a SyntaxError on 3.10 and 3.11. The AST gate parses with feature_version=(3, 10)
+    but on a newer interpreter it accepts quote reuse, so this check reads the source (ADR-188).
+    """
+
+    @staticmethod
+    def rejected_on_310(src):
+        # Lines split once, sliced by the AST's UTF-8 byte offsets: ast.get_source_segment
+        # re-splits the whole source on every call, which took ~2s over this repository's tests.
+        lines = [line.encode("utf-8") for line in src.splitlines(keepends=True)]
+
+        def segment(node):
+            if node.lineno == node.end_lineno:
+                return lines[node.lineno - 1][node.col_offset:node.end_col_offset].decode("utf-8")
+            return (lines[node.lineno - 1][node.col_offset:]
+                    + b"".join(lines[node.lineno:node.end_lineno - 1])
+                    + lines[node.end_lineno - 1][:node.end_col_offset]).decode("utf-8")
+
+        found = []
+        for node in ast.walk(ast.parse(src)):
+            if not isinstance(node, ast.JoinedStr):
+                continue
+            match = re.match(r"[rRbBuUfF]*('''|\"\"\"|'|\")", segment(node))
+            if not match:
+                continue
+            quote = match.group(1)
+            for value in node.values:
+                if isinstance(value, ast.FormattedValue):
+                    expr = segment(value.value)
+                    if (len(quote) == 1 and quote in expr) or chr(92) in expr or "#" in expr:
+                        found.append(f"{value.lineno}: {{{expr}}}")
+        return found
+
+    def test_the_check_flags_what_310_rejects_and_nothing_it_accepts(self):
+        q, bs = chr(34), chr(92)
+        bad = (f"a = f{q}{{x[{q}k{q}]}}{q}\n"                       # f"{x["k"]}"
+               f"b = f{q}{{{q}{bs}n{q}.join(y)}}{q}\n")              # f"{"\n".join(y)}"
+        good = f"c = f{q}{{x['k']}}{q}\n"                             # f"{x['k']}"
+        self.assertEqual(len(self.rejected_on_310(bad)), 2)
+        self.assertEqual(self.rejected_on_310(good), [])
+
+    def test_no_fstring_in_aikit_needs_python_312(self):
+        files = sorted((ROOT_DIR / "scripts").glob("*.py")) + sorted((ROOT_DIR / "tests").glob("*.py"))
+        found = [f"{path.name}:{hit}" for path in files + [ROOT_DIR / "aikit.py"]
+                 for hit in self.rejected_on_310(path.read_text(encoding="utf-8"))]
+        self.assertEqual(found, [], "these f-strings are SyntaxErrors on Python 3.10 and 3.11")
+
+
 if __name__ == "__main__":
     unittest.main()

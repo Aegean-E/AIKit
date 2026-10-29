@@ -1,78 +1,22 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-reforge-fix-history-sync-v1",
+    "task_id": "task-aikit-gate-fixes-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1793284113.4960604,
-    "owner": "opencode:reforge-scope",
+    "active_phase": 3,
+    "status": "in_progress",
+    "updated_at": 1793285017.5829685,
+    "owner": "opencode:reforge-main",
     "started_by": "opencode:reforge-followup",
     "continuations": [
       {
-        "agent": "opencode:reforge-scope",
+        "agent": "opencode:reforge-main",
         "from": "opencode:reforge-followup",
-        "at": 1793284113.4960604
+        "at": 1793285017.5829685
       }
-    ],
-    "impact_assessment": {
-      "why": "A fix updated last_audit.review but left the history entry unreviewed, so report contradicted the stored stage after a later stage.",
-      "benefits": "report, status and last_audit agree after a fix; the history survives reloads.",
-      "risks": "contract: history review becomes authoritative after fix; dependency: none; concurrency: fix already holds the run lock; state: in-place matching entry update, no schema change.",
-      "mitigation": "Call sync_last_audit before save, pin it with a failing-first unit test, append ADR-269 and run the full gate suite."
-    },
-    "completed_at": 1793284260.1683543
+    ]
   },
   "checkpoints": [
-    {
-      "task_id": "reforge-host-review",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reforge-host-review' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793277774.9538717,
-      "timestamp_str": "2026-10-29 15:42:54",
-      "agent": "opencode:reforge-scope"
-    },
-    {
-      "task_id": "idea-catcher-hide-hidden",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] Hide rejected and duplicate ideas from default listings",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278045.088974,
-      "timestamp_str": "2026-10-29 15:47:25",
-      "agent": "opencode:idea-review",
-      "impact_assessment": {
-        "why": "The operator wants a target listing that excludes harmful rejections and already-covered duplicates while keeping both in the audit register.",
-        "benefits": "Future reviews see only actionable ideas; rejected and duplicate rows remain queryable and stay in MATRIX.md.",
-        "risks": "contract: ideas hides Rejected status and duplicate tag unless the matching include flag or explicit filter is used; dependency: none; concurrency: the filter is read-only and writes keep the register lock; state: no schema change.",
-        "mitigation": "Add failing-first unit and CLI tests, document both flags, append ADR-264, then run the full gate shield."
-      }
-    },
-    {
-      "task_id": "idea-catcher-hide-hidden",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[2/3] Hide rejected and duplicate rows and add both opt-in flags",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278175.870579,
-      "timestamp_str": "2026-10-29 15:49:35",
-      "agent": "opencode:idea-review"
-    },
-    {
-      "task_id": "idea-catcher-hide-hidden",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[3/3] Gate shield passed: tests, budgets, principles, knowledge, licenses, secrets, reachability, hygiene and dogfood; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278175.984753,
-      "timestamp_str": "2026-10-29 15:49:35",
-      "agent": "opencode:idea-review"
-    },
     {
       "task_id": "idea-catcher-hide-hidden",
       "phase": "completed",
@@ -279,6 +223,57 @@
       "timestamp": 1793284260.1683555,
       "timestamp_str": "2026-10-29 17:31:00",
       "agent": "opencode:reforge-scope"
+    },
+    {
+      "task_id": "task-aikit-gate-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Plan: sync the drifted license catalog and bring the integration tier back inside its 500 ms budget without losing coverage",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793284576.4485192,
+      "timestamp_str": "2026-10-29 17:36:16",
+      "agent": "opencode:reforge-followup",
+      "impact_assessment": {
+        "why": "The integration tier fails its average budget (564.9 ms/test vs 500 ms) and dogfood fails because licenses/CATALOG.md differs from the aegean-licensing project copy",
+        "benefits": "Phase 4 and dogfood return green on the committed tree; the license catalog is a pinned copy again; the integration budget is honest rather than flaky",
+        "risks": "contract: license text copy and possibly the documented budget change; dependency: none; concurrency: tests unchanged; state: no runtime state change",
+        "mitigation": "review the license diff line by line; optimize or, only with explicit approval, raise the ceiling via ADR and sync_principles; run the full Phase 4 triad before commit"
+      }
+    },
+    {
+      "task_id": "task-aikit-gate-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[1/2] License catalog synced from aegean-licensing (one catalog paragraph) and dogfood is 5/5; next: cache immutable Git history reads to return the integration tier under 500 ms without changing the ceiling",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793284753.2325459,
+      "timestamp_str": "2026-10-29 17:39:13",
+      "agent": "opencode:reforge-followup"
+    },
+    {
+      "task_id": "task-aikit-gate-fixes-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/2] Cache immutable Git reads, move the repo-wide f-string scan to the integration tier, refresh the map/KB, and return both tiers inside budget without raising a ceiling",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285017.5829685,
+      "timestamp_str": "2026-10-29 17:43:37",
+      "agent": "opencode:reforge-main",
+      "continued_from": "opencode:reforge-followup"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 3",
+      "phase_num": 3,
+      "description": "Reforge stage 3: window 15, 5 commit(s), 9 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285123.7399054,
+      "timestamp_str": "2026-10-29 17:45:23",
+      "agent": "opencode"
     }
   ]
 }

@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
-- **Total Top-Level Functions**: `738`
+- **Total Top-Level Functions**: `745`
 - **Total Class Methods**: `815`
-- **Total Source Lines**: `31611`
+- **Total Source Lines**: `31652`
 
 ---
 
@@ -162,7 +162,7 @@
 ### [`idea_catcher/upstream_check.py`](idea_catcher/upstream_check.py)
 > *Read-only upstream revalidation for dossier headers.*
 
-**Size**: `342` lines (`13191` bytes)
+**Size**: `344` lines (`13290` bytes)
 
 **Classes:**
 - `class UpstreamError` - *The upstream API could not be reached or answered with an error.*
@@ -330,23 +330,30 @@
 ### [`reforge/git_history.py`](reforge/git_history.py)
 > *Bounded Git reads used by the auditor, the repair review and delivery.*
 
-**Size**: `243` lines (`8734` bytes)
+**Size**: `282` lines (`10146` bytes)
 
 **Functions:**
+- `def _repo_key(repo)` - *A stable cache key for one checkout path.*
 - `def run_git(repo, *args, timeout)` - *Run git with stdin closed and a timeout; returns (exit code, combined output).*
 - `def is_git_repo(repo)`
 - `def head_sha(repo)`
 - `def commit_window(repo, limit)` - *The newest `limit` commits, newest first.*
 - `def commit_info(repo, sha)`
 - `def commit_count(repo)`
+- `def _changed_files(repo_key, sha)`
 - `def changed_files(repo, sha)` - *(status, relative path) pairs a commit changed; root commits included.*
+- `def _added_lines(repo_key, sha, path)`
 - `def added_lines(repo, sha, path)` - *Line numbers a commit adds to `path`, from a zero-context diff.*
+- `def _changed_files_range(repo_key, base, head)`
 - `def changed_files_range(repo, base, head)` - *(status, path) for the net change between two commits; `base` empty means `head` is a root.*
+- `def _added_lines_range(repo_key, base, head, path)`
 - `def added_lines_range(repo, base, head, path)` - *Line numbers the whole stage (`base`..`head`) adds to `path`, as it stands at `head`.*
 - `def range_diff(repo, base, head, path)` - *The net diff of one path across a whole stage, with three lines of context.*
 - `def _added_from_diff(diff_text)` - *Line numbers a zero-context diff adds, read from its hunk headers.*
-- `def parent_sha(repo, sha)`
-- `def file_at(repo, sha, path)`
+- `def _parent_sha(repo_key, sha)`
+- `def parent_sha(repo, sha)` - *The first parent of `sha`, or an empty string for a root commit.*
+- `def _file_at(repo_key, sha, path)`
+- `def file_at(repo, sha, path)` - *One file's complete text at a commit, or None when it did not exist there.*
 - `def worktree_diff(repo, paths)`
 - `def status_paths(repo)` - *Changed tracked paths, including both sides of a rename, from NUL-delimited porcelain.*
 - `def untracked_paths(repo)`
@@ -1292,7 +1299,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1602` lines (`82238` bytes)
+**Size**: `1652` lines (`84855` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1411,6 +1418,10 @@
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
   - Method `.test_status_reads_the_register_named_by_the_root_override()`
+- `class TestFstringsParseOnPython310` - *Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside*
+  - Method `.rejected_on_310(src)`
+  - Method `.test_the_check_flags_what_310_rejects_and_nothing_it_accepts()`
+  - Method `.test_no_fstring_in_aikit_needs_python_312()`
 
 **Functions:**
 - `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
@@ -1424,7 +1435,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9380` lines (`529698` bytes)
+**Size**: `9330` lines (`527081` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1935,10 +1946,6 @@
   - Method `.test_a_line_break_inside_a_command_is_refused_without_running_it()`
 - `class TestAnnotationsResolveOnEverySupportedPython` - *Python 3.14 evaluates annotations only when they are read (PEP 649); Python 3.10 to 3.13,*
   - Method `.test_every_annotation_in_scripts_names_something_defined()`
-- `class TestFstringsParseOnPython310` - *Since 3.12 (PEP 701) an f-string may reuse its own quote, or hold a backslash or `#`, inside*
-  - Method `.rejected_on_310(src)`
-  - Method `.test_the_check_flags_what_310_rejects_and_nothing_it_accepts()`
-  - Method `.test_no_fstring_in_aikit_needs_python_312()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*
   - Method `.test_parser_constants_match_the_modules_they_mirror()`
   - Method `.test_parser_module_imports_only_the_standard_library_at_top_level()`
