@@ -8855,295 +8855,178 @@ class TestReforgeCore(unittest.TestCase):
         runs = parser.parse_args(["runs", "x", "--json"])
         self.assertEqual((runs.command, runs.json), ("runs", True))
 
-    def test_the_parser_declares_the_ai_review_options(self):
+    def test_a_findings_file_that_is_not_json_is_refused(self):
+        from reforge.pipeline import _collect_review
+
+        folder = self.root()
+        answer = folder / "bad.json"
+        answer.write_text("not a findings answer", encoding="utf-8")
+        with self.assertRaises(ReforgeError) as raised:
+            _collect_review(folder, self.stage_plan(), [], str(answer), packet=False)
+        self.assertIn("findings file cannot be read", raised.exception.message)
+
+    def test_an_ignored_state_file_is_not_a_commit_failure(self):
+        from reforge import delivery
+
+        with mock.patch.object(delivery, "run_git", return_value=(0, "")):
+            report = delivery.commit_repairs(
+                self.root(), "chore(reforge): record stage 1 audit", [".aikit/reforge.json"])
+        self.assertTrue(report.get("nothing_to_commit"))
+
+    def test_a_review_packet_is_never_committed_as_reviewed_work(self):
+        from reforge.state import is_reforge_artifact
+
+        self.assertTrue(is_reforge_artifact(".aikit/reforge.reviews/stage-1-abc.md"))
+        self.assertFalse(is_reforge_artifact(".aikit/reforge.json"))
+
+    def test_the_parser_declares_the_findings_option(self):
         parser = build_reforge_parser()
-        audit = parser.parse_args(["audit", "x", "--no-ai"])
-        self.assertTrue(audit.no_ai)
-        run = parser.parse_args(["run", "x", "--ai-model", "opencode/demo-free",
-                                 "--ai-timeout", "90"])
-        self.assertEqual((run.ai_model, run.ai_timeout), ("opencode/demo-free", 90))
-        self.assertFalse(run.no_ai)
+        audit = parser.parse_args(["audit", "x", "--rules"])
+        self.assertTrue(audit.rules)
+        run = parser.parse_args(["run", "x", "--findings", "answer.json"])
+        self.assertEqual(run.findings, "answer.json")
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["run", "x", "--no-ai"])
 
     @staticmethod
-    def stage():
-        """A minimal stage plan for brief-building tests."""
+    def stage_plan():
+        """A minimal stage plan for packet and findings tests."""
         from types import SimpleNamespace
 
-        return SimpleNamespace(stage=1, window=3, run_id="run-1")
+        return SimpleNamespace(stage=1, window=3, run_id="run-1",
+                               new_shas=("newest", "older"))
 
-    def test_a_stage_that_fits_is_one_request_and_loses_nothing(self):
-        # With a large-context reviewer the whole stage rides in one request: no chunking, no
-        # dropped file. Splitting is only an overflow guard, never the normal path.
-        from reforge import ai_review
+    def test_the_packet_reviews_the_net_stage_diff_once_per_file(self):
+        from reforge import review
 
-        pairs = [("sha", f"f{index}.py") for index in range(40)]
-        diff = "@@ -1,2 +1,2 @@\n-old\n+new\n"
-        with mock.patch.object(ai_review, "_changed_paths", return_value=pairs), \
-                mock.patch.object(ai_review, "_file_diff", return_value=diff):
-            reviewed = []
-            requests, split = ai_review.build_briefs(
-                self.root(), self.stage(), reviewed, budget=2_000_000)
-        self.assertFalse(split)
-        self.assertEqual(len(requests), 1)
-        self.assertIn("defect|improvement", requests[0]["text"])
-        self.assertEqual(set(requests[0]["files"]), {path for _, path in pairs})
+        seen = []
 
-    def test_an_oversized_stage_is_split_but_stays_complete(self):
-        from reforge import ai_review
+        def file_diff(repo, plan, path):
+            seen.append((plan.new_shas[0], path))
+            return "@@ -1,1 +1,1 @@\n-old value\n+new value\n"
 
-        pairs = [("sha", f"f{index}.py") for index in range(40)]
-        diff = "@@ -1,2 +1,2 @@\n" + "".join(f"+line {n}\n" for n in range(120))
-        with mock.patch.object(ai_review, "_changed_paths", return_value=pairs), \
-                mock.patch.object(ai_review, "_file_diff", return_value=diff):
-            reviewed = []
-            requests, split = ai_review.build_briefs(
-                self.root(), self.stage(), reviewed, budget=16_000)
-        self.assertTrue(split)
-        self.assertGreater(len(requests), 1)
-        for request in requests:
-            self.assertLessEqual(len(request["text"]), 16_000)
-        covered = {name for request in requests for name in request["files"]}
-        self.assertEqual(covered, {path for _, path in pairs})
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths",
+                                  return_value=[("newest", "README.md")]), \
+                mock.patch.object(review, "_binary_paths", return_value=[]), \
+                mock.patch.object(review, "_file_diff", side_effect=file_diff):
+            text, redacted = review.packet_text(self.root(), self.stage_plan())
+        self.assertEqual(seen, [("newest", "README.md")])
+        self.assertEqual(text.count("--- README.md ---"), 1)
+        self.assertIn("+new value", text)
+        self.assertIn("commits base..newest", text)
+        self.assertEqual(redacted, 0)
 
-    def test_a_stage_above_the_request_cap_is_refused_not_fanned_out(self):
-        # PRINCIPLE-012 R6: an autonomous loop must have a step cap. Over the cap, Reforge stops
-        # and says how to make the stage fit instead of spawning unbounded model calls.
-        from reforge import ai_review
-
-        calls = []
-        many = [{"text": "brief", "files": [f"f{index}.py"]}
-                for index in range(ai_review.MAX_REQUESTS + 1)]
-
-        def fake_briefs(repo, plan, reviewed=None, redacted=None, budget=None, pairs=None):
-            if reviewed is not None:
-                reviewed.extend(f"f{index}.py" for index in range(ai_review.MAX_REQUESTS + 1))
-            return many, True
-
-        with mock.patch.object(ai_review, "build_briefs", fake_briefs), \
-                mock.patch.object(ai_review, "_changed_paths", return_value=[]):
-            report = ai_review.review_stage(
-                self.root(), self.stage(),
-                runner=lambda prompt, model: calls.append(prompt) or (0, '{"findings": []}'))
-        self.assertEqual(report["status"], "failed")
-        self.assertIn("above the cap", report["reason"])
-        self.assertEqual(calls, [], "no request may run once the cap is exceeded")
-
-    def test_a_stage_without_text_changes_is_skipped_cleanly(self):
-        from reforge import ai_review
-
-        calls = []
-        with mock.patch.object(ai_review, "_changed_paths", return_value=[]), \
-                mock.patch.object(ai_review, "build_briefs", return_value=([], False)):
-            report = ai_review.review_stage(
-                self.root(), self.stage(),
-                runner=lambda prompt, model: calls.append(prompt) or (0, "{}"))
-        self.assertEqual(report["status"], "skipped")
-        self.assertIn("no text file", report["reason"])
-        self.assertEqual(calls, [])
-
-    def test_a_large_brief_is_attached_as_a_file_not_passed_as_argv(self):
-        # Windows caps a command line at 32,767 characters; a big review must never be an argv.
-        from reforge import ai_review
-
-        seen = {}
-
-        def fake_delegate(role, prompt, file=None, model=None, timeout=0,
-                          output_format="json", workspace=None):
-            seen.update(prompt=prompt, file=file, role=role)
-            return 0, '{"status": "success", "output": ""}'
-
-        import scripts.subagent_delegate as delegate
-
-        with mock.patch.object(delegate, "delegate_subagent", fake_delegate), \
-                mock.patch.object(delegate, "answer_text", lambda text: text):
-            runner = ai_review._delegate_runner(self.root(), 60)
-            code, _ = runner("x" * (ai_review.ARGV_SAFE_CHARS + 10), "opencode/demo-free")
-        self.assertEqual(code, 0)
-        self.assertEqual(seen["role"], ai_review.AI_AGENT_ROLE)
-        self.assertTrue(seen["file"], "the brief must travel as an attachment")
-        self.assertEqual(seen["prompt"], ai_review.ATTACHED_BRIEF_PROMPT)
-        self.assertFalse(Path(seen["file"]).exists(), "the attachment is cleaned up")
-
-    def test_a_small_brief_still_travels_inline(self):
-        from reforge import ai_review
-
-        seen = {}
-
-        def fake_delegate(role, prompt, file=None, model=None, timeout=0,
-                          output_format="json", workspace=None):
-            seen.update(prompt=prompt, file=file)
-            return 0, '{"status": "success", "output": ""}'
-
-        import scripts.subagent_delegate as delegate
-
-        with mock.patch.object(delegate, "delegate_subagent", fake_delegate), \
-                mock.patch.object(delegate, "answer_text", lambda text: text):
-            runner = ai_review._delegate_runner(self.root(), 60)
-            runner("short brief", None)
-        self.assertIsNone(seen["file"])
-        self.assertEqual(seen["prompt"], "short brief")
-
-    def test_the_brief_budget_follows_the_model_context_window(self):
-        # PRINCIPLE-012 R8: size the brief to the chosen model, using the documented window.
-        from reforge import ai_review
-
-        self.assertEqual(ai_review.brief_budget("gemini/gemini-3.8-flash"), 2_202_009)
-        self.assertEqual(ai_review.brief_budget("opencode/deepseek-v4.1-flash-free"), 268_800)
-        self.assertEqual(ai_review.brief_budget("unknown/model"), ai_review.DEFAULT_BRIEF_CHARS)
-        self.assertGreater(ai_review.brief_budget(None), ai_review.DEFAULT_BRIEF_CHARS)
-
-    def test_a_large_file_is_split_by_hunk_not_dropped(self):
-        from reforge.ai_review import _hunk_blocks
-
-        diff = ("diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n"
-                "@@ -1,2 +1,2 @@\n-x = 1\n+x = 2\n"
-                "@@ -50,2 +50,2 @@\n-y = 1\n+y = 2\n")
-        blocks = _hunk_blocks("a.py", diff)
-        self.assertEqual(len(blocks), 2)
-        self.assertTrue(all(block.startswith("--- a.py ---") for block in blocks))
-        self.assertIn("-x = 1", blocks[0])
-        self.assertIn("-y = 1", blocks[1])
-
-    def test_the_brief_redacts_a_credential_before_it_leaves(self):
-        from reforge import ai_review
+    def test_the_packet_redacts_a_credential_before_an_agent_reads_it(self):
+        from reforge import review
 
         leaked = '+TOKEN = "ghp_' + "a" * 36 + '"\n'
-        with mock.patch.object(ai_review, "_changed_paths", return_value=[("sha", "conf.py")]), \
-                mock.patch.object(ai_review, "_file_diff",
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths", return_value=[("newest", "conf.py")]), \
+                mock.patch.object(review, "_binary_paths", return_value=[]), \
+                mock.patch.object(review, "_file_diff",
                                   return_value="@@ -1,1 +1,1 @@\n" + leaked):
-            redacted = []
-            requests, _ = ai_review.build_briefs(self.root(), self.stage(), [], redacted)
-        text = "\n".join(str(request["text"]) for request in requests)
+            text, redacted = review.packet_text(self.root(), self.stage_plan())
         self.assertNotIn("ghp_" + "a" * 36, text)
         self.assertIn("[REDACTED]", text)
-        self.assertEqual(sum(redacted), 1)
+        self.assertEqual(redacted, 1)
 
-    def test_a_patch_must_overlap_a_line_the_stage_added(self):
-        from reforge.ai_review import findings_from_payload
-
-        root = self.root()
-        (root / "app.py").write_text("OLD = 1\nNEW = 2\n", encoding="utf-8")
-        payload = {"findings": [{"path": "app.py", "line": 1, "code": "outside",
-                                 "message": "rewrites an untouched line",
-                                 "fix": {"old": "OLD = 1", "new": "OLD = 9"}}]}
-        findings, rejected = findings_from_payload(
-            root, payload, ["app.py"], {"app.py": "sha"}, {"app.py": {2}})
-        self.assertEqual(len(findings), 1)
-        self.assertFalse(findings[0].fixable)
-        self.assertIn("outside the lines this stage added", rejected[0])
-        findings, rejected = findings_from_payload(
-            root, payload, ["app.py"], {"app.py": "sha"}, {"app.py": {1}})
-        self.assertTrue(findings[0].fixable)
-        self.assertEqual(rejected, [])
-
-    def test_the_review_is_skipped_when_the_secret_scanner_is_missing(self):
-        from reforge import ai_review
-
-        calls = []
-        plan = type("Plan", (), {"new_shas": (), "run_id": "run-1", "stage": 1})()
-        with mock.patch.object(ai_review, "scrubber_available", return_value=False):
-            report = ai_review.review_stage(
-                self.root(), plan, runner=lambda prompt, model: calls.append(prompt) or (0, "{}"))
-        self.assertEqual(report["status"], "skipped")
-        self.assertIn("not sent unredacted", report["reason"])
-        self.assertEqual(calls, [], "no diff may leave the machine without the scanner")
-
-    def test_a_finding_about_an_omitted_file_is_dropped(self):
-        from reforge.ai_review import findings_from_payload
-
-        root = self.root()
-        (root / "README.md").write_text("The feature is documented here.\n", encoding="utf-8")
-        payload = {"findings": [{
-            "path": "README.md", "line": 1, "code": "claims-missing-code",
-            "message": "the implementation in reforge/ai_review.py is missing",
-            "evidence": "The feature is documented here.",
-        }]}
-        findings, rejected = findings_from_payload(
-            root, payload, ["README.md"], {"README.md": "sha"}, {}, ["reforge/ai_review.py"])
-        self.assertEqual(findings, [])
-        self.assertIn("which the brief omitted", rejected[0])
-        findings, rejected = findings_from_payload(
-            root, payload, ["README.md"], {"README.md": "sha"}, {}, [])
-        self.assertEqual(len(findings), 1)
-
-    def test_a_finding_quoting_a_removed_line_is_dropped(self):
-        from reforge.ai_review import findings_from_payload
-
-        root = self.root()
-        (root / "doc.md").write_text("The new sentence is here.\n", encoding="utf-8")
-        payload = {"findings": [{
-            "path": "doc.md", "line": 1, "code": "stale-claim",
-            "message": "quotes the removed wording",
-            "evidence": "the old sentence that was deleted",
-        }]}
-        findings, rejected = findings_from_payload(root, payload, ["doc.md"], {"doc.md": "sha"})
-        self.assertEqual(findings, [])
-        self.assertIn("not in the current file", rejected[0])
-        payload["findings"][0]["evidence"] = "The new sentence is here."
-        findings, rejected = findings_from_payload(root, payload, ["doc.md"], {"doc.md": "sha"})
-        self.assertEqual(len(findings), 1)
-        self.assertEqual(rejected, [])
-
-    def test_an_ai_answer_is_validated_against_the_stage(self):
-        from reforge.ai_review import findings_from_payload
+    def test_a_review_answer_is_validated_against_the_stage(self):
+        from reforge import review
 
         root = self.root()
         (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
         payload = {"findings": [
             {"path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
              "message": "the function subtracts although its name promises addition",
+             "evidence": "return a - b",
              "fix": {"old": "return a - b", "new": "return a + b"}},
             {"path": "outside.py", "line": 1, "code": "x", "message": "not in the stage"},
             {"path": "app.py", "line": 99, "code": "x", "message": "line does not exist"},
-            {"path": "app.py", "line": 1, "code": "x", "message": "unusable patch",
-             "fix": {"old": "text that is absent", "new": "replacement"}},
+            {"path": "app.py", "line": 1, "code": "x", "message": "quotes a removed line",
+             "evidence": "the line that was deleted"},
         ]}
-        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
-        self.assertEqual(len(findings), 2, "a dropped patch keeps the finding for manual review")
-        finding = next(item for item in findings if item.fixable)
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths",
+                               return_value=[("sha", "app.py")]), \
+                mock.patch.object(review, "added_lines_range", return_value={1, 2}):
+            findings, rejected = review.findings_from_payload(
+                root, payload, self.stage_plan(), ["app.py"])
+        self.assertEqual(len(findings), 1)
+        finding = findings[0]
         self.assertEqual((finding.source, finding.category, finding.code),
-                         ("ai", "review", "ai-wrong-operator"))
+                         ("review", "review", "review-wrong-operator"))
+        self.assertTrue(finding.fixable)
         self.assertEqual((finding.patch_old, finding.patch_new),
                          ("return a - b", "return a + b"))
         self.assertEqual(len(rejected), 3)
 
-    def test_an_ai_patch_must_apply_once_and_must_parse(self):
-        from reforge.ai_review import findings_from_payload
-        from reforge.repair import apply_text_patches
+    def test_a_review_improvement_is_its_own_category(self):
+        from reforge import review
 
         root = self.root()
-        (root / "app.py").write_text("VALUE = 1\nVALUE = 1\n", encoding="utf-8")
-        payload = {"findings": [{"path": "app.py", "line": 1, "code": "dupe",
-                                 "message": "ambiguous", "fix": {"old": "VALUE = 1",
-                                                                 "new": "VALUE = 2"}}]}
-        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
-        self.assertEqual(len(findings), 1)
-        self.assertFalse(findings[0].fixable, "an ambiguous patch is dropped, not applied")
-        self.assertIn("occurs 2 times", rejected[0])
-        (root / "app.py").write_text("def f(:\n    pass\n", encoding="utf-8")
-        payload = {"findings": [{"path": "app.py", "line": 1, "code": "syntax",
-                                 "message": "still broken", "fix": {"old": "def f(:",
-                                                                    "new": "def f(:"}}]}
-        findings, rejected = findings_from_payload(root, payload, ["app.py"], {"app.py": "sha"})
+        (root / "doc.md").write_text("The command runs the tests.\n", encoding="utf-8")
+        payload = {"findings": [{
+            "path": "doc.md", "line": 1, "severity": "low", "kind": "improvement",
+            "code": "name-the-runner", "message": "name the command the paragraph means",
+            "evidence": "The command runs the tests.",
+        }]}
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths",
+                               return_value=[("sha", "doc.md")]), \
+                mock.patch.object(review, "added_lines_range", return_value={1}):
+            findings, rejected = review.findings_from_payload(
+                root, payload, self.stage_plan(), ["doc.md"])
+        self.assertEqual(rejected, [])
+        self.assertEqual(findings[0].category, "improvement")
+        self.assertFalse(findings[0].fixable)
+
+    def test_a_review_patch_must_overlap_a_line_the_stage_added(self):
+        from reforge import review
+
+        root = self.root()
+        (root / "app.py").write_text("OLD = 1\nNEW = 2\n", encoding="utf-8")
+        payload = {"findings": [{
+            "path": "app.py", "line": 1, "code": "outside",
+            "message": "rewrites an untouched line",
+            "fix": {"old": "OLD = 1", "new": "OLD = 9"},
+        }]}
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths",
+                               return_value=[("sha", "app.py")]), \
+                mock.patch.object(review, "added_lines_range", return_value={2}):
+            findings, rejected = review.findings_from_payload(
+                root, payload, self.stage_plan(), ["app.py"])
         self.assertEqual(len(findings), 1)
         self.assertFalse(findings[0].fixable)
-        self.assertTrue(rejected)
-        self.assertEqual(apply_text_patches(root, []), [])
+        self.assertIn("outside the lines this stage added", rejected[0])
 
-    def test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left(self):
+    def test_an_empty_review_answer_is_valid(self):
+        from reforge import review
+
+        with mock.patch.object(review, "_stage_base", return_value="base"), \
+                mock.patch.object(review, "_changed_paths",
+                               return_value=[("sha", "app.py")]), \
+                mock.patch.object(review, "added_lines_range", return_value={1}):
+            findings, rejected = review.findings_from_payload(
+                self.root(), {"findings": []}, self.stage_plan(), ["app.py"])
+        self.assertEqual((findings, rejected), ([], []))
+
+    def test_a_review_patch_applies_only_when_it_is_unambiguous(self):
         from reforge.model import Finding
         from reforge.repair import apply_text_patches
 
         root = self.root()
         (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
         (root / "notes.md").write_text("same\nsame\n", encoding="utf-8")
-        patch = Finding(code="ai-operator", category="review", severity="high", path="app.py",
-                        line=2, message="subtracts instead of adds", evidence="", commit="sha",
-                        source="ai", fixable=True, patch_old="return a - b",
-                        patch_new="return a + b")
-        ambiguous = Finding(code="ai-note", category="review", severity="low", path="notes.md",
-                            line=1, message="ambiguous", evidence="", commit="sha", source="ai",
-                            fixable=True, patch_old="same", patch_new="different")
+        patch = Finding(code="review-operator", category="review", severity="high",
+                        path="app.py", line=2, message="subtracts instead of adds",
+                        evidence="", commit="sha", source="review", fixable=True,
+                        patch_old="return a - b", patch_new="return a + b")
+        ambiguous = Finding(code="review-note", category="review", severity="low",
+                            path="notes.md", line=1, message="ambiguous", evidence="",
+                            commit="sha", source="review", fixable=True,
+                            patch_old="same", patch_new="different")
         repairs = apply_text_patches(root, [patch, ambiguous])
         self.assertTrue(any(item.applied and item.path == "app.py" for item in repairs))
         self.assertFalse(any(item.applied and item.path == "notes.md" for item in repairs))

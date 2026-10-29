@@ -47,16 +47,24 @@ def _paths_to_commit(root: Path) -> List[str]:
                   if not is_reforge_artifact(path))
 
 
+def _not_ignored(root: Path, paths: Sequence[str]) -> List[str]:
+    """Drop paths git ignores; an ignored state file is local, not a commit failure."""
+    selected: List[str] = []
+    for path in paths:
+        relative = path.replace("\\", "/")
+        code, _ = run_git(root, "check-ignore", "--quiet", "--", relative)
+        if code == 0:
+            continue
+        selected.append(relative)
+    return selected
+
+
 def commit_repairs(root: Path, message: str, paths: Optional[Sequence[str]] = None) -> Dict[str, object]:
     """Stage exactly the repair paths, commit, and verify the commit holds them."""
     validate_message(message)
-    selected = [path.replace("\\", "/") for path in (paths or _paths_to_commit(root))]
+    selected = _not_ignored(root, paths or _paths_to_commit(root))
     if not selected:
-        raise ReforgeError(
-            "There is nothing to commit.",
-            "the audit and its repairs left no tracked change.",
-            "run `audit` or `run` first; nothing was committed.",
-        )
+        return {"commit": "", "message": message, "paths": [], "nothing_to_commit": True}
     missing = [path for path in selected if not (root / path).exists() and
                run_git(root, "ls-files", "--error-unmatch", path)[0] != 0]
     if missing:
@@ -88,6 +96,11 @@ def deliver(root: Path, message: str, do_push: bool,
             paths: Optional[Sequence[str]] = None) -> Tuple[Dict[str, object], List[str]]:
     """Commit only the reviewed repair paths plus the audit state, then optionally push."""
     report = commit_repairs(root, message, paths)
+    if report.get("nothing_to_commit"):
+        lines = ["[OK] Nothing to commit: the audit state is local to this checkout."]
+        if do_push:
+            lines.append("     Nothing new to push.")
+        return report, lines
     lines = [f"[OK] Committed {report['commit']}: {message}"]
     if not do_push:
         lines.append("     Not pushed: pass --push to publish the repair commits.")

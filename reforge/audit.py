@@ -168,10 +168,10 @@ def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object
                  detections: bool = True) -> List[Finding]:
     """Walk the stage's files and optionally run the cheap rules over the lines it adds.
 
-    Reforge is the planner: the review itself is the AI's job, and this rule pass is an optional
-    pre-pass (`--rules`) for a repository with no model available. Either way the walk still
-    classifies every changed path, so `reviewed` names what was inspected and `skipped` collects
-    only binary files that cannot be read as text.
+    Reforge is the planner: the review itself belongs to the host agent, and this rule pass is an
+    optional pre-pass (`--rules`) for a machine that wants deterministic coverage. Either way the
+    walk still classifies every changed path, so `reviewed` names what was inspected and `skipped`
+    collects only binary files that cannot be read as text.
     """
     prior = _prior_context(repo, plan, history)
     by_sha = {commit.sha: commit for commit in plan.commits}

@@ -25,31 +25,27 @@ def _add_window_settings(command, defaults: bool) -> None:
                          help="stop after this window size; 0 means unlimited")
 
 
-def _add_ai_options(command) -> None:
-    command.add_argument("--no-ai", action="store_true",
-                         help="skip the AI review (the planner still records the stage)")
-    command.add_argument("--rules", action="store_true",
-                         help="also run the cheap rule pre-pass over the added lines")
-    command.add_argument("--ai-model", metavar="MODEL",
-                         help="free model for the review (default: opencode/deepseek-v4.1-flash-free)")
-    command.add_argument("--ai-timeout", type=int, metavar="SECONDS", default=300,
-                         help="bound the AI review process tree (default 300)")
-    command.add_argument("--ai-budget", type=int, metavar="CHARS",
-                         help="characters per review request; defaults to the model's context window")
+def _add_review_options(command, findings: bool = False, rules: bool = True) -> None:
+    if rules:
+        command.add_argument("--rules", action="store_true",
+                             help="also run the cheap deterministic rule pre-pass")
+    if findings:
+        command.add_argument("--findings", metavar="FILE",
+                             help="apply the reviewer's JSON answer to the stage's changed files")
 
 
 def add_commands(subparsers) -> None:
     """Declare every Reforge command once, for either top-level CLI."""
-    audit = subparsers.add_parser("audit", help="analyse the next window of a run")
+    audit = subparsers.add_parser("audit", help="plan the next window and write its review packet")
     audit.add_argument("target", help="registered project name or repository path")
     audit.add_argument("--json", action="store_true", help="print one machine-readable result")
     audit.add_argument("--run", dest="run_id", metavar="ID",
                        help="audit run id (default: active run, else a new run)")
     _add_window_settings(audit, defaults=False)
-    _add_ai_options(audit)
+    _add_review_options(audit)
 
-    for name, text in (("fix", "repair the active run's safe findings"),
-                       ("run", "audit the next window, then repair it")):
+    for name, text in (("fix", "apply a reviewer's findings to the active run's last audit"),
+                       ("run", "audit the next window, then apply its findings")):
         command = subparsers.add_parser(name, help=text)
         command.add_argument("target", help="registered project name or repository path")
         command.add_argument("--json", action="store_true", help="print one machine-readable result")
@@ -66,9 +62,10 @@ def add_commands(subparsers) -> None:
                              help="commit the repair and audit state (explicit paths only)")
         command.add_argument("--push", action="store_true",
                              help="commit, then push without force (implies --commit)")
+        _add_review_options(command, findings=True, rules=False)
         if name == "run":
             _add_window_settings(command, defaults=False)
-            _add_ai_options(command)
+            _add_review_options(command, rules=True)
 
     start = subparsers.add_parser("start", help="start an independent audit run")
     start.add_argument("target")
@@ -153,7 +150,7 @@ def _print_findings(payload: Dict[str, object]) -> None:
           f"(window {plan.get('window')}, {len(plan.get('new_commits') or [])} new commit(s))")
     for item in findings:
         interaction = f" [{item['interaction']}]" if item.get("interaction") else ""
-        origin = " (ai)" if item.get("source") == "ai" else ""
+        origin = " (review)" if item.get("source") == "review" else ""
         print(f"  [{item['category']}/{item['severity']}] {item['path']}:{item['line']} "
               f"{item['code']}: {item['message']}{origin}{interaction}")
         if item.get("evidence"):
@@ -167,7 +164,7 @@ def _print_findings(payload: Dict[str, object]) -> None:
     reviewed = int(payload.get("reviewed") or 0)
     if reviewed:
         print(f"  reviewed {reviewed} changed file(s)")
-    _print_ai(payload.get("ai") or {})
+    _print_review(payload.get("review") or {})
     if not findings:
         print("  no introduced findings")
     skipped = payload.get("skipped") or []
@@ -176,7 +173,9 @@ def _print_findings(payload: Dict[str, object]) -> None:
         more = f" (+{len(skipped) - 5} more)" if len(skipped) > 5 else ""
         print(f"  [SKIP] {len(skipped)} binary file(s) not analysed: {shown}{more}")
     if payload["mode"] == "audit" and findings:
-        print(f"Next: python reforge.py fix {payload['root']} --run {payload.get('run')}")
+        print(f"Next: review {payload.get('root')}, write the findings JSON, then run "
+              f"`python reforge.py fix {payload['root']} --run {payload.get('run')} "
+              f"--findings <file>`.")
     elif payload["mode"] in {"run", "fix"} and payload.get("repaired"):
         print(f"Next: review the patch in {payload['root']}, then commit with --commit/--push.")
     elif payload["mode"] in {"run", "fix"}:
@@ -193,25 +192,26 @@ def _start_payload(payload: Dict[str, object]) -> None:
     _print_ledger(payload)
 
 
-def _print_ai(report: Dict[str, object]) -> None:
-    """Say whether the AI reviewed the stage, and why not when it did not."""
+def _print_review(report: Dict[str, object]) -> None:
+    """Say whether a reviewer answered the stage, and where its packet is."""
     status = str(report.get("status") or "")
     if not status:
         return
-    model = report.get("model") or ""
+    packet = report.get("packet") or ""
+    accepted = len(report.get("findings") or [])
+    rejected = len(report.get("rejected") or [])
+    redacted = int(report.get("redacted") or 0)
+    detail = f", {accepted} accepted" + (f", {rejected} dropped" if rejected else "")
+    if redacted:
+        detail += f", {redacted} secret span(s) redacted"
     if status == "reviewed":
-        extra = f" in {report.get('requests')} request(s)" if int(report.get("requests") or 1) > 1 else ""
-        rejected = len(report.get("rejected") or [])
-        detail = f", {rejected} dropped" if rejected else ""
-        redacted = int(report.get("redacted") or 0)
-        if redacted:
-            detail += f", {redacted} secret span(s) redacted"
-        print(f"  [AI] reviewed {len(report.get('files') or [])} file(s) with {model}"
-              f" in {report.get('seconds')}s{detail}{extra}")
-    elif status == "skipped":
-        print(f"  [AI] skipped: {report.get('reason') or 'not requested'}")
+        print(f"  [REVIEW] reviewed {len(report.get('files') or [])} file(s){detail}")
+    elif status == "unreviewed":
+        print(f"  [REVIEW] awaiting the host review{detail}")
     else:
-        print(f"  [AI] failed: {report.get('reason') or 'unknown error'}")
+        print(f"  [REVIEW] {status}: {report.get('reason') or 'unknown'}")
+    if packet:
+        print(f"      packet: {packet}")
 
 
 def _print_ledger(payload: Dict[str, object]) -> None:
@@ -257,6 +257,11 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
                   f"(window {payload['next_window'] or 'none'})")
             print(f"Audited:    {payload['audited_commits']} commit(s)")
             print(f"Pending:    {payload['pending_findings']} fixable finding(s)")
+            review = payload.get("review") or {}
+            if review:
+                packet = review.get("packet") or ""
+                print(f"Review:     {review.get('status') or 'unreviewed'}"
+                      + (f" ({packet})" if packet else ""))
             print("Runs:")
             _print_runs(payload.get("runs") or [])
         return 0
@@ -326,11 +331,9 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         test_command=getattr(args, "test_command", None), gate_runner=gate_runner,
         allow_dirty=getattr(args, "allow_dirty", False), run_id=getattr(args, "run_id", None),
         start=getattr(args, "start", None), step=getattr(args, "step", None),
-        stop=getattr(args, "stop", None), ai=not getattr(args, "no_ai", False),
-        ai_model=getattr(args, "ai_model", None),
-        ai_timeout=int(getattr(args, "ai_timeout", 300) or 300),
-        ai_budget=getattr(args, "ai_budget", None),
+        stop=getattr(args, "stop", None),
         rules=bool(getattr(args, "rules", False)),
+        findings_file=getattr(args, "findings", None),
     )
     do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:

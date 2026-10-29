@@ -279,7 +279,7 @@ def entry_from_stage(plan: StagePlan, findings: List[Finding], repairs: List[Rep
                      gates: Optional[Dict[str, object]] = None,
                      skipped: Optional[List[str]] = None,
                      reviewed: int = 0,
-                     ai: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+                     review: Optional[Dict[str, object]] = None) -> Dict[str, object]:
     """One stage's durable record; `skipped` names binary files and `reviewed` counts the rest."""
     counts: Dict[str, int] = {}
     for finding in findings:
@@ -295,7 +295,7 @@ def entry_from_stage(plan: StagePlan, findings: List[Finding], repairs: List[Rep
         "repairs": [repair.as_dict() for repair in repairs],
         "counts": counts,
         "reviewed": int(reviewed),
-        "ai": ai or {},
+        "review": review or {},
         "skipped": list(skipped or []),
         "tests": tests or {},
         "gates": gates or {},
@@ -440,6 +440,7 @@ def run_summary(run: Dict[str, object]) -> Dict[str, object]:
             "stage": last.get("stage"),
             "window": last.get("window"),
             "counts": last.get("counts") or {},
+            "review": (last.get("review") or last.get("ai") or {}).get("status") or "",
             "new_commits": len(last.get("new_commits") or []),
             "skipped": len(last.get("skipped") or []),
             "timestamp": last.get("timestamp"),

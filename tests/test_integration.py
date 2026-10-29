@@ -1332,12 +1332,22 @@ class TestReforgeHistory(unittest.TestCase):
             self.git(root, "commit", "-q", "-m", f"feat: value {index}")
         return root
 
+    def one_commit_repository(self, source: str) -> Path:
+        """One commit with one Python file, for a repair test that needs no long history."""
+        root = Path(tempfile.mkdtemp(prefix="reforge_one_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
+        (root / "app.py").write_text(source, encoding="utf-8")
+        self.git(root, "add", "app.py")
+        self.git(root, "commit", "-q", "-m", "feat: initial")
+        return root
+
     def test_stage_one_repairs_and_records_evidence(self):
         from reforge.pipeline import run_pipeline
         from reforge.state import load_state
 
         root = self.repository()
-        report = run_pipeline(root, "run", run_tests=False)
+        report = run_pipeline(root, "run", run_tests=False, rules=True)
         self.assertEqual(report["stage"], 1)
         self.assertTrue(report["repaired"] >= 2)
         state = load_state(root)
@@ -1362,10 +1372,11 @@ class TestReforgeHistory(unittest.TestCase):
         # instead of refusing, which is what the first fix prints as advice.
         from reforge.pipeline import run_pipeline
 
-        root = self.repository()
-        run_pipeline(root, "audit")
+        root = self.one_commit_repository(
+            "try:\n    pass\nexcept:\n    pass\n")
+        run_pipeline(root, "audit", rules=True)
         first = run_pipeline(root, "fix", run_tests=False)
-        self.assertTrue(first["repaired"] >= 2)
+        self.assertTrue(first["repaired"] >= 1)
         second = run_pipeline(root, "fix", run_tests=False)
         self.assertEqual(second["repaired"], first["repaired"])
         self.assertIn("app.py", second["commit_paths"])
@@ -1386,7 +1397,7 @@ class TestReforgeHistory(unittest.TestCase):
         self.git(root, "add", "app.js", "NOTES.md", "logo.bin")
         self.git(root, "commit", "-q", "-m", "feat: javascript and docs")
         start_audit(root, start=3, step=1)
-        report = run_pipeline(root, "audit")
+        report = run_pipeline(root, "audit", rules=True)
         self.assertEqual(report["skipped"], ["logo.bin"])
         self.assertEqual(report["reviewed"], 4)
         self.assertIn("4 file(s) reviewed", report["summary"])
@@ -1413,7 +1424,7 @@ class TestReforgeHistory(unittest.TestCase):
         self.git(root, "add", ".aikit/task_ledger.json")
         self.git(root, "commit", "-q", "-m", "chore: add a ledger")
         start_audit(root, start=2, step=2, stop=2)
-        report = run_pipeline(root, "run", run_tests=False)
+        report = run_pipeline(root, "run", run_tests=False, rules=True)
         self.assertTrue(report["ledger"]["recorded"], report["ledger"].get("reason"))
         self.assertEqual(report["ledger"]["task_id"], "reforge:run-1")
         data = jsonlib.loads(ledger.read_text(encoding="utf-8"))
@@ -1432,10 +1443,11 @@ class TestReforgeHistory(unittest.TestCase):
         from reforge.errors import ReforgeError
         from reforge.pipeline import run_pipeline
 
-        root = self.repository()
+        root = self.one_commit_repository(
+            "def load(value):\n    try:\n        return value\n    except:\n        pass\n")
         original = (root / "app.py").read_text(encoding="utf-8")
         with self.assertRaises(ReforgeError):
-            run_pipeline(root, "run", test_command="exit 1")
+            run_pipeline(root, "run", test_command="exit 1", rules=True)
         self.assertEqual((root / "app.py").read_text(encoding="utf-8"), original)
         self.assertFalse((root / "test_reforge_regressions.py").exists())
 
@@ -1462,12 +1474,12 @@ class TestReforgeHistory(unittest.TestCase):
         for root in (first, second):
             self.assertTrue((root / ".aikit" / "reforge.json").is_file())
 
-    def test_the_ai_brief_holds_the_net_stage_diff_not_an_old_commit(self):
-        # A stage spans several commits. Reviewing the oldest commit's diff for a file shows a
-        # hunk that later commits already replaced, which is how stale findings were produced.
-        from reforge import ai_review
+    def test_the_packet_holds_the_net_stage_diff_not_an_old_commit(self):
+        # A stage spans several commits. A packet built from the oldest commit's diff would show
+        # a hunk that later commits already replaced, which is how stale findings were produced.
         from reforge.audit import plan_next_stage
         from reforge.pipeline import start_audit
+        from reforge.review import packet_text
         from reforge.state import current_run, load_state
 
         root = self.simple_repository(1)
@@ -1479,87 +1491,72 @@ class TestReforgeHistory(unittest.TestCase):
         self.git(root, "commit", "-q", "-m", "docs: second")
         start_audit(root, start=3, step=1)
         run = current_run(load_state(root))
-        brief, _ = ai_review.build_brief(root, plan_next_stage(root, run))
-        self.assertIn("State: second", brief)
-        self.assertIn("-State: first", brief)
-        self.assertNotIn("-State: second", brief, "an intermediate hunk must not be reviewed")
-        self.assertEqual(brief.count("--- README.md"), 1, "a file must appear once")
+        packet, _ = packet_text(root, plan_next_stage(root, run))
+        self.assertIn("State: second", packet)
+        self.assertIn("-State: first", packet)
+        self.assertNotIn("-State: second", packet, "an intermediate hunk must not be reviewed")
+        self.assertEqual(packet.count("--- README.md"), 1, "a file must appear once")
 
-    def test_ai_review_adds_and_applies_a_validated_fix(self):
-        # Reforge reviews the stage with an AI agent; a validated suggestion becomes a real,
+    def test_a_findings_file_adds_and_applies_a_validated_fix(self):
+        # The host agent reads the packet and returns JSON; a validated replacement becomes a real,
         # reviewable repair that the normal tests and patch review still have to accept.
         import json as jsonlib
 
         from reforge.pipeline import run_pipeline, start_audit
 
-        root = self.repository(defects=False)
-        (root / "app.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
-        self.git(root, "add", "app.py")
-        self.git(root, "commit", "-q", "-m", "feat: add")
+        root = self.one_commit_repository("def add(a, b):\n    return a - b\n")
         start_audit(root, start=2, step=1)
-        prompts = []
+        answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
+        self.addCleanup(remove_tree, answer_folder)
+        answer = answer_folder / "findings.json"
+        answer.write_text(jsonlib.dumps({"findings": [{
+            "path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
+            "message": "add() subtracts, so every caller gets the wrong total",
+            "evidence": "return a - b",
+            "fix": {"old": "return a - b", "new": "return a + b"},
+        }]}), encoding="utf-8")
 
-        def runner(prompt, model):
-            prompts.append(prompt)
-            return 0, jsonlib.dumps({"findings": [{
-                "path": "app.py", "line": 2, "severity": "high", "code": "wrong-operator",
-                "message": "add() subtracts, so every caller gets the wrong total",
-                "evidence": "return a - b",
-                "fix": {"old": "return a - b", "new": "return a + b"},
-            }]})
-
-        report = run_pipeline(root, "run", run_tests=False, ai=True, ai_runner=runner)
-        self.assertTrue(prompts and "def add(a, b):" in prompts[0])
-        self.assertEqual(report["ai"]["status"], "reviewed")
+        audit = run_pipeline(root, "audit", run_tests=False, rules=False)
+        self.assertEqual(audit["review"]["status"], "unreviewed")
+        self.assertIn("Review one Git audit stage",
+                      Path(audit["review"]["packet"]).read_text(encoding="utf-8"))
+        report = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
+        self.assertEqual(report["review"]["status"], "reviewed")
+        self.assertTrue(Path(report["review"]["packet"]).is_file())
         self.assertIn("return a + b", (root / "app.py").read_text(encoding="utf-8"))
         self.assertEqual(report["repaired"], 1)
-        self.assertTrue(any(item["source"] == "ai" for item in report["findings"]))
+        self.assertTrue(any(item["source"] == "review" for item in report["findings"]))
         self.assertIn("app.py", report["commit_paths"])
 
-    def test_the_planner_reviews_with_ai_and_rules_only_on_request(self):
-        # Reforge plans the stage; the AI does the reviewing. The rule pre-pass is opt-in, so a
-        # stage with a hand-written handler produces an AI finding and no rule noise.
+    def test_the_host_review_and_rules_are_both_opt_in(self):
+        # Reforge plans the stage; the host agent reviews it. The rule pre-pass is opt-in, so a
+        # stage with a hand-written handler produces the host's finding and no rule noise.
         import json as jsonlib
 
         from reforge.pipeline import run_pipeline, start_audit
 
         root = self.repository(defects=True)
         start_audit(root, start=3, step=1)
-        calls = []
+        answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
+        self.addCleanup(remove_tree, answer_folder)
+        answer = answer_folder / "findings.json"
+        answer.write_text(jsonlib.dumps({"findings": [{
+            "path": "app.py", "line": 4, "severity": "medium", "kind": "improvement",
+            "code": "narrow-the-except", "message": "the handler hides every error type",
+            "evidence": "    except:",
+        }]}), encoding="utf-8")
 
-        def runner(prompt, model):
-            calls.append(prompt)
-            return 0, jsonlib.dumps({"findings": [{
-                "path": "app.py", "line": 6, "severity": "medium", "kind": "improvement",
-                "code": "narrow-the-except", "message": "the handler hides every error type",
-                "evidence": "    except:",
-            }]})
-
-        report = run_pipeline(root, "audit", ai=True, ai_runner=runner, rules=False,
+        report = run_pipeline(root, "audit", findings_file=str(answer), rules=False,
                               run_tests=False)
         codes = [item["code"] for item in report["findings"]]
-        self.assertEqual(codes, ["ai-narrow-the-except"])
+        self.assertEqual(codes, ["review-narrow-the-except"])
         self.assertEqual(report["findings"][0]["category"], "improvement")
-        self.assertTrue(calls)
-        other = self.repository(defects=True)
-        rules = run_pipeline(other, "audit", ai=False, run_tests=False, rules=True,
-                             start=3, step=1)
+        from reforge.pipeline import stop_audit
+
+        stop_audit(root)
+        start_audit(root, start=3, step=1)
+        rules = run_pipeline(root, "audit", run_tests=False, rules=True, run_id="run-2")
         self.assertTrue(any(item["code"] == "bare-except" for item in rules["findings"]))
-
-    def test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled(self):
-        from reforge.pipeline import run_pipeline, start_audit
-
-        root = self.repository(defects=False)
-        start_audit(root, start=2, step=1)
-        calls = []
-
-        def runner(prompt, model):
-            calls.append(prompt)
-            return 0, '{"findings": []}'
-
-        report = run_pipeline(root, "audit", ai=False, ai_runner=runner)
-        self.assertEqual(report["ai"]["status"], "skipped")
-        self.assertEqual(calls, [])
 
     def test_three_projects_audit_concurrently_with_separate_locks_and_state(self):
         from reforge.locking import lock_path

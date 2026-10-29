@@ -33,36 +33,36 @@ AIKit is the folder a person opens in an AI host; the software it builds lives i
 - **Memory**: `.aikit/` holds `project.json`, `decisions.md` and `task_ledger.json`. Every ledger command takes `--workspace <project>`, so checkpoints, `--resume`, `--audit` and `--track` read the project's ledger and run `git status` in the project's repository; the project ledger is bookkeeping (`BOOKKEEPING_PATHS`), so a checkpoint never changes the project's track. Project work runs `python aikit.py check <name>` as its Phase 4 (ADR-123); AIKit's other gates cover AIKit only (PRINCIPLE-011 R8, ADR-121). `new` commits the memory as the first commit, and raises with the remediation triad, removing the half-made folder, instead of inventing an author when git has no identity (ADR-120, ADR-171).
 - **Delivery**: `check --strict` adds the commit-level baseline: a git repository, no uncommitted non-bookkeeping changes, no unresolved merge conflicts, no open UI task, and `.aikit/codebase_map.md` when Python sources exist. Ordinary `check` warns about those gaps, prints `[DELIVERY] NOT READY` while the tree is dirty or conflicted, and skips auto-push, so an older commit is never presented as the tested one (ADR-142, ADR-153, ADR-155). `status --exit-code` exposes the same dirty/unauditable signal for scripts, while `check_project_hygiene.py --artifacts` decides root test modules (including ignored ones and unittest's `test*.py` names), untracked root source/output and tracked caches from git's own file lists (ADR-153, ADR-156). The opt-in `ui` commands bound edits to one committed `.aikit/ui.json` surface from a clean baseline, refusing protected or out-of-surface paths, diff-budget overruns, a moved baseline and a red fast proof; abort restores only the surface with a backup (ADR-158). `verify` also diffs a project-declared snapshot inventory against its baseline, flags hardcoded color and font literals outside declared theme paths, and `finish` requires a recorded human review and appends the task's evidence to `.aikit/ui_history.json` (ADR-160, ADR-161).
 
-## 🔁 Aegean Reforge: Integrated History Auditor
+## 🔁 Aegean Reforge: Integrated History Reviewer
 `reforge/` is an AIKit subsystem, not a separately synchronized repository: cloning AIKit yields
 the only copy of the working source. `aikit.py reforge` reaches it through AIKit's registry, gates,
 secret scanner and atomic persistence; `reforge.py` and `python -m reforge` are the same engine
 without the project registry. The layers run one direction: `cli` -> `pipeline` ->
-`audit`/`ai_review`/`repair`/`verification`/`state`/`delivery` -> `model`.
+`audit`/`review`/`repair`/`verification`/`state`/`delivery` -> `model`.
 Each project has independent runs stored together with a per-project run lock: several projects
 audit concurrently, while a second operation on one project is refused. A target is resolved before
 the lock is taken, so two spellings of one checkout cannot create two locks. A run's window is
 `start + step*(N-1)`, capped by `stop`; independent runs can audit the same history with different
 settings, and a stopped or completed run keeps its history when another begins. Within a run, every
 previously audited SHA stays in view for interaction evidence; a mechanical repair is applied by rule,
-an AI patch only after it was validated against the lines the stage added, one regression test is
+a reviewed patch only after it was validated against the lines the stage added, one regression test is
 generated per repaired rule/file, the real diff is reviewed, the project's tests run, and a red
-result rolls the patch back. Reforge plans, records and delivers the stage; the AI agent does the reviewing, in any language and for both defects and improvements. The cheap rule pre-pass is opt-in (`--rules`); with it, Python files go through the AST detectors and other text files through `reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not analysed and prints how many files it reviewed;
-a finding whose line carries the project's `hygiene: allow <reason>` marker is dropped. The
-five fixable rules are `bare-except`, `mutable-default`, `shell-true`, `verify-false` and
-`unsafe-yaml-load`. `reforge/ai_review.py` then sends the stage's net diff (base..head, every
-changed hunk) to a read-only `architect` sub-agent on a free model, reporting defects and
-concrete improvements; the request budget is the model's documented context window
-(`brief_budget`), so a whole stage fits one request and only a larger one is split, by hunk
-and line, with nothing dropped; the brief is
-redacted with the project's secret scanner (the review is skipped when that scanner is
-unavailable), every path and line must belong to the stage, the quoted evidence must exist in
-the current file, a file the brief omitted is treated as unknown, and every suggested
-replacement must occur exactly once and parse, after which `repair.apply_text_patches` applies
-it and the same tests, gates and diff review decide whether it survives. `--no-ai` skips the
-review; an unavailable OpenCode or model is reported as skipped, never as a failed audit. A
-separate `fix` refreshes the history entry `report` reads, a second `fix --commit` delivers an
-already-reviewed patch, and raising `--stop` reopens a completed run.
+result rolls the patch back. Reforge plans, records and delivers the stage; the host agent does the
+reviewing, in any language and for both defects and improvements. The cheap rule pre-pass is opt-in
+(`--rules`); with it, Python files go through the AST detectors and other text files through
+`reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not analysed and
+prints how many files it reviewed; a finding whose line carries the project's
+`hygiene: allow <reason>` marker is dropped. The five fixable rules are `bare-except`,
+`mutable-default`, `shell-true`, `verify-false` and `unsafe-yaml-load`.
+`reforge/review.py` writes the stage's net diff (base..head, every changed text file once, complete)
+to `.aikit/reforge.reviews/`, redacted with the project's secret scanner, and reads the reviewer's
+JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
+file, and a suggested replacement must occur exactly once, overlap a line the stage added, and parse,
+after which `repair.apply_text_patches` applies it and the same tests, gates and diff review decide
+whether it survives. There is no model call, API key or subagent anywhere in the loop; `audit` writes
+the packet, `fix --findings` applies the answer, and `run --findings` does both. A separate `fix`
+refreshes the history entry `report` reads, a second `fix --commit` delivers an already-reviewed
+patch, and raising `--stop` reopens a completed run.
 Run lifecycle events are mirrored into the repository's AIKit task ledger by `reforge/ledger.py`
 under a `reforge:<run-id>` task: entries are appended under the ledger lock with `active_task`
 untouched, a stopped run is `suspended` (so `--resume` lists it as resumable), a run reaching its
@@ -71,7 +71,7 @@ bookkeeping by the clean-tree and patch-review checks. The ledger is found by na
 `.agents/task_ledger.json` still records a run after Reforge creates its own `.aikit/` state folder.
 A repository without a ledger is audited unchanged and the CLI says nothing was recorded. See
 [ADR-230](decisions.md), [ADR-232](decisions.md), [ADR-248](decisions.md),
-[ADR-249](decisions.md), [ADR-250](decisions.md) and [ADR-253](decisions.md).
+[ADR-249](decisions.md), [ADR-250](decisions.md) and [ADR-263](decisions.md).
 
 ## 🧭 Idea Catcher: Shipped Register Tool
 `idea_catcher/` is the tool AIKit ships for its private idea register: cloning AIKit yields the

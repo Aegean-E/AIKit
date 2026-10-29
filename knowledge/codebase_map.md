@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `120`
-- **Total Top-Level Functions**: `734`
-- **Total Class Methods**: `806`
-- **Total Source Lines**: `31442`
+- **Total Top-Level Functions**: `733`
+- **Total Class Methods**: `800`
+- **Total Source Lines**: `31179`
 
 ---
 
@@ -204,7 +204,7 @@
 ---
 
 ### [`reforge/__init__.py`](reforge/__init__.py)
-> *Aegean Reforge: progressive Git history auditing, AI review and safe repair.*
+> *Aegean Reforge: progressive Git history reviewing, safe repair and delivery.*
 
 **Size**: `5` lines (`151` bytes)
 
@@ -217,38 +217,10 @@
 
 ---
 
-### [`reforge/ai_review.py`](reforge/ai_review.py)
-> *AI review of the changes one audit stage introduces, then validated fixes.*
-
-**Size**: `595` lines (`26562` bytes)
-
-**Functions:**
-- `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
-- `def _changed_paths(repo, plan)` - *(head, path) for every readable text file the stage changed, once each, from the net diff.*
-- `def _file_diff(repo, plan, path)` - *The path's net diff across the whole stage.*
-- `def scrubber_available()` - *Whether the project's secret scanner can redact the brief.*
-- `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
-- `def brief_budget(model)` - *The character budget for one review request, from the model's documented window.*
-- `def _hunk_blocks(path, diff)` - *Split one file diff into per-hunk blocks, each labelled with its path.*
-- `def _split_large(block, limit)` - *Split one over-sized block into consecutive line windows that each fit `limit`.*
-- `def build_briefs(repo, plan, reviewed, redacted, budget, pairs)` - *Every changed hunk of the stage, in one request when the model can hold it.*
-- `def build_brief(repo, plan, reviewed, redacted, budget)` - *The first request of `build_briefs`, kept for callers that only need one prompt.*
-- `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
-- `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
-- `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
-- `def findings_from_payload(repo, payload, allowed, commit_of, touched, omitted)` - *Validate the model's answer against the stage; returns (findings, rejected reasons).*
-- `def _write_brief_file(prompt)` - *Write the brief to a temporary attachment, because argv is too short for a big review.*
-- `def _delegate_runner(repo, timeout)` - *The default runner: one read-only `architect` sub-agent on a free model.*
-- `def review_stage(repo, plan, model, timeout, runner, budget)` - *Ask the AI to review this stage; never raises, and always says what happened.*
-- `def _dedupe(findings)` - *One finding per (path, line, code), because overlapping requests can repeat a hunk.*
-- `def merge_findings(proven, reviewed)` - *Deterministic findings first, then AI findings the detectors did not already name.*
-
----
-
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `223` lines (`10255` bytes)
+**Size**: `223` lines (`10272` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
@@ -266,7 +238,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `388` lines (`19006` bytes)
+**Size**: `391` lines (`18922` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -275,7 +247,7 @@
 **Functions:**
 - `def _add_run_selection(command)`
 - `def _add_window_settings(command, defaults)`
-- `def _add_ai_options(command)`
+- `def _add_review_options(command, findings, rules)`
 - `def add_commands(subparsers)` - *Declare every Reforge command once, for either top-level CLI.*
 - `def build_parser()`
 - `def _report_error(error, as_json)`
@@ -283,7 +255,7 @@
 - `def _print_runs(runs)`
 - `def _print_findings(payload)`
 - `def _start_payload(payload)`
-- `def _print_ai(report)` - *Say whether the AI reviewed the stage, and why not when it did not.*
+- `def _print_review(report)` - *Say whether a reviewer answered the stage, and where its packet is.*
 - `def _print_ledger(payload)` - *Say where the run was recorded: the ledger is how a cold start finds an open audit.*
 - `def _workspace(args, root, gate_runner)`
 - `def dispatch(args, aikit_root, project_root, gate_runner)` - *Run one parsed request; every failure is reported as a triad or a JSON envelope.*
@@ -294,11 +266,12 @@
 ### [`reforge/delivery.py`](reforge/delivery.py)
 > *Explicit staging, conventional commit and never-forced push for accepted repairs.*
 
-**Size**: `104` lines (`4280` bytes)
+**Size**: `117` lines (`4790` bytes)
 
 **Functions:**
 - `def validate_message(message)`
 - `def _paths_to_commit(root)`
+- `def _not_ignored(root, paths)` - *Drop paths git ignores; an ignored state file is local, not a commit failure.*
 - `def commit_repairs(root, message, paths)` - *Stage exactly the repair paths, commit, and verify the commit holds them.*
 - `def deliver(root, message, do_push, paths)` - *Commit only the reviewed repair paths plus the audit state, then optionally push.*
 
@@ -432,7 +405,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `483` lines (`22890` bytes)
+**Size**: `556` lines (`26248` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -441,14 +414,16 @@
 - `def _stop_value(stop)`
 - `def _snapshot(root, findings)`
 - `def _restore(root, snapshots)`
-- `def _clean_before_repair(root, allow_dirty)`
-- `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner)`
-- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, ai)`
+- `def _relative_inside(root, path)` - *The repository-relative form of a supplied file, or an empty string when it is outside.*
+- `def _clean_before_repair(root, allow_dirty, ignore)`
+- `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner, extra_allowed)`
+- `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, review)`
 - `def _review_error(run, pending)`
-- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, ai, ai_model, ai_timeout, ai_runner, ai_budget, rules)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
-- `def _ai_report(root, plan, enabled, model, timeout, runner, budget)` - *Run the optional AI review; the findings stay objects until the caller serialises them.*
-- `def _serialize_ai(report)` - *The small JSON-safe form of an AI review kept in state and printed by the CLI.*
+- `def _plan_from_last(run, last)` - *Rebuild the stage a `fix` must apply, from the run and its last audit entry.*
+- `def _collect_review(root, plan, reviewed, findings_file, packet)` - *Write the review packet and load the reviewer's answer, if one was supplied.*
+- `def _serialize_review(report)` - *The small JSON-safe form of a review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
 - `def resume_audit(root, run_id)`
@@ -462,7 +437,7 @@
 ### [`reforge/repair.py`](reforge/repair.py)
 > *Smallest-safe automatic repairs, generated regression tests and repair verification.*
 
-**Size**: `473` lines (`20541` bytes)
+**Size**: `473` lines (`20548` bytes)
 
 **Classes:**
 - `class _Edit`
@@ -489,15 +464,39 @@
 - `def regression_test_path(root)`
 - `def _add_regression_tests(root, repairs)`
 - `def repair_findings(root, findings, add_tests)` - *Apply safe repairs per file, then add one regression test per repaired rule and file.*
-- `def apply_text_patches(root, findings)` - *Apply AI-proposed exact replacements, one per finding, only when each is unambiguous.*
+- `def apply_text_patches(root, findings)` - *Apply reviewed exact replacements, one per finding, only when each is unambiguous.*
 - `def repair_paths(repairs, root)` - *The source and test paths a repair touched, for an explicit commit and patch review.*
+
+---
+
+### [`reforge/review.py`](reforge/review.py)
+> *The review packet: the change a stage makes, and the findings a reviewer returns.*
+
+**Size**: `362` lines (`15250` bytes)
+
+**Functions:**
+- `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
+- `def _changed_paths(repo, plan)` - *(head, path) for every readable text file the stage changed, once each, from the net diff.*
+- `def _binary_paths(repo, plan)` - *Changed paths that cannot be reviewed as text, named so the packet is honest about them.*
+- `def _file_diff(repo, plan, path)` - *The path's net diff across the whole stage.*
+- `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
+- `def packet_text(repo, plan, files)` - *The full review packet for one stage, and how many credential spans were masked.*
+- `def packet_path(root, plan)` - *Where the packet for this stage is written, inside the git-ignored state folder.*
+- `def _write_text(path, text)` - *Write a generated packet through a temp file and an atomic replace.*
+- `def write_packet(root, plan, files)` - *Write the packet and return (path, redacted span count).*
+- `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
+- `def read_findings_file(path)` - *Read a findings file, raising ValueError with a clear message when it holds no JSON.*
+- `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
+- `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
+- `def findings_from_payload(repo, payload, plan, files)` - *Validate a findings answer against the stage; returns (findings, rejected reasons).*
+- `def merge_findings(proven, reviewed)` - *Rule findings first, then review findings the rules did not already name.*
 
 ---
 
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `453` lines (`17631` bytes)
+**Size**: `454` lines (`17731` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -516,7 +515,7 @@
 - `def load_state(root)` - *Read the state; a missing file is fresh, schema 1 migrates in memory, corrupt is refused.*
 - `def _local_atomic_write(path, text)`
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
-- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed, ai)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
+- `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed, review)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
 - `def run_complete(run, window)`
 - `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
@@ -1288,7 +1287,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1625` lines (`83005` bytes)
+**Size**: `1622` lines (`83490` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1396,16 +1395,16 @@
   - Method `.git(root, *args)`
   - Method `.repository(defects)`
   - Method `.simple_repository(commits)` - *A small clean history for window/run tests that do not need repairs.*
+  - Method `.one_commit_repository(source)` - *One commit with one Python file, for a repair test that needs no long history.*
   - Method `.test_stage_one_repairs_and_records_evidence()`
   - Method `.test_a_second_fix_offers_the_reviewed_patch_for_commit()`
   - Method `.test_a_non_python_change_is_reviewed_not_skipped()`
   - Method `.test_an_audited_project_records_its_run_in_the_task_ledger()`
   - Method `.test_a_failing_test_rolls_the_repair_back()`
   - Method `.test_projects_run_concurrently_and_a_locked_project_refuses_again()`
-  - Method `.test_the_ai_brief_holds_the_net_stage_diff_not_an_old_commit()`
-  - Method `.test_ai_review_adds_and_applies_a_validated_fix()`
-  - Method `.test_the_planner_reviews_with_ai_and_rules_only_on_request()`
-  - Method `.test_ai_review_is_off_by_default_in_the_library_and_can_be_disabled()`
+  - Method `.test_the_packet_holds_the_net_stage_diff_not_an_old_commit()`
+  - Method `.test_a_findings_file_adds_and_applies_a_validated_fix()`
+  - Method `.test_the_host_review_and_rules_are_both_opt_in()`
   - Method `.test_three_projects_audit_concurrently_with_separate_locks_and_state()`
   - Method `.test_aikit_reforge_status_reaches_the_registry_and_state()`
 - `class TestIdeaCatcherCli` - *PRINCIPLE-011: `aikit.py idea-catcher` reaches the private register in one command.*
@@ -1423,7 +1422,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9176` lines (`520526` bytes)
+**Size**: `9059` lines (`514056` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2145,24 +2144,18 @@
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`
   - Method `.test_the_parser_declares_run_management_commands()`
-  - Method `.test_the_parser_declares_the_ai_review_options()`
-  - Method `.stage()` - *A minimal stage plan for brief-building tests.*
-  - Method `.test_a_stage_that_fits_is_one_request_and_loses_nothing()`
-  - Method `.test_an_oversized_stage_is_split_but_stays_complete()`
-  - Method `.test_a_stage_above_the_request_cap_is_refused_not_fanned_out()`
-  - Method `.test_a_stage_without_text_changes_is_skipped_cleanly()`
-  - Method `.test_a_large_brief_is_attached_as_a_file_not_passed_as_argv()`
-  - Method `.test_a_small_brief_still_travels_inline()`
-  - Method `.test_the_brief_budget_follows_the_model_context_window()`
-  - Method `.test_a_large_file_is_split_by_hunk_not_dropped()`
-  - Method `.test_the_brief_redacts_a_credential_before_it_leaves()`
-  - Method `.test_a_patch_must_overlap_a_line_the_stage_added()`
-  - Method `.test_the_review_is_skipped_when_the_secret_scanner_is_missing()`
-  - Method `.test_a_finding_about_an_omitted_file_is_dropped()`
-  - Method `.test_a_finding_quoting_a_removed_line_is_dropped()`
-  - Method `.test_an_ai_answer_is_validated_against_the_stage()`
-  - Method `.test_an_ai_patch_must_apply_once_and_must_parse()`
-  - Method `.test_a_valid_ai_patch_is_applied_and_an_ambiguous_one_is_left()`
+  - Method `.test_a_findings_file_that_is_not_json_is_refused()`
+  - Method `.test_an_ignored_state_file_is_not_a_commit_failure()`
+  - Method `.test_a_review_packet_is_never_committed_as_reviewed_work()`
+  - Method `.test_the_parser_declares_the_findings_option()`
+  - Method `.stage_plan()` - *A minimal stage plan for packet and findings tests.*
+  - Method `.test_the_packet_reviews_the_net_stage_diff_once_per_file()`
+  - Method `.test_the_packet_redacts_a_credential_before_an_agent_reads_it()`
+  - Method `.test_a_review_answer_is_validated_against_the_stage()`
+  - Method `.test_a_review_improvement_is_its_own_category()`
+  - Method `.test_a_review_patch_must_overlap_a_line_the_stage_added()`
+  - Method `.test_an_empty_review_answer_is_valid()`
+  - Method `.test_a_review_patch_applies_only_when_it_is_unambiguous()`
 - `class TestIdeaCatcherShip` - *PRINCIPLE-014: Idea Catcher ships complete and keeps its register private.*
   - Method `.test_the_root_override_selects_a_register()`
   - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`

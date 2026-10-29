@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from reforge.audit import audit_window, plan_next_stage, summarize, window_for_stage
-from reforge.ai_review import AI_TIMEOUT_SECONDS, merge_findings, review_stage
 from reforge.errors import ReforgeError
 from reforge.git_history import dirty_paths, head_sha
 from reforge.ledger import ledger_artifacts, record_event, stage_files
@@ -16,6 +15,12 @@ from reforge.repair import (
     regression_test_path,
     repair_findings,
     repair_paths,
+)
+from reforge.review import (
+    findings_from_payload,
+    merge_findings,
+    read_findings_file,
+    write_packet,
 )
 from reforge.state import (
     DEFAULT_START,
@@ -97,13 +102,26 @@ def _restore(root: Path, snapshots: Dict[str, Optional[bytes]]) -> None:
             continue
 
 
-def _clean_before_repair(root: Path, allow_dirty: bool) -> None:
+def _relative_inside(root: Path, path: Optional[str]) -> str:
+    """The repository-relative form of a supplied file, or an empty string when it is outside."""
+    if not path:
+        return ""
+    try:
+        return Path(path).resolve().relative_to(Path(root).resolve()).as_posix()
+    except (OSError, ValueError):
+        return ""
+
+
+def _clean_before_repair(root: Path, allow_dirty: bool,
+                         ignore: Sequence[str] = ()) -> None:
     if allow_dirty:
         return
+    ignored = {path.replace("\\", "/") for path in ignore}
     ledger = set(ledger_artifacts(root))
     dirty = {path for path in dirty_paths(root)
              if path.replace("\\", "/") != STATE_REL.as_posix()
              and path.replace("\\", "/") not in ledger
+             and path.replace("\\", "/") not in ignored
              and not is_reforge_artifact(path)}
     if dirty:
         shown = ", ".join(sorted(dirty)[:8])
@@ -116,15 +134,16 @@ def _clean_before_repair(root: Path, allow_dirty: bool) -> None:
 
 def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
                      run_tests: bool, test_command: Optional[str],
-                     gate_runner: Optional[GateRunner]) -> Tuple[List[Repair], Dict[str, object],
+                     gate_runner: Optional[GateRunner],
+                     extra_allowed: Sequence[str] = ()) -> Tuple[List[Repair], Dict[str, object],
                                                                   Dict[str, object]]:
     targets = [finding for finding in findings if finding.fixable and not finding.repaired]
     if not targets:
         return [], {}, {}
     snapshots = _snapshot(root, targets)
     try:
-        # Deterministic rules keep their proven edit; AI findings carry an exact text patch that
-        # was validated against the file when the answer was parsed, and is re-checked here.
+        # Deterministic rules keep their proven edit; reviewed findings carry an exact text patch
+        # that was validated against the file when the answer was parsed, and is re-checked here.
         rule_findings = [item for item in targets if not item.patch_old]
         patch_findings = [item for item in targets if item.patch_old]
         repairs = repair_findings(root, rule_findings, add_tests=add_tests)
@@ -136,6 +155,7 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
             issues = recheck_repairs(root, applied)
             allowed = repair_paths(repairs, root) + [STATE_REL.as_posix(), LOCK_REL.as_posix()]
             allowed += [path for path in dirty_paths(root) if is_reforge_artifact(path)]
+            allowed += [path for path in extra_allowed if path]
             # The stage checkpoint Reforge appended, and its .bak/.lock siblings, are its own
             # bookkeeping; without this the review would reject every tree on a project with a ledger.
             allowed.extend(ledger_artifacts(root))
@@ -183,7 +203,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
              findings: Sequence[Finding], repairs: Sequence[Repair], tests: Dict[str, object],
              gates: Dict[str, object], skipped: Sequence[str] = (),
              ledger: Optional[Dict[str, object]] = None,
-             reviewed: int = 0, ai: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+             reviewed: int = 0, review: Optional[Dict[str, object]] = None) -> Dict[str, object]:
     applied = sum(1 for repair in repairs if repair.applied)
     return {
         "mode": mode,
@@ -199,7 +219,7 @@ def _payload(root: Path, mode: str, plan: StagePlan, run: Dict[str, object],
         "repaired": applied,
         "pending_fixable": len(pending_fixable(run)),
         "reviewed": reviewed,
-        "ai": ai or {},
+        "review": review or {},
         "skipped": list(skipped),
         "ledger": ledger or {},
         "tests": tests,
@@ -220,17 +240,92 @@ def _review_error(run: Dict[str, object], pending: Sequence[Dict[str, object]]) 
     )
 
 
+def _plan_from_last(run: Dict[str, object], last: Dict[str, object]) -> StagePlan:
+    """Rebuild the stage a `fix` must apply, from the run and its last audit entry."""
+    return StagePlan(
+        stage=int(last.get("stage") or 0), window=int(last.get("window") or 0),
+        commits=(), new_shas=tuple(last.get("new_commits") or []),
+        prior_shas=tuple(last.get("prior_commits") or []),
+        run_id=str(run.get("id") or ""),
+        start=int(run.get("start") or DEFAULT_START),
+        step=int(run.get("step") or DEFAULT_STEP),
+        stop=run.get("stop") if isinstance(run.get("stop"), int) else None,
+    )
+
+
+def _collect_review(root: Path, plan: StagePlan, reviewed: Optional[Sequence[str]],
+                    findings_file: Optional[str], packet: bool) -> Dict[str, object]:
+    """Write the review packet and load the reviewer's answer, if one was supplied.
+
+    Reforge does not call a model. `packet` writes the stage's full diff for a reviewer to read;
+    `findings_file` supplies that reviewer's answer. Both are optional, so the planner can record a
+    stage before any review exists.
+    """
+    report: Dict[str, object] = {
+        "status": "unreviewed", "findings": [], "rejected": [], "files": list(reviewed or []),
+        "packet": "", "redacted": 0, "reason": "",
+    }
+    if packet:
+        path, redactions = write_packet(root, plan, list(reviewed or []))
+        report.update(packet=str(path), redacted=redactions)
+    if findings_file:
+        try:
+            payload = read_findings_file(Path(findings_file))
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            raise ReforgeError(
+                f"The findings file cannot be read: {findings_file}",
+                f"it must hold one JSON object or array: {exc}",
+                "write the findings as the packet's prompt describes, then pass the file again; "
+                "nothing was changed.",
+            ) from exc
+        found, rejected = findings_from_payload(
+            root, payload, plan, list(reviewed) if reviewed is not None else None)
+        report.update(status="reviewed", findings=found, rejected=rejected)
+        if not found and not rejected:
+            report["reason"] = "the answer held no findings"
+    elif not packet:
+        report["reason"] = "no review supplied"
+    else:
+        report["reason"] = "awaiting the reviewer's findings"
+    return report
+
+
+def _serialize_review(report: Dict[str, object]) -> Dict[str, object]:
+    """The small JSON-safe form of a review kept in state and printed by the CLI."""
+    meta = {key: value for key, value in report.items() if key != "findings"}
+    meta["findings"] = [item.as_dict() for item in report.get("findings") or []]
+    return meta
+
+
+def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict[str, object],
+                findings: Sequence[Finding], skipped: Sequence[str]) -> Dict[str, object]:
+    """Mirror one stage into the repository's task ledger so cold start can see the audit."""
+    applied = sum(1 for repair in entry.get("repairs") or [] if repair.get("applied"))
+    counts = ", ".join(f"{name}={value}" for name, value in sorted((entry.get("counts") or {}).items()))
+    review = entry.get("review") or {}
+    description = (
+        f"window {plan.window}, {len(entry.get('new_commits') or [])} commit(s), "
+        f"{int(entry.get('reviewed') or 0)} file(s) reviewed ({review.get('status') or 'unreviewed'}), "
+        f"{len(findings)} finding(s), {applied} repaired"
+        + (f", {len(skipped)} binary not analysed" if skipped else "")
+        + (f" ({counts})" if counts else "")
+    )
+    return record_event(root, plan.run_id, plan.stage, description,
+                        stage_files(findings, skipped),
+                        status="completed" if run.get("status") == "completed" else "in_progress")
+
+
 def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                  run_tests: bool = True, test_command: Optional[str] = None,
                  gate_runner: Optional[GateRunner] = None,
                  allow_dirty: bool = False, run_id: Optional[str] = None,
                  start: Optional[int] = None, step: Optional[int] = None,
-                 stop: Optional[int] = None, ai: bool = False,
-                 ai_model: Optional[str] = None, ai_timeout: int = AI_TIMEOUT_SECONDS,
-                 ai_runner=None, ai_budget: Optional[int] = None,
-                 rules: bool = True) -> Dict[str, object]:
+                 stop: Optional[int] = None, rules: bool = False,
+                 findings_file: Optional[str] = None,
+                 packet: bool = True) -> Dict[str, object]:
     """Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`)."""
     root = Path(root)
+    findings_rel = _relative_inside(root, findings_file)
     with run_lock(root):
         state = load_state(root)
         if mode == "fix":
@@ -242,16 +337,29 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                     "`fix` repairs the findings of a run's latest completed stage.",
                     "run `audit` or `run` first; nothing was changed.",
                 )
+            plan = _plan_from_last(run, last)
             all_findings = [finding_from_dict(item) for item in unrepaired_findings(run)]
+            review_meta = dict(last.get("review") or last.get("ai") or {})
+            reviewed = int(last.get("reviewed") or 0)
+            skipped = list(last.get("skipped") or [])
+            if findings_file:
+                report = _collect_review(root, plan, review_meta.get("files") or None,
+                                         findings_file, packet=False)
+                report["packet"] = review_meta.get("packet") or report.get("packet") or ""
+                report["redacted"] = review_meta.get("redacted") or 0
+                all_findings = merge_findings(all_findings, report.get("findings") or [])
+                review_meta = _serialize_review(report)
+                last["findings"] = [item.as_dict() for item in all_findings]
+                last["counts"] = summarize(all_findings)
+                last["review"] = review_meta
             fixable = [item for item in all_findings if item.fixable]
-            plan = StagePlan(stage=int(last.get("stage") or 0), window=int(last.get("window") or 0),
-                             commits=(), new_shas=tuple(last.get("new_commits") or []),
-                             prior_shas=tuple(last.get("prior_commits") or []),
-                             run_id=str(run.get("id") or ""),
-                             start=int(run.get("start") or DEFAULT_START),
-                             step=int(run.get("step") or DEFAULT_STEP),
-                             stop=run.get("stop") if isinstance(run.get("stop"), int) else None)
             if not fixable:
+                if findings_file:
+                    save_state(root, state)
+                    return _payload(root, mode, plan, run, all_findings,
+                                    [repair_from_dict(item) for item in (last.get("repairs") or [])],
+                                    last.get("tests") or {}, last.get("gates") or {},
+                                    skipped, reviewed=reviewed, review=review_meta)
                 # `audit` then `fix` in two invocations leaves a reviewed patch uncommitted;
                 # a second `fix --commit` publishes it instead of refusing (the CLI's own advice).
                 applied = [repair_from_dict(item) for item in (last.get("repairs") or [])
@@ -267,21 +375,19 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                     )
                 return _payload(root, mode, plan, run, all_findings, applied,
                                 last.get("tests") or {}, last.get("gates") or {},
-                                last.get("skipped") or [],
-                                reviewed=int(last.get("reviewed") or 0),
-                                ai=last.get("ai") or {})
-            _clean_before_repair(root, allow_dirty)
+                                skipped, reviewed=reviewed, review=review_meta)
+            _clean_before_repair(root, allow_dirty, (findings_rel,))
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
-                                                     test_command, gate_runner)
+                                                     test_command, gate_runner,
+                                                     extra_allowed=(findings_rel,))
             last["repairs"] = [repair.as_dict() for repair in repairs]
             last["tests"] = tests
             last["gates"] = gates
+            last["review"] = review_meta
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
             return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,
-                            last.get("skipped") or [],
-                            reviewed=int(last.get("reviewed") or 0),
-                            ai=last.get("ai") or {})
+                            skipped, reviewed=reviewed, review=review_meta)
 
         if mode not in {"audit", "run"}:
             raise ReforgeError(
@@ -311,63 +417,27 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         skipped: List[str] = []
         reviewed: List[str] = []
         findings = audit_window(root, plan, run.get("history") or [], skipped, reviewed, rules)
-        ai_report = _ai_report(root, plan, ai, ai_model, ai_timeout, ai_runner, ai_budget)
-        findings = merge_findings(findings, ai_report.get("findings") or [])
-        if not rules and not ai:
-            ai_report["reason"] = ("no review ran: --no-ai removed the AI and the rules are opt-in "
-                                   "with --rules")
-        ai_meta = _serialize_ai(ai_report)
+        review = _collect_review(root, plan, reviewed, findings_file, packet)
+        findings = merge_findings(findings, review.get("findings") or [])
+        review_meta = _serialize_review(review)
         if mode == "audit":
             entry = entry_from_stage(plan, findings, [], skipped=skipped,
-                                     reviewed=len(reviewed), ai=ai_meta)
+                                     reviewed=len(reviewed), review=review_meta)
             record_stage(root, state, run, entry)
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
                             _note_stage(root, run, plan, entry, findings, skipped),
-                            reviewed=len(reviewed), ai=ai_meta)
-        _clean_before_repair(root, allow_dirty)
+                            reviewed=len(reviewed), review=review_meta)
+        _clean_before_repair(root, allow_dirty, (findings_rel,))
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
-                                                 test_command, gate_runner)
+                                                 test_command, gate_runner,
+                                                 extra_allowed=(findings_rel,))
         entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped,
-                                 reviewed=len(reviewed), ai=ai_meta)
+                                 reviewed=len(reviewed), review=review_meta)
         record_stage(root, state, run, entry)
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
                         _note_stage(root, run, plan, entry, findings, skipped),
-                        reviewed=len(reviewed), ai=ai_meta)
-
-
-def _ai_report(root: Path, plan: StagePlan, enabled: bool, model: Optional[str],
-               timeout: int, runner,
-               budget: Optional[int] = None) -> Dict[str, object]:
-    """Run the optional AI review; the findings stay objects until the caller serialises them."""
-    if not enabled:
-        return {"status": "skipped", "findings": [], "rejected": [], "files": [],
-                "reason": "disabled with --no-ai"}
-    return review_stage(root, plan, model=model, timeout=timeout, runner=runner, budget=budget)
-
-
-def _serialize_ai(report: Dict[str, object]) -> Dict[str, object]:
-    """The small JSON-safe form of an AI review kept in state and printed by the CLI."""
-    meta = {key: value for key, value in report.items() if key != "findings"}
-    meta["findings"] = [item.as_dict() for item in report.get("findings") or []]
-    return meta
-
-
-def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict[str, object],
-                findings: Sequence[Finding], skipped: Sequence[str]) -> Dict[str, object]:
-    """Mirror one stage into the repository's task ledger so cold start can see the audit."""
-    applied = sum(1 for repair in entry.get("repairs") or [] if repair.get("applied"))
-    counts = ", ".join(f"{name}={value}" for name, value in sorted((entry.get("counts") or {}).items()))
-    description = (
-        f"window {plan.window}, {len(entry.get('new_commits') or [])} commit(s), "
-        f"{int(entry.get('reviewed') or 0)} file(s) reviewed, "
-        f"{len(findings)} finding(s), {applied} repaired"
-        + (f", {len(skipped)} binary not analysed" if skipped else "")
-        + (f" ({counts})" if counts else "")
-    )
-    return record_event(root, plan.run_id, plan.stage, description,
-                        stage_files(findings, skipped),
-                        status="completed" if run.get("status") == "completed" else "in_progress")
+                        reviewed=len(reviewed), review=review_meta)
 
 
 def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = None,
@@ -385,7 +455,7 @@ def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = N
                 "or use a different project; each project has its own lock and state.",
             )
         run = create_run(state, start if start is not None else DEFAULT_START,
-                             step if step is not None else DEFAULT_STEP, _stop_value(stop))
+                         step if step is not None else DEFAULT_STEP, _stop_value(stop))
         save_state(root, state)
         ledger = record_event(root, str(run["id"]), 0,
                               f"run started (start={run['start']}, step={run['step']}, "
@@ -455,6 +525,8 @@ def status_payload(root: Path) -> Dict[str, object]:
         next_window = window_for_stage(stage + 1, int(run.get("start") or DEFAULT_START),
                                        int(run.get("step") or DEFAULT_STEP),
                                        run.get("stop") if isinstance(run.get("stop"), int) else None)
+    last = (run or {}).get("last_audit")
+    review = (last.get("review") or last.get("ai") or {}) if isinstance(last, dict) else {}
     return {
         "root": str(root),
         "head": head_sha(root),
@@ -463,11 +535,12 @@ def status_payload(root: Path) -> Dict[str, object]:
         "next_window": next_window,
         "audited_commits": len((run or {}).get("audited_commits") or []),
         "pending_findings": pending,
+        "review": review,
         "active_run": state.get("active_run"),
         "last_run": state.get("last_run"),
         "run": run_summary(run) if run else None,
         "runs": runs_summary(state),
-        "last_audit": (run or {}).get("last_audit"),
+        "last_audit": last,
         "history": len((run or {}).get("history") or []),
     }
 

@@ -94,12 +94,12 @@ Window N is `start + step*(N - 1)`, capped by `stop` when set; `start >= 2`, `st
 `stop >= start`, and `stop` may be `null` for unlimited. A run completes when its window reaches
 `stop`; its history is then kept while a new run may start from any window. Each stage history is
 bounded to 20 entries and carries `stage`, `window`, `commits`, `new_commits`, `prior_commits`,
-`findings`, `repairs`, `counts`, `skipped`, `tests`, `gates`, `timestamp`. `skipped` lists the
-changed paths a stage could not analyse because Reforge's detectors are Python-only
+`findings`, `repairs`, `counts`, `reviewed`, `review`, `skipped`, `tests`, `gates`,
+`timestamp`. `skipped` lists only the changed binary paths a stage could not read as text
 (ADR-249), so coverage is recorded rather than implied. Each finding carries `code`,
 `category`, `severity`, `path`, `line`, `message`, `evidence`, `commit`, `symbol`, `introduced`,
-`reproducible`, `fixable`, `interaction` and `repaired`; each repair carries `code`, `path`, `line`,
-`summary`, `test_name` and `applied`.
+`reproducible`, `fixable`, `interaction`, `source` (`ast`, `text` or `review`) and `repaired`;
+each repair carries `code`, `path`, `line`, `summary`, `test_name` and `applied`.
 
 The same stages are mirrored into the repository's task ledger (`.aikit/task_ledger.json` in a
 project, `.agents/task_ledger.json` at AIKit's root) as ordinary checkpoint entries under
@@ -134,10 +134,12 @@ Schema 2; `next_run_id`, `active_run`, `last_run`, `runs` and mirrored top-level
 `window`, `audited_commits`, `last_audit`, `history`) so schema-1 readers stay readable. Each run
 holds `id`, `start`, `step`, `stop`, `status`, its audited SHAs and a bounded history of stage
 entries; a stage entry also records `reviewed` (files inspected), `skipped` (binary files only) and
-`ai` (review status, model, seconds, rejected suggestions, redacted span count) (ADR-253, ADR-254,
-ADR-255). A finding now carries `source` (`ast`/`text`/`ai`), and an AI finding may carry
-`patch_old`/`patch_new`, an exact replacement validated against the stage's added lines before it is
-applied. Reforge has no sync config or standalone marker any more (ADR-248).
+`review` (status `unreviewed`/`reviewed`, the packet path, accepted `findings`, rejected reasons,
+redacted span count) (ADR-253, ADR-263). A finding now carries `source` (`ast`/`text`/`review`), and
+a reviewed finding may carry `patch_old`/`patch_new`, an exact replacement validated against the
+stage's added lines before it is applied. The packet itself lives under
+`.aikit/reforge.reviews/stage-<n>-<sha>.md`, matching the `reforge.` artifact prefix so delivery
+never commits it. Reforge has no sync config or standalone marker any more (ADR-248).
 
 ### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
 Schema 1, stored as private local data under `.idea-catcher/` at the AIKit root and never in Git.

@@ -398,7 +398,7 @@ def repair_findings(root: Path, findings: Sequence[Finding],
 
 
 def apply_text_patches(root: Path, findings: Sequence[Finding]) -> List[Repair]:
-    """Apply AI-proposed exact replacements, one per finding, only when each is unambiguous.
+    """Apply reviewed exact replacements, one per finding, only when each is unambiguous.
 
     A patch is text, so it is applied to the file's own line endings without normalising anything
     else. When any replacement for a file fails (the quoted text vanished or appears twice, or a
@@ -448,12 +448,12 @@ def apply_text_patches(root: Path, findings: Sequence[Finding]) -> List[Repair]:
                 continue
             updated = candidate
             made.append(Repair(finding.code, relative, finding.line,
-                               f"applied AI suggestion: {finding.message[:80]}", "", True))
+                               f"applied review suggestion: {finding.message[:80]}", "", True))
         if failed or updated == original:
             for item in made:
                 applied.append(
                     Repair(item.code, item.path, item.line,
-                           "left for review: the file held an unusable AI patch", "", False)
+                           "left for review: the file held an unusable reviewed patch", "", False)
                     if item.applied else item)
             continue
         _write_text(path, updated, newline="")

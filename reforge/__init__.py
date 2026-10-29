@@ -1,4 +1,4 @@
-"""Aegean Reforge: progressive Git history auditing, AI review and safe repair."""
+"""Aegean Reforge: progressive Git history reviewing, safe repair and delivery."""
 
 from reforge.version import __version__
 
