@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `56`
-- **Total Classes**: `122`
-- **Total Top-Level Functions**: `758`
-- **Total Class Methods**: `839`
-- **Total Source Lines**: `32392`
+- **Total Classes**: `123`
+- **Total Top-Level Functions**: `759`
+- **Total Class Methods**: `845`
+- **Total Source Lines**: `32464`
 
 ---
 
@@ -1027,7 +1027,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1198` lines (`55591` bytes)
+**Size**: `1213` lines (`56254` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -1050,6 +1050,7 @@
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
 - `def seed_assets_manifest(project_root, kind)` - *Write the asset/data manifest `new --kind game|science` needs, so the license boundary has a*
 - `def _reuse_licenses_dir(project_root)` - *The directory that holds the REUSE license texts.*
+- `def _reuse_keeps_project_annotations(path, identifier)` - *Whether `REUSE.toml` already names `identifier` and adds project annotations.*
 - `def write_reuse_metadata(project_root, identifier, copyright_notice)` - *Write `LICENSES/<identifier>.txt` (or the project's existing `licenses/` directory) and a*
 - `def seed_reuse(project_root, kind, version)` - *Write the machine-readable REUSE metadata for a project: a `LICENSES/LicenseRef-<key>.txt`*
 - `def seed_license(project_root, kind)` - *Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218).*
@@ -1479,7 +1480,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9499` lines (`536248` bytes)
+**Size**: `9556` lines (`538472` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2244,6 +2245,13 @@
   - Method `.test_cli_can_include_each_hidden_kind()`
   - Method `.test_cli_json_hides_both_by_default()`
   - Method `.test_cli_json_can_show_the_full_audit_view()`
+- `class ReuseMetadataTest` - *A same-license refresh must not erase project-specific annotations.*
+  - Method `.setUpClass()`
+  - Method `.tearDownClass()`
+  - Method `.setUp()`
+  - Method `.test_the_same_identifier_preserves_project_annotations()`
+  - Method `.test_a_new_identifier_replaces_the_metadata()`
+  - Method `.test_a_missing_license_refuses_the_write()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

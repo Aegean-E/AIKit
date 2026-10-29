@@ -525,12 +525,26 @@ def _reuse_licenses_dir(project_root: Path) -> Path:
     return project_root / REUSE_LICENSES_DIR
 
 
+def _reuse_keeps_project_annotations(path: Path, identifier: str) -> bool:
+    """Whether `REUSE.toml` already names `identifier` and adds project annotations."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if text.count("[[annotations]]") < 2:
+        return False
+    return f'SPDX-License-Identifier = "{identifier}"' in text
+
+
 def write_reuse_metadata(project_root: Path, identifier: str,
                          copyright_notice: str = "2026 AegeanWorks") -> bool:
     """
     Write `LICENSES/<identifier>.txt` (or the project's existing `licenses/` directory) and a
     `REUSE.toml` annotation for `identifier`. The caller passes a complete SPDX expression such as
     `LicenseRef-AL-1.1` (ADR-226).
+
+    A refresh with the identifier already present keeps a project's extra annotations, such as an
+    asset-specific `LicenseRef`; a different identifier rewrites the blanket metadata.
     """
     try:
         license_text = (project_root / "LICENSE").read_text(encoding="utf-8")
@@ -546,7 +560,8 @@ def write_reuse_metadata(project_root: Path, identifier: str,
         f'SPDX-FileCopyrightText = "{copyright_notice}"\n'
         f'SPDX-License-Identifier = "{identifier}"\n'
     )
-    write_generated_file(project_root / REUSE_FILE, metadata)
+    if not _reuse_keeps_project_annotations(project_root / REUSE_FILE, identifier):
+        write_generated_file(project_root / REUSE_FILE, metadata)
     return True
 
 

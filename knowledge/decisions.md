@@ -3022,3 +3022,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: Add `idea_catcher/auto_register.py`. A commit message that names `IDEA-NNN` is the implementation signal: the idea must belong to the pushed project's target and must not be Integrated, Superseded or Rejected. `aikit check --push` scans the project's newest commits after a successful push and marks matches `Integrated` with the commit and project as evidence; `idea-catcher sync --repo <path> --project <target>` exposes the same scan on demand, with `--dry-run`. Auto-registration is best-effort and never fails a delivered push.
 - **Consequences**: Delivery records implementation without a second manual step, and the scan is idempotent. A commit that merely discusses an idea is treated as implementation evidence, so the commit-message convention matters; the privacy boundary is unchanged because the register stays local and git-ignored.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-006 (delivery and task state agree), PRINCIPLE-016 (the register stays synchronized), and PRINCIPLE-018 (the push remains the delivery boundary).
+
+### ADR-276: A Same-License REUSE Refresh Keeps Project Annotations
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: `write_reuse_metadata` rewrote `REUSE.toml` with a blanket `**` annotation on every refresh. A project that added an asset-specific `LicenseRef`, such as fold's brand-art split, lost it on `aikit fix`; the same license identifier was already present, so the rewrite silently changed the licensing boundary.
+- **Decision**: When an existing `REUSE.toml` already contains the requested identifier and at least one additional `[[annotations]]` table, keep the file and refresh only `LICENSES/<identifier>.txt`. A different identifier still rewrites the blanket metadata, so a license change remains explicit.
+- **Consequences**: `aikit fix` becomes idempotent for projects with extra annotations; a preserved file may keep an older copyright notice until the identifier changes; unit tests cover preserve, replace and missing-LICENSE paths.
+- Cross-principle check: no principle section changed. Serves PRINCIPLE-013 (idempotent generated state), PRINCIPLE-016 (the license boundary survives a refresh), and PRINCIPLE-014 (regression tests).

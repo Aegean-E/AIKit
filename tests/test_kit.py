@@ -9495,5 +9495,62 @@ class TestIdeaCatcherHiddenListing(unittest.TestCase):
         )
 
 
+PROJECT_REUSE = """version = 1
+
+[[annotations]]
+path = ["**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 AegeanWorks"
+SPDX-License-Identifier = "LicenseRef-AGL-1.1"
+
+[[annotations]]
+path = ["assets/logo.jpg"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 AegeanWorks"
+SPDX-License-Identifier = "LicenseRef-All-Rights-Reserved"
+"""
+
+
+class ReuseMetadataTest(unittest.TestCase):
+    """A same-license refresh must not erase project-specific annotations."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.box = tempfile.TemporaryDirectory(prefix="aikit-reuse-")
+        cls.root = Path(cls.box.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.box.cleanup()
+
+    def setUp(self):
+        from scripts.project_registry import write_reuse_metadata
+        self.write_reuse = write_reuse_metadata
+        (self.root / "LICENSE").write_text("# License\n", encoding="utf-8")
+        (self.root / "REUSE.toml").write_text(PROJECT_REUSE, encoding="utf-8")
+        shutil.rmtree(self.root / "LICENSES", ignore_errors=True)
+
+    def test_the_same_identifier_preserves_project_annotations(self):
+        self.assertTrue(self.write_reuse(self.root, "LicenseRef-AGL-1.1"))
+        text = (self.root / "REUSE.toml").read_text(encoding="utf-8")
+        self.assertIn("LicenseRef-All-Rights-Reserved", text)
+        self.assertIn('path = ["assets/logo.jpg"]', text)
+        self.assertEqual("# License\n",
+                         (self.root / "LICENSES" / "LicenseRef-AGL-1.1.txt").read_text(
+                             encoding="utf-8"))
+
+    def test_a_new_identifier_replaces_the_metadata(self):
+        self.assertTrue(self.write_reuse(self.root, "LicenseRef-AGL-1.0"))
+        text = (self.root / "REUSE.toml").read_text(encoding="utf-8")
+        self.assertIn('SPDX-License-Identifier = "LicenseRef-AGL-1.0"', text)
+        self.assertNotIn("LicenseRef-All-Rights-Reserved", text)
+
+    def test_a_missing_license_refuses_the_write(self):
+        (self.root / "LICENSE").unlink()
+        self.assertFalse(self.write_reuse(self.root, "LicenseRef-AGL-1.1"))
+        text = (self.root / "REUSE.toml").read_text(encoding="utf-8")
+        self.assertIn("LicenseRef-All-Rights-Reserved", text)
+
+
 if __name__ == "__main__":
     unittest.main()
