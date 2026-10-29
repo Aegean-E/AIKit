@@ -3,24 +3,15 @@
   "active_task": {
     "task_id": "reforge-ai-multiproject",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
+    "active_phase": 5,
+    "status": "completed",
     "updated_at": 1793255469.0042844,
     "owner": "kilo:reforge-ai",
     "started_by": "kilo:reforge-ai",
-    "continuations": []
+    "continuations": [],
+    "completed_at": 1793255790.2226098
   },
   "checkpoints": [
-    {
-      "task_id": "project-creation-media",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'project-creation-media' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793205495.7143862,
-      "timestamp_str": "2026-10-28 19:38:15",
-      "agent": "kilo:creation-media"
-    },
     {
       "task_id": "idea-catcher-aikit",
       "phase": "in_progress",
@@ -264,6 +255,16 @@
       "status": "in_progress",
       "timestamp": 1793255469.0042844,
       "timestamp_str": "2026-10-29 09:31:09",
+      "agent": "kilo:reforge-ai"
+    },
+    {
+      "task_id": "reforge-ai-multiproject",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'reforge-ai-multiproject' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793255790.2226112,
+      "timestamp_str": "2026-10-29 09:36:30",
       "agent": "kilo:reforge-ai"
     }
   ]
