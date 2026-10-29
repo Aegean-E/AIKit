@@ -17,6 +17,7 @@ from reforge.repair import (
     repair_paths,
 )
 from reforge.review import (
+    coverage_for_payload,
     findings_from_payload,
     merge_findings,
     read_findings_file,
@@ -313,6 +314,9 @@ def _collect_review(root: Path, plan: StagePlan, reviewed: Optional[Sequence[str
         found, rejected = findings_from_payload(
             root, payload, plan, list(reviewed) if reviewed is not None else None)
         report.update(status="reviewed", findings=found, rejected=rejected)
+        coverage = coverage_for_payload(root, plan, payload)
+        if coverage:
+            report["coverage"] = coverage
         if not found and not rejected:
             report["reason"] = "the answer held no findings"
     elif not packet:

@@ -13,40 +13,6 @@
   },
   "checkpoints": [
     {
-      "task_id": "reforge:run-1",
-      "phase": "reforge stage 4",
-      "phase_num": 3,
-      "description": "Reforge stage 4: window 35, 20 commit(s), 28 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793285234.2086492,
-      "timestamp_str": "2026-10-29 17:47:14",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-1",
-      "phase": "reforge stage 4",
-      "phase_num": 3,
-      "description": "Reforge stage 4: run stopped at stage 4; resume it with `reforge resume`",
-      "files_affected": [],
-      "status": "suspended",
-      "timestamp": 1793285323.938188,
-      "timestamp_str": "2026-10-29 17:48:43",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "task-reuse-existing-licenses-v1",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/2] Take over: the prior agent added the failing-first test and _reuse_licenses_dir; verify the helper and write path, record ADR-270, run the gate shield, then deliver",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793285365.683861,
-      "timestamp_str": "2026-10-29 17:49:25",
-      "agent": "opencode:reforge-followup",
-      "continued_from": "opencode:reforge-main"
-    },
-    {
       "task_id": "task-reuse-existing-licenses-v1",
       "phase": "in_progress",
       "phase_num": 5,
@@ -250,6 +216,39 @@
       "timestamp": 1793288190.9500482,
       "timestamp_str": "2026-10-29 18:36:30",
       "agent": "opencode:license-wave1"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 6",
+      "phase_num": 3,
+      "description": "Reforge stage 6: run resumed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793290165.7168353,
+      "timestamp_str": "2026-10-29 19:09:25",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 7",
+      "phase_num": 3,
+      "description": "Reforge stage 7: window 65, 10 commit(s), 16 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793290206.369397,
+      "timestamp_str": "2026-10-29 19:10:06",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 7",
+      "phase_num": 3,
+      "description": "Reforge stage 7: run stopped at stage 7; resume it with `reforge resume`",
+      "files_affected": [],
+      "status": "suspended",
+      "timestamp": 1793290259.343011,
+      "timestamp_str": "2026-10-29 19:10:59",
+      "agent": "opencode"
     }
   ]
 }

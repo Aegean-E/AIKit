@@ -210,6 +210,11 @@ def _print_review(report: Dict[str, object]) -> None:
         print(f"  [REVIEW] awaiting the host review{detail}")
     else:
         print(f"  [REVIEW] {status}: {report.get('reason') or 'unknown'}")
+    coverage = report.get("coverage") or {}
+    if isinstance(coverage, dict) and coverage:
+        missing = len(coverage.get("missing") or [])
+        print(f"      hunk coverage: {coverage.get('reported', 0)}/{coverage.get('total', 0)}"
+              + (f", {missing} missing" if missing else ""))
     if packet:
         print(f"      packet: {packet}")
 

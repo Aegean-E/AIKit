@@ -26,6 +26,7 @@ class Finding:
     message: str
     evidence: str
     commit: str
+    hunk: str = ""
     symbol: str = ""
     introduced: bool = True
     reproducible: bool = False
@@ -50,6 +51,7 @@ class Finding:
             "message": self.message,
             "evidence": self.evidence,
             "commit": self.commit,
+            "hunk": self.hunk,
             "symbol": self.symbol,
             "introduced": self.introduced,
             "reproducible": self.reproducible,

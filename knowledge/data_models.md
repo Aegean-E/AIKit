@@ -100,8 +100,9 @@ bounded to 20 entries and carries `stage`, `window`, `commits`, `new_commits`, `
 `findings`, `repairs`, `counts`, `reviewed`, `review`, `skipped`, `tests`, `gates`,
 `timestamp`. `skipped` lists only the changed binary paths a stage could not read as text
 (ADR-249), so coverage is recorded rather than implied. Each finding carries `code`,
-`category`, `severity`, `path`, `line`, `message`, `evidence`, `commit`, `symbol`, `introduced`,
-`reproducible`, `fixable`, `interaction`, `source` (`ast`, `text` or `review`) and `repaired`;
+`category`, `severity`, `path`, `line`, `message`, `evidence`, `commit`, `hunk`, `symbol`,
+`introduced`, `reproducible`, `fixable`, `interaction`, `source` (`ast`, `text` or `review`) and
+`repaired`;
 each repair carries `code`, `path`, `line`, `summary`, `test_name` and `applied`.
 
 The same stages are mirrored into the repository's task ledger (`.aikit/task_ledger.json` in a

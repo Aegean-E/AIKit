@@ -214,7 +214,9 @@ named at the end and the JSON answer schema follows. Credential-shaped spans are
 project's secret scanner before the packet is written. Reforge makes no
 model call and starts no subagent: the agent or person driving the session reads the packet and
 returns a findings file. Each finding names a path the stage changed, a line that exists, a severity,
-`kind` `defect` or `improvement`, and optional `fix.old`/`fix.new`. Reforge accepts a fix only when
+`kind` `defect` or `improvement`, and optional `fix.old`/`fix.new`. It may name the `commit` and
+`hunk` it reviewed (each packet hunk has a stable id); an optional `reviewed_hunks` list records
+which hunks were read, so a partial pass is visible. Reforge accepts a fix only when
 the quoted text occurs exactly once, overlaps a line the stage added, and leaves a Python file
 parsable; everything else is reported as rejected. Run `fix --findings answer.json` to apply the
 accepted fixes; `run --rules` is the deterministic-only pass. A red test, gate or diff review

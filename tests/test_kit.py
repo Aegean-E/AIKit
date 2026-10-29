@@ -9160,6 +9160,52 @@ class TestReforgeCore(unittest.TestCase):
                          ("return a - b", "return a + b"))
         self.assertEqual(len(rejected), 3)
 
+    def test_a_finding_can_name_the_commit_and_hunk_it_reviewed(self):
+        from reforge import review
+
+        root = self.root()
+        (root / "app.py").write_text("OLD = 1\n", encoding="utf-8")
+        plan = self.stage_plan()
+        plan.new_shas = ("newest", "older")
+        hunk = {"id": "newest:app.py#1", "commit": "newest", "path": "app.py",
+                "start": 1, "count": 1, "text": "@@ -1 +1 @@\n+OLD = 1\n"}
+        payload = {"findings": [{
+            "path": "app.py", "line": 1, "severity": "high", "code": "wrong-value",
+            "message": "the value is wrong", "evidence": "OLD = 1",
+            "commit": "newest", "hunk": "newest:app.py#1",
+        }]}
+        with mock.patch.object(review, "_changed_paths", return_value=[("newest", "app.py")]), \
+                mock.patch.object(review, "_new_added_lines", return_value={1}), \
+                mock.patch.object(review, "_stage_hunks", return_value=([hunk], 0)):
+            findings, rejected = review.findings_from_payload(
+                root, payload, plan, ["app.py"])
+        self.assertEqual(rejected, [])
+        self.assertEqual((findings[0].commit, findings[0].hunk),
+                         ("newest", "newest:app.py#1"))
+        payload["findings"][0]["hunk"] = "missing"
+        with mock.patch.object(review, "_changed_paths", return_value=[("newest", "app.py")]), \
+                mock.patch.object(review, "_new_added_lines", return_value={1}), \
+                mock.patch.object(review, "_stage_hunks", return_value=([hunk], 0)):
+            findings, rejected = review.findings_from_payload(
+                root, payload, plan, ["app.py"])
+        self.assertEqual(findings, [])
+        self.assertIn("not in this packet", rejected[0])
+
+    def test_review_coverage_reports_missing_and_unknown_hunks(self):
+        from reforge import review
+
+        plan = self.stage_plan()
+        hunks = [{"id": "a", "commit": "newest", "path": "app.py", "start": 1,
+                  "count": 1, "text": "@@"},
+                 {"id": "b", "commit": "older", "path": "app.py", "start": 2,
+                  "count": 1, "text": "@@"}]
+        with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
+            coverage = review.coverage_for_payload(
+                self.root(), plan, {"reviewed_hunks": ["a", "x"]})
+        self.assertEqual(coverage["total"], 2)
+        self.assertEqual(coverage["missing"], ["b"])
+        self.assertEqual(coverage["unknown"], ["x"])
+
     def test_a_review_improvement_is_its_own_category(self):
         from reforge import review
 

@@ -17,7 +17,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from reforge.audit import is_bookkeeping
 from reforge.git_history import (
@@ -41,6 +41,7 @@ MAX_PATCH_CHARS = 4_000
 SEVERITIES = ("low", "medium", "high")
 CODE_RE = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 FENCE_RE = re.compile(r"^```[a-zA-Z0-9_-]*\s*$")
+HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 PROMPT_PREFIX = """Review one Git audit stage. Report two kinds of item, both tied to the change.
 
@@ -56,12 +57,15 @@ Do not invent files or lines. Do not propose work unrelated to the diff.
 
 Return one JSON object:
 {"findings": [{"path": "relative/path", "line": 12, "severity": "high|medium|low",
-  "kind": "defect|improvement",
+  "kind": "defect|improvement", "commit": "commit sha", "hunk": "hunk id",
   "code": "short-kebab-case", "message": "what is wrong or missing, and why it matters",
   "evidence": "the exact changed line or a short quote",
-  "fix": {"old": "exact text that appears once in the file", "new": "replacement text"}}]}
+  "fix": {"old": "exact text that appears once in the file", "new": "replacement text"}}],
+ "reviewed_hunks": ["hunk id", "..."]}
 
-`fix` is optional. Include it only when the replacement is exact, minimal and safe. Use the file's
+`reviewed_hunks` is optional; when supplied it records which packet hunks were actually read.
+`commit` and `hunk` are optional; when present they must name a commit and hunk shown in this
+packet. They keep a finding attributed to the change that introduced it. `fix` is optional. Include it only when the replacement is exact, minimal and safe. Use the file's
 real line endings and whitespace in `old`. An empty findings list is a valid answer.
 
 Read the unified diff as it is: a line starting with `+` exists after the commit, a line starting
@@ -141,6 +145,49 @@ def _commit_diff(repo: Path, sha: str, path: str) -> str:
     return range_diff(repo, parent_sha(repo, sha), sha, path)
 
 
+def _split_hunks(diff: str, sha: str, path: str) -> List[Dict[str, object]]:
+    """Split one commit's file diff into stable hunk records for the packet and attribution."""
+    lines = diff.splitlines(keepends=True)
+    starts = [index for index, line in enumerate(lines) if line.startswith("@@ ")]
+    hunks: List[Dict[str, object]] = []
+    for number, start in enumerate(starts, 1):
+        end = starts[number] if number < len(starts) else len(lines)
+        match = HUNK_RE.match(lines[start])
+        new_start = int(match.group(1)) if match else 0
+        new_count = int(match.group(2) or 1) if match else 0
+        hunks.append({
+            "id": f"{sha[:12]}:{path}#{number}",
+            "commit": sha,
+            "path": path,
+            "start": new_start,
+            "count": new_count,
+            "text": "".join(lines[start:end]),
+        })
+    return hunks
+
+
+def _stage_hunks(repo: Path, plan: StagePlan,
+                 scrub: bool = True) -> Tuple[List[Dict[str, object]], int]:
+    """Every hunk in every new commit, oldest first, with stable IDs and optional redaction."""
+    if not plan.new_shas:
+        return [], 0
+    current = {path for _, path in _changed_paths(repo, plan)}
+    hunks: List[Dict[str, object]] = []
+    redactions = 0
+    for sha in reversed(plan.new_shas):
+        for status, path in changed_files(repo, sha):
+            if status == "D" or is_bookkeeping(path) or path not in current:
+                continue
+            diff = _commit_diff(repo, sha, path)
+            if not diff.strip():
+                continue
+            if scrub:
+                diff, masked = _scrub(diff)
+                redactions += masked
+            hunks.extend(_split_hunks(diff, sha, path))
+    return hunks, redactions
+
+
 def _scrub(text: str) -> Tuple[str, int]:
     """The diff with credential-shaped spans redacted, and how many detectors fired.
 
@@ -160,37 +207,48 @@ def _scrub(text: str) -> Tuple[str, int]:
 def packet_text(repo: Path, plan: StagePlan,
                 files: Optional[List[str]] = None) -> Tuple[str, int]:
     """The full hunk-by-hunk review packet for one stage, and credential spans masked."""
-    pairs = _changed_paths(repo, plan)
-    current = [path for _, path in pairs]
-    blocks: List[str] = []
-    redactions = 0
+    hunks, redactions = _stage_hunks(repo, plan)
     by_sha = {commit.sha: commit for commit in plan.commits}
-    for sha in reversed(plan.new_shas):
-        info = by_sha.get(sha) or commit_info(repo, sha)
-        subject = info.subject if info else ""
-        commit_blocks: List[str] = []
-        for status, path in changed_files(repo, sha):
-            if status == "D" or is_bookkeeping(path) or path not in current:
-                continue
-            diff = _commit_diff(repo, sha, path)
-            if not diff.strip():
-                continue
-            diff, masked = _scrub(diff)
-            redactions += masked
-            commit_blocks.append(f"--- {path} ---\n{diff}")
-        if commit_blocks:
-            blocks.append(f"### commit {sha[:12]} {subject}".rstrip() + "\n"
-                          + "\n".join(commit_blocks))
+    ordered: List[str] = []
+    by_commit: Dict[str, List[Dict[str, object]]] = {}
+    current: List[str] = []
+    for hunk in hunks:
+        sha = str(hunk["commit"])
+        if sha not in by_commit:
+            ordered.append(sha)
+            by_commit[sha] = []
+        by_commit[sha].append(hunk)
+        if hunk["path"] not in current:
+            current.append(str(hunk["path"]))
     if files is not None:
         files.extend(path for path in current if path not in files)
+    manifest: List[str] = ["### Hunk manifest"]
+    blocks: List[str] = []
+    for sha in ordered:
+        info = by_sha.get(sha) or commit_info(repo, sha)
+        subject = info.subject if info else ""
+        group = by_commit[sha]
+        manifest.append(f"- {sha[:12]} {subject}: {len(group)} hunk(s)")
+        lines = [f"### commit {sha[:12]} {subject}".rstrip()]
+        last_path = ""
+        for hunk in group:
+            path = str(hunk["path"])
+            if path != last_path:
+                lines.append(f"--- {path} ---")
+                last_path = path
+            end = int(hunk["start"]) + max(int(hunk["count"]) - 1, 0)
+            lines.append(f"hunk {hunk['id']} (new lines {hunk['start']}..{end})")
+            lines.append(str(hunk["text"]).rstrip("\n"))
+        blocks.append("\n".join(lines))
     head = plan.new_shas[0] if plan.new_shas else ""
     base = _stage_base(repo, plan) or "(root commit)"
     binary = _binary_paths(repo, plan)
     tail = (f"\nBinary files (not reviewed as text): {', '.join(binary)}" if binary else "")
     packet = (PROMPT_PREFIX
               + f"\nStage {plan.stage} (window {plan.window}), commits {base}..{head[:12]}\n"
-              + f"Changed text files: {', '.join(files or []) or 'none'}\n\n"
-              + "\n".join(blocks) + tail)
+              + f"Changed text files: {', '.join(files or []) or 'none'}\n"
+              + "\n".join(manifest) + "\n\n"
+              + "\n\n".join(blocks) + tail)
     return packet, redactions
 
 
@@ -294,6 +352,24 @@ def _line_set(text: str) -> set:
     return {line.strip() for line in text.splitlines() if line.strip()}
 
 
+def coverage_for_payload(repo: Path, plan: StagePlan, payload: object) -> Dict[str, object]:
+    """Compare a reviewer's `reviewed_hunks` list with the packet's hunk IDs, when supplied."""
+    if not isinstance(payload, dict):
+        return {}
+    reported = payload.get("reviewed_hunks")
+    if not isinstance(reported, list):
+        return {}
+    hunks = _stage_hunks(repo, plan, scrub=False)[0]
+    known = {str(hunk["id"]) for hunk in hunks}
+    seen = {str(item) for item in reported}
+    return {
+        "reported": len(seen),
+        "total": len(known),
+        "missing": sorted(known - seen),
+        "unknown": sorted(seen - known),
+    }
+
+
 def findings_from_payload(repo: Path, payload: object, plan: StagePlan,
                           files: Optional[Sequence[str]] = None
                           ) -> Tuple[List[Finding], List[str]]:
@@ -306,6 +382,10 @@ def findings_from_payload(repo: Path, payload: object, plan: StagePlan,
     allowed = set(files if files is not None else [path for _, path in changed])
     commit_of = {path: sha for sha, path in changed}
     touched = {path: _new_added_lines(repo, plan, path) for path in allowed}
+    needs_hunks = any(isinstance(raw, dict) and (raw.get("hunk") or raw.get("commit"))
+                      for raw in items)
+    hunks = _stage_hunks(repo, plan, scrub=False)[0] if needs_hunks else []
+    hunk_by_id = {str(hunk["id"]): hunk for hunk in hunks}
     findings: List[Finding] = []
     rejected: List[str] = []
     for raw in items[:MAX_FINDINGS]:
@@ -316,6 +396,34 @@ def findings_from_payload(repo: Path, payload: object, plan: StagePlan,
         if relative not in allowed:
             rejected.append(f"{relative or '(no path)'}: not a file this stage changed")
             continue
+        commit = str(raw.get("commit", "")).strip()
+        hunk_id = str(raw.get("hunk", "")).strip()
+        if hunk_id:
+            hunk = hunk_by_id.get(hunk_id)
+            if hunk is None:
+                rejected.append(f"{relative}: hunk {hunk_id!r} is not in this packet")
+                continue
+            if hunk["path"] != relative:
+                rejected.append(f"{relative}: hunk {hunk_id!r} belongs to {hunk['path']}")
+                continue
+            if commit:
+                matches = [sha for sha in plan.new_shas if sha.startswith(commit)]
+                if len(matches) != 1 or matches[0] != hunk["commit"]:
+                    rejected.append(f"{relative}: hunk {hunk_id!r} is in another commit")
+                    continue
+            commit = str(hunk["commit"])
+        elif commit:
+            matches = [sha for sha in plan.new_shas if sha.startswith(commit)]
+            if len(matches) != 1:
+                rejected.append(f"{relative}: {commit!r} is not one new commit")
+                continue
+            commit = matches[0]
+            if not any(hunk["commit"] == commit and hunk["path"] == relative
+                       for hunk in hunks):
+                rejected.append(f"{relative}: commit {commit[:12]} did not change this file")
+                continue
+        else:
+            commit = commit_of.get(relative, "")
         try:
             line = int(raw.get("line", 0))
             text = (repo / relative).read_text(encoding="utf-8")
@@ -369,7 +477,8 @@ def findings_from_payload(repo: Path, payload: object, plan: StagePlan,
             message=message,
             evidence=" ".join(raw_evidence.split())[:MAX_MESSAGE_CHARS]
                      or f"{relative}:{line}: (review)",
-            commit=commit_of.get(relative, ""),
+            commit=commit,
+            hunk=hunk_id,
             symbol="",
             reproducible=False,
             fixable=fixable,

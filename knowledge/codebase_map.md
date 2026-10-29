@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
-- **Total Top-Level Functions**: `750`
-- **Total Class Methods**: `823`
-- **Total Source Lines**: `31911`
+- **Total Top-Level Functions**: `753`
+- **Total Class Methods**: `825`
+- **Total Source Lines**: `32077`
 
 ---
 
@@ -238,7 +238,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `392` lines (`18955` bytes)
+**Size**: `397` lines (`19256` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -394,7 +394,7 @@
 ### [`reforge/model.py`](reforge/model.py)
 > *Immutable values shared by Reforge's audit, repair, persistence and CLI layers.*
 
-**Size**: `116` lines (`3135` bytes)
+**Size**: `118` lines (`3185` bytes)
 
 **Classes:**
 - `class CommitInfo` - *One commit in the window Reforge is auditing.*
@@ -412,7 +412,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `597` lines (`28545` bytes)
+**Size**: `601` lines (`28695` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -482,7 +482,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `392` lines (`16623` bytes)
+**Size**: `501` lines (`21535` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -491,6 +491,8 @@
 - `def _changed_paths(repo, plan)` - *(head, path) for every readable text file the new commits changed, once each.*
 - `def _binary_paths(repo, plan)` - *Changed paths that cannot be reviewed as text, named so the packet is honest about them.*
 - `def _commit_diff(repo, sha, path)` - *One commit's hunks for a path, against its first parent (root commits included).*
+- `def _split_hunks(diff, sha, path)` - *Split one commit's file diff into stable hunk records for the packet and attribution.*
+- `def _stage_hunks(repo, plan, scrub)` - *Every hunk in every new commit, oldest first, with stable IDs and optional redaction.*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
 - `def packet_text(repo, plan, files)` - *The full hunk-by-hunk review packet for one stage, and credential spans masked.*
 - `def packet_path(root, plan)` - *Where the packet for this stage is written, inside the git-ignored state folder.*
@@ -500,6 +502,7 @@
 - `def read_findings_file(path)` - *Read a findings file, raising ValueError with a clear message when it holds no JSON.*
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
 - `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
+- `def coverage_for_payload(repo, plan, payload)` - *Compare a reviewer's `reviewed_hunks` list with the packet's hunk IDs, when supplied.*
 - `def findings_from_payload(repo, payload, plan, files)` - *Validate a findings answer against the stage; returns (findings, rejected reasons).*
 - `def merge_findings(proven, reviewed)` - *Rule findings first, then review findings the rules did not already name.*
 
@@ -1440,7 +1443,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9431` lines (`532844` bytes)
+**Size**: `9477` lines (`535336` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2179,6 +2182,8 @@
   - Method `.test_the_packet_reviews_each_commit_hunk_in_order()`
   - Method `.test_the_packet_redacts_a_credential_before_an_agent_reads_it()`
   - Method `.test_a_review_answer_is_validated_against_the_stage()`
+  - Method `.test_a_finding_can_name_the_commit_and_hunk_it_reviewed()`
+  - Method `.test_review_coverage_reports_missing_and_unknown_hunks()`
   - Method `.test_a_review_improvement_is_its_own_category()`
   - Method `.test_a_review_patch_must_overlap_a_line_the_stage_added()`
   - Method `.test_an_empty_review_answer_is_valid()`
