@@ -140,6 +140,10 @@ TAG_SPECS: dict[str, TagSpec] = {
     "disputed": TagSpec("A second look contradicts a claim; read the reason before routing.", True),
     "duplicate": TagSpec("Overlaps another idea or an existing capability in the target."),
     "stale": TagSpec("The source repository changed since the analysis; re-review before trusting."),
+    "deep-checked": TagSpec(
+        "A deep second pass checked the routed project's files, symbols and implementation "
+        "contract, not only the source dossier.", True,
+    ),
     "target-checked": TagSpec(
         "Files, symbols and contracts the blueprint names were checked in the routed project; "
         "claims about the source repository were not re-checked."

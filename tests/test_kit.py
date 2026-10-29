@@ -9253,6 +9253,10 @@ class TestIdeaCatcherShip(unittest.TestCase):
         self.assertFalse((package / "repo_sync.py").exists())
         self.assertFalse((package.parent / "idea-catcher-sync.json").exists())
 
+    def test_the_deep_checked_tag_is_part_of_the_vocabulary(self):
+        self.assertIn("deep-checked", idea_registry.TAG_SPECS)
+        self.assertTrue(idea_registry.TAG_SPECS["deep-checked"].verification)
+
 
 class TestIdeaCatcherHiddenListing(unittest.TestCase):
     """PRINCIPLE-007: rejected and duplicate ideas leave the default target listing."""

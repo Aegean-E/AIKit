@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
 - **Total Top-Level Functions**: `750`
-- **Total Class Methods**: `822`
-- **Total Source Lines**: `31903`
+- **Total Class Methods**: `823`
+- **Total Source Lines**: `31911`
 
 ---
 
@@ -91,7 +91,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2075` lines (`91303` bytes)
+**Size**: `2079` lines (`91488` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -1440,7 +1440,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9427` lines (`532635` bytes)
+**Size**: `9431` lines (`532844` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2187,6 +2187,7 @@
   - Method `.test_the_root_override_selects_a_register()`
   - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`
   - Method `.test_the_standalone_sync_layer_is_gone()`
+  - Method `.test_the_deep_checked_tag_is_part_of_the_vocabulary()`
 - `class TestIdeaCatcherHiddenListing` - *PRINCIPLE-007: rejected and duplicate ideas leave the default target listing.*
   - Method `._idea(idea_id, status, tags)`
   - Method `._payload()`
