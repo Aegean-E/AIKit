@@ -15,6 +15,11 @@ Every non-``Proposed`` status must record why it was decided. A rejected idea
 needs the reason and who decided; an integrated one needs the evidence (ADR or
 commit); a superseded one needs the idea that replaced it.
 
+``ideas`` hides ``Rejected`` rows and rows tagged ``duplicate`` unless
+``--include-rejected`` / ``--include-duplicates`` (or an explicit ``--status Rejected`` /
+``--tag duplicate``) asks for them, so a closed or duplicated idea leaves the default
+working list without leaving the audit trail. The reviewer records the reason and author.
+
 Exit codes follow AIKit PRINCIPLE-011: 0 success, 1 validation/check failure,
 2 bad usage.
 """
@@ -1514,17 +1519,30 @@ def list_ideas(
     status: str = "",
     dossier: str = "",
     tag: str = "",
+    include_rejected: bool = False,
+    include_duplicates: bool = False,
 ) -> list[dict[str, Any]]:
-    """Return the register rows matching the filters, in id order."""
+    """Return the register rows matching the filters, in id order.
+
+    ``Rejected`` rows and rows tagged ``duplicate`` are hidden unless the matching
+    ``include_*`` flag is set, ``status='Rejected'`` asks for a rejected row explicitly, or
+    ``tag='duplicate'`` asks for duplicates explicitly. They stay in the register and in
+    ``MATRIX.md``; they only leave the default working list.
+    """
     rows: list[dict[str, Any]] = []
     for idea in payload.get("ideas", []) or []:
         if target and idea.get("target") != target:
             continue
         if status and idea.get("status") != status:
             continue
+        tags = effective_tags(idea)
+        if not include_rejected and status != "Rejected" and idea.get("status") == "Rejected":
+            continue
+        if not include_duplicates and tag != "duplicate" and "duplicate" in tags:
+            continue
         if dossier and idea.get("dossier") != dossier:
             continue
-        if tag and tag not in effective_tags(idea):
+        if tag and tag not in tags:
             continue
         rows.append(dict(idea))
     rows.sort(key=lambda row: str(row.get("id", "")))
@@ -1660,6 +1678,16 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     list_ideas.add_argument("--status", default="", choices=("", *sorted(STATUS_SPECS)))
     list_ideas.add_argument("--dossier", default="")
     list_ideas.add_argument("--tag", default="", help="verified, rejected, ... (stored or status-derived)")
+    list_ideas.add_argument(
+        "--include-rejected",
+        action="store_true",
+        help="include Rejected ideas, which are hidden from the default working list",
+    )
+    list_ideas.add_argument(
+        "--include-duplicates",
+        action="store_true",
+        help="include ideas tagged duplicate, which are hidden from the default working list",
+    )
     list_ideas.add_argument("--json", action="store_true")
     tagger = sub.add_parser("tag", help="add or remove analysis tags on one idea")
     tagger.add_argument("idea_id")
@@ -1948,17 +1976,39 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 print(f"[FAIL] target {args.target!r} is not declared in targets.json")
                 return 1
             rows = list_ideas(
-                payload, target=args.target, status=args.status, dossier=args.dossier, tag=args.tag
+                payload,
+                target=args.target,
+                status=args.status,
+                dossier=args.dossier,
+                tag=args.tag,
+                include_rejected=args.include_rejected,
+                include_duplicates=args.include_duplicates,
             )
+            hidden = 0
+            if ((args.status != "Rejected" and not args.include_rejected)
+                    or (args.tag != "duplicate" and not args.include_duplicates)):
+                hidden = len(list_ideas(
+                    payload,
+                    target=args.target,
+                    status=args.status,
+                    dossier=args.dossier,
+                    tag=args.tag,
+                    include_rejected=True,
+                    include_duplicates=True,
+                )) - len(rows)
             if args.json:
                 print(json.dumps(rows, indent=2, ensure_ascii=False))
                 return 0
             scope = f"target {args.target}" if args.target else "all targets"
             if not rows:
                 print(f"no ideas for {scope}")
+                if hidden:
+                    print(f"  ({hidden} hidden idea(s); use --include-rejected or --include-duplicates to show them)")
                 return 0
             by_state = _status_counts(rows)
             print(f"{len(rows)} idea(s) for {scope} · {by_state}")
+            if hidden:
+                print(f"  ({hidden} hidden idea(s); use --include-rejected or --include-duplicates to show them)")
             for row in rows:
                 print(
                     f"  {row['id']}  {row.get('status', 'Proposed'):<12} "

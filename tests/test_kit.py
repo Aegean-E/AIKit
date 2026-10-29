@@ -9055,5 +9055,145 @@ class TestIdeaCatcherShip(unittest.TestCase):
         self.assertFalse((package.parent / "idea-catcher-sync.json").exists())
 
 
+class TestIdeaCatcherHiddenListing(unittest.TestCase):
+    """PRINCIPLE-007: rejected and duplicate ideas leave the default target listing."""
+
+    @staticmethod
+    def _idea(idea_id: str, status: str = "Proposed", tags: tuple[str, ...] = ()) -> dict[str, object]:
+        decided = status == "Rejected"
+        idea: dict[str, object] = {
+            "id": idea_id,
+            "dossier": "dossiers/x.md",
+            "concept": f"Concept {idea_id}",
+            "target": "aikit",
+            "impact": "High",
+            "effort": "Low",
+            "status": status,
+            "reason": "Would weaken the gate." if decided else "",
+            "decided_at": "2026-10-29" if decided else "",
+            "decided_by": "opencode:idea-review" if decided else "",
+            "evidence": "",
+        }
+        if tags:
+            idea["tags"] = list(tags)
+        return idea
+
+    def _payload(self) -> dict[str, object]:
+        return {"ideas": [
+            self._idea("IDEA-001", "Proposed"),
+            self._idea("IDEA-002", "Rejected"),
+            self._idea("IDEA-003", "Rejected"),
+            self._idea("IDEA-004", tags=("duplicate",)),
+            self._idea("IDEA-005", tags=("duplicate", "verified")),
+        ]}
+
+    def _register(self) -> Path:
+        root = Path(tempfile.mkdtemp(prefix="idea_listing_"))
+        self.addCleanup(shutil.rmtree, str(root), True)
+        (root / "targets.json").write_text(json.dumps({
+            "schema": 1,
+            "targets": [{
+                "id": "aikit", "name": "AIKit", "path": "../../", "stack": "stdlib",
+                "gate": "tests", "fit": "governance", "added": "2026-10-29",
+            }],
+        }), encoding="utf-8")
+        (root / "ideas.json").write_text(json.dumps({
+            "schema": 1,
+            "ideas": self._payload()["ideas"],
+        }), encoding="utf-8")
+        (root / "reviews.json").write_text(
+            '{"schema": 1, "repos": {}, "reviews": []}', encoding="utf-8"
+        )
+        return root
+
+    def test_list_ideas_hides_rejected_and_duplicate_by_default(self) -> None:
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(self._payload())], ["IDEA-001"]
+        )
+
+    def test_list_ideas_can_include_each_hidden_kind(self) -> None:
+        payload = self._payload()
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(payload, include_rejected=True)],
+            ["IDEA-001", "IDEA-002", "IDEA-003"],
+        )
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(payload, include_duplicates=True)],
+            ["IDEA-001", "IDEA-004", "IDEA-005"],
+        )
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(
+                payload, include_rejected=True, include_duplicates=True)],
+            ["IDEA-001", "IDEA-002", "IDEA-003", "IDEA-004", "IDEA-005"],
+        )
+
+    def test_explicit_status_or_tag_still_lists_that_kind(self) -> None:
+        payload = self._payload()
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(payload, status="Rejected")],
+            ["IDEA-002", "IDEA-003"],
+        )
+        self.assertEqual(
+            [row["id"] for row in idea_registry.list_ideas(payload, tag="duplicate")],
+            ["IDEA-004", "IDEA-005"],
+        )
+
+    def test_cli_hides_both_and_reports_the_count(self) -> None:
+        root = self._register()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = idea_registry.main(["ideas", "--target", "aikit"], root=root)
+        self.assertEqual(code, 0, out.getvalue())
+        text = out.getvalue()
+        self.assertIn("IDEA-001", text)
+        self.assertNotIn("IDEA-002", text)
+        self.assertNotIn("IDEA-004", text)
+        self.assertIn("4 hidden idea(s)", text)
+        self.assertIn("--include-rejected", text)
+        self.assertIn("--include-duplicates", text)
+
+    def test_cli_can_include_each_hidden_kind(self) -> None:
+        root = self._register()
+        rejected = io.StringIO()
+        with contextlib.redirect_stdout(rejected):
+            code = idea_registry.main(
+                ["ideas", "--target", "aikit", "--include-rejected"], root=root
+            )
+        self.assertEqual(code, 0)
+        self.assertIn("IDEA-002", rejected.getvalue())
+        self.assertNotIn("IDEA-004", rejected.getvalue())
+
+        duplicates = io.StringIO()
+        with contextlib.redirect_stdout(duplicates):
+            code = idea_registry.main(
+                ["ideas", "--target", "aikit", "--include-duplicates"], root=root
+            )
+        self.assertEqual(code, 0)
+        self.assertIn("IDEA-004", duplicates.getvalue())
+        self.assertNotIn("IDEA-002", duplicates.getvalue())
+
+    def test_cli_json_hides_both_by_default(self) -> None:
+        root = self._register()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = idea_registry.main(["ideas", "--target", "aikit", "--json"], root=root)
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertEqual([row["id"] for row in json.loads(out.getvalue())], ["IDEA-001"])
+
+    def test_cli_json_can_show_the_full_audit_view(self) -> None:
+        root = self._register()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = idea_registry.main(
+                ["ideas", "--target", "aikit", "--json", "--include-rejected",
+                 "--include-duplicates"], root=root,
+            )
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertEqual(
+            [row["id"] for row in json.loads(out.getvalue())],
+            ["IDEA-001", "IDEA-002", "IDEA-003", "IDEA-004", "IDEA-005"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

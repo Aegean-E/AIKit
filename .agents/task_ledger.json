@@ -1,21 +1,15 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "reforge-host-review",
-    "last_phase": "in_progress",
+    "task_id": "idea-catcher-hide-hidden",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793277677.4003012,
-    "owner": "opencode:reforge-scope",
-    "started_by": "opencode:reforge-scope",
+    "updated_at": 1793278175.984753,
+    "owner": "opencode:idea-review",
+    "started_by": "opencode:idea-review",
     "continuations": [],
-    "impact_assessment": {
-      "why": "The five planned milestones cannot pass Phase 4 separately because the code, README, knowledge and map must change together for the freshness, command and claim gates.",
-      "benefits": "One atomic, gate-passing commit instead of intermediate states whose docs still describe the deleted AI review.",
-      "risks": "contract: the CLI drops AI options and state key ai becomes review; dependency: none; concurrency: unchanged; state: schema 2 remains readable with legacy ai fallback.",
-      "mitigation": "Full Phase 4 triad passed; explicit staging; ADR-263 records the removed path and the new packet contract."
-    },
-    "completed_at": 1793277774.95387
+    "completed_at": 1793278176.0985243
   },
   "checkpoints": [
     {
@@ -61,6 +55,55 @@
       "timestamp": 1793277774.9538717,
       "timestamp_str": "2026-10-29 15:42:54",
       "agent": "opencode:reforge-scope"
+    },
+    {
+      "task_id": "idea-catcher-hide-hidden",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] Hide rejected and duplicate ideas from default listings",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793278045.088974,
+      "timestamp_str": "2026-10-29 15:47:25",
+      "agent": "opencode:idea-review",
+      "impact_assessment": {
+        "why": "The operator wants a target listing that excludes harmful rejections and already-covered duplicates while keeping both in the audit register.",
+        "benefits": "Future reviews see only actionable ideas; rejected and duplicate rows remain queryable and stay in MATRIX.md.",
+        "risks": "contract: ideas hides Rejected status and duplicate tag unless the matching include flag or explicit filter is used; dependency: none; concurrency: the filter is read-only and writes keep the register lock; state: no schema change.",
+        "mitigation": "Add failing-first unit and CLI tests, document both flags, append ADR-264, then run the full gate shield."
+      }
+    },
+    {
+      "task_id": "idea-catcher-hide-hidden",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[2/3] Hide rejected and duplicate rows and add both opt-in flags",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793278175.870579,
+      "timestamp_str": "2026-10-29 15:49:35",
+      "agent": "opencode:idea-review"
+    },
+    {
+      "task_id": "idea-catcher-hide-hidden",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/3] Gate shield passed: tests, budgets, principles, knowledge, licenses, secrets, reachability, hygiene and dogfood; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793278175.984753,
+      "timestamp_str": "2026-10-29 15:49:35",
+      "agent": "opencode:idea-review"
+    },
+    {
+      "task_id": "idea-catcher-hide-hidden",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'idea-catcher-hide-hidden' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793278176.098526,
+      "timestamp_str": "2026-10-29 15:49:36",
+      "agent": "opencode:idea-review"
     }
   ]
 }

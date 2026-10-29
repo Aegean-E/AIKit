@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
-- **Total Classes**: `120`
+- **Total Classes**: `121`
 - **Total Top-Level Functions**: `733`
-- **Total Class Methods**: `800`
-- **Total Source Lines**: `31179`
+- **Total Class Methods**: `810`
+- **Total Source Lines**: `31369`
 
 ---
 
@@ -91,7 +91,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2021` lines (`88633` bytes)
+**Size**: `2071` lines (`90977` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -147,7 +147,7 @@
 - `def review_rows(payload, *, now)` - *One row per repository: review order, count, last review and current state.*
 - `def classify_freshness(review, dossier_text, *, today, max_age_days)` - *Classify one review as current, aged, superseded or unknown.*
 - `def stale_reviews(rows, root, *, today, max_age_days)` - *Return the non-current rows, oldest analysis first, with a ``freshness`` field.*
-- `def list_ideas(payload, *, target, status, dossier, tag)` - *Return the register rows matching the filters, in id order.*
+- `def list_ideas(payload, *, target, status, dossier, tag, include_rejected, include_duplicates)` - *Return the register rows matching the filters, in id order.*
 - `def idea_history(payload, idea_id)` - *Return one idea's recorded changes, or refuse an unknown id.*
 - `def proposed_by_target(payload)` - *Per target, how many ideas sit in each decision state.*
 - `def _plus_minutes(now, minutes)`
@@ -1422,7 +1422,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9059` lines (`514056` bytes)
+**Size**: `9199` lines (`519830` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2160,6 +2160,17 @@
   - Method `.test_the_root_override_selects_a_register()`
   - Method `.test_the_parser_declares_the_status_command_without_a_repo_group()`
   - Method `.test_the_standalone_sync_layer_is_gone()`
+- `class TestIdeaCatcherHiddenListing` - *PRINCIPLE-007: rejected and duplicate ideas leave the default target listing.*
+  - Method `._idea(idea_id, status, tags)`
+  - Method `._payload()`
+  - Method `._register()`
+  - Method `.test_list_ideas_hides_rejected_and_duplicate_by_default()`
+  - Method `.test_list_ideas_can_include_each_hidden_kind()`
+  - Method `.test_explicit_status_or_tag_still_lists_that_kind()`
+  - Method `.test_cli_hides_both_and_reports_the_count()`
+  - Method `.test_cli_can_include_each_hidden_kind()`
+  - Method `.test_cli_json_hides_both_by_default()`
+  - Method `.test_cli_json_can_show_the_full_audit_view()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

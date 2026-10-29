@@ -247,7 +247,9 @@ python aikit.py idea-catcher reviews --stale
 
 A review leases its repository and reserves idea ids, so parallel analyses cannot collide.
 Dossiers name a `Source` from `IDEA-632` onward; tags, target and status changes append to each
-idea's history.
+idea's history. `ideas --target <id>` hides `Rejected` rows and rows tagged `duplicate`; pass
+`--include-rejected` or `--include-duplicates` for the full audit view. `MATRIX.md` keeps both,
+and a reviewer may reject a harmful idea directly with a recorded reason and author (ADR-264).
 
 `ui-id` stores `has_ui`, `ui_kind` and `ui_evidence`. `topics --brief` gives an AI the evidence;
 `--from-file` records its tags and `--apply` publishes them, capped at 20. `media init --art` uses

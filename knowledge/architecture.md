@@ -80,7 +80,10 @@ the git-ignored `.idea-catcher/` folder at the AIKit root and never enters Git. 
 idea-catcher` reaches the same `idea_catcher.registry.run` dispatcher as `idea_catcher.py` and
 `python -m idea_catcher`; the default register root is `.idea-catcher/`, overridable with
 `IDEA_CATCHER_ROOT`. There is no second copy or sync marker any more: the archived standalone
-repository pointed here instead (ADR-246, ADR-252).
+repository pointed here instead (ADR-246, ADR-252). `ideas` hides `Rejected` rows and rows
+tagged `duplicate` unless `--include-rejected` / `--include-duplicates` or an explicit
+`--status Rejected` / `--tag duplicate` asks for them; `MATRIX.md` keeps the full audit record
+(ADR-264).
 
 ## 🖼️ UI Identity, AI Topic Briefs and Reviewed Media
 `scripts/project_ui.py` writes `has_ui`/`ui_kind`/`ui_evidence` into each project's
