@@ -500,17 +500,40 @@ def seed_assets_manifest(project_root: Path, kind: str) -> bool:
     return True
 
 
+def _reuse_licenses_dir(project_root: Path) -> Path:
+    """
+    The directory that holds the REUSE license texts.
+
+    Prefer an exact `LICENSES/`; then reuse an existing `licenses/` directory in the case the
+    checkout already has one. On Windows the two names resolve to the same directory, so
+    constructing `LICENSES/` would silently write into the lowercase tree and leave a path that
+    a POSIX checkout cannot resolve.
+    """
+    try:
+        children = [path for path in project_root.iterdir() if path.is_dir()]
+    except OSError:
+        return project_root / REUSE_LICENSES_DIR
+    for path in children:
+        if path.name == REUSE_LICENSES_DIR:
+            return path
+    for path in children:
+        if path.name.lower() == REUSE_LICENSES_DIR.lower():
+            return path
+    return project_root / REUSE_LICENSES_DIR
+
+
 def write_reuse_metadata(project_root: Path, identifier: str,
                          copyright_notice: str = "2026 AegeanWorks") -> bool:
     """
-    Write `LICENSES/<identifier>.txt` and a `REUSE.toml` annotation for `identifier`. The caller
-    passes a complete SPDX expression such as `LicenseRef-AL-1.1` (ADR-226).
+    Write `LICENSES/<identifier>.txt` (or the project's existing `licenses/` directory) and a
+    `REUSE.toml` annotation for `identifier`. The caller passes a complete SPDX expression such as
+    `LicenseRef-AL-1.1` (ADR-226).
     """
     try:
         license_text = (project_root / "LICENSE").read_text(encoding="utf-8")
     except OSError:
         return False
-    licenses_dir = project_root / REUSE_LICENSES_DIR
+    licenses_dir = _reuse_licenses_dir(project_root)
     write_generated_file(licenses_dir / f"{identifier}.txt", license_text)
     metadata = (
         "version = 1\n\n"

@@ -5032,6 +5032,19 @@ class TestProjectRegistry(unittest.TestCase):
         with self.assertRaises(ProjectError):
             apply_license_kind(folder, "field-notes", "game")
 
+    def test_reuse_metadata_reuses_an_existing_lowercase_licenses_directory(self):
+        # A project that already keeps legal texts in licenses/ must not get a second,
+        # case-colliding LICENSES/ path on a case-insensitive Windows checkout.
+        from scripts.project_registry import _reuse_licenses_dir, write_reuse_metadata
+        folder = Path(tempfile.mkdtemp(prefix="test_reuse_legacy_"))
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        (folder / "LICENSE").write_text("# License\n", encoding="utf-8")
+        (folder / "licenses").mkdir()
+        self.assertEqual(_reuse_licenses_dir(folder).name, "licenses")
+        self.assertTrue(write_reuse_metadata(folder, "LicenseRef-AL-1.1"))
+        self.assertTrue((folder / "licenses" / "LicenseRef-AL-1.1.txt").is_file())
+        self.assertIn("LicenseRef-AL-1.1", (folder / "REUSE.toml").read_text(encoding="utf-8"))
+
     def test_license_switch_keeps_the_readme_tree_contiguous(self):
         # The template tree line ended in a newline, so every switch left a blank line in the tree.
         readme = ("# app\n\n```text\napp/\n├── LICENSE                   <- old license\n"

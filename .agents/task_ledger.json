@@ -1,109 +1,28 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-aikit-gate-fixes-v1",
+    "task_id": "task-reuse-existing-licenses-v1",
     "last_phase": "in_progress",
-    "active_phase": 3,
-    "status": "in_progress",
-    "updated_at": 1793285017.5829685,
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1793285459.5943146,
     "owner": "opencode:reforge-main",
-    "started_by": "opencode:reforge-followup",
+    "started_by": "opencode:reforge-main",
     "continuations": [
+      {
+        "agent": "opencode:reforge-followup",
+        "from": "opencode:reforge-main",
+        "at": 1793285365.683861
+      },
       {
         "agent": "opencode:reforge-main",
         "from": "opencode:reforge-followup",
-        "at": 1793285017.5829685
+        "at": 1793285459.5943146
       }
-    ]
+    ],
+    "completed_at": 1793285459.7343566
   },
   "checkpoints": [
-    {
-      "task_id": "idea-catcher-hide-hidden",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'idea-catcher-hide-hidden' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793278176.098526,
-      "timestamp_str": "2026-10-29 15:49:36",
-      "agent": "opencode:idea-review"
-    },
-    {
-      "task_id": "push-confirmation-policy",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Make ordinary git push confirmation-gated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278420.3464997,
-      "timestamp_str": "2026-10-29 15:53:40",
-      "agent": "opencode:idea-review",
-      "impact_assessment": {
-        "why": "The operator authorized publishing the merged main commit, but the project permission rule denies every git push and forces a manual workaround.",
-        "benefits": "A tested commit can be published after an explicit human confirmation; force, mirror and delete pushes remain blocked.",
-        "risks": "contract: git push* becomes ask, force/mirror/delete patterns stay deny; dependency: none; concurrency: unchanged; state: no state change.",
-        "mitigation": "Update opencode.jsonc and the permission-boundary test together, append ADR-265, run the unit and read-only gate shield, then push only after confirmation."
-      }
-    },
-    {
-      "task_id": "push-confirmation-policy",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[2/2] Make ordinary git push ask and keep force, mirror and delete pushes denied",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278719.9403677,
-      "timestamp_str": "2026-10-29 15:58:39",
-      "agent": "opencode:idea-review"
-    },
-    {
-      "task_id": "push-confirmation-policy",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[2/2] Gate shield passed: tests, budgets, principles, knowledge, licenses, secrets, reachability, hygiene and dogfood; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278720.061964,
-      "timestamp_str": "2026-10-29 15:58:40",
-      "agent": "opencode:idea-review"
-    },
-    {
-      "task_id": "push-confirmation-policy",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'push-confirmation-policy' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793278720.179353,
-      "timestamp_str": "2026-10-29 15:58:40",
-      "agent": "opencode:idea-review"
-    },
-    {
-      "task_id": "reforge:run-1",
-      "phase": "reforge stage 1",
-      "phase_num": 3,
-      "description": "Reforge stage 1: window 5, 5 commit(s), 21 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793278912.4281535,
-      "timestamp_str": "2026-10-29 16:01:52",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge-dirty-repair",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/1] Let Reforge repair beside unrelated uncommitted work",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793279649.1156933,
-      "timestamp_str": "2026-10-29 16:14:09",
-      "agent": "opencode:reforge-scope",
-      "impact_assessment": {
-        "why": "Repair refused whenever any unrelated file was dirty, so a concurrent session blocked a reviewed safety fix; the user needs Reforge to fix its findings without taking over or committing another agent's work.",
-        "benefits": "Findings can be applied and verified while other work is in progress; only a commit whose target file was already dirty is refused, and unrelated paths are never staged.",
-        "risks": "contract: fix/run no longer require a clean tree; dependency: none; concurrency: a fingerprint detects unrelated dirty paths changing during repair; state: no schema change.",
-        "mitigation": "Snapshot and restore targets, fingerprint pre-existing unrelated paths, allow them only in the diff review, exclude them from commit_paths, and pin every case with integration tests plus an ADR."
-      }
-    },
     {
       "task_id": "reforge-dirty-repair",
       "phase": "completed",
@@ -274,6 +193,89 @@
       "timestamp": 1793285123.7399054,
       "timestamp_str": "2026-10-29 17:45:23",
       "agent": "opencode"
+    },
+    {
+      "task_id": "task-aikit-gate-fixes-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-aikit-gate-fixes-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793285195.7402284,
+      "timestamp_str": "2026-10-29 17:46:35",
+      "agent": "opencode:reforge-main"
+    },
+    {
+      "task_id": "task-reuse-existing-licenses-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/1] Reuse an existing lowercase licenses/ directory for REUSE metadata instead of creating a case-colliding LICENSES/ path",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285203.0765517,
+      "timestamp_str": "2026-10-29 17:46:43",
+      "agent": "opencode:reforge-main",
+      "impact_assessment": {
+        "why": "write_reuse_metadata always targets LICENSES/; on Windows a project that already keeps legal texts in licenses/ writes the REUSE copy into that directory, so the tracked path is lowercase while the policy and POSIX checkouts expect LICENSES/. The aegean-licensing project hit this during its Reforge delivery.",
+        "benefits": "One deterministic directory per project, no case split on Windows, and existing projects with a lowercase licenses/ folder get committed REUSE metadata without renaming historical paths.",
+        "risks": "contract: generated REUSE text path may be licenses/ for projects that already use it; dependency: none; concurrency: read-only directory discovery; state: no state or schema change.",
+        "mitigation": "Prefer an exact LICENSES/ directory, then an existing case-insensitive licenses/ directory, then create LICENSES/; add a failing-first unit test for the helper and the write path; run the full gate shield."
+      }
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 4",
+      "phase_num": 3,
+      "description": "Reforge stage 4: window 35, 20 commit(s), 28 file(s) reviewed (unreviewed), 0 finding(s), 0 repaired",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285234.2086492,
+      "timestamp_str": "2026-10-29 17:47:14",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-1",
+      "phase": "reforge stage 4",
+      "phase_num": 3,
+      "description": "Reforge stage 4: run stopped at stage 4; resume it with `reforge resume`",
+      "files_affected": [],
+      "status": "suspended",
+      "timestamp": 1793285323.938188,
+      "timestamp_str": "2026-10-29 17:48:43",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "task-reuse-existing-licenses-v1",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/2] Take over: the prior agent added the failing-first test and _reuse_licenses_dir; verify the helper and write path, record ADR-270, run the gate shield, then deliver",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285365.683861,
+      "timestamp_str": "2026-10-29 17:49:25",
+      "agent": "opencode:reforge-followup",
+      "continued_from": "opencode:reforge-main"
+    },
+    {
+      "task_id": "task-reuse-existing-licenses-v1",
+      "phase": "in_progress",
+      "phase_num": 5,
+      "description": "checklists: passed; unit 18.21ms/test, integration 417.55ms/test, dogfood 5/5, map/ADR/links/reachability/secrets green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793285459.5943146,
+      "timestamp_str": "2026-10-29 17:50:59",
+      "agent": "opencode:reforge-main",
+      "continued_from": "opencode:reforge-followup"
+    },
+    {
+      "task_id": "task-reuse-existing-licenses-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-reuse-existing-licenses-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793285459.7343583,
+      "timestamp_str": "2026-10-29 17:50:59",
+      "agent": "opencode:reforge-main"
     }
   ]
 }

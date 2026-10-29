@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
-- **Total Top-Level Functions**: `745`
-- **Total Class Methods**: `815`
-- **Total Source Lines**: `31652`
+- **Total Top-Level Functions**: `746`
+- **Total Class Methods**: `816`
+- **Total Source Lines**: `31688`
 
 ---
 
@@ -1013,7 +1013,7 @@
 ### [`scripts/project_registry.py`](scripts/project_registry.py)
 > *Project registry: the projects AIKit builds (cockpit model, ADR-119).*
 
-**Size**: `1134` lines (`52758` bytes)
+**Size**: `1157` lines (`53659` bytes)
 
 **Classes:**
 - `class ProjectError` - *A request AIKit cannot carry out, with its reason and remedy (PRINCIPLE-011 R6).*
@@ -1035,7 +1035,8 @@
 - `def validate_description(description)` - *The description stripped, or None; one line of 10-350 characters (GitHub's limit is 350).*
 - `def normalize_topics(topics)` - *`aikit` then each topic lowercased, without repeats; refuses what GitHub would refuse.*
 - `def seed_assets_manifest(project_root, kind)` - *Write the asset/data manifest `new --kind game|science` needs, so the license boundary has a*
-- `def write_reuse_metadata(project_root, identifier, copyright_notice)` - *Write `LICENSES/<identifier>.txt` and a `REUSE.toml` annotation for `identifier`. The caller*
+- `def _reuse_licenses_dir(project_root)` - *The directory that holds the REUSE license texts.*
+- `def write_reuse_metadata(project_root, identifier, copyright_notice)` - *Write `LICENSES/<identifier>.txt` (or the project's existing `licenses/` directory) and a*
 - `def seed_reuse(project_root, kind, version)` - *Write the machine-readable REUSE metadata for a project: a `LICENSES/LicenseRef-<key>.txt`*
 - `def seed_license(project_root, kind)` - *Copy the chosen personal Aegean license into a new project (ADR-199, ADR-214, ADR-218).*
 - `def seed_commercial(project_root)` - *Copy AIKit's canonical COMMERCIAL.md into a new project (ADR-212, ADR-214).*
@@ -1435,7 +1436,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9330` lines (`527081` bytes)
+**Size**: `9343` lines (`527991` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1844,6 +1845,7 @@
   - Method `.test_repository_names_capitalise_each_word()`
   - Method `.test_game_and_science_projects_seed_their_own_license()`
   - Method `.test_license_suggestion_reads_markers_and_switches_the_pinned_text()`
+  - Method `.test_reuse_metadata_reuses_an_existing_lowercase_licenses_directory()`
   - Method `.test_license_switch_keeps_the_readme_tree_contiguous()`
   - Method `.test_license_switch_labels_a_bare_license_tree_line()`
   - Method `.test_license_switch_replaces_a_differently_titled_license_section()`
