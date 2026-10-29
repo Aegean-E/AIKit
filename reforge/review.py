@@ -154,7 +154,10 @@ def _split_hunks(diff: str, sha: str, path: str) -> List[Dict[str, object]]:
         end = starts[number] if number < len(starts) else len(lines)
         match = HUNK_RE.match(lines[start])
         new_start = int(match.group(1)) if match else 0
-        new_count = int(match.group(2) or 1) if match else 0
+        if match and match.group(2) is not None:
+            new_count = int(match.group(2))
+        else:
+            new_count = 1 if match else 0
         hunks.append({
             "id": f"{sha[:12]}:{path}#{number}",
             "commit": sha,
@@ -237,7 +240,9 @@ def packet_text(repo: Path, plan: StagePlan,
                 lines.append(f"--- {path} ---")
                 last_path = path
             end = int(hunk["start"]) + max(int(hunk["count"]) - 1, 0)
-            lines.append(f"hunk {hunk['id']} (new lines {hunk['start']}..{end})")
+            span = (f"new lines {hunk['start']}..{end}" if int(hunk["count"])
+                    else f"deletes after line {hunk['start']}")
+            lines.append(f"hunk {hunk['id']} ({span})")
             lines.append(str(hunk["text"]).rstrip("\n"))
         blocks.append("\n".join(lines))
     head = plan.new_shas[0] if plan.new_shas else ""

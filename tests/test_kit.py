@@ -9207,6 +9207,13 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(coverage["missing"], ["b"])
         self.assertEqual(coverage["unknown"], ["x"])
 
+    def test_a_pure_deletion_hunk_has_no_new_lines(self):
+        from reforge import review
+
+        hunks = review._split_hunks("@@ -5,1 +4,0 @@\n-old\n", "sha", "app.py")
+        self.assertEqual(len(hunks), 1)
+        self.assertEqual(hunks[0]["count"], 0)
+
     def test_independent_runs_write_different_packet_paths(self):
         from reforge import review
 
