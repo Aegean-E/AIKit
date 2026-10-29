@@ -4,7 +4,7 @@
   "note": "Copies of the canonical Aegean license texts. Update with `python scripts/sync_licenses.py --write` after changing aegean-licensing (ADR-225).",
   "sha256": {
     "AL-1.0.md": "6241e559761caf7545d40d9f2f1a8d6d846c51e5e0bbcb8dbb7d375c933dd705",
-    "AL-1.1.md": "a758eb930f3b8ce75c0dd39e257983121e9650b0d6f1795b115043cd0ece69be",
+    "AL-1.1.md": "7e3473af99b8e2f157de2689adf5ab9d0d480bf08d58af3d3f151c7700c481e5",
     "ACL-1.0.md": "b71ca9bc69e7c3b27b644739c6bf8b206764c5080b3cba75fd75ee9e9e219d5c",
     "AGL-1.0.md": "cee1682f8380a7d26a7a723e586d5b16d6e91a8cb7ff1f0af2d2be084d0377ed",
     "AGL-1.1.md": "cee1b300bbe6b7dbe5587ed2bf09ce04289f62bb895383ffe70f84f138b2dc93",
