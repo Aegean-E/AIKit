@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `121`
-- **Total Top-Level Functions**: `733`
-- **Total Class Methods**: `811`
-- **Total Source Lines**: `31389`
+- **Total Top-Level Functions**: `736`
+- **Total Class Methods**: `812`
+- **Total Source Lines**: `31481`
 
 ---
 
@@ -238,7 +238,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `391` lines (`18922` bytes)
+**Size**: `392` lines (`18955` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -405,25 +405,28 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `556` lines (`26248` bytes)
+**Size**: `594` lines (`28450` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
 - `def repair_from_dict(item)`
 - `def _scanner(label, text)`
 - `def _stop_value(stop)`
-- `def _snapshot(root, findings)`
+- `def _snapshot(root, findings, extra_paths)`
 - `def _restore(root, snapshots)`
 - `def _relative_inside(root, path)` - *The repository-relative form of a supplied file, or an empty string when it is outside.*
-- `def _clean_before_repair(root, allow_dirty, ignore)`
-- `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner, extra_allowed)`
+- `def _preexisting_dirty(root, ignore)` - *Paths already dirty before Reforge repairs; its own state and artifacts are excluded.*
+- `def _owned_repairs(last)` - *Paths Reforge itself repaired in the stage, so their dirt is not another session's work.*
+- `def _check_commit_targets(root, targets, allow_dirty, deliver, ignore, owned)` - *Refuse a commit whose target file already held work Reforge did not make.*
+- `def _fingerprint(path)`
+- `def _execute_repairs(root, findings, add_tests, run_tests, test_command, gate_runner, extra_allowed, preexisting)`
 - `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, review)`
 - `def _review_error(run, pending)`
 - `def _plan_from_last(run, last)` - *Rebuild the stage a `fix` must apply, from the run and its last audit entry.*
 - `def _collect_review(root, plan, reviewed, findings_file, packet)` - *Write the review packet and load the reviewer's answer, if one was supplied.*
 - `def _serialize_review(report)` - *The small JSON-safe form of a review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
-- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet, deliver)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
 - `def resume_audit(root, run_id)`
@@ -578,7 +581,7 @@
 ### [`scripts/aikit_cli.py`](scripts/aikit_cli.py)
 > *`aikit` command line: create, attach, list, report on, check, fix and delegate for the projects*
 
-**Size**: `1300` lines (`65184` bytes)
+**Size**: `1300` lines (`65214` bytes)
 
 **Functions:**
 - `def failure_tail(output)`
@@ -1287,7 +1290,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1622` lines (`83490` bytes)
+**Size**: `1654` lines (`85327` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1422,7 +1425,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9219` lines (`521105` bytes)
+**Size**: `9240` lines (`522222` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2147,6 +2150,7 @@
   - Method `.test_the_parser_declares_run_management_commands()`
   - Method `.test_a_findings_file_that_is_not_json_is_refused()`
   - Method `.test_an_ignored_state_file_is_not_a_commit_failure()`
+  - Method `.test_a_commit_refuses_a_dirty_finding_target()`
   - Method `.test_a_review_packet_is_never_committed_as_reviewed_work()`
   - Method `.test_the_parser_declares_the_findings_option()`
   - Method `.stage_plan()` - *A minimal stage plan for packet and findings tests.*

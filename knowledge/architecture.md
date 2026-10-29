@@ -47,7 +47,10 @@ settings, and a stopped or completed run keeps its history when another begins. 
 previously audited SHA stays in view for interaction evidence; a mechanical repair is applied by rule,
 a reviewed patch only after it was validated against the lines the stage added, one regression test is
 generated per repaired rule/file, the real diff is reviewed, the project's tests run, and a red
-result rolls the patch back. Reforge plans, records and delivers the stage; the host agent does the
+result rolls the patch back. Reforge repairs beside unrelated uncommitted work: those paths are
+snapshotted, allowed in the diff review and never staged, while a commit is refused if a finding's
+own target already held work Reforge did not make (`--allow-dirty` overrides that refusal).
+Reforge plans, records and delivers the stage; the host agent does the
 reviewing, in any language and for both defects and improvements. The cheap rule pre-pass is opt-in
 (`--rules`); with it, Python files go through the AST detectors and other text files through
 `reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not analysed and

@@ -55,7 +55,7 @@ def add_commands(subparsers) -> None:
         command.add_argument("--test-command", metavar="CMD",
                              help="run this command instead of detected unittest discovery")
         command.add_argument("--allow-dirty", action="store_true",
-                             help="repair even when the tree has unrelated uncommitted work")
+                             help="also commit a finding target that already had uncommitted work")
         command.add_argument("--gates", action="store_true",
                              help="also run the AIKit project gates when invoked from AIKit")
         command.add_argument("--commit", action="store_true",
@@ -326,6 +326,7 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
             print(f"[OK] {_run_line(payload['run'])}")
         return 0
 
+    do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     payload = pipeline.run_pipeline(
         root, mode=action, add_tests=True, run_tests=not getattr(args, "no_tests", False),
         test_command=getattr(args, "test_command", None), gate_runner=gate_runner,
@@ -334,8 +335,8 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         stop=getattr(args, "stop", None),
         rules=bool(getattr(args, "rules", False)),
         findings_file=getattr(args, "findings", None),
+        deliver=do_commit,
     )
-    do_commit = bool(getattr(args, "commit", False) or getattr(args, "push", False))
     if do_commit:
         run_name = payload.get("run") or "active"
         if payload.get("repaired"):

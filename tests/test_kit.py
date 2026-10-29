@@ -1310,9 +1310,17 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
     def test_ordinary_push_requires_confirmation_and_force_stays_denied(self):
         rule = [r for r in self.global_rules if r.get("resource") == "git push*"]
         self.assertEqual(rule[-1]["effect"], "ask")
+        trailing = (
+            "git push origin main --force", "git push origin main -f",
+            "git push origin --mirror", "git push origin --delete main",
+            "git push origin +main", "git push origin :main",
+        )
         for command in self.CONFIRM_SHELL:
             with self.subTest(shell=command):
                 self.assertEqual(self.decide(self.global_rules, "shell", command), "ask")
+        for command in trailing:
+            with self.subTest(shell=command):
+                self.assertEqual(self.decide(self.global_rules, "shell", command), "deny")
         for name, rules in self.agents.items():
             chain = self.global_rules + rules
             # Each subagent profile keeps its catch-all shell deny, so only the lead can push.
@@ -1320,7 +1328,7 @@ class TestOpenCodePermissionBoundaries(unittest.TestCase):
                 with self.subTest(agent=name, shell=command):
                     self.assertEqual(self.decide(chain, "shell", command), "deny")
             for command in ("git push --force", "git push -f", "git push --mirror",
-                            "git push --delete origin main"):
+                            "git push --delete origin main", *trailing):
                 with self.subTest(agent=name, shell=command):
                     self.assertEqual(self.decide(chain, "shell", command), "deny")
 
@@ -8892,6 +8900,19 @@ class TestReforgeCore(unittest.TestCase):
             report = delivery.commit_repairs(
                 self.root(), "chore(reforge): record stage 1 audit", [".aikit/reforge.json"])
         self.assertTrue(report.get("nothing_to_commit"))
+
+    def test_a_commit_refuses_a_dirty_finding_target(self):
+        from reforge import pipeline
+
+        root = self.root()
+        (root / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+        dirty = {"app.py": "modified", ".aikit/reforge.json": "modified"}
+        with mock.patch.object(pipeline, "dirty_paths", return_value=dirty):
+            with self.assertRaises(ReforgeError) as raised:
+                pipeline._check_commit_targets(root, ["app.py"], False, True)
+            self.assertIn("Cannot commit", str(raised.exception))
+            pipeline._check_commit_targets(root, ["app.py"], False, False)
+            pipeline._check_commit_targets(root, ["app.py"], True, True)
 
     def test_a_review_packet_is_never_committed_as_reviewed_work(self):
         from reforge.state import is_reforge_artifact

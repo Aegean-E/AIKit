@@ -75,16 +75,14 @@ def _stop_value(stop: Optional[int]) -> Optional[int]:
     return None if stop in (None, 0) else int(stop)
 
 
-def _snapshot(root: Path, findings: Sequence[Finding]) -> Dict[str, Optional[bytes]]:
+def _snapshot(root: Path, findings: Sequence[Finding],
+              extra_paths: Sequence[str] = ()) -> Dict[str, Optional[bytes]]:
     paths = {finding.path for finding in findings if finding.fixable}
     paths.add(str(regression_test_path(root).relative_to(root)).replace("\\", "/"))
+    paths.update(path for path in extra_paths if path)
     snapshots: Dict[str, Optional[bytes]] = {}
     for relative in paths:
-        path = root / relative
-        try:
-            snapshots[relative] = path.read_bytes() if path.is_file() else None
-        except OSError:
-            snapshots[relative] = None
+        snapshots[relative] = _fingerprint(root / relative)
     return snapshots
 
 
@@ -112,35 +110,59 @@ def _relative_inside(root: Path, path: Optional[str]) -> str:
         return ""
 
 
-def _clean_before_repair(root: Path, allow_dirty: bool,
-                         ignore: Sequence[str] = ()) -> None:
-    if allow_dirty:
-        return
+def _preexisting_dirty(root: Path, ignore: Sequence[str] = ()) -> set:
+    """Paths already dirty before Reforge repairs; its own state and artifacts are excluded."""
     ignored = {path.replace("\\", "/") for path in ignore}
     ledger = set(ledger_artifacts(root))
-    dirty = {path for path in dirty_paths(root)
-             if path.replace("\\", "/") != STATE_REL.as_posix()
-             and path.replace("\\", "/") not in ledger
-             and path.replace("\\", "/") not in ignored
-             and not is_reforge_artifact(path)}
-    if dirty:
-        shown = ", ".join(sorted(dirty)[:8])
+    return {path.replace("\\", "/") for path in dirty_paths(root)
+            if path.replace("\\", "/") != STATE_REL.as_posix()
+            and path.replace("\\", "/") not in ledger
+            and path.replace("\\", "/") not in ignored
+            and not is_reforge_artifact(path)}
+
+
+def _owned_repairs(last: Dict[str, object]) -> set:
+    """Paths Reforge itself repaired in the stage, so their dirt is not another session's work."""
+    return {str(item.get("path") or "") for item in (last.get("repairs") or [])
+            if item.get("applied") and item.get("path")}
+
+
+def _check_commit_targets(root: Path, targets: Sequence[str], allow_dirty: bool,
+                          deliver: bool, ignore: Sequence[str] = (),
+                          owned: Sequence[str] = ()) -> None:
+    """Refuse a commit whose target file already held work Reforge did not make."""
+    if allow_dirty or not deliver:
+        return
+    overlap = sorted(set(targets) & _preexisting_dirty(root, ignore) - set(owned))
+    if overlap:
+        shown = ", ".join(overlap[:8])
         raise ReforgeError(
-            "The working tree is not clean enough to repair.",
-            f"these paths hold uncommitted work Reforge did not make: {shown}",
-            "commit or stash them, then run the audit again; the audit itself changed nothing.",
+            "Cannot commit a repair over uncommitted work in the same file.",
+            f"these finding targets already held changes Reforge did not make: {shown}",
+            "run the repair without --commit/--push to apply and verify it, or commit/stash "
+            "those files first; nothing was changed.",
         )
+
+
+def _fingerprint(path: Path) -> Optional[bytes]:
+    try:
+        return path.read_bytes() if path.is_file() else None
+    except OSError:
+        return None
 
 
 def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
                      run_tests: bool, test_command: Optional[str],
                      gate_runner: Optional[GateRunner],
-                     extra_allowed: Sequence[str] = ()) -> Tuple[List[Repair], Dict[str, object],
+                     extra_allowed: Sequence[str] = (),
+                     preexisting: Sequence[str] = ()) -> Tuple[List[Repair], Dict[str, object],
                                                                   Dict[str, object]]:
     targets = [finding for finding in findings if finding.fixable and not finding.repaired]
     if not targets:
         return [], {}, {}
-    snapshots = _snapshot(root, targets)
+    target_paths = {finding.path for finding in targets}
+    unrelated = [path for path in preexisting if path not in target_paths]
+    snapshots = _snapshot(root, targets, unrelated)
     try:
         # Deterministic rules keep their proven edit; reviewed findings carry an exact text patch
         # that was validated against the file when the answer was parsed, and is re-checked here.
@@ -156,6 +178,7 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
             allowed = repair_paths(repairs, root) + [STATE_REL.as_posix(), LOCK_REL.as_posix()]
             allowed += [path for path in dirty_paths(root) if is_reforge_artifact(path)]
             allowed += [path for path in extra_allowed if path]
+            allowed += [path for path in preexisting if path]
             # The stage checkpoint Reforge appended, and its .bak/.lock siblings, are its own
             # bookkeeping; without this the review would reject every tree on a project with a ledger.
             allowed.extend(ledger_artifacts(root))
@@ -185,6 +208,14 @@ def _execute_repairs(root: Path, findings: Sequence[Finding], add_tests: bool,
                         " | ".join(str(line) for line in list(lines)[-4:]),
                         "review the gates; the repair was rolled back.",
                     )
+            changed = [path for path in unrelated
+                       if _fingerprint(root / path) != snapshots.get(path)]
+            if changed:
+                raise ReforgeError(
+                    "The repair changed unrelated uncommitted work.",
+                    f"these paths differed before and after the repair: {', '.join(changed[:8])}",
+                    "review the listed paths; every change made by the repair was rolled back.",
+                )
         return repairs, tests, gates
     except ReforgeError:
         _restore(root, snapshots)
@@ -322,7 +353,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                  start: Optional[int] = None, step: Optional[int] = None,
                  stop: Optional[int] = None, rules: bool = False,
                  findings_file: Optional[str] = None,
-                 packet: bool = True) -> Dict[str, object]:
+                 packet: bool = True, deliver: bool = False) -> Dict[str, object]:
     """Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`)."""
     root = Path(root)
     findings_rel = _relative_inside(root, findings_file)
@@ -353,6 +384,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 last["counts"] = summarize(all_findings)
                 last["review"] = review_meta
             fixable = [item for item in all_findings if item.fixable]
+            _check_commit_targets(
+                root, [item.path for item in fixable if not item.repaired],
+                allow_dirty, deliver, (findings_rel,), _owned_repairs(last))
             if not fixable:
                 if findings_file:
                     save_state(root, state)
@@ -376,10 +410,11 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 return _payload(root, mode, plan, run, all_findings, applied,
                                 last.get("tests") or {}, last.get("gates") or {},
                                 skipped, reviewed=reviewed, review=review_meta)
-            _clean_before_repair(root, allow_dirty, (findings_rel,))
+            preexisting = _preexisting_dirty(root, (findings_rel,))
             repairs, tests, gates = _execute_repairs(root, all_findings, add_tests, run_tests,
                                                      test_command, gate_runner,
-                                                     extra_allowed=(findings_rel,))
+                                                     extra_allowed=(findings_rel,),
+                                                     preexisting=preexisting)
             last["repairs"] = [repair.as_dict() for repair in repairs]
             last["tests"] = tests
             last["gates"] = gates
@@ -427,10 +462,13 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
                             _note_stage(root, run, plan, entry, findings, skipped),
                             reviewed=len(reviewed), review=review_meta)
-        _clean_before_repair(root, allow_dirty, (findings_rel,))
+        _check_commit_targets(root, [item.path for item in findings if item.fixable],
+                              allow_dirty, deliver, (findings_rel,))
+        preexisting = _preexisting_dirty(root, (findings_rel,))
         repairs, tests, gates = _execute_repairs(root, findings, add_tests, run_tests,
                                                  test_command, gate_runner,
-                                                 extra_allowed=(findings_rel,))
+                                                 extra_allowed=(findings_rel,),
+                                                 preexisting=preexisting)
         entry = entry_from_stage(plan, findings, repairs, tests, gates, skipped=skipped,
                                  reviewed=len(reviewed), review=review_meta)
         record_stage(root, state, run, entry)

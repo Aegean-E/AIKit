@@ -216,7 +216,9 @@ returns a findings file. Each finding names a path the stage changed, a line tha
 the quoted text occurs exactly once, overlaps a line the stage added, and leaves a Python file
 parsable; everything else is reported as rejected. Run `fix --findings answer.json` to apply the
 accepted fixes; `run --rules` is the deterministic-only pass. A red test, gate or diff review
-restores the exact bytes.
+restores the exact bytes. A repair may run beside unrelated uncommitted work: its paths are
+snapshotted and never staged, and a commit is refused only when a finding's own target file already
+held work Reforge did not make (pass `--allow-dirty` to accept that risk deliberately).
 
 Runs are independent (`settings`, `stop`, `resume`, `runs`, `report`) and state is crash-safe. Each
 project has its own lock, state and history, so several projects audit at the same time while a

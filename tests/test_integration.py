@@ -1346,13 +1346,21 @@ class TestReforgeHistory(unittest.TestCase):
         from reforge.pipeline import run_pipeline
         from reforge.state import load_state
 
-        root = self.repository()
+        root = self.one_commit_repository(
+            "def load(value):\n"
+            "    try:\n"
+            "        return value\n"
+            "    except:\n"
+            "        pass\n"
+            "\n"
+            "def cache(items=[]):\n"
+            "    return items\n")
         report = run_pipeline(root, "run", run_tests=False, rules=True)
         self.assertEqual(report["stage"], 1)
         self.assertTrue(report["repaired"] >= 2)
         state = load_state(root)
         self.assertEqual(state["stage"], 1)
-        self.assertEqual(len(state["audited_commits"]), 3)
+        self.assertEqual(len(state["audited_commits"]), 1)
         self.assertTrue(all(finding["evidence"] for finding in report["findings"]))
         self.assertTrue((root / "test_reforge_regressions.py").is_file())
         self.assertNotIn("except:", (root / "app.py").read_text(encoding="utf-8"))
@@ -1369,20 +1377,30 @@ class TestReforgeHistory(unittest.TestCase):
 
     def test_a_second_fix_offers_the_reviewed_patch_for_commit(self):
         # `audit` then `fix` leaves a reviewed patch; a second `fix --commit` publishes it
-        # instead of refusing, which is what the first fix prints as advice.
+        # instead of refusing, which is what the first fix prints as advice. The tree may also
+        # hold another session's work: it must survive and stay out of commit_paths.
         from reforge.pipeline import run_pipeline
 
         root = self.one_commit_repository(
             "try:\n    pass\nexcept:\n    pass\n")
+        app = root / "app.py"
+        app.write_text(app.read_text(encoding="utf-8") + "# another session's note\n",
+                       encoding="utf-8")
+        notes = root / "notes.txt"
+        notes.write_text("not Reforge's work\n", encoding="utf-8")
         run_pipeline(root, "audit", rules=True)
         first = run_pipeline(root, "fix", run_tests=False)
         self.assertTrue(first["repaired"] >= 1)
+        self.assertIn("# another session's note", app.read_text(encoding="utf-8"))
+        self.assertEqual(notes.read_text(encoding="utf-8"), "not Reforge's work\n")
+        self.assertNotIn("notes.txt", first["commit_paths"])
         second = run_pipeline(root, "fix", run_tests=False)
         self.assertEqual(second["repaired"], first["repaired"])
         self.assertIn("app.py", second["commit_paths"])
         self.assertIn(".aikit/reforge.json", second["commit_paths"])
         before = self.git(root, "status", "--porcelain").stdout
         self.assertIn("app.py", before, "the reviewed patch is still uncommitted before delivery")
+        self.assertIn("notes.txt", before, "unrelated work is left for its own author")
 
     def test_a_non_python_change_is_reviewed_not_skipped(self):
         # Reforge reviews the changes a session makes; a JavaScript or Markdown commit must be
@@ -1390,13 +1408,17 @@ class TestReforgeHistory(unittest.TestCase):
         from reforge.pipeline import run_pipeline, start_audit
         from reforge.state import load_state
 
-        root = self.repository(defects=False)
+        root = Path(tempfile.mkdtemp(prefix="reforge_nonpython_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
+        (root / "app.py").write_text("def load(value):\n    return value\n", encoding="utf-8")
+        (root / "other.py").write_text("VALUE = 1\n", encoding="utf-8")
         (root / "app.js").write_text("const answer = 42;\n", encoding="utf-8")
         (root / "NOTES.md").write_text("# notes\n\n```bash\necho hi\n", encoding="utf-8")
         (root / "logo.bin").write_bytes(b"\x00\x01binary")
-        self.git(root, "add", "app.js", "NOTES.md", "logo.bin")
+        self.git(root, "add", "app.py", "other.py", "app.js", "NOTES.md", "logo.bin")
         self.git(root, "commit", "-q", "-m", "feat: javascript and docs")
-        start_audit(root, start=3, step=1)
+        start_audit(root, start=2, step=1)
         report = run_pipeline(root, "audit", rules=True)
         self.assertEqual(report["skipped"], ["logo.bin"])
         self.assertEqual(report["reviewed"], 4)
@@ -1414,15 +1436,22 @@ class TestReforgeHistory(unittest.TestCase):
         from reforge.pipeline import run_pipeline, start_audit, stop_audit
         from scripts.disruption_recovery import resumable_tasks
 
-        root = self.repository()
+        root = Path(tempfile.mkdtemp(prefix="reforge_ledger_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
         (root / ".aikit").mkdir()
         ledger = root / ".aikit" / "task_ledger.json"
         operator = {"task_id": "operator-task", "status": "in_progress", "owner": "kilo:1",
                     "last_phase": "Planning", "active_phase": 2}
         ledger.write_text(jsonlib.dumps({"version": 1, "active_task": operator,
                                          "checkpoints": []}), encoding="utf-8")
-        self.git(root, "add", ".aikit/task_ledger.json")
-        self.git(root, "commit", "-q", "-m", "chore: add a ledger")
+        (root / "app.py").write_text(
+            "def cache(items=[]):\n    return items\n", encoding="utf-8")
+        self.git(root, "add", ".aikit/task_ledger.json", "app.py")
+        self.git(root, "commit", "-q", "-m", "chore: add a ledger and a defect")
+        (root / "other.py").write_text("VALUE = 1\n", encoding="utf-8")
+        self.git(root, "add", "other.py")
+        self.git(root, "commit", "-q", "-m", "feat: add other")
         start_audit(root, start=2, step=2, stop=2)
         report = run_pipeline(root, "run", run_tests=False, rules=True)
         self.assertTrue(report["ledger"]["recorded"], report["ledger"].get("reason"))
@@ -1482,14 +1511,16 @@ class TestReforgeHistory(unittest.TestCase):
         from reforge.review import packet_text
         from reforge.state import current_run, load_state
 
-        root = self.simple_repository(1)
+        root = Path(tempfile.mkdtemp(prefix="reforge_packet_"))
+        self.addCleanup(remove_tree, root)
+        self.git(root, "init", "-q")
         (root / "README.md").write_text("State: first\n", encoding="utf-8")
         self.git(root, "add", "README.md")
         self.git(root, "commit", "-q", "-m", "docs: first")
         (root / "README.md").write_text("State: second\n", encoding="utf-8")
         self.git(root, "add", "README.md")
         self.git(root, "commit", "-q", "-m", "docs: second")
-        start_audit(root, start=3, step=1)
+        start_audit(root, start=2, step=1)
         run = current_run(load_state(root))
         packet, _ = packet_text(root, plan_next_stage(root, run))
         self.assertIn("State: second", packet)
@@ -1535,8 +1566,9 @@ class TestReforgeHistory(unittest.TestCase):
 
         from reforge.pipeline import run_pipeline, start_audit
 
-        root = self.repository(defects=True)
-        start_audit(root, start=3, step=1)
+        root = self.one_commit_repository(
+            "def load(value):\n    try:\n        return value\n    except:\n        pass\n")
+        start_audit(root, start=2, step=1)
         answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
         self.addCleanup(remove_tree, answer_folder)
         answer = answer_folder / "findings.json"
