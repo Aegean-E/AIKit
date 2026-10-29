@@ -3030,3 +3030,11 @@ Record all significant architectural decisions, trade-offs, and rationale here.
 - **Decision**: When an existing `REUSE.toml` already contains the requested identifier and at least one additional `[[annotations]]` table, keep the file and refresh only `LICENSES/<identifier>.txt`. A different identifier still rewrites the blanket metadata, so a license change remains explicit.
 - **Consequences**: `aikit fix` becomes idempotent for projects with extra annotations; a preserved file may keep an older copyright notice until the identifier changes; unit tests cover preserve, replace and missing-LICENSE paths.
 - Cross-principle check: no principle section changed. Serves PRINCIPLE-013 (idempotent generated state), PRINCIPLE-016 (the license boundary survives a refresh), and PRINCIPLE-014 (regression tests).
+
+### ADR-277: A Pure Deletion Hunk Reports No New Lines
+- **Date**: 2026-10-29
+- **Status**: Accepted
+- **Context**: Hunk metadata used `int(group(2) or 1)`, so a valid `@@ -5,1 +4,0 @@` deletion hunk became one new line; the packet then claimed a line that does not exist and narrowed hunk coverage incorrectly.
+- **Decision**: A present `+4,0` count stays zero; only a missing count defaults to one. The packet labels a zero-count hunk as `deletes after line 4` instead of a fake `new lines 4..4`.
+- **Consequences**: Pure deletion hunks keep their real shape; unit tests pin the zero count. Hunk IDs and review validation are unchanged.
+- **Cross-principle check**: no principle section changed. Serves PRINCIPLE-003 (line metadata matches the diff) and PRINCIPLE-014 (the regression is pinned).
