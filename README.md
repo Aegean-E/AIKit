@@ -203,7 +203,7 @@ each earning a regression test. Every changed text file is reviewed, not only Py
 must parse, a Markdown code fence must close, and a committed conflict marker is a defect; only a
 binary file is reported as not analysed, and the stage prints how many files it reviewed.
 
-A read-only AI agent then reviews the same diff (ADR-254). It runs on a free model
+A read-only AI agent then reviews that whole stage change (ADR-254). It runs on a free model
 (`opencode/deepseek-v4.1-flash-free` by default; `--ai-model` changes it), gets the stage's net
 diff (from the commit before the stage to its last commit, each file whole) as its whole
 input, and reports what a reviewer would with a line of evidence. The brief is redacted
