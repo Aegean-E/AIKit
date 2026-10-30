@@ -21,6 +21,11 @@ Phase 4 gates: both test tiers, sync_principles.py --check, update_knowledge_bas
                check_reachability.py, check_secrets.py, dogfood.py   (PRINCIPLE-018 R3)
 ```
 
+`scripts/proof_gate.py --base <commit> --tests <path> [--sources <path> --mutants N]` proves a
+declared test failed on the base tree and passes now, then scores bounded single-line mutants;
+these are both halves of IDEA-956 (ADR-288, ADR-289). A commit that carries `.aikit/proof.json`
+also runs that proof from `verify_commit.py` against its parent (ADR-291).
+
 ## 🧭 Projects: AIKit as the Workspace
 AIKit is the folder a person opens in an AI host; the software it builds lives in `projects/<name>/`, each its own git repository with its memory in `.aikit/`. See [ADR-119](decisions.md).
 
@@ -58,14 +63,20 @@ analysed and prints how many files it reviewed; a finding whose line carries the
 `hygiene: allow <reason>` marker is dropped. The five fixable rules are `bare-except`,
 `mutable-default`, `shell-true`, `verify-false` and `unsafe-yaml-load`.
 `reforge/review.py` writes every new commit's own hunks, oldest to newest, with a stable hunk id,
-to `.aikit/reforge.reviews/`, redacted with the project's secret scanner, and reads the reviewer's
-JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
+to `.aikit/reforge.reviews/`, redacted with the project's secret scanner. The repository-derived
+text is wrapped in a random-id `<untrusted_repo_data_...>` fence and the prompt names it untrusted
+data, never instructions; a commit cannot close the fence because the id is generated per packet
+(ADR-287). The same module reads the reviewer's JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
 file, and a suggested replacement must occur exactly once, overlap a line a new commit added, and parse,
 after which `repair.apply_text_patches` applies it and the same tests, gates and diff review decide
 whether it survives. A finding may name its `commit` and `hunk`, and `reviewed_hunks` must name every
 packet hunk: an incomplete answer is stored as a partial review and blocks progress. Every retained
 stage must be reviewed before the next stage or run completion; `review --stage N --findings` records
 the host review of an older stage, while `fix --findings` reviews the latest one (ADR-272, ADR-273).
+`analyze` runs an operator-supplied analyzer command on a stage packet: the command receives the
+packet path and an answer path, and its JSON answer goes through the same validation and review gate.
+The analyzer is where a model or a static tool is plugged in; Reforge itself starts no model
+(ADR-290).
 There is no model call, API key or subagent anywhere in the loop; `audit` writes
 the packet, `fix --findings` applies the answer, and `run --findings` does both. A separate `fix`
 refreshes the history entry `report` reads, a second `fix --commit` delivers an already-reviewed

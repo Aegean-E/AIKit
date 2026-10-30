@@ -4,12 +4,12 @@
 import sys
 
 if __name__ == "__main__":
-    # Help needs only the grammar. Parsing with scripts/aikit_parser.py alone prints it and exits
-    # before scripts/aikit_cli.py, which imports every module the commands use, is loaded
-    # (PRINCIPLE-010 R5, ADR-180). A command line that does not end in help or a usage error
-    # falls through and is parsed again by main(), so behaviour is the same either way.
-    if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-        from scripts.aikit_parser import build_parser
-        build_parser().parse_args(sys.argv[1:])
+    # Top-level help is a generated, test-checked string. Printing it loads no argparse and no
+    # command module, so the help path stays under the startup budget (PRINCIPLE-010 R5, ADR-180).
+    # Subcommand help and real commands fall through to main(), which builds the full parser.
+    if sys.argv[1:2] in (["-h"], ["--help"]):
+        from scripts.aikit_help import TOP_LEVEL_HELP
+        print(TOP_LEVEL_HELP, end="")
+        sys.exit(0)
     from scripts.aikit_cli import main
     sys.exit(main())

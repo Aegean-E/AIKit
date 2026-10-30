@@ -8,6 +8,18 @@ Zero external dependencies (uses standard library only).
 
 import os
 import sys
+
+# Top-level help is a generated, test-checked string, so it prints before json, subprocess,
+# pathlib and check_secrets load (PRINCIPLE-010 R5, ADR-180). The full module still carries
+# HELP_TEXT for importers; tests pin the two copies together.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    try:
+        from scripts.disruption_help import HELP_TEXT as _HELP_TEXT
+    except ImportError:  # pragma: no cover - standalone `python scripts/disruption_recovery.py`
+        from disruption_help import HELP_TEXT as _HELP_TEXT
+    print(_HELP_TEXT, end="")
+    sys.exit(0)
+
 import json
 import time
 import fnmatch

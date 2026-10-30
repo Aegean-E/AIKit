@@ -146,14 +146,26 @@ redacted span count) (ADR-253, ADR-263). A finding now carries `source` (`ast`/`
 a reviewed finding may carry `patch_old`/`patch_new`, an exact replacement validated against the
 stage's added lines before it is applied. The packet itself lives under
 `.aikit/reforge.reviews/stage-<n>-<sha>.md`, matching the `reforge.` artifact prefix so delivery
-never commits it. Reforge has no sync config or standalone marker any more (ADR-248).
+never commits it. It wraps the repository-derived text in a random-id
+`<untrusted_repo_data_...>` fence declared as data, never instructions (ADR-287). Reforge has no
+sync config or standalone marker any more (ADR-248).
+
+### Proof Declaration (`.aikit/proof.json`)
+Optional commit-level object. `tests` is a required non-empty list of test paths; `sources` is an
+optional list of source paths to mutate; `mutants` and `min_killed` are non-negative integers;
+`require_mutation` is a boolean that needs `sources` and a positive `mutants`; `waive` is an
+optional list of `FILE:LINE:OPERATOR` keys. When the file exists in a commit, `verify_commit.py`
+runs `scripts/proof_gate.py` against the commit worktree and its parent and fails the commit when
+the proof or the required mutation threshold fails (ADR-291).
 
 ### Idea Catcher Register (`targets.json`, `ideas.json`, `reviews.json`, `dossiers/`)
 Schema 1, stored as private local data under `.idea-catcher/` at the AIKit root and never in Git.
 `targets.json` holds the routing targets; `ideas.json` holds each idea's `id`, dossier,
-concept, target, impact, effort, status, reason/evidence, optional `tags`, `superseded_by`, and a
+concept, target, impact, effort, status, reason/evidence, optional `tags`, `superseded_by`, a
 `history` list whose entries are either a status change or a `field` (`target`/`tags`) with
-`from`/`to`. `reviews.json` holds `repos` (claim count, last order) and `reviews` (review id, slug,
+`from`/`to`, and a `review_log` list whose entries carry `at`, `by`, `verdict`, `files`,
+`commands` and `evidence`. Two `defer` review verdicts move the status to `Blocked`; a blocked
+idea refuses every later review or status change. `reviews.json` holds `repos` (claim count, last order) and `reviews` (review id, slug,
 URL, kind, lease, reserved ids, state, order). A dossier section from `IDEA-632` onward must carry a
 `- **Source**:` line. `MATRIX.md` and `CONCEPTS.md` are generated from these inputs.
 

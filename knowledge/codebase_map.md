@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `57`
-- **Total Classes**: `127`
-- **Total Top-Level Functions**: `784`
-- **Total Class Methods**: `872`
-- **Total Source Lines**: `33479`
+- **Total Python Modules**: `61`
+- **Total Classes**: `133`
+- **Total Top-Level Functions**: `816`
+- **Total Class Methods**: `928`
+- **Total Source Lines**: `35547`
 
 ---
 
@@ -19,7 +19,7 @@
 ### [`aikit.py`](aikit.py)
 > *AIKit entry point: `python aikit.py --help`. The commands live in scripts/aikit_cli.py.*
 
-**Size**: `15` lines (`745` bytes)
+**Size**: `15` lines (`663` bytes)
 
 ---
 
@@ -98,7 +98,7 @@
 ### [`idea_catcher/registry.py`](idea_catcher/registry.py)
 > *Generate and validate the Idea Catcher register.*
 
-**Size**: `2243` lines (`98569` bytes)
+**Size**: `2548` lines (`110705` bytes)
 
 **Classes:**
 - `class StatusSpec` - *One decision state: how it renders and what a recorded decision must carry.*
@@ -121,7 +121,7 @@
 - `def empty_reviews()`
 - `def target_ids(targets)`
 - `def load_ideas(root)`
-- `def parse_dossier_sections(text)` - *Map every ``### `IDEA-NNN`: Title`` heading to its routing metadata.*
+- `def parse_dossier_sections(text)` - *Map every ``### `IDEA-NNN`: Title`` heading (three or more digits) to its metadata.*
 - `def parse_dossier_ideas(text)` - *Map every heading to (title, declared target); kept for narrow callers.*
 - `def dossier_sources(root)` - *Map idea id -> (dossier relative path, target declared in that dossier).*
 - `def dossier_duplicates(root)` - *Map every idea id declared in more than one dossier to those dossiers.*
@@ -130,6 +130,7 @@
 - `def validate_idea(idea, targets, sources)`
 - `def validate_tags(idea_id, tags)` - *Refuse unknown or repeated tags and more than one verification tag.*
 - `def effective_tags(idea)` - *Stored tags, the implicit `unverified` default, and the decision status once one is made.*
+- `def deferral_count(idea)` - *How many times a review has deferred this idea.*
 - `def idea_number(idea_id)`
 - `def reserved_ids(reviews)` - *Map every reserved idea number to the review that holds it.*
 - `def free_idea_numbers(count, *, payload, reviews)` - *The lowest ``count`` numbers that are neither registered nor reserved.*
@@ -145,8 +146,12 @@
 - `def add_idea(root, *, dossier, target, impact, effort, idea_id, concept, review_id)` - *Register a dossier section as an idea, taking the title from the heading.*
 - `def _history_entry(*, field, before, after, by, at, reason)`
 - `def set_tags(root, idea_id, *, add, remove, by, reason)` - *Add and remove analysis tags; a new verification tag replaces the previous one.*
+- `def _append_history(idea, status, *, at, by, reason)`
+- `def _append_review(idea, *, verdict, evidence, by, at, files, commands, notes)`
+- `def _apply_status(idea, *, status, reason, decided_at, decided_by, evidence, target, superseded_by, declared, record_deferral, deferrals_before, new_deferral)` - *Apply one decision to a loaded idea; return the effective status.*
 - `def set_status(root, idea_id, *, status, reason, decided_at, decided_by, evidence, target, superseded_by)`
-- `def parse_idea_ids(message)` - *Every distinct IDEA-NNN token in one commit message, sorted.*
+- `def review_idea(root, idea_id, *, verdict, evidence, by, notes, files, commands, status, reason, decided_at, superseded_by)` - *Record one second-pass review and apply its decision.*
+- `def parse_idea_ids(message)` - *Every distinct IDEA-NNN token (three or more digits) in one commit message, sorted.*
 - `def git_commits(repo_path, limit)` - *(sha, subject, body) for the newest commits, newest first.*
 - `def register_from_commits(root, project, commits, dry_run)` - *Mark matching ideas Integrated; return one record per change.*
 - `def register_from_repo(repo_path, project, root, limit, dry_run)` - *Scan one repository's commits and register matching IDEA-NNN references.*
@@ -161,7 +166,7 @@
 - `def review_rows(payload, *, now)` - *One row per repository: review order, count, last review and current state.*
 - `def classify_freshness(review, dossier_text, *, today, max_age_days)` - *Classify one review as current, aged, superseded or unknown.*
 - `def stale_reviews(rows, root, *, today, max_age_days)` - *Return the non-current rows, oldest analysis first, with a ``freshness`` field.*
-- `def list_ideas(payload, *, target, status, dossier, tag, include_rejected, include_duplicates)` - *Return the register rows matching the filters, in id order.*
+- `def list_ideas(payload, *, target, status, dossier, tag, include_rejected, include_duplicates, include_blocked)` - *Return the register rows matching the filters, in id order.*
 - `def idea_history(payload, idea_id)` - *Return one idea's recorded changes, or refuse an unknown id.*
 - `def proposed_by_target(payload)` - *Per target, how many ideas sit in each decision state.*
 - `def _plus_minutes(now, minutes)`
@@ -231,6 +236,17 @@
 
 ---
 
+### [`reforge/analyzer.py`](reforge/analyzer.py)
+> *Run an external analyzer over one Reforge review packet.*
+
+**Size**: `118` lines (`4947` bytes)
+
+**Functions:**
+- `def _parts(command)`
+- `def run_analyzer(root, packet, command, timeout)` - *Run one analyzer command; return its parsed answer and the file holding it.*
+
+---
+
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
@@ -252,7 +268,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `434` lines (`21281` bytes)
+**Size**: `456` lines (`22591` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -426,7 +442,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `706` lines (`34639` bytes)
+**Size**: `755` lines (`36778` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -450,6 +466,7 @@
 - `def _note_review(root, run, stage, review)` - *Mirror a host review into the task ledger, including the completion it may unlock.*
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet, deliver)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
 - `def review_stage(root, run_id, stage, findings_file)` - *Record the host review of any retained stage, including one older than the latest.*
+- `def analyze_stage(root, run_id, stage, command, timeout)` - *Run the configured analyzer over one stage packet, then record its answer as the review.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
 - `def resume_audit(root, run_id)`
@@ -498,7 +515,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `509` lines (`21905` bytes)
+**Size**: `527` lines (`22761` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -510,6 +527,7 @@
 - `def _split_hunks(diff, sha, path)` - *Split one commit's file diff into stable hunk records for the packet and attribution.*
 - `def _stage_hunks(repo, plan, scrub)` - *Every hunk in every new commit, oldest first, with stable IDs and optional redaction.*
 - `def _scrub(text)` - *The diff with credential-shaped spans redacted, and how many detectors fired.*
+- `def _fence_data(text)` - *Wrap repository-derived text in a random-id data fence.*
 - `def packet_text(repo, plan, files)` - *The full hunk-by-hunk review packet for one stage, and credential spans masked.*
 - `def packet_path(root, plan)` - *Where the packet for this stage is written, inside the git-ignored state folder.*
 - `def _write_text(path, text)` - *Write a generated packet through a temp file and an atomic replace.*
@@ -656,10 +674,17 @@
 
 ---
 
+### [`scripts/aikit_help.py`](scripts/aikit_help.py)
+> *Generated top-level CLI help for the `--help` fast path (ADR-180).*
+
+**Size**: `53` lines (`2992` bytes)
+
+---
+
 ### [`scripts/aikit_parser.py`](scripts/aikit_parser.py)
 > *The `aikit` command-line grammar: its parser and the Why/Fix triad for usage errors.*
 
-**Size**: `294` lines (`20115` bytes)
+**Size**: `293` lines (`20114` bytes)
 
 **Classes:**
 - `class TriadArgumentParser` - *argparse whose usage errors carry Why/Fix like every other AIKit error.*
@@ -781,10 +806,17 @@
 
 ---
 
+### [`scripts/disruption_help.py`](scripts/disruption_help.py)
+> *Generated top-level help for the disruption-recovery `--help` fast path (ADR-180).*
+
+**Size**: `61` lines (`3770` bytes)
+
+---
+
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `2080` lines (`98613` bytes)
+**Size**: `2092` lines (`99225` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -1158,6 +1190,37 @@
 
 ---
 
+### [`scripts/proof_gate.py`](scripts/proof_gate.py)
+> *Prove that a declared test fails on the base tree and passes on the current tree.*
+
+**Size**: `500` lines (`20262` bytes)
+
+**Classes:**
+- `class ProofError` - *The proof could not be set up; the exit code is 2.*
+
+**Functions:**
+- `def run_command(argv, cwd, timeout)` - *A command's exit code and combined output; 124 on timeout, 127 when it cannot start.*
+- `def module_name(test)` - *The dotted module name for a repository-relative test path.*
+- `def test_argv(test)` - *The unittest command for one test module, run from the tree root.*
+- `def classify_run(code, output)` - *Classify one test run as passed, assertion, error or timeout.*
+- `def tail(output, lines)` - *The last ``lines`` non-empty output lines, bounded for a JSON record.*
+- `def _operator_span(left, right, lines, token)` - *The (line, start, end) span of an operator between two same-line operands.*
+- `def mutations_for_source(text, file_label, limit)` - *Deterministic, bounded mutants for single-line operators in one source file.*
+- `def mutant_key(mutant)` - *The stable waiver key for one mutant.*
+- `def apply_mutation(text, mutant)` - *Apply one mutant to its source text.*
+- `def _copy_repo(repo, destination)` - *Copy the working tree without Git metadata or unrelated project checkouts.*
+- `def _run_declared_tests(tree, tests, timeout, runner)`
+- `def mutation_suite(repo, tree, *, tests, sources, limit, min_killed, waive, timeout, runner)` - *Generate bounded mutants in a copy of the tree and score them with the declared tests.*
+- `def _git(repo, *args, timeout)`
+- `def _resolve_base(repo, base, timeout)`
+- `def _copy_tests(repo, worktree, tests)` - *Copy each declared test into the base worktree and return its repo-relative path.*
+- `def prove(repo, *, base, tests, sources, mutants, min_killed, require_mutation, waive, timeout, runner)` - *Run the declared tests on the base and current trees and return the proof record.*
+- `def render_text(result)` - *A terse human report for the CLI.*
+- `def build_parser()`
+- `def main(argv)`
+
+---
+
 ### [`scripts/subagent_delegate.py`](scripts/subagent_delegate.py)
 > *Sub-agent delegation: run one OpenCode sub-agent on a bounded brief (ADR-126, ADR-128).*
 
@@ -1179,7 +1242,7 @@
 ### [`scripts/sync_licenses.py`](scripts/sync_licenses.py)
 > *Synchronize AIKit's pinned license copies with the canonical aegean-licensing repository.*
 
-**Size**: `180` lines (`7148` bytes)
+**Size**: `211` lines (`8188` bytes)
 
 **Functions:**
 - `def _normalize(text)`
@@ -1189,6 +1252,7 @@
 - `def expected_pin(source)` - *The PIN.json content the source tree should produce.*
 - `def check_licenses(source, target)` - *Return every drift or tamper finding; empty means the pinned copies are consistent. When*
 - `def sync_licenses(source, target)` - *Copy every canonical text into the target and rewrite PIN.json.*
+- `def build_parser()` - *The full parser; imported lazily so the top-level help stays under the startup budget.*
 - `def main(argv)`
 
 ---
@@ -1290,7 +1354,7 @@
 ### [`scripts/update_knowledge_base.py`](scripts/update_knowledge_base.py)
 > *Codebase Knowledge Base Auto-Updater & Validator (PRINCIPLE-016)*
 
-**Size**: `1198` lines (`57105` bytes)
+**Size**: `1202` lines (`57184` bytes)
 
 **Functions:**
 - `def fsync_dir(dir_path)` - *Flush the directory entry so a completed os.replace survives power loss (PRINCIPLE-013 R1).*
@@ -1336,11 +1400,14 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `276` lines (`13412` bytes)
+**Size**: `377` lines (`17906` bytes)
 
 **Functions:**
 - `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
 - `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the*
+- `def _string_list(value, field, *, required)` - *Validate one declaration list; return stripped strings.*
+- `def proof_command_from_declaration(declaration, *, worktree, parent, script)` - *Build the proof-gate command from a parsed `.aikit/proof.json` object.*
+- `def proof_gate_command(worktree, ref, run)` - *The declared proof command for a commit, or None when no declaration exists.*
 - `def scanned_range(repo, ref, run)` - *The commits this verification covers, as resolved SHAs: everything past the upstream when one*
 - `def shrunk_files(sizes, ratio, min_bytes)` - *Each path, from (old, new) sizes, that fell below `ratio` of an old size of at least `min_bytes`.*
 - `def tree_sizes(ref, repo, run)` - *Blob sizes in `ref`'s tree by path; empty when git cannot list it.*
@@ -1353,7 +1420,7 @@
 ### [`tests/test_auto_register.py`](tests/test_auto_register.py)
 > *Unit tests for automatic idea registration from commit messages.*
 
-**Size**: `106` lines (`4985` bytes)
+**Size**: `129` lines (`6015` bytes)
 
 **Classes:**
 - `class TestAutoRegister`
@@ -1367,6 +1434,11 @@
   - Method `.test_a_git_timeout_is_a_reported_value_error()`
   - Method `.test_a_dry_run_does_not_write_the_matrix()`
   - Method `.test_a_corrupt_register_is_reported_instead_of_ignored()`
+- `class TestIdeaIdWidth` - *The register must keep accepting ids after the three-digit range is exhausted.*
+  - Method `.test_four_digit_commit_references_are_parsed()`
+  - Method `.test_four_digit_dossier_heading_is_catalogued()`
+  - Method `.test_four_digit_matrix_row_is_recognized()`
+  - Method `.test_four_digit_idea_id_is_valid()`
 
 **Functions:**
 - `def make_register(root, status, target)`
@@ -1376,7 +1448,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1848` lines (`95716` bytes)
+**Size**: `1936` lines (`99953` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1428,6 +1500,13 @@
   - Method `.test_workspace_cli_check_detects_violations_and_passes_when_clean()`
 - `class TestRepositoryCodebaseMap` - *PRINCIPLE-016 live invariant. Integration tier with the other whole-repository scans: mapping*
   - Method `.test_codebase_map_freshness_gate()`
+- `class TestProofGate` - *IDEA-956: a declared test must fail on the base tree and pass on the current tree.*
+  - Method `.setUp()`
+  - Method `._git(*args)`
+  - Method `._proof(base, tests)`
+  - Method `.test_a_test_that_fails_on_base_and_passes_now_is_proof()`
+  - Method `.test_a_mutation_killed_by_the_declared_test_counts()`
+  - Method `.test_a_test_that_already_passed_on_base_is_not_proof()`
 - `class TestSuiteHygiene` - *PRINCIPLE-014 R3 and R5 made mechanical (ADR-099). Integration tier: it parses the*
   - Method `.setUpClass()`
   - Method `.test_every_test_method_asserts()`
@@ -1455,7 +1534,7 @@
   - Method `.test_all_scans_a_tracked_file_whose_name_is_not_ascii()`
   - Method `.test_staged_findings_name_a_non_ascii_file()`
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180).*
-  - Method `.test_help_parses_with_the_grammar_alone()`
+  - Method `.test_help_uses_only_the_generated_help_module()`
   - Method `.test_a_real_command_still_loads_the_command_layer()`
 - `class TestProjectCreation` - *`aikit new` makes a separate git repository with its memory (ADR-119).*
   - Method `.test_new_project_is_its_own_clean_repository_with_its_own_ledger()`
@@ -1520,7 +1599,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9851` lines (`554538` bytes)
+**Size**: `10535` lines (`586920` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -1627,6 +1706,7 @@
   - Method `.test_a_repository_under_an_ignored_name_is_still_scanned()`
   - Method `.test_top_level_directories_the_root_gitignore_lists_are_skipped()`
   - Method `.test_this_repository_ignores_references()`
+  - Method `.test_temporary_python_buffers_are_not_catalogued()`
 - `class TestOpenCodePermissionBoundaries` - *PRINCIPLE-008 R6 / PRINCIPLE-009 R6 (ADR-116): replay OpenCode v2's documented evaluation*
   - Method `.decide(rules, action, resource)`
   - Method `.setUpClass()`
@@ -2056,6 +2136,9 @@
 - `class TestAikitHelpFastPath` - *`python aikit.py --help` parses with scripts/aikit_parser.py alone, so it must stay light*
   - Method `.test_parser_constants_match_the_modules_they_mirror()`
   - Method `.test_parser_module_imports_only_the_standard_library_at_top_level()`
+  - Method `.test_generated_help_matches_the_grammar()`
+  - Method `.test_sync_licenses_generated_help_matches_its_parser()`
+  - Method `.test_disruption_help_matches_the_module()`
   - Method `.test_cli_reexports_the_parser_so_existing_callers_keep_working()`
 - `class FakeGit` - *A tiny git_io stand-in for the UI guard's unit tests; no subprocess is spawned.*
   - Method `.__init__(status, head, tracked, diff)`
@@ -2196,6 +2279,11 @@
   - Method `.test_a_file_cut_below_half_its_size_is_flagged_and_small_or_growing_ones_are_not()`
   - Method `.test_a_shrinking_commit_warns_without_failing_unless_the_message_says_shrink_ok()`
   - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
+  - Method `.test_a_proof_declaration_builds_the_bounded_gate_command()`
+  - Method `.test_proof_gate_command_reads_the_declaration_and_parent()`
+  - Method `.test_a_proof_declaration_without_tests_or_required_sources_is_refused()`
+  - Method `.test_verify_commit_runs_a_declared_proof_gate()`
+  - Method `.test_verify_commit_fails_when_the_declared_proof_gate_fails()`
   - Method `.test_the_secret_scan_reads_the_unpushed_range_as_resolved_shas()`
   - Method `.test_the_scanned_range_is_what_this_verification_covers()`
   - Method `.test_a_failing_gate_is_named_with_the_undo_that_fits_an_unpushed_commit()`
@@ -2280,6 +2368,10 @@
   - Method `.stage_plan()` - *A minimal stage plan for packet and findings tests.*
   - Method `.test_a_packet_skips_files_only_prior_commits_changed()`
   - Method `.test_the_packet_reviews_each_commit_hunk_in_order()`
+  - Method `.test_the_packet_fences_repository_data_as_untrusted()`
+  - Method `.test_each_packet_gets_a_fresh_data_fence()`
+  - Method `.test_a_hostile_commit_subject_stays_inside_the_data_fence()`
+  - Method `.test_a_guessed_fence_tag_cannot_close_the_random_fence()`
   - Method `.test_the_packet_redacts_a_credential_before_an_agent_reads_it()`
   - Method `.test_a_review_answer_is_validated_against_the_stage()`
   - Method `.test_a_finding_can_name_the_commit_and_hunk_it_reviewed()`
@@ -2309,6 +2401,33 @@
   - Method `.test_cli_can_include_each_hidden_kind()`
   - Method `.test_cli_json_hides_both_by_default()`
   - Method `.test_cli_json_can_show_the_full_audit_view()`
+- `class TestIdeaCatcherBlockedPolicy` - *PRINCIPLE-007: a second deferral blocks an idea permanently.*
+  - Method `._idea(idea_id, status, *, superseded_by)`
+  - Method `._register()`
+  - Method `.test_blocked_is_part_of_the_status_vocabulary()`
+  - Method `.test_a_second_direct_deferral_blocks_and_keeps_the_audit_trail()`
+  - Method `.test_a_legacy_deferred_idea_blocks_on_its_second_deferral()`
+  - Method `.test_a_blocked_idea_refuses_review()`
+  - Method `.test_a_blocked_idea_refuses_a_status_change()`
+  - Method `.test_review_idea_defer_twice_blocks()`
+  - Method `.test_review_idea_blocks_a_legacy_deferred_row()`
+  - Method `.test_review_idea_confirmed_preserves_the_existing_decision()`
+  - Method `.test_validation_rejects_blocked_without_two_deferrals()`
+  - Method `.test_list_ideas_hides_blocked_by_default()`
+  - Method `.test_cli_review_idea_reports_the_block()`
+  - Method `.test_status_counts_blocked_rows_in_the_target_total()`
+  - Method `.test_cli_ideas_can_include_blocked()`
+  - Method `.test_auto_registration_does_not_reopen_a_blocked_idea()`
+  - Method `.test_review_idea_requires_evidence()`
+- `class TestProofGateHelpers` - *IDEA-956: the fail-to-pass classifier and path helpers are deterministic.*
+  - Method `.test_classify_run_distinguishes_assertions_from_errors()`
+  - Method `.test_test_argv_names_one_test_module()`
+  - Method `.test_tail_bounds_a_long_run()`
+  - Method `.test_mutations_for_source_finds_supported_operators()`
+  - Method `.test_mutant_key_is_stable_for_a_waiver()`
+  - Method `.test_apply_mutation_uses_the_exact_operator_span()`
+  - Method `.test_mutations_skip_multiline_and_chained_expressions()`
+  - Method `.test_copy_tests_refuses_missing_and_outside_paths()`
 - `class ReuseMetadataTest` - *A same-license refresh must not erase project-specific annotations.*
   - Method `.setUpClass()`
   - Method `.tearDownClass()`
@@ -2317,6 +2436,15 @@
   - Method `.test_a_new_identifier_replaces_the_metadata()`
   - Method `.test_an_asset_annotation_does_not_satisfy_the_blanket()`
   - Method `.test_a_missing_license_refuses_the_write()`
+- `class TestReforgeAnalyzer` - *The external analyzer adapter: packet/answer paths, failures and CLI wiring.*
+  - Method `.setUp()`
+  - Method `.test_command_receives_packet_and_answer_paths()`
+  - Method `.test_a_timeout_is_a_typed_error()`
+  - Method `.test_a_nonzero_exit_is_a_typed_error()`
+  - Method `.test_invalid_json_is_a_typed_error()`
+  - Method `.test_an_empty_command_is_refused()`
+  - Method `.test_the_analyze_command_declares_its_analyzer()`
+  - Method `.test_analyze_stage_reviews_the_latest_packet()`
 
 **Functions:**
 - `def _refuse_spawn(popen_self, args, *unused_args, **unused_kwargs)`

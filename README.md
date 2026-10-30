@@ -26,7 +26,7 @@
 | Operational Role| Canonical Command| Verification Gate|
 |---|---|---|
 | **Manage Projects**| `python aikit.py <cmd>`| `new`, `attach`, `list`, `status`, `check`, `fix` (ADR-119..124)|
-| **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `review`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`; windows, Python AST (ADR-230, ADR-232, ADR-249)|
+| **Audit & Repair History**| `python aikit.py reforge <cmd>`| `start`, `audit`, `review`, `analyze`, `fix`, `run`, `stop`, `resume`, `settings`, `runs`, `status`, `report`; windows, Python AST (ADR-230, ADR-232, ADR-249, ADR-290)|
 | **Route Ideas & Reviews**| `python aikit.py idea-catcher <cmd>`| `validate`, `render`, `status`, `ideas`, `tag`, `history`, `review-idea`, `reviews`, `review-start/finish`, `revalidate`, `audit-claims`, `concepts`; a second deferral blocks an idea permanently (ADR-246, ADR-252, ADR-286)|
 | **Project Tags & Media**| `python aikit.py <cmd>`| `ui-id`, `topics --brief/--from-file`, `media init/capture/review/apply/audit`; AI-chosen tags, reviewed logos and commit-stamped screenshots (ADR-233..236)|
 | **Run Regression Suite**| `python scripts/check_test_budgets.py`| Both tiers pass; per-test average <=20ms unit, <=500ms integration|
@@ -121,6 +121,7 @@ portable_agent_kit/
 │   ├── sync_principles.py        <- Generates 8 Tier 1 files from GUIDELINES.md
 │   ├── sync_licenses.py          <- Pinned license/catalog sync and drift check
 │   ├── disruption_recovery.py    <- Power-loss audit, atomic checkpointing & ledger CLI
+│   ├── disruption_help.py        <- Generated top-level help for the recovery fast path
 │   ├── update_knowledge_base.py  <- Codebase AST symbol extractor & validator
 │   ├── dogfood.py                <- Dogfood runner (sandbox jail + chaos tracks)
 │   ├── check_reachability.py     <- Invariant reachability shield (anti-dead-capability)
@@ -134,6 +135,7 @@ portable_agent_kit/
 │   ├── ui_proof.py               <- UI proofs: inventory diff + style drift lint (pure)
 │   ├── aikit_cli.py              <- `aikit.py` commands
 │   ├── aikit_parser.py           <- `aikit.py` grammar, alone for --help
+│   ├── aikit_help.py             <- Generated top-level help for the --help fast path
 │   ├── subagent_delegate.py      <- Bounded OpenCode sub-agent runs
 │   ├── project_publish.py        <- Uploads a project to its own GitHub repo
 │   ├── project_ui.py             <- Durable has_ui/ui_kind identifier (ADR-233)
@@ -143,6 +145,7 @@ portable_agent_kit/
 │   ├── project_artwork.py        <- Image-model hero art plus exact text overlay (ADR-239)
 │   ├── brand_catalog.json        <- Authored unique project identities
 │   ├── check_secrets.py          <- Secret/sensitive data scanner
+│   ├── proof_gate.py             <- Fail-to-pass proof gate (IDEA-956)
 │   └── verify_commit.py          <- Verifies a commit alone in a throwaway worktree
 ├── tests/
 │   ├── test_kit.py               <- Unit tier (<=20ms per test)
@@ -197,6 +200,7 @@ the bare engine. The standalone repository is archived (ADR-248).
 ```bash
 python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # new independent run
 python aikit.py reforge audit my-app       # write the next review packet
+python aikit.py reforge analyze my-app --analyzer CMD  # analyze a stage packet
 python aikit.py reforge review my-app --stage 3 --findings answer.json  # record a stage review
 python aikit.py reforge fix my-app --findings answer.json  # validate, repair, verify
 python aikit.py reforge run my-app --findings answer.json --push  # audit, repair, verify, push
@@ -217,14 +221,12 @@ rather than reported, the same convention AIKit's own hygiene scan uses. Rules r
 `audit` and `run` write a review packet under `.aikit/reforge.reviews/` (ADR-263, ADR-272). The
 packet lists every new commit oldest to newest with that commit's own hunks, so a later commit
 cannot hide an earlier minute change; a file can appear once per commit. Only files a new commit
-touched appear, and files that only an earlier stage changed are not repeated. Binary files are
-named at the end and the JSON answer schema follows. Credential-shaped spans are redacted with the
-project's secret scanner before the packet is written. Reforge makes no
-model call and starts no subagent: the agent or person driving the session reads the packet and
-returns a findings file. Each finding names a path the stage changed, a line that exists, a severity,
-`kind` `defect` or `improvement`, and optional `fix.old`/`fix.new`. It may name the `commit` and
-`hunk` it reviewed (each packet hunk has a stable id). `reviewed_hunks` must name every packet hunk;
-an incomplete answer never counts as a review. Reforge accepts a fix only when
+touched appear; earlier-stage files are not repeated. Binary files are named at the end. Secrets
+redacted; the diff sits inside a random-id `<untrusted_repo_data_...>` fence marked data, never
+instructions. Reforge makes no model call; `analyze` runs an operator-supplied analyzer and
+validates its answer through the review gate (ADR-290). Each finding names a changed path, line,
+severity and `kind`; `reviewed_hunks` must name every hunk.
+Reforge accepts a fix only when
 the quoted text occurs exactly once, overlaps a line the stage added, and leaves a Python file
 parsable; everything else is reported as rejected. Use `fix --findings` for the latest stage and
 `review --stage N --findings` for an older retained one. A red test, gate or diff review

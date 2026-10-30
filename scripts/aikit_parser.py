@@ -269,13 +269,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     reforge = commands.add_parser("reforge", help="audit Git history in 3/6/9 stages and repair "
                                                   "evidence-backed findings (Aegean Reforge)")
+    idea = commands.add_parser("idea-catcher", help="validate, render and review the Idea Catcher "
+                                                    "register shipped in idea_catcher/")
     reforge_commands = reforge.add_subparsers(dest="reforge_action", required=True,
                                               parser_class=TriadArgumentParser)
     from reforge.cli import add_commands as add_reforge_commands
     add_reforge_commands(reforge_commands)
-
-    idea = commands.add_parser("idea-catcher", help="validate, render and review the Idea Catcher "
-                                                    "register shipped in idea_catcher/")
     idea_commands = idea.add_subparsers(dest="idea_catcher_action", required=True,
                                         parser_class=TriadArgumentParser)
     from idea_catcher.registry import add_commands as add_idea_catcher_commands

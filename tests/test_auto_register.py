@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from idea_catcher import auto_register
+from idea_catcher import auto_register, registry
 
 
 def make_register(root: Path, status: str = "Proposed", target: str = "demo") -> Path:
@@ -101,6 +101,29 @@ class TestAutoRegister(unittest.TestCase):
         with self.assertRaises(ValueError):
             auto_register.register_from_commits(
                 self.root, "demo", [(self.sha, "Implement IDEA-001", "")])
+
+class TestIdeaIdWidth(unittest.TestCase):
+    """The register must keep accepting ids after the three-digit range is exhausted."""
+
+    def test_four_digit_commit_references_are_parsed(self):
+        self.assertEqual(auto_register.parse_idea_ids("IDEA-1000 IDEA-999"),
+                         ["IDEA-1000", "IDEA-999"])
+
+    def test_four_digit_dossier_heading_is_catalogued(self):
+        text = ("### `IDEA-1000`: Fourth digit\n"
+                "- **Target Project**: `demo`\n"
+                "- **Source**: test\n")
+        sections = registry.parse_dossier_sections(text)
+        self.assertIn("IDEA-1000", sections)
+        self.assertEqual(sections["IDEA-1000"].title, "Fourth digit")
+
+    def test_four_digit_matrix_row_is_recognized(self):
+        self.assertIsNotNone(registry.MATRIX_ROW_RE.search("| `IDEA-1000` | x |"))
+
+    def test_four_digit_idea_id_is_valid(self):
+        self.assertIsNotNone(registry.IDEA_ID_RE.match("IDEA-1000"))
+        self.assertEqual(registry.idea_number("IDEA-1000"), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ import dataclasses
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
+from reforge.analyzer import run_analyzer
 from reforge.audit import audit_window, plan_next_stage, summarize, window_for_stage
 from reforge.errors import ReforgeError
 from reforge.git_history import dirty_paths, head_sha
@@ -586,6 +587,54 @@ def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] 
                         entry.get("gates") or {}, entry.get("skipped") or [],
                         _note_review(root, run, int(stage), review_meta),
                         reviewed=int(entry.get("reviewed") or 0), review=review_meta)
+
+
+def analyze_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] = None,
+                  command: str = "", timeout: float = 300.0) -> Dict[str, object]:
+    """Run the configured analyzer over one stage packet, then record its answer as the review."""
+    root = Path(root)
+    if not command.strip():
+        raise ReforgeError(
+            "the analyze command needs an analyzer.",
+            "Reforge runs the analyzer the operator names; it does not pick a model.",
+            "pass --analyzer with a command that writes the findings JSON.",
+            exit_code=2,
+        )
+    state = load_state(root)
+    run = current_run(state, run_id)
+    entry = None
+    if stage is None:
+        entry = run.get("last_audit")
+    else:
+        entry = next((item for item in (run.get("history") or [])
+                      if isinstance(item, dict) and item.get("stage") == stage), None)
+    if not isinstance(entry, dict):
+        raise ReforgeError(
+            f"Audit run {run.get('id')} has no audited stage to analyze.",
+            "the analyzer needs a stage packet that already exists.",
+            "run `reforge audit` for that stage first, then retry.",
+        )
+    packet = (entry.get("review") or {}).get("packet") or ""
+    if not packet:
+        raise ReforgeError(
+            f"Audit run {run.get('id')} stage {entry.get('stage')} has no packet.",
+            "a stage without a packet has nothing for the analyzer to read.",
+            "run `reforge audit` again for that stage, then retry.",
+        )
+    candidate = Path(packet)
+    if not candidate.is_absolute():
+        for base in (root, Path.cwd()):
+            resolved = base / candidate
+            if resolved.is_file():
+                candidate = resolved
+                break
+    _, answer = run_analyzer(root, candidate, command, timeout)
+    try:
+        return review_stage(root, run_id=str(run.get("id") or ""),
+                            stage=int(entry.get("stage") or 0),
+                            findings_file=str(answer))
+    finally:
+        answer.unlink(missing_ok=True)
 
 
 def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = None,

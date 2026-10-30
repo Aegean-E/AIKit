@@ -254,7 +254,11 @@ def find_python_files(root: Path) -> List[Path]:
     for dirpath, dirnames, filenames in os.walk(root):
         skipped = skipped_at_top if Path(dirpath) == root else IGNORE_DIRS
         dirnames[:] = [d for d in dirnames if d not in skipped]
-        py_files += [Path(dirpath) / name for name in filenames if name.endswith(".py")]
+        py_files += [
+            Path(dirpath) / name
+            for name in filenames
+            if name.endswith(".py") and not name.startswith(".tmp_")
+        ]
     return sorted(py_files)
 
 

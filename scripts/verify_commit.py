@@ -9,8 +9,9 @@ while its implementation sat unstaged, and a regenerated codebase map was commit
 stale in the commit itself.
 
 This gate checks out the commit into a throwaway worktree in the system temp directory and runs
-the whole gate set there, so a commit that cannot stand alone is caught while it is still local,
-where PRINCIPLE-018 R5 undoes it with `git reset --soft HEAD^` instead of a revert.
+the whole gate set there, plus the declared proof gate when `.aikit/proof.json` exists, so a commit
+that cannot stand alone is caught while it is still local, where PRINCIPLE-018 R5 undoes it with
+`git reset --soft HEAD^` instead of a revert.
 
 Zero external dependencies (standard library only).
 
@@ -20,15 +21,27 @@ Exit codes:
   0 the commit is green    1 a gate failed or the worktree could not be made    2 CLI argument misuse
 """
 
+import json
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+PROOF_FILE = Path(".aikit") / "proof.json"
+# The declaration schema: these are the keys the reader below consumes, kept in one literal so
+# the reachability shield can see every persisted key has a producer.
+PROOF_DEFAULTS = {
+    "tests": [],
+    "sources": [],
+    "waive": [],
+    "mutants": 0,
+    "min_killed": 3,
+    "require_mutation": False,
+}
 # A whole gate set runs inside the worktree; past this the run is hung, not slow.
 GATE_TIMEOUT_SECONDS = 600
 GIT_TIMEOUT_SECONDS = 120
@@ -69,6 +82,81 @@ def gate_commands(secret_range: str) -> List[Tuple[str, List[str]]]:
         ("secrets", [sys.executable, "scripts/check_secrets.py", "--commits", secret_range]),
         ("dogfood", [sys.executable, "scripts/dogfood.py"]),
     ]
+
+
+def _string_list(value: Any, field: str, *, required: bool = False) -> List[str]:
+    """Validate one declaration list; return stripped strings."""
+    if value is None:
+        if required:
+            raise ValueError(f"{PROOF_FILE} needs a non-empty {field!r} list")
+        return []
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item.strip() for item in value
+    ):
+        raise ValueError(f"{PROOF_FILE} {field!r} must be a list of non-empty strings")
+    return [item.strip() for item in value]
+
+
+def proof_command_from_declaration(
+    declaration: object, *, worktree: Path, parent: str, script: Path
+) -> List[str]:
+    """Build the proof-gate command from a parsed `.aikit/proof.json` object."""
+    if not isinstance(declaration, dict):
+        raise ValueError(f"{PROOF_FILE} must hold a JSON object")
+    tests = _string_list(declaration.get("tests"), "tests", required=True)
+    sources = _string_list(declaration.get("sources", PROOF_DEFAULTS["sources"]), "sources")
+    waive = _string_list(declaration.get("waive", PROOF_DEFAULTS["waive"]), "waive")
+    mutants = declaration.get("mutants", PROOF_DEFAULTS["mutants"])
+    min_killed = declaration.get("min_killed", PROOF_DEFAULTS["min_killed"])
+    require = declaration.get("require_mutation", PROOF_DEFAULTS["require_mutation"])
+    if not isinstance(mutants, int) or isinstance(mutants, bool) or mutants < 0:
+        raise ValueError(f"{PROOF_FILE} 'mutants' must be a non-negative integer")
+    if not isinstance(min_killed, int) or isinstance(min_killed, bool) or min_killed < 0:
+        raise ValueError(f"{PROOF_FILE} 'min_killed' must be a non-negative integer")
+    if not isinstance(require, bool):
+        raise ValueError(f"{PROOF_FILE} 'require_mutation' must be a boolean")
+    if require and (not sources or mutants <= 0):
+        raise ValueError(
+            f"{PROOF_FILE} 'require_mutation' needs 'sources' and 'mutants' greater than zero"
+        )
+    command = [
+        sys.executable, str(script), "--repo", str(worktree), "--base", parent,
+        "--tests", *tests,
+    ]
+    if sources:
+        command += ["--sources", *sources]
+    if mutants:
+        command += ["--mutants", str(mutants)]
+    if min_killed != 3:
+        command += ["--min-killed", str(min_killed)]
+    if require:
+        command.append("--require-mutation")
+    for key in waive:
+        command += ["--waive", key]
+    return command
+
+
+def proof_gate_command(worktree: Path, ref: str, run: Runner) -> Optional[List[str]]:
+    """The declared proof command for a commit, or None when no declaration exists."""
+    path = Path(worktree) / PROOF_FILE
+    if not path.is_file():
+        return None
+    try:
+        declaration = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{PROOF_FILE} is not readable JSON: {exc}") from exc
+    code, parent = run(["git", "rev-parse", f"{ref}^"], Path(worktree))
+    if code != 0:
+        return None
+    parent = parent.strip().splitlines()[0].strip() if parent.strip() else ""
+    if not parent:
+        return None
+    script = Path(worktree) / "scripts" / "proof_gate.py"
+    if not script.is_file():
+        raise ValueError("scripts/proof_gate.py is missing from the commit")
+    return proof_command_from_declaration(
+        declaration, worktree=Path(worktree), parent=parent, script=script
+    )
 
 
 def scanned_range(repo: Path, ref: str, run: Runner) -> str:
@@ -192,6 +280,19 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
                 failures.append(name)
                 report += [f"       {line}" for line in
                            [l for l in output.splitlines() if l.strip()][-FAILURE_TAIL_LINES:]]
+        try:
+            proof_command = proof_gate_command(worktree, ref, run)
+        except (OSError, ValueError) as exc:
+            report.append(f"[FAIL] proof declaration: {exc}")
+            failures.append("proof")
+        else:
+            if proof_command:
+                code, output = run(proof_command, worktree)
+                report.append(f"[{'PASS' if code == 0 else 'FAIL'}] proof")
+                if code != 0:
+                    failures.append("proof")
+                    report += [f"       {line}" for line in
+                               [l for l in output.splitlines() if l.strip()][-FAILURE_TAIL_LINES:]]
     finally:
         # The worktree is removed whether or not a gate failed, and its registration with it.
         if worktree_added:

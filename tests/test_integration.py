@@ -641,6 +641,92 @@ class TestRepositoryCodebaseMap(unittest.TestCase):
         )
 
 
+class TestProofGate(unittest.TestCase):
+    """IDEA-956: a declared test must fail on the base tree and pass on the current tree."""
+
+    def setUp(self):
+        self.repo = Path(tempfile.mkdtemp(prefix="proof_gate_"))
+        self.addCleanup(shutil.rmtree, str(self.repo), True)
+        self._git("init", "-q")
+        self._git("config", "user.email", "test@example.invalid")
+        self._git("config", "user.name", "Test")
+        (self.repo / "tests").mkdir()
+        (self.repo / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (self.repo / "tests" / "test_app.py").write_text(
+            "import unittest\n"
+            "from app import VALUE\n\n"
+            "class TestApp(unittest.TestCase):\n"
+            "    def test_value(self):\n"
+            "        self.assertEqual(VALUE, 2)\n",
+            encoding="utf-8",
+        )
+        self._git("add", "app.py", "tests/test_app.py")
+        self._git("commit", "-qm", "base")
+        (self.repo / "app.py").write_text("VALUE = 2\n", encoding="utf-8")
+
+    def _git(self, *args):
+        subprocess.run(
+            ["git", *args], cwd=self.repo, check=True, timeout=30,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+
+    def _proof(self, base="HEAD", tests=("tests/test_app.py",)):
+        return subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "proof_gate.py"),
+             "--repo", str(self.repo), "--base", base, "--tests", *tests, "--json"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
+        )
+
+    def test_a_test_that_fails_on_base_and_passes_now_is_proof(self):
+        result = self._proof()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["proof"])
+        self.assertTrue(payload["fail_to_pass"])
+        self.assertEqual(payload["results"][0]["base"]["verdict"], "assertion")
+        self.assertEqual(payload["results"][0]["current"]["verdict"], "passed")
+
+    def test_a_mutation_killed_by_the_declared_test_counts(self):
+        (self.repo / "app.py").write_text(
+            "def add(a, b):\n    return a - b\n", encoding="utf-8"
+        )
+        (self.repo / "tests" / "test_app.py").write_text(
+            "import unittest\n"
+            "from app import add\n\n"
+            "class TestApp(unittest.TestCase):\n"
+            "    def test_add(self):\n"
+            "        self.assertEqual(add(2, 3), 5)\n",
+            encoding="utf-8",
+        )
+        self._git("add", "app.py", "tests/test_app.py")
+        self._git("commit", "-qm", "mutation base")
+        (self.repo / "app.py").write_text(
+            "def add(a, b):\n    return a + b\n", encoding="utf-8"
+        )
+        result = subprocess.run(
+            [sys.executable, str(ROOT_DIR / "scripts" / "proof_gate.py"),
+             "--repo", str(self.repo), "--base", "HEAD",
+             "--tests", "tests/test_app.py", "--sources", "app.py",
+             "--mutants", "1", "--min-killed", "1", "--require-mutation", "--json"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["proof"])
+        self.assertEqual(payload["mutation"]["generated"], 1)
+        self.assertEqual(payload["mutation"]["killed"], 1)
+        self.assertEqual(payload["mutation"]["threshold"], 1)
+
+    def test_a_test_that_already_passed_on_base_is_not_proof(self):
+        self._git("add", "app.py")
+        self._git("commit", "-qm", "current")
+        result = self._proof(base="HEAD")
+        # HEAD is now the current tree, so the copied test passes on both sides.
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertFalse(payload["proof"])
+        self.assertEqual(payload["results"][0]["base"]["verdict"], "passed")
+
 class TestSuiteHygiene(unittest.TestCase):
     """PRINCIPLE-014 R3 and R5 made mechanical (ADR-099). Integration tier: it parses the
     test modules themselves, a whole-repository scan (ADR-128)."""
@@ -870,7 +956,7 @@ class TestSecretScanSeesNonAsciiPaths(unittest.TestCase):
 class TestAikitHelpFastPath(unittest.TestCase):
     """`python aikit.py --help` must not load the command layer (PRINCIPLE-010 R5, ADR-180)."""
 
-    def test_help_parses_with_the_grammar_alone(self):
+    def test_help_uses_only_the_generated_help_module(self):
         # -X importtime lists every module the process imported on stderr; usage goes to stdout.
         res = subprocess.run([sys.executable, "-X", "importtime", str(ROOT_DIR / "aikit.py"), "--help"],
                              capture_output=True, text=True, timeout=PROC_TIMEOUT,
@@ -879,7 +965,9 @@ class TestAikitHelpFastPath(unittest.TestCase):
         self.assertIn("usage: python aikit.py", res.stdout)
         imported = {line.rsplit("|", 1)[-1].strip() for line in res.stderr.splitlines()
                     if line.startswith("import time:")}
-        self.assertIn("scripts.aikit_parser", imported)
+        self.assertIn("scripts.aikit_help", imported)
+        self.assertNotIn("scripts.aikit_parser", imported,
+                         "--help built the grammar instead of printing the generated text")
         self.assertNotIn("scripts.aikit_cli", imported,
                          "--help loaded the command layer, which imports every AIKit module")
 

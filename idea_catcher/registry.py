@@ -38,7 +38,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, List, Sequence, Tuple
+from typing import Any, List, Mapping, Sequence, Tuple
 
 try:  # ``python idea_catcher/registry.py`` runs the module as a script.
     from . import claim_audit, concept_map, upstream_check
@@ -79,12 +79,17 @@ SCHEMA = 1
 REVIEW_LEASE_MINUTES = 180
 SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 MIN_REASON_CHARS = 24
-IDEA_ID_RE = re.compile(r"^IDEA-(\d{3})$")
+DEFERRAL_LIMIT = 2
+BLOCKED_STATUS = "Blocked"
+REVIEW_VERDICTS = (
+    "adopt", "confirmed", "defer", "duplicate", "implemented", "obsolete", "reject", "blocked",
+)
+IDEA_ID_RE = re.compile(r"^IDEA-(\d{3,})$")
 TARGET_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-DOSSIER_HEADING_RE = re.compile(r"^### `(IDEA-\d{3})`:[ \t]*(.+?)[ \t]*$", re.M)
+DOSSIER_HEADING_RE = re.compile(r"^### `(IDEA-\d{3,})`:[ \t]*(.+?)[ \t]*$", re.M)
 DOSSIER_TARGET_RE = re.compile(r"^- \*\*Target Project\*\*: `([^`]+)`", re.M)
 DOSSIER_SOURCE_RE = re.compile(r"^- \*\*Source\*\*:[ \t]*(.+?)[ \t]*$", re.M)
-MATRIX_ROW_RE = re.compile(r"^\| `(IDEA-\d{3})` \|", re.M)
+MATRIX_ROW_RE = re.compile(r"^\| `(IDEA-\d{3,})` \|", re.M)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -115,6 +120,11 @@ STATUS_SPECS: dict[str, StatusSpec] = {
     ),
     "Deferred": StatusSpec(
         "Deferred", "8250df", "Deliberately parked until a named condition holds.", ("reason",)
+    ),
+    "Blocked": StatusSpec(
+        "Blocked", "24292f",
+        "Deferred twice; closed permanently and never reviewed again.",
+        ("reason", "decided_by"),
     ),
     "Rejected": StatusSpec(
         "Rejected", "cf222e", "Declined on second analysis; the reason records why.",
@@ -330,7 +340,7 @@ def load_ideas(root: Path = ROOT) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def parse_dossier_sections(text: str) -> dict[str, DossierSection]:
-    """Map every ``### `IDEA-NNN`: Title`` heading to its routing metadata."""
+    """Map every ``### `IDEA-NNN`: Title`` heading (three or more digits) to its metadata."""
     sections: dict[str, DossierSection] = {}
     matches = list(DOSSIER_HEADING_RE.finditer(text))
     for index, match in enumerate(matches):
@@ -478,6 +488,35 @@ def validate_idea(idea: dict[str, Any], targets: list[str], sources: dict[str, t
             errors.append(f"{idea_id}: reason is shorter than {MIN_REASON_CHARS} characters")
     if status != "Proposed" and not str(idea.get("decided_at", "") or "").strip():
         errors.append(f"{idea_id}: status {status} requires decided_at")
+    if status == BLOCKED_STATUS and deferral_count(idea) < DEFERRAL_LIMIT:
+        errors.append(
+            f"{idea_id}: status Blocked requires at least {DEFERRAL_LIMIT} deferral review(s)"
+        )
+    review_log = idea.get("review_log")
+    if review_log is not None:
+        if not isinstance(review_log, list):
+            errors.append(f"{idea_id}: review_log must be a list")
+        else:
+            for entry in review_log:
+                if not isinstance(entry, dict):
+                    errors.append(f"{idea_id}: review_log entries must be objects")
+                    continue
+                if str(entry.get("verdict", "")) not in REVIEW_VERDICTS:
+                    errors.append(
+                        f"{idea_id}: review_log verdict {entry.get('verdict')!r} is not one of "
+                        f"{', '.join(REVIEW_VERDICTS)}"
+                    )
+                if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(entry.get("at", ""))):
+                    errors.append(f"{idea_id}: review_log entry needs an ISO date in 'at'")
+                for field in ("by", "evidence"):
+                    if not str(entry.get(field, "") or "").strip():
+                        errors.append(f"{idea_id}: review_log entry needs {field}")
+                for field in ("files", "commands"):
+                    value = entry.get(field)
+                    if value is not None and not (
+                        isinstance(value, list) and all(isinstance(item, str) for item in value)
+                    ):
+                        errors.append(f"{idea_id}: review_log {field} must be a list of strings")
     if status == "Superseded":
         replacement = str(idea.get("superseded_by", "") or "")
         if replacement and replacement not in sources:
@@ -527,6 +566,25 @@ def effective_tags(idea: Mapping[str, Any]) -> list[str]:
     if status != "Proposed":
         tags.append(status.lower())
     return tags
+
+
+def deferral_count(idea: Mapping[str, Any]) -> int:
+    """How many times a review has deferred this idea.
+
+    A deferral is a ``review_log`` verdict of ``defer``. Legacy rows without a review log fall
+    back to their status history so the two-deferral rule applies to data written before the
+    review log existed. A current Deferred status with no recorded history counts as one.
+    """
+    logged = sum(
+        1 for entry in idea.get("review_log", []) or []
+        if isinstance(entry, dict) and entry.get("verdict") == "defer"
+    )
+    history = sum(
+        1 for entry in idea.get("history", []) or []
+        if isinstance(entry, dict) and entry.get("status") == "Deferred"
+    )
+    current = 1 if idea.get("status") == "Deferred" else 0
+    return max(logged, history, current)
 
 
 def idea_number(idea_id: str) -> int | None:
@@ -1047,6 +1105,139 @@ def set_tags(
         return idea
 
 
+def _append_history(
+    idea: dict[str, Any], status: str, *, at: str, by: str, reason: str
+) -> None:
+    history = list(idea.get("history", []) or [])
+    history.append({"status": status, "at": at, "by": by, "reason": reason})
+    idea["history"] = history
+
+
+def _append_review(
+    idea: dict[str, Any],
+    *,
+    verdict: str,
+    evidence: str,
+    by: str,
+    at: str,
+    files: Sequence[str] = (),
+    commands: Sequence[str] = (),
+    notes: str = "",
+) -> None:
+    if verdict not in REVIEW_VERDICTS:
+        raise RegistryError(f"unknown review verdict {verdict!r}")
+    entry: dict[str, Any] = {
+        "at": at,
+        "by": by or "unidentified",
+        "verdict": verdict,
+        "files": list(files),
+        "commands": list(commands),
+        "evidence": evidence.strip(),
+    }
+    if notes:
+        entry["notes"] = notes
+    idea["review_log"] = list(idea.get("review_log", []) or []) + [entry]
+
+
+def _apply_status(
+    idea: dict[str, Any],
+    *,
+    status: str,
+    reason: str,
+    decided_at: str,
+    decided_by: str,
+    evidence: str,
+    target: str,
+    superseded_by: str,
+    declared: str | None,
+    record_deferral: bool,
+    deferrals_before: int,
+    new_deferral: bool = False,
+) -> str:
+    """Apply one decision to a loaded idea; return the effective status.
+
+    A second ``Deferred`` decision is coerced to ``Blocked``. The coercion records the second
+    deferral in both the review log and the status history, so an auditor can see why the idea
+    will never be reviewed again.
+    """
+    previous = str(idea.get("status", "Proposed"))
+    if previous == BLOCKED_STATUS and status != BLOCKED_STATUS:
+        raise RegistryError(
+            f"{idea.get('id')} is Blocked after two deferrals and will not be reviewed again"
+        )
+    at = decided_at or datetime.date.today().isoformat()
+    effective_deferrals = deferrals_before + (1 if new_deferral else 0)
+    auto_blocked = False
+    if status == "Deferred":
+        if record_deferral:
+            _append_review(
+                idea,
+                verdict="defer",
+                evidence=reason or "Deferred by decision",
+                by=decided_by,
+                at=at,
+            )
+        if deferrals_before >= DEFERRAL_LIMIT - 1:
+            auto_blocked = True
+            status = BLOCKED_STATUS
+            _append_history(
+                idea, "Deferred", at=at, by=decided_by,
+                reason=reason or "Second deferral",
+            )
+            reason = (
+                f"{reason} " if reason else ""
+            ) + f"Second deferral; blocked permanently after {effective_deferrals} deferrals."
+    if status == BLOCKED_STATUS and effective_deferrals < DEFERRAL_LIMIT:
+        raise RegistryError(
+            f"{idea.get('id')} cannot be Blocked without {DEFERRAL_LIMIT} deferral reviews"
+        )
+    if status == BLOCKED_STATUS and new_deferral and deferral_count(idea) < DEFERRAL_LIMIT:
+        # Legacy rows record their first deferral only in the status history. The review log
+        # entry just written is the second event; mirror it in history so both sources agree.
+        _append_history(
+            idea, "Deferred", at=at, by=decided_by,
+            reason=reason or "Second deferral",
+        )
+    if status != previous:
+        _append_history(idea, status, at=at, by=decided_by, reason=reason)
+    idea["status"] = status
+    for field, value in (
+        ("reason", reason),
+        ("decided_at", at),
+        ("decided_by", decided_by),
+        ("evidence", evidence),
+        ("superseded_by", superseded_by),
+    ):
+        if value:
+            idea[field] = value
+    if status != "Superseded":
+        # A stale replacement pointer on an idea that is no longer superseded would tell a
+        # reader to follow a decision that has been reversed.
+        idea.pop("superseded_by", None)
+    if target and target != idea.get("target"):
+        # Bind the re-route to the *dossier's* target, not the current one, so routing back
+        # to the original analysis is representable: it simply clears the marker.
+        current_target = str(idea.get("target", ""))
+        history = list(idea.get("history", []) or [])
+        history.append(
+            _history_entry(
+                field="target",
+                before=current_target,
+                after=target,
+                by=decided_by,
+                at=at,
+                reason=reason,
+            )
+        )
+        idea["history"] = history
+        if declared and target == declared:
+            idea.pop("retargeted_from", None)
+        else:
+            idea["retargeted_from"] = declared or current_target
+        idea["target"] = target
+    return status
+
+
 def set_status(
     root: Path,
     idea_id: str,
@@ -1069,48 +1260,105 @@ def set_status(
         idea = dict(ideas[position])
         sources = dossier_sources(root)
         declared = (sources.get(idea_id) or (None, None))[1]
-        previous = str(idea.get("status", "Proposed"))
-        if status != previous and not decided_at:
-            decided_at = datetime.date.today().isoformat()
-        idea["status"] = status
-        if status != previous:
-            history = list(idea.get("history", []) or [])
-            history.append({"status": status, "at": decided_at, "by": decided_by, "reason": reason})
-            idea["history"] = history
-        for field, value in (
-            ("reason", reason),
-            ("decided_at", decided_at),
-            ("decided_by", decided_by),
-            ("evidence", evidence),
-            ("superseded_by", superseded_by),
-        ):
-            if value:
-                idea[field] = value
-        if status != "Superseded":
-            # A stale replacement pointer on an idea that is no longer superseded would tell a
-            # reader to follow a decision that has been reversed.
-            idea.pop("superseded_by", None)
-        if target and target != idea.get("target"):
-            # Bind the re-route to the *dossier's* target, not the current one, so routing back
-            # to the original analysis is representable: it simply clears the marker.
-            current_target = str(idea.get("target", ""))
-            history = list(idea.get("history", []) or [])
-            history.append(
-                _history_entry(
-                    field="target",
-                    before=current_target,
-                    after=target,
-                    by=decided_by,
-                    at=decided_at or datetime.date.today().isoformat(),
-                    reason=reason,
-                )
+        deferrals_before = deferral_count(idea)
+        _apply_status(
+            idea,
+            status=status,
+            reason=reason,
+            decided_at=decided_at,
+            decided_by=decided_by,
+            evidence=evidence,
+            target=target,
+            superseded_by=superseded_by,
+            declared=declared,
+            record_deferral=True,
+            deferrals_before=deferrals_before,
+            new_deferral=(status == "Deferred"),
+        )
+        errors = validate_idea(idea, target_ids(targets), sources)
+        if errors:
+            raise RegistryError("; ".join(errors))
+        ideas[position] = idea
+        payload["ideas"] = ideas
+        write_json(root / IDEAS_FILE, payload)
+        return idea
+
+
+def review_idea(
+    root: Path,
+    idea_id: str,
+    *,
+    verdict: str,
+    evidence: str,
+    by: str = "",
+    notes: str = "",
+    files: Sequence[str] = (),
+    commands: Sequence[str] = (),
+    status: str = "",
+    reason: str = "",
+    decided_at: str = "",
+    superseded_by: str = "",
+) -> dict[str, Any]:
+    """Record one second-pass review and apply its decision.
+
+    A second ``defer`` verdict blocks the idea permanently. A ``Blocked`` idea is refused, which
+    is the executable form of "won't be reviewed again".
+    """
+    if verdict not in REVIEW_VERDICTS:
+        raise RegistryError(f"unknown review verdict {verdict!r}")
+    if len(evidence.strip()) < MIN_REASON_CHARS:
+        raise RegistryError(
+            f"a review needs evidence of at least {MIN_REASON_CHARS} characters"
+        )
+    with registry_lock(root):
+        payload = load_ideas(root)
+        targets = load_targets(root)
+        ideas = list(payload.get("ideas", []))
+        position = next((i for i, idea in enumerate(ideas) if idea.get("id") == idea_id), None)
+        if position is None:
+            raise RegistryError(f"{idea_id} is not in the register")
+        idea = dict(ideas[position])
+        if idea.get("status") == BLOCKED_STATUS:
+            raise RegistryError(
+                f"{idea_id} is Blocked after two deferrals and will not be reviewed again"
             )
-            idea["history"] = history
-            if declared and target == declared:
-                idea.pop("retargeted_from", None)
-            else:
-                idea["retargeted_from"] = declared or current_target
-            idea["target"] = target
+        sources = dossier_sources(root)
+        declared = (sources.get(idea_id) or (None, None))[1]
+        before = deferral_count(idea)
+        at = decided_at or datetime.date.today().isoformat()
+        _append_review(
+            idea, verdict=verdict, evidence=evidence, by=by, at=at,
+            files=files, commands=commands, notes=notes,
+        )
+        target_status = status
+        if not target_status:
+            target_status = {
+                "adopt": "Approved",
+                "defer": "Deferred",
+                "duplicate": "Superseded" if superseded_by else "Rejected",
+                "implemented": "Integrated",
+                "obsolete": "Rejected",
+                "reject": "Rejected",
+                "blocked": BLOCKED_STATUS,
+                "confirmed": str(idea.get("status", "Proposed")),
+            }.get(verdict, str(idea.get("status", "Proposed")))
+        if verdict == "defer" and before >= DEFERRAL_LIMIT - 1:
+            target_status = BLOCKED_STATUS
+        confirmed = verdict == "confirmed"
+        _apply_status(
+            idea,
+            status=target_status,
+            reason="" if confirmed else (reason or evidence),
+            decided_at=str(idea.get("decided_at", "") or "") if confirmed else at,
+            decided_by="" if confirmed else by,
+            evidence="" if confirmed else (reason or evidence),
+            target="",
+            superseded_by=superseded_by,
+            declared=declared,
+            record_deferral=False,
+            deferrals_before=before,
+            new_deferral=(verdict == "defer"),
+        )
         errors = validate_idea(idea, target_ids(targets), sources)
         if errors:
             raise RegistryError("; ".join(errors))
@@ -1124,14 +1372,14 @@ def set_status(
 # Automatic registration from commit references
 # ---------------------------------------------------------------------------
 
-COMMIT_IDEA_RE = re.compile(r"\bIDEA-\d{3}\b")
+COMMIT_IDEA_RE = re.compile(r"\bIDEA-\d{3,}\b")
 COMMIT_RECORD_SEPARATOR = "\x1e"
 COMMIT_FIELD_SEPARATOR = "\x1f"
 GIT_LOG_TIMEOUT_SECONDS = 30
 
 
 def parse_idea_ids(message: str) -> List[str]:
-    """Every distinct IDEA-NNN token in one commit message, sorted."""
+    """Every distinct IDEA-NNN token (three or more digits) in one commit message, sorted."""
     return sorted(set(COMMIT_IDEA_RE.findall(message)))
 
 
@@ -1182,7 +1430,7 @@ def register_from_commits(
             idea = ideas.get(idea_id)
             if idea is None or str(idea.get("target", "")) != project:
                 continue
-            if idea.get("status") in {"Integrated", "Superseded", "Rejected"}:
+            if idea.get("status") in {"Integrated", "Superseded", "Rejected", BLOCKED_STATUS}:
                 continue
             record = {"id": idea_id, "commit": sha, "subject": subject}
             if dry_run:
@@ -1656,14 +1904,15 @@ def list_ideas(
     tag: str = "",
     include_rejected: bool = False,
     include_duplicates: bool = False,
+    include_blocked: bool = False,
 ) -> list[dict[str, Any]]:
     """Return the register rows matching the filters, in id order.
 
-    ``Rejected`` rows and rows tagged ``duplicate`` are hidden unless the matching
-    ``include_*`` flag is set, ``status='Rejected'`` asks for a rejected row explicitly, or
-    ``tag='duplicate'`` asks for duplicates explicitly. The include flags are alternatives:
-    either one shows a row that belongs to both categories. They stay in the register and in
-    ``MATRIX.md``; they only leave the default working list.
+    ``Rejected`` rows, rows tagged ``duplicate`` and ``Blocked`` rows are hidden unless the
+    matching ``include_*`` flag is set, ``status`` asks for one explicitly, or ``tag='duplicate'``
+    asks for duplicates explicitly. The include flags are alternatives: either one shows a row
+    that belongs to several categories. They stay in the register and in ``MATRIX.md``; they only
+    leave the default working list.
     """
     rows: list[dict[str, Any]] = []
     for idea in payload.get("ideas", []) or []:
@@ -1674,9 +1923,13 @@ def list_ideas(
         tags = effective_tags(idea)
         rejected = idea.get("status") == "Rejected"
         duplicate = "duplicate" in tags
+        blocked = idea.get("status") == BLOCKED_STATUS
         show_rejected = rejected and (include_rejected or status == "Rejected")
         show_duplicate = duplicate and (include_duplicates or tag == "duplicate")
-        if (rejected or duplicate) and not (show_rejected or show_duplicate):
+        show_blocked = blocked and (include_blocked or status == BLOCKED_STATUS)
+        if (rejected or duplicate or blocked) and not (
+            show_rejected or show_duplicate or show_blocked
+        ):
             continue
         if dossier and idea.get("dossier") != dossier:
             continue
@@ -1763,6 +2016,24 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     decide.add_argument("--evidence", default="")
     decide.add_argument("--target", default="")
     decide.add_argument("--superseded-by", default="")
+    review = sub.add_parser(
+        "review-idea", help="record a second-pass idea review; two defer verdicts block it"
+    )
+    review.add_argument("idea_id")
+    review.add_argument("--verdict", required=True, choices=sorted(REVIEW_VERDICTS))
+    review.add_argument("--evidence", required=True,
+                        help="what was checked and what it proved; at least 24 characters")
+    review.add_argument("--by", default="", help="who performed the review")
+    review.add_argument("--notes", default="")
+    review.add_argument("--file", dest="files", action="append", default=[],
+                        help="file checked; repeat for several")
+    review.add_argument("--command", dest="commands", action="append", default=[],
+                        help="command run; repeat for several")
+    review.add_argument("--status", default="", choices=("", *sorted(STATUS_SPECS)),
+                        help="override the status implied by the verdict")
+    review.add_argument("--reason", default="", help="decision reason for a status change")
+    review.add_argument("--decided-at", default="")
+    review.add_argument("--superseded-by", default="")
     start = sub.add_parser("review-start", help="claim a repository for analysis")
     start.add_argument("--repo", required=True, help="owner/name")
     start.add_argument("--url", default="")
@@ -1831,6 +2102,11 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
         "--include-duplicates",
         action="store_true",
         help="include ideas tagged duplicate, which are hidden from the default working list",
+    )
+    list_ideas.add_argument(
+        "--include-blocked",
+        action="store_true",
+        help="include Blocked ideas, which are hidden from the default working list",
     )
     list_ideas.add_argument("--json", action="store_true")
     tagger = sub.add_parser("tag", help="add or remove analysis tags on one idea")
@@ -1930,6 +2206,26 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 superseded_by=args.superseded_by,
             )
             print(f"[OK] {idea['id']} is now {idea['status']}")
+            print("     next: python aikit.py idea-catcher render")
+            return 0
+        if args.command == "review-idea":
+            idea = review_idea(
+                root,
+                args.idea_id,
+                verdict=args.verdict,
+                evidence=args.evidence,
+                by=args.by,
+                notes=args.notes,
+                files=args.files,
+                commands=args.commands,
+                status=args.status,
+                reason=args.reason,
+                decided_at=args.decided_at,
+                superseded_by=args.superseded_by,
+            )
+            print(f"[OK] {idea['id']} reviewed as {args.verdict}; status {idea['status']}")
+            if idea["status"] == BLOCKED_STATUS:
+                print("     blocked after two deferrals; it will not be reviewed again")
             print("     next: python aikit.py idea-catcher render")
             return 0
         if args.command == "tag":
@@ -2156,10 +2452,12 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                 tag=args.tag,
                 include_rejected=args.include_rejected,
                 include_duplicates=args.include_duplicates,
+                include_blocked=args.include_blocked,
             )
             hidden = 0
             if ((args.status != "Rejected" and not args.include_rejected)
-                    or (args.tag != "duplicate" and not args.include_duplicates)):
+                    or (args.tag != "duplicate" and not args.include_duplicates)
+                    or (args.status != BLOCKED_STATUS and not args.include_blocked)):
                 hidden = len(list_ideas(
                     payload,
                     target=args.target,
@@ -2168,6 +2466,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
                     tag=args.tag,
                     include_rejected=True,
                     include_duplicates=True,
+                    include_blocked=True,
                 )) - len(rows)
             if args.json:
                 print(json.dumps(rows, indent=2, ensure_ascii=False))
@@ -2176,12 +2475,18 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
             if not rows:
                 print(f"no ideas for {scope}")
                 if hidden:
-                    print(f"  ({hidden} hidden idea(s); use --include-rejected or --include-duplicates to show them)")
+                    print(
+                        f"  ({hidden} hidden idea(s); use --include-rejected, "
+                        "--include-duplicates or --include-blocked to show them)"
+                    )
                 return 0
             by_state = _status_counts(rows)
             print(f"{len(rows)} idea(s) for {scope} · {by_state}")
             if hidden:
-                print(f"  ({hidden} hidden idea(s); use --include-rejected or --include-duplicates to show them)")
+                print(
+                    f"  ({hidden} hidden idea(s); use --include-rejected, "
+                    "--include-duplicates or --include-blocked to show them)"
+                )
             for row in rows:
                 print(
                     f"  {row['id']}  {row.get('status', 'Proposed'):<12} "
@@ -2205,7 +2510,7 @@ def run(args: argparse.Namespace, root: Path = ROOT) -> int:
             for target in targets:
                 target_id = str(target["id"])
                 rows = list_ideas(payload, target=target_id, include_rejected=True,
-                                  include_duplicates=True)
+                                  include_duplicates=True, include_blocked=True)
                 proposed = sum(1 for row in rows if row.get("status") == "Proposed")
                 print(f"  {target_id:<22} {len(rows):>3} idea(s), {proposed:>3} proposed")
             return 0

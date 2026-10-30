@@ -79,6 +79,19 @@ def add_commands(subparsers) -> None:
     review.add_argument("--findings", required=True, metavar="FILE",
                         help="the reviewer's JSON answer, including every reviewed hunk id")
 
+    analyze = subparsers.add_parser(
+        "analyze", help="run an analyzer command on a stage packet and record its findings")
+    analyze.add_argument("target", help="registered project name or repository path")
+    analyze.add_argument("--json", action="store_true", help="print one machine-readable result")
+    _add_run_selection(analyze)
+    analyze.add_argument("--stage", type=int, default=None,
+                         help="stage number to analyze (default: the latest audited stage)")
+    analyze.add_argument("--analyzer", required=True, metavar="CMD",
+                         help="command that reads the packet and writes the findings JSON; "
+                              "it receives the packet path and the answer path")
+    analyze.add_argument("--timeout", type=float, default=300.0,
+                         help="seconds before the analyzer is stopped (default: 300)")
+
     start = subparsers.add_parser("start", help="start an independent audit run")
     start.add_argument("target")
     start.add_argument("--json", action="store_true")
@@ -330,6 +343,15 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
         payload = pipeline.review_stage(root, run_id=getattr(args, "run_id", None),
                                         stage=getattr(args, "stage", None),
                                         findings_file=getattr(args, "findings", None))
+        if as_json:
+            print(json.dumps({"ok": True, "result": payload}, indent=2))
+        else:
+            _print_findings(payload)
+        return 0
+    if action == "analyze":
+        payload = pipeline.analyze_stage(
+            root, run_id=getattr(args, "run_id", None), stage=getattr(args, "stage", None),
+            command=getattr(args, "analyzer", ""), timeout=getattr(args, "timeout", 300.0))
         if as_json:
             print(json.dumps({"ok": True, "result": payload}, indent=2))
         else:

@@ -16,13 +16,8 @@ installation can detect local tampering (ADR-225).
 
 from __future__ import annotations
 
-import argparse
-import hashlib
-import json
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = ROOT_DIR / "projects" / "aegean-licensing" / "licenses"
@@ -42,6 +37,23 @@ SYNC_FILES = (
 PIN_NOTE = ("Copies of the canonical Aegean license texts. Update with "
             "`python scripts/sync_licenses.py --write` after changing aegean-licensing (ADR-225).")
 
+# Generated from `build_parser().format_help()`; `test_generated_help_matches_the_parser` in
+# tests/test_kit.py keeps it in sync. Printing it avoids importing argparse (~130 ms) on --help.
+TOP_LEVEL_HELP = """\
+usage: sync_licenses.py [-h] [--check] [--write] [--source SOURCE]
+                        [--target TARGET]
+
+Check or synchronize AIKit's pinned license copies.
+
+options:
+  -h, --help       show this help message and exit
+  --check          verify the pinned copies (default action)
+  --write          copy the canonical texts and refresh PIN.json
+  --source SOURCE  canonical license folder (default: projects/aegean-
+                   licensing/licenses)
+  --target TARGET  pinned license folder (default: licenses)
+"""
+
 
 def _normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
@@ -53,11 +65,15 @@ def _read_text(path: Path) -> str:
 
 
 def _digest(path: Path) -> str:
+    import hashlib
+
     return hashlib.sha256(_normalize(_read_text(path)).encode()).hexdigest()
 
 
 def _write_text(path: Path, text: str) -> None:
     """Atomic write with a same-directory temp file, fsync and replace (PRINCIPLE-013)."""
+    import os
+
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp_sync")
     with open(temp, "w", encoding="utf-8", newline="") as handle:
@@ -67,7 +83,7 @@ def _write_text(path: Path, text: str) -> None:
     temp.replace(path)
 
 
-def expected_pin(source: Path) -> Dict[str, object]:
+def expected_pin(source: Path) -> dict[str, object]:
     """The PIN.json content the source tree should produce."""
     sha256 = {name: _digest(source / name) for name in SYNC_FILES if name != "CATALOG.md"}
     return {
@@ -79,13 +95,15 @@ def expected_pin(source: Path) -> Dict[str, object]:
     }
 
 
-def check_licenses(source: Optional[Path] = None, target: Path = TARGET_DIR) -> List[str]:
+def check_licenses(source: Path | None = None, target: Path = TARGET_DIR) -> list[str]:
     """
     Return every drift or tamper finding; empty means the pinned copies are consistent. When
     `source` exists, each canonical text is compared to the target; the target is always checked
     against `PIN.json`.
     """
-    errors: List[str] = []
+    import json
+
+    errors: list[str] = []
     pin_path = target / "PIN.json"
     try:
         pin = json.loads(pin_path.read_text(encoding="utf-8"))
@@ -124,6 +142,8 @@ def check_licenses(source: Optional[Path] = None, target: Path = TARGET_DIR) -> 
 
 def sync_licenses(source: Path = DEFAULT_SOURCE, target: Path = TARGET_DIR) -> None:
     """Copy every canonical text into the target and rewrite PIN.json."""
+    import json
+
     if not source.is_dir():
         raise FileNotFoundError(f"canonical license folder not found: {source}")
     for name in SYNC_FILES:
@@ -139,18 +159,26 @@ def sync_licenses(source: Path = DEFAULT_SOURCE, target: Path = TARGET_DIR) -> N
                 json.dumps(pin, indent=2, ensure_ascii=False) + "\n")
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def build_parser():
+    """The full parser; imported lazily so the top-level help stays under the startup budget."""
+    import argparse
+
     parser = argparse.ArgumentParser(
+        prog="sync_licenses.py",
         description="Check or synchronize AIKit's pinned license copies.")
     parser.add_argument("--check", action="store_true",
                         help="verify the pinned copies (default action)")
     parser.add_argument("--write", action="store_true",
                         help="copy the canonical texts and refresh PIN.json")
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE,
-                        help=f"canonical license folder (default: {DEFAULT_SOURCE})")
+                        help="canonical license folder (default: projects/aegean-licensing/licenses)")
     parser.add_argument("--target", type=Path, default=TARGET_DIR,
-                        help=f"pinned license folder (default: {TARGET_DIR})")
-    args = parser.parse_args(argv)
+                        help="pinned license folder (default: licenses)")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     if args.write and args.check:
         print("Why: --check and --write do opposite things.", file=sys.stderr)
         print("Fix: run one of them.", file=sys.stderr)
@@ -177,4 +205,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    if any(argument in ("-h", "--help") for argument in sys.argv[1:]):
+        print(TOP_LEVEL_HELP, end="")
+        sys.exit(0)
     sys.exit(main())
