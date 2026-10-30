@@ -1376,9 +1376,11 @@ class TestReforgeHistory(unittest.TestCase):
         self.assertIn(".aikit/reforge.json", shown)
 
     def test_a_second_fix_offers_the_reviewed_patch_for_commit(self):
-        # `audit` then `fix` leaves a reviewed patch; a second `fix --commit` publishes it
+        # `audit` then `fix --findings` leaves a reviewed patch; a second `fix --commit` publishes it
         # instead of refusing, which is what the first fix prints as advice. The tree may also
         # hold another session's work: it must survive and stay out of commit_paths.
+        import json as jsonlib
+
         from reforge.pipeline import run_pipeline
 
         root = self.one_commit_repository(
@@ -1388,9 +1390,15 @@ class TestReforgeHistory(unittest.TestCase):
                        encoding="utf-8")
         notes = root / "notes.txt"
         notes.write_text("not Reforge's work\n", encoding="utf-8")
-        run_pipeline(root, "audit", rules=True)
-        first = run_pipeline(root, "fix", run_tests=False)
+        audit = run_pipeline(root, "audit", rules=True)
+        packet = Path(audit["review"]["packet"]).read_text(encoding="utf-8")
+        answer = root / "review.json"
+        answer.write_text(jsonlib.dumps({
+            "findings": [], "reviewed_hunks": re.findall(r"^hunk (\S+:\S+#\d+)", packet, re.M),
+        }), encoding="utf-8")
+        first = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
         self.assertTrue(first["repaired"] >= 1)
+        self.assertEqual(first["review"]["status"], "reviewed")
         self.assertIn("# another session's note", app.read_text(encoding="utf-8"))
         self.assertEqual(notes.read_text(encoding="utf-8"), "not Reforge's work\n")
         self.assertNotIn("notes.txt", first["commit_paths"])
@@ -1433,8 +1441,20 @@ class TestReforgeHistory(unittest.TestCase):
         data = jsonlib.loads(ledger.read_text(encoding="utf-8"))
         self.assertEqual(data["active_task"], operator)
         entry = data["checkpoints"][-1]
-        self.assertEqual(entry["status"], "completed", "a run reaching its stop is not resumable")
+        self.assertEqual(entry["status"], "in_progress",
+                         "an unreviewed stage keeps the run open even at its stop")
         self.assertIn("app.py", entry["files_affected"])
+
+        packet = Path(report["review"]["packet"]).read_text(encoding="utf-8")
+        answer = root / "review.json"
+        answer.write_text(jsonlib.dumps({
+            "findings": [], "reviewed_hunks": re.findall(r"^hunk (\S+:\S+#\d+)", packet, re.M),
+        }), encoding="utf-8")
+        reviewed = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
+        self.assertEqual(reviewed["run_status"], "completed")
+        data = jsonlib.loads(ledger.read_text(encoding="utf-8"))
+        self.assertEqual(data["checkpoints"][-1]["status"], "completed",
+                         "the review completes the ledger task")
         start_audit(root, start=2, step=1)
         stop_audit(root)
         paused = resumable_tasks(jsonlib.loads(ledger.read_text(encoding="utf-8")))
@@ -1520,11 +1540,12 @@ class TestReforgeHistory(unittest.TestCase):
 
     def test_a_findings_file_adds_and_applies_a_validated_fix(self):
         # The host agent reads the packet and returns JSON; a validated replacement becomes a real,
-        # reviewable repair, the rule pre-pass stays opt-in, and both kinds of finding are kept.
+        # reviewable repair, the rule pass can be skipped, and both kinds of finding are kept.
         import json as jsonlib
 
         from reforge.audit import audit_window, plan_next_stage
         from reforge.pipeline import run_pipeline, start_audit
+        from reforge.review import _stage_hunks
         from reforge.state import current_run, load_state
 
         root = self.one_commit_repository(
@@ -1538,9 +1559,10 @@ class TestReforgeHistory(unittest.TestCase):
             "        pass\n")
         start_audit(root, start=2, step=1)
         run = current_run(load_state(root))
-        rules = audit_window(root, plan_next_stage(root, run), run.get("history") or [],
-                             [], [], True)
+        plan = plan_next_stage(root, run)
+        rules = audit_window(root, plan, run.get("history") or [], [], [], True)
         self.assertTrue(any(item.code == "bare-except" for item in rules))
+        hunks = [hunk["id"] for hunk in _stage_hunks(root, plan, scrub=False)[0]]
         answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
         self.addCleanup(remove_tree, answer_folder)
         answer = answer_folder / "findings.json"
@@ -1552,7 +1574,7 @@ class TestReforgeHistory(unittest.TestCase):
             {"path": "app.py", "line": 7, "severity": "medium", "kind": "improvement",
              "code": "narrow-the-except", "message": "the handler hides every error type",
              "evidence": "    except:"},
-        ]}), encoding="utf-8")
+        ], "reviewed_hunks": hunks}), encoding="utf-8")
 
         audit = run_pipeline(root, "audit", findings_file=str(answer), rules=False,
                              run_tests=False)

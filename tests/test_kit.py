@@ -9089,6 +9089,120 @@ class TestReforgeCore(unittest.TestCase):
         ]}}
         self.assertEqual([item["code"] for item in pending_fixable(run)], ["bare-except"])
 
+    def test_an_unreviewed_stage_blocks_progress_and_completion(self):
+        from reforge.audit import plan_next_stage
+        from reforge.state import finalize_review, review_is_ready
+        from reforge.state import create_run, new_state, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 3)
+        entry = {
+            "run": run["id"], "stage": 1, "window": 3,
+            "new_commits": ["a"], "prior_commits": [],
+            "findings": [], "repairs": [], "counts": {}, "reviewed": 1,
+            "review": {"status": "unreviewed", "packet": "packet.md"},
+            "skipped": [], "tests": {}, "gates": {}, "timestamp": "2026-01-01T00:00:00",
+        }
+        record_stage(root, state, run, entry)
+
+        self.assertEqual(run["status"], "active")
+        self.assertFalse(review_is_ready(run))
+        with mock.patch("reforge.audit.is_git_repo", return_value=True):
+            with self.assertRaises(ReforgeError) as raised:
+                plan_next_stage(root, run)
+        self.assertIn("awaiting host review", raised.exception.message)
+
+        run["last_audit"]["review"]["status"] = "reviewed"
+        finalize_review(root, state, run)
+        self.assertEqual(run["status"], "completed")
+        self.assertIsNone(state["active_run"])
+
+    def test_a_historical_unreviewed_stage_blocks_a_completed_run(self):
+        from reforge.audit import plan_next_stage
+        from reforge.state import create_run, new_state, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 6)
+        old = {
+            "run": run["id"], "stage": 1, "window": 3,
+            "new_commits": ["a"], "prior_commits": [],
+            "findings": [], "repairs": [], "counts": {}, "reviewed": 1,
+            "review": {"status": "unreviewed", "packet": "stage-1.md"},
+            "skipped": [], "tests": {}, "gates": {}, "timestamp": "2026-01-01T00:00:00",
+        }
+        latest = {
+            "run": run["id"], "stage": 2, "window": 6,
+            "new_commits": ["b"], "prior_commits": ["a"],
+            "findings": [], "repairs": [], "counts": {}, "reviewed": 1,
+            "review": {"status": "reviewed", "packet": "stage-2.md"},
+            "skipped": [], "tests": {}, "gates": {}, "timestamp": "2026-01-01T00:01:00",
+        }
+        record_stage(root, state, run, old)
+        record_stage(root, state, run, latest)
+
+        self.assertEqual(run["status"], "active",
+                         "a later reviewed stage must not complete an earlier unreviewed one")
+        self.assertEqual([entry["stage"] for entry in run["history"]], [1, 2])
+        self.assertEqual(run["history"][0]["review"]["status"], "unreviewed")
+        with mock.patch("reforge.audit.is_git_repo", return_value=True):
+            with self.assertRaises(ReforgeError) as raised:
+                plan_next_stage(root, run)
+        self.assertIn("stage 1", raised.exception.message)
+        self.assertIn("awaiting host review", raised.exception.message)
+
+    def test_a_historical_review_completes_the_run_when_every_stage_is_covered(self):
+        from reforge.state import create_run, new_state, record_review, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 3, 3, 6)
+        entries = (
+            {"stage": 1, "window": 3, "review": {"status": "unreviewed"}},
+            {"stage": 2, "window": 6, "review": {"status": "reviewed"}},
+        )
+        for entry in entries:
+            record_stage(root, state, run, {
+                "run": run["id"], "new_commits": [f"s{entry['stage']}"],
+                "prior_commits": [], "findings": [], "repairs": [], "counts": {},
+                "reviewed": 1, "skipped": [], "tests": {}, "gates": {},
+                "timestamp": "2026-01-01T00:00:00", **entry,
+            })
+        self.assertEqual(run["status"], "active")
+
+        record_review(root, state, run, 1, {"status": "reviewed", "packet": "stage-1.md"})
+        self.assertEqual(run["status"], "completed")
+        self.assertIsNone(state["active_run"])
+        self.assertEqual(run["history"][0]["review"]["status"], "reviewed")
+
+    def test_a_review_answer_must_name_every_packet_hunk(self):
+        from reforge import pipeline
+
+        root = self.root()
+        answer = root / "answer.json"
+
+        def review(payload, coverage):
+            answer.write_text(json.dumps(payload), encoding="utf-8")
+            with mock.patch.object(pipeline, "findings_from_payload", return_value=([], [])), \
+                    mock.patch.object(pipeline, "coverage_for_payload", return_value=coverage):
+                return pipeline._collect_review(
+                    root, self.stage_plan(), ["app.py"], str(answer), packet=False)
+
+        partial = review({"findings": [], "reviewed_hunks": ["a"]},
+                         {"reported": 1, "total": 2, "missing": ["b"], "unknown": []})
+        self.assertEqual(partial["status"], "partial")
+        self.assertIn("1/2", partial["reason"])
+
+        missing = review({"findings": []}, {})
+        self.assertEqual(missing["status"], "partial")
+        self.assertIn("reviewed_hunks", missing["reason"])
+
+        complete = review({"findings": [], "reviewed_hunks": ["a", "b"]},
+                          {"reported": 2, "total": 2, "missing": [], "unknown": []})
+        self.assertEqual(complete["status"], "reviewed")
+        self.assertEqual(complete["coverage"]["reported"], 2)
+
     def test_a_fix_persists_the_review_status_in_the_run_history(self):
         # A later stage used to move the reviewed entry into history while it still said
         # "unreviewed", so `report` contradicted `last_audit` (found on the chronos run).
@@ -9165,6 +9279,10 @@ class TestReforgeCore(unittest.TestCase):
                          ("settings", "run-2", 4))
         runs = parser.parse_args(["runs", "x", "--json"])
         self.assertEqual((runs.command, runs.json), ("runs", True))
+        review = parser.parse_args(["review", "x", "--run", "run-2", "--stage", "4",
+                                    "--findings", "answer.json"])
+        self.assertEqual((review.command, review.run_id, review.stage, review.findings),
+                         ("review", "run-2", 4, "answer.json"))
 
     def test_a_findings_file_that_is_not_json_is_refused(self):
         from reforge.pipeline import _collect_review
@@ -9205,10 +9323,13 @@ class TestReforgeCore(unittest.TestCase):
 
     def test_the_parser_declares_the_findings_option(self):
         parser = build_reforge_parser()
-        audit = parser.parse_args(["audit", "x", "--rules"])
+        audit = parser.parse_args(["audit", "x"])
         self.assertTrue(audit.rules)
+        no_rules = parser.parse_args(["audit", "x", "--no-rules"])
+        self.assertFalse(no_rules.rules)
         run = parser.parse_args(["run", "x", "--findings", "answer.json"])
         self.assertEqual(run.findings, "answer.json")
+        self.assertTrue(run.rules)
         with self.assertRaises(SystemExit):
             parser.parse_args(["run", "x", "--no-ai"])
 

@@ -16,7 +16,7 @@ from reforge.git_history import (
     is_git_repo,
 )
 from reforge.model import CommitInfo, Finding, StagePlan
-from reforge.state import DEFAULT_START, DEFAULT_STEP
+from reforge.state import DEFAULT_START, DEFAULT_STEP, pending_reviews
 
 
 def window_for_stage(stage: int, start: int = DEFAULT_START, step: int = DEFAULT_STEP,
@@ -47,6 +47,18 @@ def plan_next_stage(repo: Path, run: Dict[str, object]) -> StagePlan:
             f"Audit run {run.get('id')} is stopped.",
             "its next stage is waiting for an explicit resume or a new run.",
             f"resume it with `reforge resume <project> --run {run.get('id')}`, or start a new audit.",
+        )
+    pending = pending_reviews(run)
+    if pending:
+        first = pending[0]
+        review = first.get("review") or {}
+        raise ReforgeError(
+            f"Audit run {run.get('id')} stage {first.get('stage')} is awaiting host review.",
+            "Reforge only advances after the host answers every stage packet; a later stage "
+            "does not excuse an earlier unreviewed one.",
+            f"review `{review.get('packet') or 'the stage packet'}` and record the answer with "
+            f"`reforge review <project> --run {run.get('id')} --stage {first.get('stage')} "
+            f"--findings <file>`.",
         )
     total = commit_count(repo)
     if total == 0:
@@ -168,10 +180,10 @@ def audit_window(repo: Path, plan: StagePlan, history: Sequence[Dict[str, object
                  detections: bool = True) -> List[Finding]:
     """Walk the stage's files and optionally run the cheap rules over the lines it adds.
 
-    Reforge is the planner: the review itself belongs to the host agent, and this rule pass is an
-    optional pre-pass (`--rules`) for a machine that wants deterministic coverage. Either way the
-    walk still classifies every changed path, so `reviewed` names what was inspected and `skipped`
-    collects only binary files that cannot be read as text.
+    Reforge is the planner: the review itself belongs to the host agent, and this rule pass is a
+    deterministic pre-pass that runs by default (`--no-rules` skips it) for a machine that wants
+    coverage. Either way the walk still classifies every changed path, so `reviewed` names what was
+    inspected and `skipped` collects only binary files that cannot be read as text.
     """
     prior = _prior_context(repo, plan, history)
     by_sha = {commit.sha: commit for commit in plan.commits}

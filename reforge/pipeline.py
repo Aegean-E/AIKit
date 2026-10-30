@@ -30,13 +30,17 @@ from reforge.state import (
     create_run,
     current_run,
     entry_from_stage,
+    finalize_review,
     find_run,
     is_reforge_artifact,
     load_state,
     mark_repairs,
     pending_fixable,
+    pending_reviews,
     record_stage,
+    record_review,
     resume_run,
+    review_is_ready,
     run_summary,
     runs_summary,
     save_state,
@@ -314,12 +318,25 @@ def _collect_review(root: Path, plan: StagePlan, reviewed: Optional[Sequence[str
             ) from exc
         found, rejected = findings_from_payload(
             root, payload, plan, list(reviewed) if reviewed is not None else None)
-        report.update(status="reviewed", findings=found, rejected=rejected)
         coverage = coverage_for_payload(root, plan, payload)
         if coverage:
             report["coverage"] = coverage
-        if not found and not rejected:
-            report["reason"] = "the answer held no findings"
+        status = "reviewed"
+        reason = "the answer held no findings" if not found and not rejected else ""
+        reported = payload.get("reviewed_hunks") if isinstance(payload, dict) else None
+        if not isinstance(reported, list):
+            status = "partial"
+            reason = ("the answer did not list reviewed_hunks; every packet hunk must be named "
+                      "before the review counts")
+        elif coverage.get("missing") or coverage.get("unknown"):
+            status = "partial"
+            reason = (f"the answer covered {coverage.get('reported', 0)}/"
+                      f"{coverage.get('total', 0)} hunks; "
+                      f"{len(coverage.get('missing') or [])} missing, "
+                      f"{len(coverage.get('unknown') or [])} unknown")
+        report.update(status=status, findings=found, rejected=rejected)
+        if reason:
+            report["reason"] = reason
     elif not packet:
         report["reason"] = "no review supplied"
     else:
@@ -352,12 +369,26 @@ def _note_stage(root: Path, run: Dict[str, object], plan: StagePlan, entry: Dict
                         status="completed" if run.get("status") == "completed" else "in_progress")
 
 
+def _note_review(root: Path, run: Dict[str, object], stage: int,
+                 review: Dict[str, object]) -> Dict[str, object]:
+    """Mirror a host review into the task ledger, including the completion it may unlock."""
+    description = (
+        f"stage {stage} host review {review.get('status') or 'incomplete'}; "
+        f"run {run.get('status') or 'active'}"
+        + (f"; coverage {review.get('coverage', {}).get('reported', 0)}/"
+           f"{review.get('coverage', {}).get('total', 0)}"
+           if isinstance(review.get("coverage"), dict) else "")
+    )
+    return record_event(root, str(run.get("id")), stage, description,
+                        status="completed" if run.get("status") == "completed" else "in_progress")
+
+
 def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                  run_tests: bool = True, test_command: Optional[str] = None,
                  gate_runner: Optional[GateRunner] = None,
                  allow_dirty: bool = False, run_id: Optional[str] = None,
                  start: Optional[int] = None, step: Optional[int] = None,
-                 stop: Optional[int] = None, rules: bool = False,
+                 stop: Optional[int] = None, rules: bool = True,
                  findings_file: Optional[str] = None,
                  packet: bool = True, deliver: bool = False) -> Dict[str, object]:
     """Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`)."""
@@ -379,6 +410,12 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             review_meta = dict(last.get("review") or last.get("ai") or {})
             reviewed = int(last.get("reviewed") or 0)
             skipped = list(last.get("skipped") or [])
+            if not findings_file and not review_is_ready(run):
+                raise ReforgeError(
+                    f"Audit run {run.get('id')} stage {last.get('stage')} is awaiting host review.",
+                    "no repair may be accepted from an unreviewed stage packet.",
+                    "review the packet and rerun `fix` with `--findings <file>`; nothing was changed.",
+                )
             if findings_file:
                 report = _collect_review(root, plan, review_meta.get("files") or None,
                                          findings_file, packet=False)
@@ -399,10 +436,12 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 if findings_file:
                     sync_last_audit(run)
                     save_state(root, state)
+                    finalize_review(root, state, run)
+                    ledger = _note_review(root, run, int(last.get("stage") or 0), review_meta)
                     return _payload(root, mode, plan, run, all_findings,
                                     [repair_from_dict(item) for item in (last.get("repairs") or [])],
                                     last.get("tests") or {}, last.get("gates") or {},
-                                    skipped, reviewed=reviewed, review=review_meta)
+                                    skipped, ledger, reviewed=reviewed, review=review_meta)
                 # `audit` then `fix` in two invocations leaves a reviewed patch uncommitted;
                 # a second `fix --commit` publishes it instead of refusing (the CLI's own advice).
                 applied = [repair_from_dict(item) for item in (last.get("repairs") or [])
@@ -434,8 +473,11 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             sync_last_audit(run)
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
+            finalize_review(root, state, run)
+            ledger = _note_review(root, run, int(last.get("stage") or 0), review_meta) \
+                if findings_file else None
             return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,
-                            skipped, reviewed=reviewed, review=review_meta)
+                            skipped, ledger, reviewed=reviewed, review=review_meta)
 
         if mode not in {"audit", "run"}:
             raise ReforgeError(
@@ -491,6 +533,59 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
                         _note_stage(root, run, plan, entry, findings, skipped),
                         reviewed=len(reviewed), review=review_meta)
+
+
+def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] = None,
+                 findings_file: Optional[str] = None) -> Dict[str, object]:
+    """Record the host review of any retained stage, including one older than the latest."""
+    root = Path(root)
+    if stage is None or not findings_file:
+        raise ReforgeError(
+            "A review needs both a stage and an answer file.",
+            "Reforge records which packet hunks the host actually read.",
+            "run `reforge review <project> --stage <n> --findings <file>`; nothing was changed.",
+            exit_code=2,
+        )
+    with run_lock(root):
+        state = load_state(root)
+        run = current_run(state, run_id)
+        entry = next((item for item in (run.get("history") or [])
+                      if isinstance(item, dict) and item.get("stage") == stage), None)
+        last = run.get("last_audit")
+        if isinstance(last, dict) and last.get("stage") == stage:
+            entry = last
+        if entry is None:
+            raise ReforgeError(
+                f"Audit run {run.get('id')} has no stage {stage} to review.",
+                "only a stage still in the run's retained history can be reviewed.",
+                "run `reforge report <project>` to list the stages that are available.",
+                exit_code=2,
+            )
+        plan = _plan_from_last(run, entry)
+        review_meta = dict(entry.get("review") or {})
+        files = review_meta.get("files")
+        report = _collect_review(root, plan, files if isinstance(files, list) else None,
+                                 findings_file, packet=False)
+        report["packet"] = review_meta.get("packet") or report.get("packet") or ""
+        report["redacted"] = review_meta.get("redacted") or 0
+        if report.get("status") != "reviewed":
+            raise ReforgeError(
+                f"Stage {stage} was not reviewed: the answer is incomplete.",
+                str(report.get("reason") or "every packet hunk must be named in reviewed_hunks."),
+                "read the packet, list every hunk in `reviewed_hunks`, then pass the answer "
+                "again; nothing was changed.",
+            )
+        findings = [finding_from_dict(item) for item in entry.get("findings") or []]
+        findings = merge_findings(findings, report.get("findings") or [])
+        entry["findings"] = [item.as_dict() for item in findings]
+        entry["counts"] = summarize(findings)
+        review_meta = _serialize_review(report)
+        entry["review"] = review_meta
+        record_review(root, state, run, int(stage), review_meta)
+        return _payload(root, "review", plan, run, findings, [], entry.get("tests") or {},
+                        entry.get("gates") or {}, entry.get("skipped") or [],
+                        _note_review(root, run, int(stage), review_meta),
+                        reviewed=int(entry.get("reviewed") or 0), review=review_meta)
 
 
 def start_audit(root: Path, start: Optional[int] = None, step: Optional[int] = None,
@@ -589,6 +684,8 @@ def status_payload(root: Path) -> Dict[str, object]:
         "audited_commits": len((run or {}).get("audited_commits") or []),
         "pending_findings": pending,
         "review": review,
+        "unreviewed_stages": [int(entry.get("stage") or 0)
+                              for entry in pending_reviews(run)] if run else [],
         "active_run": state.get("active_run"),
         "last_run": state.get("last_run"),
         "run": run_summary(run) if run else None,

@@ -63,10 +63,12 @@ Return one JSON object:
   "fix": {"old": "exact text that appears once in the file", "new": "replacement text"}}],
  "reviewed_hunks": ["hunk id", "..."]}
 
-`reviewed_hunks` is optional; when supplied it records which packet hunks were actually read.
+`reviewed_hunks` is required and must name every hunk shown in this packet. An answer that omits
+them, or covers only some of them, is recorded as an incomplete review and blocks the run.
 `commit` and `hunk` are optional; when present they must name a commit and hunk shown in this
 packet. They keep a finding attributed to the change that introduced it. `fix` is optional. Include it only when the replacement is exact, minimal and safe. Use the file's
-real line endings and whitespace in `old`. An empty findings list is a valid answer.
+real line endings and whitespace in `old`. An empty findings list is valid only after naming every
+packet hunk.
 
 Read the unified diff as it is: a line starting with `+` exists after the commit, a line starting
 with `-` was removed by it and is NOT in the file, and a leading space marks unchanged context.

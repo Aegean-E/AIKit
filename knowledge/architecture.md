@@ -51,10 +51,10 @@ result rolls the patch back. Reforge repairs beside unrelated uncommitted work: 
 snapshotted, allowed in the diff review and never staged, while a commit is refused if a finding's
 own target already held work Reforge did not make (`--allow-dirty` overrides that refusal).
 Reforge plans, records and delivers the stage; the host agent does the
-reviewing, in any language and for both defects and improvements. The cheap rule pre-pass is opt-in
-(`--rules`); with it, Python files go through the AST detectors and other text files through
-`reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not analysed and
-prints how many files it reviewed; a finding whose line carries the project's
+reviewing, in any language and for both defects and improvements. The cheap rule pass is on by
+default (`--no-rules` skips it); Python files go through the AST detectors and other text files
+through `reforge/textdetect.py`. Either way the stage reports only genuinely binary paths as not
+analysed and prints how many files it reviewed; a finding whose line carries the project's
 `hygiene: allow <reason>` marker is dropped. The five fixable rules are `bare-except`,
 `mutable-default`, `shell-true`, `verify-false` and `unsafe-yaml-load`.
 `reforge/review.py` writes every new commit's own hunks, oldest to newest, with a stable hunk id,
@@ -62,8 +62,11 @@ to `.aikit/reforge.reviews/`, redacted with the project's secret scanner, and re
 JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
 file, and a suggested replacement must occur exactly once, overlap a line a new commit added, and parse,
 after which `repair.apply_text_patches` applies it and the same tests, gates and diff review decide
-whether it survives. A finding may name its `commit` and `hunk`, and an optional `reviewed_hunks`
-list reports coverage (ADR-272, ADR-273). There is no model call, API key or subagent anywhere in the loop; `audit` writes
+whether it survives. A finding may name its `commit` and `hunk`, and `reviewed_hunks` must name every
+packet hunk: an incomplete answer is stored as a partial review and blocks progress. Every retained
+stage must be reviewed before the next stage or run completion; `review --stage N --findings` records
+the host review of an older stage, while `fix --findings` reviews the latest one (ADR-272, ADR-273).
+There is no model call, API key or subagent anywhere in the loop; `audit` writes
 the packet, `fix --findings` applies the answer, and `run --findings` does both. A separate `fix`
 refreshes the history entry `report` reads, a second `fix --commit` delivers an already-reviewed
 patch, and raising `--stop` reopens a completed run.
@@ -88,12 +91,14 @@ repository pointed here instead (ADR-246, ADR-252). A commit message that names 
 the implementation signal: `aikit check --push` and `aikit publish` register matching ideas as
 `Integrated` after a successful delivery and refresh `MATRIX.md`; `idea-catcher sync` exposes the
 same scan on demand (ADR-275). `ideas` hides
-`Rejected` rows and rows
-tagged `duplicate` unless `--include-rejected` / `--include-duplicates` or an explicit
-`--status Rejected` / `--tag duplicate` asks for them; the two include flags are alternatives, so
-either one shows a row that belongs to both categories. `MATRIX.md` keeps the full audit record,
-and `status` counts the full register while `ideas` remains the filtered working list (ADR-264,
-ADR-267).
+`Rejected` rows, rows
+tagged `duplicate` and `Blocked` rows unless `--include-rejected` / `--include-duplicates` /
+`--include-blocked` or an explicit `--status Rejected` / `--tag duplicate` / `--status Blocked`
+asks for them; the include flags are alternatives, so either one shows a row that belongs to
+several categories. `review-idea` records a second-pass verdict with its evidence. A second
+`defer` verdict moves the idea to `Blocked`, which refuses every later review and status change;
+the block is terminal (ADR-286). `MATRIX.md` keeps the full audit record, and `status` counts the
+full register while `ideas` remains the filtered working list (ADR-264, ADR-267).
 
 ## 🖼️ UI Identity, AI Topic Briefs and Reviewed Media
 `scripts/project_ui.py` writes `has_ui`/`ui_kind`/`ui_evidence` into each project's

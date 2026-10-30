@@ -27,8 +27,10 @@ def _add_window_settings(command, defaults: bool) -> None:
 
 def _add_review_options(command, findings: bool = False, rules: bool = True) -> None:
     if rules:
-        command.add_argument("--rules", action="store_true",
-                             help="also run the cheap deterministic rule pre-pass")
+        command.add_argument("--rules", dest="rules", action="store_true", default=True,
+                             help="run the cheap deterministic rule pre-pass (default: on)")
+        command.add_argument("--no-rules", dest="rules", action="store_false",
+                             help="skip the deterministic rule pre-pass")
     if findings:
         command.add_argument("--findings", metavar="FILE",
                              help="apply the reviewer's JSON answer to the stage's changed files")
@@ -66,6 +68,16 @@ def add_commands(subparsers) -> None:
         if name == "run":
             _add_window_settings(command, defaults=False)
             _add_review_options(command, rules=True)
+
+    review = subparsers.add_parser("review",
+                                   help="record the host review of any retained stage packet")
+    review.add_argument("target")
+    review.add_argument("--json", action="store_true")
+    _add_run_selection(review)
+    review.add_argument("--stage", type=int, required=True,
+                        help="stage number whose packet was reviewed")
+    review.add_argument("--findings", required=True, metavar="FILE",
+                        help="the reviewer's JSON answer, including every reviewed hunk id")
 
     start = subparsers.add_parser("start", help="start an independent audit run")
     start.add_argument("target")
@@ -131,9 +143,13 @@ def _report_error(error: ReforgeError, as_json: bool) -> int:
 
 
 def _run_line(run: Dict[str, object]) -> str:
-    return (f"{run.get('id')} [{run.get('status')}] start={run.get('start')} "
+    line = (f"{run.get('id')} [{run.get('status')}] start={run.get('start')} "
             f"step={run.get('step')} stop={run.get('stop') or 'none'} "
             f"stage={run.get('stage')} pending={run.get('pending_fixable')}")
+    unreviewed = run.get("unreviewed_stages") or []
+    if unreviewed:
+        line += " unreviewed=" + ",".join(str(stage) for stage in unreviewed)
+    return line
 
 
 def _print_runs(runs: Sequence[Dict[str, object]]) -> None:
@@ -164,9 +180,13 @@ def _print_findings(payload: Dict[str, object]) -> None:
     reviewed = int(payload.get("reviewed") or 0)
     if reviewed:
         print(f"  reviewed {reviewed} changed file(s)")
-    _print_review(payload.get("review") or {})
+    review = payload.get("review") or {}
+    _print_review(review)
     if not findings:
-        print("  no introduced findings")
+        if review.get("status") == "reviewed":
+            print("  no introduced findings")
+        else:
+            print("  no deterministic findings; host review is still pending")
     skipped = payload.get("skipped") or []
     if skipped:
         shown = ", ".join(str(path) for path in skipped[:5])
@@ -176,6 +196,8 @@ def _print_findings(payload: Dict[str, object]) -> None:
         print(f"Next: review {payload.get('root')}, write the findings JSON, then run "
               f"`python reforge.py fix {payload['root']} --run {payload.get('run')} "
               f"--findings <file>`.")
+    elif payload["mode"] == "review":
+        print(f"Stage {payload['stage']} is recorded as reviewed.")
     elif payload["mode"] in {"run", "fix"} and payload.get("repaired"):
         print(f"Next: review the patch in {payload['root']}, then commit with --commit/--push.")
     elif payload["mode"] in {"run", "fix"}:
@@ -208,6 +230,8 @@ def _print_review(report: Dict[str, object]) -> None:
         print(f"  [REVIEW] reviewed {len(report.get('files') or [])} file(s){detail}")
     elif status == "unreviewed":
         print(f"  [REVIEW] awaiting the host review{detail}")
+    elif status == "partial":
+        print(f"  [REVIEW] incomplete review{detail}: {report.get('reason') or 'unknown'}")
     else:
         print(f"  [REVIEW] {status}: {report.get('reason') or 'unknown'}")
     coverage = report.get("coverage") or {}
@@ -262,6 +286,9 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
                   f"(window {payload['next_window'] or 'none'})")
             print(f"Audited:    {payload['audited_commits']} commit(s)")
             print(f"Pending:    {payload['pending_findings']} fixable finding(s)")
+            unreviewed = payload.get("unreviewed_stages") or []
+            if unreviewed:
+                print("Unreviewed: stage(s) " + ", ".join(str(stage) for stage in unreviewed))
             review = payload.get("review") or {}
             if review:
                 packet = review.get("packet") or ""
@@ -291,12 +318,22 @@ def _workspace(args, root: Path, gate_runner: Optional[GateRunner]) -> int:
                     counts = ", ".join(f"{k}={v}" for k, v in
                                        sorted((entry.get("counts") or {}).items()))
                     skipped = len(entry.get("skipped") or [])
+                    review = (entry.get("review") or {}).get("status") or "unreviewed"
                     print(f"    stage {entry['stage']} window {entry['window']}: "
                           f"{len(entry.get('new_commits') or [])} new, "
-                          f"{int(entry.get('reviewed') or 0)} reviewed, "
+                          f"{int(entry.get('reviewed') or 0)} file(s), review {review}, "
                           f"{len(entry.get('repairs') or [])} repair(s)"
                           f"{', ' + str(skipped) + ' binary not analysed' if skipped else ''}"
                           f"{' (' + counts + ')' if counts else ''}")
+        return 0
+    if action == "review":
+        payload = pipeline.review_stage(root, run_id=getattr(args, "run_id", None),
+                                        stage=getattr(args, "stage", None),
+                                        findings_file=getattr(args, "findings", None))
+        if as_json:
+            print(json.dumps({"ok": True, "result": payload}, indent=2))
+        else:
+            _print_findings(payload)
         return 0
     if action == "start":
         payload = pipeline.start_audit(root, start=args.start, step=args.step, stop=args.stop)

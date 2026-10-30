@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `57`
 - **Total Classes**: `127`
-- **Total Top-Level Functions**: `778`
-- **Total Class Methods**: `868`
-- **Total Source Lines**: `33100`
+- **Total Top-Level Functions**: `784`
+- **Total Class Methods**: `872`
+- **Total Source Lines**: `33479`
 
 ---
 
@@ -234,7 +234,7 @@
 ### [`reforge/audit.py`](reforge/audit.py)
 > *Configurable progressive commit-window analysis with cross-commit interaction evidence.*
 
-**Size**: `223` lines (`10272` bytes)
+**Size**: `235` lines (`10943` bytes)
 
 **Functions:**
 - `def window_for_stage(stage, start, step, stop)` - *Window N: start + step*(N-1), capped by the run's stop (3,6,9 by default).*
@@ -252,7 +252,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `397` lines (`19256` bytes)
+**Size**: `434` lines (`21281` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -426,7 +426,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `609` lines (`29228` bytes)
+**Size**: `706` lines (`34639` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -447,7 +447,9 @@
 - `def _collect_review(root, plan, reviewed, findings_file, packet)` - *Write the review packet and load the reviewer's answer, if one was supplied.*
 - `def _serialize_review(report)` - *The small JSON-safe form of a review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
+- `def _note_review(root, run, stage, review)` - *Mirror a host review into the task ledger, including the completion it may unlock.*
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet, deliver)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
+- `def review_stage(root, run_id, stage, findings_file)` - *Record the host review of any retained stage, including one older than the latest.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
 - `def resume_audit(root, run_id)`
@@ -496,7 +498,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `507` lines (`21784` bytes)
+**Size**: `509` lines (`21905` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -525,7 +527,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `454` lines (`17731` bytes)
+**Size**: `542` lines (`21533` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -546,6 +548,10 @@
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
 - `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed, review)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
 - `def run_complete(run, window)`
+- `def pending_reviews(run)` - *Every retained stage whose review object explicitly says it is not reviewed.*
+- `def review_is_ready(run)` - *True when every retained stage has no explicit pending review.*
+- `def finalize_review(root, state, run)` - *Complete a run at its stop once every retained stage has been reviewed.*
+- `def record_review(root, state, run, stage, review)` - *Attach a host review to one retained stage, then settle the run's status.*
 - `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
 - `def unrepaired_findings(run)`
@@ -1370,7 +1376,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1826` lines (`94466` bytes)
+**Size**: `1848` lines (`95716` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1514,7 +1520,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `9730` lines (`548603` bytes)
+**Size**: `9851` lines (`554538` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2258,6 +2264,10 @@
   - Method `.test_a_later_fix_refreshes_the_history_entry_too()`
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
+  - Method `.test_an_unreviewed_stage_blocks_progress_and_completion()`
+  - Method `.test_a_historical_unreviewed_stage_blocks_a_completed_run()`
+  - Method `.test_a_historical_review_completes_the_run_when_every_stage_is_covered()`
+  - Method `.test_a_review_answer_must_name_every_packet_hunk()`
   - Method `.test_a_fix_persists_the_review_status_in_the_run_history()`
   - Method `.test_settings_validate_and_cannot_rewrite_a_used_start()`
   - Method `.test_an_active_review_is_refused_before_git_or_a_next_stage()`

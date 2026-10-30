@@ -308,6 +308,88 @@ def run_complete(run: Dict[str, object], window: int) -> bool:
     return isinstance(stop, int) and window >= stop
 
 
+def pending_reviews(run: Dict[str, object]) -> List[Dict[str, object]]:
+    """Every retained stage whose review object explicitly says it is not reviewed.
+
+    History is capped, so stages older than the retained window are not re-judged. A missing
+    review object is a legacy stage and stays readable; an explicit ``unreviewed`` or ``partial``
+    status blocks progress and completion.
+    """
+    entries: List[Dict[str, object]] = []
+    seen = set()
+    candidates = list(run.get("history") or [])
+    last = run.get("last_audit")
+    if isinstance(last, dict):
+        candidates.append(last)
+    for entry in candidates:
+        if not isinstance(entry, dict):
+            continue
+        stage = entry.get("stage")
+        if stage in seen:
+            continue
+        seen.add(stage)
+        review = entry.get("review")
+        if isinstance(review, dict) and review.get("status") not in (None, "", "reviewed"):
+            entries.append(entry)
+    return sorted(entries, key=lambda item: int(item.get("stage") or 0))
+
+
+def review_is_ready(run: Dict[str, object]) -> bool:
+    """True when every retained stage has no explicit pending review."""
+    return not pending_reviews(run)
+
+
+def finalize_review(root: Path, state: Dict[str, object],
+                    run: Dict[str, object]) -> Dict[str, object]:
+    """Complete a run at its stop once every retained stage has been reviewed."""
+    if not review_is_ready(run) or not run_complete(run, int(run.get("window") or 0)):
+        return run
+    run["status"] = "completed"
+    run["updated"] = _now()
+    if state.get("active_run") == run["id"]:
+        state["active_run"] = None
+    state["last_run"] = run["id"]
+    _mirror(state, run)
+    save_state(root, state)
+    return run
+
+
+def record_review(root: Path, state: Dict[str, object], run: Dict[str, object],
+                  stage: int, review: Dict[str, object]) -> Dict[str, object]:
+    """Attach a host review to one retained stage, then settle the run's status.
+
+    A stage may be reviewed long after a later stage ran, which is how a completed run recovers
+    from an unreviewed historical packet.
+    """
+    matches = [entry for entry in (run.get("history") or [])
+               if isinstance(entry, dict) and entry.get("stage") == stage]
+    last = run.get("last_audit")
+    if isinstance(last, dict) and last.get("stage") == stage:
+        matches.append(last)
+    if not matches:
+        raise ReforgeError(
+            f"Audit run {run.get('id')} has no stage {stage} to review.",
+            "only a stage still in the run's retained history can be reviewed.",
+            "run `reforge report <project>` to list the stages that are available.",
+            exit_code=2,
+        )
+    for entry in matches:
+        entry["review"] = review
+    run["updated"] = _now()
+    if run_complete(run, int(run.get("window") or 0)) and review_is_ready(run):
+        run["status"] = "completed"
+        if state.get("active_run") == run["id"]:
+            state["active_run"] = None
+    elif run.get("status") == "completed":
+        # A completed run that still has another unreviewed stage is reopened, not accepted.
+        run["status"] = "active"
+        state["active_run"] = run["id"]
+    state["last_run"] = run["id"]
+    _mirror(state, run)
+    save_state(root, state)
+    return run
+
+
 def record_stage(root: Path, state: Dict[str, object], run: Dict[str, object],
                  entry: Dict[str, object]) -> Dict[str, object]:
     """Advance one run, remember its audited SHAs, and finish it when its stop is reached."""
@@ -322,10 +404,14 @@ def record_stage(root: Path, state: Dict[str, object], run: Dict[str, object],
     history.append(entry)
     run["history"] = history[-MAX_HISTORY:]
     run["updated"] = _now()
-    if run_complete(run, int(entry["window"])):
+    if run_complete(run, int(entry["window"])) and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
+    elif run_complete(run, int(entry["window"])):
+        # The window is finished, but the host has not answered its packet yet.
+        run["status"] = "active"
+        state["active_run"] = run["id"]
     state["last_run"] = run["id"]
     _mirror(state, run)
     save_state(root, state)
@@ -411,12 +497,13 @@ def update_settings(root: Path, state: Dict[str, object], run: Dict[str, object]
     run["stop"] = new_stop
     run["updated"] = _now()
     reached_stop = isinstance(new_stop, int) and int(run.get("window") or 0) >= new_stop
-    if run.get("status") == "active" and reached_stop:
+    if run.get("status") == "active" and reached_stop and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
-    elif run.get("status") == "completed" and not reached_stop:
+    elif run.get("status") == "completed" and (not reached_stop or not review_is_ready(run)):
         # Raising the stop reopens the run: that is the recovery `plan_next_stage` recommends.
+        # A completed run that still holds an unreviewed stage is reopened for the same reason.
         run["status"] = "active"
         state["active_run"] = run["id"]
     _mirror(state, run)
@@ -436,6 +523,7 @@ def run_summary(run: Dict[str, object]) -> Dict[str, object]:
         "window": run.get("window"),
         "audited_commits": len(run.get("audited_commits") or []),
         "pending_fixable": len(pending_fixable(run)),
+        "unreviewed_stages": [int(entry.get("stage") or 0) for entry in pending_reviews(run)],
         "last_audit": ({
             "stage": last.get("stage"),
             "window": last.get("window"),
