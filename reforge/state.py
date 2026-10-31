@@ -343,12 +343,14 @@ def review_is_ready(run: Dict[str, object]) -> bool:
 
 
 def finalize_review(root: Path, state: Dict[str, object],
-                    run: Dict[str, object]) -> Dict[str, object]:
+                    run: Dict[str, object],
+                    total_commits: Optional[int] = None) -> Dict[str, object]:
     """Complete a run at its stop once every retained stage has been reviewed."""
-    last = run.get("last_audit") or {}
-    total = len(last.get("commits") or []) if isinstance(last, dict) else None
+    if total_commits is None:
+        stored_total = run.get("total_commits")
+        total_commits = int(stored_total) if isinstance(stored_total, int) else None
     if not review_is_ready(run) or not run_complete(
-            run, int(run.get("window") or 0), total):
+            run, int(run.get("window") or 0), total_commits):
         return run
     run["status"] = "completed"
     run["updated"] = _now()
@@ -361,7 +363,8 @@ def finalize_review(root: Path, state: Dict[str, object],
 
 
 def record_review(root: Path, state: Dict[str, object], run: Dict[str, object],
-                  stage: int, review: Dict[str, object]) -> Dict[str, object]:
+                  stage: int, review: Dict[str, object],
+                  total_commits: Optional[int] = None) -> Dict[str, object]:
     """Attach a host review to one retained stage, then settle the run's status.
 
     A stage may be reviewed long after a later stage ran, which is how a completed run recovers
@@ -382,8 +385,10 @@ def record_review(root: Path, state: Dict[str, object], run: Dict[str, object],
     for entry in matches:
         entry["review"] = review
     run["updated"] = _now()
-    total = len(matches[-1].get("commits") or []) if matches else None
-    if run_complete(run, int(run.get("window") or 0), total) and review_is_ready(run):
+    if total_commits is None:
+        stored_total = run.get("total_commits")
+        total_commits = int(stored_total) if isinstance(stored_total, int) else None
+    if run_complete(run, int(run.get("window") or 0), total_commits) and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
@@ -407,6 +412,8 @@ def record_stage(root: Path, state: Dict[str, object], run: Dict[str, object],
     known = set(audited)
     audited.extend(sha for sha in entry["new_commits"] if sha not in known)
     run["audited_commits"] = audited
+    if total_commits is not None:
+        run["total_commits"] = int(total_commits)
     run["last_audit"] = entry
     history = list(run.get("history") or [])
     history.append(entry)

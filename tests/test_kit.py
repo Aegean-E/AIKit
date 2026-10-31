@@ -9353,6 +9353,29 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(run["status"], "completed")
         self.assertIsNone(state["active_run"])
 
+    def test_reviewing_an_unlimited_partial_window_does_not_complete_run(self):
+        from reforge.state import create_run, new_state, record_review, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, start=2, step=1)
+        entry = {
+            "run": run["id"], "stage": 1, "window": 2,
+            "new_commits": ["second"], "prior_commits": ["first"],
+            "commits": ["first", "second"], "findings": [], "repairs": [],
+            "counts": {}, "reviewed": 0,
+            "review": {"status": "unreviewed", "packet": "stage-1.md"},
+            "skipped": [], "tests": {}, "gates": {},
+            "timestamp": "2026-01-01T00:00:00",
+        }
+        record_stage(root, state, run, entry, total_commits=3)
+        record_review(root, state, run, 1,
+                      {"status": "reviewed", "packet": "stage-1.md"},
+                      total_commits=3)
+
+        self.assertEqual(run["status"], "active")
+        self.assertEqual(state["active_run"], run["id"])
+
     def test_a_historical_unreviewed_stage_blocks_a_completed_run(self):
         from reforge.audit import plan_next_stage
         from reforge.state import create_run, new_state, record_stage

@@ -9,8 +9,8 @@
 - **Total Python Modules**: `61`
 - **Total Classes**: `134`
 - **Total Top-Level Functions**: `820`
-- **Total Class Methods**: `940`
-- **Total Source Lines**: `36012`
+- **Total Class Methods**: `941`
+- **Total Source Lines**: `36042`
 
 ---
 
@@ -547,7 +547,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `550` lines (`21960` bytes)
+**Size**: `557` lines (`22309` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -570,8 +570,8 @@
 - `def run_complete(run, window, total_commits)`
 - `def pending_reviews(run)` - *Every retained stage whose review object explicitly says it is not reviewed.*
 - `def review_is_ready(run)` - *True when every retained stage has no explicit pending review.*
-- `def finalize_review(root, state, run)` - *Complete a run at its stop once every retained stage has been reviewed.*
-- `def record_review(root, state, run, stage, review)` - *Attach a host review to one retained stage, then settle the run's status.*
+- `def finalize_review(root, state, run, total_commits)` - *Complete a run at its stop once every retained stage has been reviewed.*
+- `def record_review(root, state, run, stage, review, total_commits)` - *Attach a host review to one retained stage, then settle the run's status.*
 - `def record_stage(root, state, run, entry, total_commits)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
 - `def unrepaired_findings(run)`
@@ -1607,7 +1607,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10735` lines (`596910` bytes)
+**Size**: `10758` lines (`597943` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2368,6 +2368,7 @@
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
   - Method `.test_an_unreviewed_stage_blocks_progress_and_completion()`
   - Method `.test_an_unlimited_run_completes_at_the_end_of_history()`
+  - Method `.test_reviewing_an_unlimited_partial_window_does_not_complete_run()`
   - Method `.test_a_historical_unreviewed_stage_blocks_a_completed_run()`
   - Method `.test_a_historical_review_completes_the_run_when_every_stage_is_covered()`
   - Method `.test_a_review_answer_must_name_every_packet_hunk()`
