@@ -8773,7 +8773,7 @@ class TestReforgeCore(unittest.TestCase):
     def test_every_catalog_project_has_a_unique_palette_and_artwork(self):
         catalog = json.loads((ROOT_DIR / "scripts" / "brand_catalog.json").read_text(encoding="utf-8"))
         names = sorted(catalog["projects"])
-        self.assertEqual(len(names), 39)
+        self.assertEqual(len(names), 40)
         palettes = [tuple(project_brand.brand_spec(name)["palette"]) for name in names]
         self.assertEqual(len(set(palettes)), len(names), "two projects share a palette")
         logos = [project_brand.logo_svg(name) for name in names]

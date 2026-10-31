@@ -234,6 +234,12 @@
       "#0b2638",
       "#2dd4bf",
       "#f59e0b"
+    ],
+    [
+      "#0b0712",
+      "#2b1230",
+      "#a466f5",
+      "#f58ebb"
     ]
   ],
   "projects": {
@@ -447,6 +453,13 @@
       "layout": "split",
       "category": "ASTRONOMY",
       "tagline": "Build and watch n-body orbital systems."
+    },
+    "palette": {
+      "motif": "camera",
+      "palette": 39,
+      "layout": "left",
+      "category": "CREATIVE",
+      "tagline": "A local-first image editor for the browser."
     },
     "pebble": {
       "motif": "stone",
