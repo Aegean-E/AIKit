@@ -9,8 +9,8 @@
 - **Total Python Modules**: `61`
 - **Total Classes**: `134`
 - **Total Top-Level Functions**: `820`
-- **Total Class Methods**: `941`
-- **Total Source Lines**: `36042`
+- **Total Class Methods**: `943`
+- **Total Source Lines**: `36086`
 
 ---
 
@@ -515,7 +515,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `619` lines (`26768` bytes)
+**Size**: `619` lines (`26763` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -547,7 +547,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `557` lines (`22309` bytes)
+**Size**: `566` lines (`22681` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -1607,7 +1607,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10758` lines (`597943` bytes)
+**Size**: `10793` lines (`599521` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2369,6 +2369,7 @@
   - Method `.test_an_unreviewed_stage_blocks_progress_and_completion()`
   - Method `.test_an_unlimited_run_completes_at_the_end_of_history()`
   - Method `.test_reviewing_an_unlimited_partial_window_does_not_complete_run()`
+  - Method `.test_an_unlimited_run_completes_when_prior_windows_cover_history()`
   - Method `.test_a_historical_unreviewed_stage_blocks_a_completed_run()`
   - Method `.test_a_historical_review_completes_the_run_when_every_stage_is_covered()`
   - Method `.test_a_review_answer_must_name_every_packet_hunk()`
@@ -2394,6 +2395,7 @@
   - Method `.test_review_coverage_requires_a_quote_and_a_distinct_note()`
   - Method `.test_a_deletion_only_hunk_is_attested_by_a_removed_line()`
   - Method `.test_a_blank_deletion_hunk_accepts_blank_line_marker()`
+  - Method `.test_a_blank_addition_hunk_accepts_blank_line_marker()`
   - Method `.test_an_oversized_findings_answer_is_refused()`
   - Method `.test_a_pure_deletion_hunk_has_no_new_lines()`
   - Method `.test_independent_runs_write_different_packet_paths()`
