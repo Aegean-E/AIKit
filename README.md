@@ -194,11 +194,11 @@ A project's memory is `.aikit/`; ledger commands take `--workspace projects/<nam
 ## 🔁 Aegean Reforge: Host Review & Safe Repair
 
 Reforge audits history in widening windows and repairs only what it can prove. It lives in
-`reforge/` and `reforge.py`: `aikit.py reforge` uses the project registry, `python -m reforge`
-the bare engine. The standalone repository is archived (ADR-248).
+`reforge/` and `reforge.py`: `aikit.py reforge` uses the project registry; the standalone repository
+is archived (ADR-248).
 
 ```bash
-python aikit.py reforge start my-app --start 3 --step 3 --stop 15  # new independent run
+python aikit.py reforge start my-app --start 3 --step 3  # full history by default
 python aikit.py reforge audit my-app       # write the next review packet
 python aikit.py reforge analyze my-app --analyzer CMD  # analyze a stage packet
 python aikit.py reforge review my-app --stage 3 --findings answer.json  # record a stage review
@@ -206,14 +206,15 @@ python aikit.py reforge fix my-app --findings answer.json  # validate, repair, v
 python aikit.py reforge run my-app --findings answer.json --push  # audit, repair, verify, push
 ```
 
-Window N is `start + step*(N-1)`, capped by `stop`: stage 1 reads the first `start` commits and each
+Window N is `start + step*(N-1)`, capped by `stop` (or repository history when `--stop` is omitted):
+stage 1 reads the first `start` commits and each
 later stage adds `step`. A stage inspects only the lines its own commits add, attributes a finding to
 the commit that introduced it, and cites `commit:path:line`. Its Python rules cover exceptions,
 shell/exec, deserialisation, mutable defaults, timeouts, secrets and control flow; five are repaired
 mechanically (`bare-except`, `mutable-default`, `shell-true`, `verify-false`, `unsafe-yaml-load`),
 each earning a regression test. Every changed text file is reviewed, not only Python: JSON and TOML
 must parse, a Markdown code fence must close, and a committed conflict marker is a defect; only a
-binary file is reported as not analysed, and the stage prints how many files it reviewed. A
+binary file is reported as not analysed. A
 deliberate finding marked `hygiene: allow <reason>` on its line or the line above is honoured
 rather than reported, the same convention AIKit's own hygiene scan uses. Rules run by default;
 `--no-rules` skips them.
@@ -223,7 +224,8 @@ packet lists every new commit oldest to newest with that commit's own hunks, so 
 cannot hide an earlier minute change; a file can appear once per commit. Only files a new commit
 touched appear; earlier-stage files are not repeated. Binary files are named at the end. Secrets
 redacted; the diff sits inside a random-id `<untrusted_repo_data_...>` fence marked data, never
-instructions. Reforge makes no model call; `analyze` runs an operator-supplied analyzer and
+instructions. The main host model reviews each packet by default; subagents and `analyze` are opt-in
+for explicitly delegated or specialized work. `analyze` runs an operator-supplied analyzer and
 validates its answer through the review gate (ADR-290). Each finding names a changed path, line,
 severity and `kind`; `reviewed_hunks` must quote each hunk and add a distinct note (ADR-292).
 Reforge accepts a fix only when
@@ -234,10 +236,8 @@ restores the exact bytes. A repair may run beside unrelated uncommitted work: it
 snapshotted and never staged, and a commit is refused only when a finding's own target file already
 held work Reforge did not make (pass `--allow-dirty` to accept that risk deliberately).
 
-Every retained stage must be reviewed; an incomplete packet blocks progress.
-
 Runs are independent (`settings`, `stop`, `resume`, `runs`, `report`) and state is crash-safe. Each
-project has its own lock, state and history, so several projects audit at the same time while a
+project has its own lock and history, so several projects audit at the same time while a
 second operation on one is refused; a target is resolved first, so two spellings of one checkout
 share one lock. In a project, `--commit`/`--push` stage only reviewed paths plus `.aikit/reforge.json`
 and never force. AIKit's own `.aikit/` folder is a git-ignored tool-state directory, so auditing

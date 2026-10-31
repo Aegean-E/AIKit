@@ -7,7 +7,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from reforge.analyzer import run_analyzer
 from reforge.audit import audit_window, plan_next_stage, summarize, window_for_stage
 from reforge.errors import ReforgeError
-from reforge.git_history import dirty_paths, head_sha
+from reforge.git_history import commit_count, dirty_paths, head_sha
 from reforge.ledger import ledger_artifacts, record_event, stage_files
 from reforge.locking import LOCK_REL, run_lock
 from reforge.model import Finding, Repair, StagePlan
@@ -520,7 +520,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         if mode == "audit":
             entry = entry_from_stage(plan, findings, [], skipped=skipped,
                                      reviewed=len(reviewed), review=review_meta)
-            record_stage(root, state, run, entry)
+            record_stage(root, state, run, entry, total_commits=commit_count(root))
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
                             _note_stage(root, run, plan, entry, findings, skipped),
                             reviewed=len(reviewed), review=review_meta)
@@ -535,7 +535,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                                  reviewed=len(reviewed), review=review_meta)
         entry["dirty_targets"] = sorted(
             {item.path for item in findings if item.fixable} & preexisting)
-        record_stage(root, state, run, entry)
+        record_stage(root, state, run, entry, total_commits=commit_count(root))
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
                         _note_stage(root, run, plan, entry, findings, skipped),

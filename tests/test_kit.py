@@ -9289,6 +9289,25 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(run["status"], "completed")
         self.assertIsNone(state["active_run"])
 
+    def test_an_unlimited_run_completes_at_the_end_of_history(self):
+        from reforge.state import create_run, new_state, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, start=2, step=1)
+        entry = {
+            "run": run["id"], "stage": 1, "window": 2,
+            "new_commits": ["second"], "prior_commits": ["first"],
+            "commits": ["first", "second"], "findings": [], "repairs": [],
+            "counts": {}, "reviewed": 1,
+            "review": {"status": "reviewed", "packet": "stage-1.md"},
+            "skipped": [], "tests": {}, "gates": {},
+            "timestamp": "2026-01-01T00:00:00",
+        }
+        record_stage(root, state, run, entry, total_commits=2)
+        self.assertEqual(run["status"], "completed")
+        self.assertIsNone(state["active_run"])
+
     def test_a_historical_unreviewed_stage_blocks_a_completed_run(self):
         from reforge.audit import plan_next_stage
         from reforge.state import create_run, new_state, record_stage
@@ -9787,6 +9806,19 @@ class TestReforgeCore(unittest.TestCase):
                                     "note": "the removed value is gone"}],
             })
         self.assertEqual(coverage["reported"], 1)
+
+    def test_a_blank_deletion_hunk_accepts_blank_line_marker(self):
+        from reforge import review
+
+        hunks = [{"id": "a", "commit": "newest", "path": "notes.md", "start": 2, "count": 0,
+                  "text": "@@ -2 +1,0 @@\n-\n"}]
+        with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
+            coverage = review.coverage_for_payload(self.root(), self.stage_plan(), {
+                "reviewed_hunks": [{"id": "a", "quote": "<blank line>",
+                                    "note": "the removed blank line was checked"}],
+            })
+        self.assertEqual(coverage["reported"], 1)
+        self.assertEqual(coverage["invalid"], [])
 
     def test_an_oversized_findings_answer_is_refused(self):
         from reforge import review

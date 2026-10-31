@@ -303,9 +303,12 @@ def entry_from_stage(plan: StagePlan, findings: List[Finding], repairs: List[Rep
     }
 
 
-def run_complete(run: Dict[str, object], window: int) -> bool:
+def run_complete(run: Dict[str, object], window: int,
+                 total_commits: Optional[int] = None) -> bool:
     stop = run.get("stop")
-    return isinstance(stop, int) and window >= stop
+    if isinstance(stop, int):
+        return window >= stop
+    return total_commits is not None and window >= total_commits
 
 
 def pending_reviews(run: Dict[str, object]) -> List[Dict[str, object]]:
@@ -342,7 +345,10 @@ def review_is_ready(run: Dict[str, object]) -> bool:
 def finalize_review(root: Path, state: Dict[str, object],
                     run: Dict[str, object]) -> Dict[str, object]:
     """Complete a run at its stop once every retained stage has been reviewed."""
-    if not review_is_ready(run) or not run_complete(run, int(run.get("window") or 0)):
+    last = run.get("last_audit") or {}
+    total = len(last.get("commits") or []) if isinstance(last, dict) else None
+    if not review_is_ready(run) or not run_complete(
+            run, int(run.get("window") or 0), total):
         return run
     run["status"] = "completed"
     run["updated"] = _now()
@@ -376,7 +382,8 @@ def record_review(root: Path, state: Dict[str, object], run: Dict[str, object],
     for entry in matches:
         entry["review"] = review
     run["updated"] = _now()
-    if run_complete(run, int(run.get("window") or 0)) and review_is_ready(run):
+    total = len(matches[-1].get("commits") or []) if matches else None
+    if run_complete(run, int(run.get("window") or 0), total) and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
@@ -391,7 +398,8 @@ def record_review(root: Path, state: Dict[str, object], run: Dict[str, object],
 
 
 def record_stage(root: Path, state: Dict[str, object], run: Dict[str, object],
-                 entry: Dict[str, object]) -> Dict[str, object]:
+                 entry: Dict[str, object],
+                 total_commits: Optional[int] = None) -> Dict[str, object]:
     """Advance one run, remember its audited SHAs, and finish it when its stop is reached."""
     run["stage"] = entry["stage"]
     run["window"] = entry["window"]
@@ -404,11 +412,11 @@ def record_stage(root: Path, state: Dict[str, object], run: Dict[str, object],
     history.append(entry)
     run["history"] = history[-MAX_HISTORY:]
     run["updated"] = _now()
-    if run_complete(run, int(entry["window"])) and review_is_ready(run):
+    if run_complete(run, int(entry["window"]), total_commits) and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
-    elif run_complete(run, int(entry["window"])):
+    elif run_complete(run, int(entry["window"]), total_commits):
         # The window is finished, but the host has not answered its packet yet.
         run["status"] = "active"
         state["active_run"] = run["id"]

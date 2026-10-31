@@ -76,7 +76,8 @@ Return one JSON object:
 
 `reviewed_hunks` is required and must cover every hunk shown in this packet exactly once. `quote`
 must be a verbatim non-empty line this hunk adds, without the leading `+`; a deletion-only hunk may
-quote a removed line without the leading `-`. `note` must be specific to that hunk, at least 12
+quote a removed line without the leading `-`. For a deletion-only hunk removing a blank line, use
+the literal marker `<blank line>`. `note` must be specific to that hunk, at least 12
 characters, and not repeated anywhere in the answer. A list of ids alone, a repeated note, or a
 quote from another hunk is recorded as an incomplete review and blocks the run. An empty findings
 list is valid only after every packet hunk is attested this way. `commit` and `hunk` are optional
@@ -414,7 +415,9 @@ def _attestation_problem(item: object, hunk: Dict[str, object],
     if hunk_id != str(hunk["id"]):
         return f"the entry names {hunk_id or '(no id)'}, not {hunk['id']}"
     quote = item.get("quote")
-    if not isinstance(quote, str) or len(quote.strip()) < ATTESTATION_MIN_QUOTE:
+    if not isinstance(quote, str) or (
+        len(quote.strip()) < ATTESTATION_MIN_QUOTE and quote.strip() != "<blank line>"
+    ):
         return "the quote is missing or shorter than a real line"
     note = item.get("note")
     if not isinstance(note, str) or len(note.strip()) < ATTESTATION_MIN_NOTE:
@@ -427,6 +430,9 @@ def _attestation_problem(item: object, hunk: Dict[str, object],
     if not candidates:
         return "the hunk has no added or removed line to quote"
     quoted = quote.rstrip("\r\n")
+    if quoted == "<blank line>" and not added and any(line == "" for line in removed):
+        notes.add(normalized)
+        return ""
     if quoted not in candidates:
         return "the quote is not a line this hunk adds" + ("" if added else " or removes")
     notes.add(normalized)

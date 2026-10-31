@@ -85,7 +85,9 @@ the host review of an older stage, while `fix --findings` reviews the latest one
 packet path and an answer path, and its JSON answer goes through the same validation and review gate.
 The analyzer is where a model or a static tool is plugged in; Reforge itself starts no model
 (ADR-290).
-There is no model call, API key or subagent anywhere in the loop; `audit` writes
+The main host model is the default reviewer; subagents and external analyzers are opt-in for
+explicitly delegated or specialized work. Reforge itself makes no model call, API key or subagent
+invocation in the loop; `audit` writes
 the packet, `fix --findings` applies the answer, and `run --findings` does both. A separate `fix`
 refreshes the history entry `report` reads, a second `fix --commit` delivers an already-reviewed
 patch, and raising `--stop` reopens a completed run.

@@ -9,8 +9,8 @@
 - **Total Python Modules**: `61`
 - **Total Classes**: `134`
 - **Total Top-Level Functions**: `820`
-- **Total Class Methods**: `937`
-- **Total Source Lines**: `35887`
+- **Total Class Methods**: `940`
+- **Total Source Lines**: `36012`
 
 ---
 
@@ -442,7 +442,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `762` lines (`37357` bytes)
+**Size**: `762` lines (`37439` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -515,7 +515,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `613` lines (`26494` bytes)
+**Size**: `619` lines (`26768` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -547,7 +547,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `542` lines (`21533` bytes)
+**Size**: `550` lines (`21960` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -567,12 +567,12 @@
 - `def _local_atomic_write(path, text)`
 - `def save_state(root, data)` - *Persist through AIKit's atomic writer and lock when available, else a portable fallback.*
 - `def entry_from_stage(plan, findings, repairs, tests, gates, skipped, reviewed, review)` - *One stage's durable record; `skipped` names binary files and `reviewed` counts the rest.*
-- `def run_complete(run, window)`
+- `def run_complete(run, window, total_commits)`
 - `def pending_reviews(run)` - *Every retained stage whose review object explicitly says it is not reviewed.*
 - `def review_is_ready(run)` - *True when every retained stage has no explicit pending review.*
 - `def finalize_review(root, state, run)` - *Complete a run at its stop once every retained stage has been reviewed.*
 - `def record_review(root, state, run, stage, review)` - *Attach a host review to one retained stage, then settle the run's status.*
-- `def record_stage(root, state, run, entry)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
+- `def record_stage(root, state, run, entry, total_commits)` - *Advance one run, remember its audited SHAs, and finish it when its stop is reached.*
 - `def mark_repairs(root, state, run, repairs)` - *Mark repaired findings in the run's last audit so `fix` is idempotent.*
 - `def unrepaired_findings(run)`
 - `def pending_fixable(run)` - *Findings an agent still has to repair before another stage may start.*
@@ -1021,7 +1021,7 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `877` lines (`38756` bytes)
+**Size**: `911` lines (`40582` bytes)
 
 **Classes:**
 - `class _QuietHandler` - *Serve one capture directory without writing request logs.*
@@ -1045,7 +1045,7 @@
 - `def _validate_svg(path, title)`
 - `def _review_record(reviewer, method, notes, score)`
 - `def load_media(root)`
-- `def media_blockers(root)` - *Assets that still need a review before a new project may be published.*
+- `def media_blockers(root, dossier)` - *Assets that still need a review before a new project may be published.*
 - `def save_media(root, data)`
 - `def _asset(path, commit, status)`
 - `def seed_media_assets(project_root, name, force, capture_png)` - *Generate candidate logo/social assets and a pending manifest; never touches the README.*
@@ -1607,7 +1607,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10658` lines (`593243` bytes)
+**Size**: `10735` lines (`596910` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2343,6 +2343,7 @@
   - Method `.test_model_key_requires_an_environment_value()`
   - Method `.test_new_projects_get_license_topic_metadata()`
   - Method `.test_media_candidates_are_pending_until_reviewed_and_applied()`
+  - Method `.test_audit_media_and_blockers_flag_generated_dossier_placeholder()`
   - Method `.test_aegeanworks_keeps_its_own_badge_set()`
   - Method `.test_apply_media_refuses_a_dossier_manifest_it_does_not_own()`
   - Method `.test_a_repository_without_a_ledger_records_nothing_and_does_not_fail()`
@@ -2366,6 +2367,7 @@
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
   - Method `.test_an_unreviewed_stage_blocks_progress_and_completion()`
+  - Method `.test_an_unlimited_run_completes_at_the_end_of_history()`
   - Method `.test_a_historical_unreviewed_stage_blocks_a_completed_run()`
   - Method `.test_a_historical_review_completes_the_run_when_every_stage_is_covered()`
   - Method `.test_a_review_answer_must_name_every_packet_hunk()`
@@ -2390,6 +2392,7 @@
   - Method `.test_a_finding_can_name_the_commit_and_hunk_it_reviewed()`
   - Method `.test_review_coverage_requires_a_quote_and_a_distinct_note()`
   - Method `.test_a_deletion_only_hunk_is_attested_by_a_removed_line()`
+  - Method `.test_a_blank_deletion_hunk_accepts_blank_line_marker()`
   - Method `.test_an_oversized_findings_answer_is_refused()`
   - Method `.test_a_pure_deletion_hunk_has_no_new_lines()`
   - Method `.test_independent_runs_write_different_packet_paths()`
