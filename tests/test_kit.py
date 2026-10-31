@@ -8931,6 +8931,51 @@ class TestReforgeCore(unittest.TestCase):
         audit = project_media.audit_media(root, dossier=dossier)
         self.assertTrue(audit["ok"], audit["problems"])
 
+    def test_audit_media_and_blockers_flag_generated_dossier_placeholder(self):
+        root = self.project("placeholder-demo")
+        (root / "index.html").write_text("<html><body><main>demo</main></body></html>",
+                                          encoding="utf-8")
+        with mock.patch.object(project_media, "_head", return_value=""):
+            project_media.seed_media_assets(root, "placeholder-demo")
+        project_media.review_media(
+            root, "logo", "approve", "agent:unit", "structural", "monogram and palette fit")
+        project_media.review_media(
+            root, "social_preview", "approve", "agent:unit", "structural", "banner fits")
+        dossier = self.root()
+        media = dossier / "docs" / "media"
+        media.mkdir(parents=True)
+        manifest = media / "Placeholder-Demo.json"
+        placeholder_manifest = {
+            "schema": 2,
+            "repo": "Placeholder-Demo",
+            "logo": {
+                "src": "media/Placeholder-Demo/logo.webp",
+                "alt": "Placeholder-Demo logo",
+                "width": 256,
+                "height": 256,
+                "digest": "sha256:1234567890abcdef",
+                "commit": "abcdef0",
+                "taken_at": "2026-10-31",
+                "generated": True,
+            },
+            "preview": {
+                "src": "media/Placeholder-Demo/social-preview.webp",
+                "alt": "Placeholder-Demo preview",
+                "width": 1200,
+                "height": 600,
+                "digest": "sha256:0987654321fedcba",
+                "commit": "abcdef0",
+                "taken_at": "2026-10-31",
+            },
+            "screenshots": [],
+        }
+        manifest.write_text(json.dumps(placeholder_manifest, indent=2) + "\n", encoding="utf-8")
+        blockers = project_media.media_blockers(root, dossier=dossier)
+        self.assertIn("dossier logo is a fallback placeholder card", blockers)
+        audit = project_media.audit_media(root, dossier=dossier)
+        self.assertFalse(audit["ok"])
+        self.assertTrue(any("fallback placeholder card" in p for p in audit["problems"]))
+
     def test_aegeanworks_keeps_its_own_badge_set(self):
         root = self.project("AegeanWorks")
         (root / "index.html").write_text("<html><body><main>site</main></body></html>",

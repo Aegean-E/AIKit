@@ -45,6 +45,7 @@ from scripts.project_brand import brand_spec, logo_svg as brand_logo_svg, social
 MEDIA_SCHEMA = 1
 MEDIA_REL = Path(".aikit") / "media.json"
 LOGO_REL = Path("assets") / "logo.svg"
+LOGO_PNG_REL = Path("assets") / "logo.png"
 SOCIAL_REL = Path("assets") / "social-preview.svg"
 SOCIAL_PNG_REL = Path("assets") / "social-preview.png"
 SCREENSHOT_DIR = Path("assets") / "screenshots"
@@ -341,7 +342,7 @@ def load_media(root: Path) -> Dict[str, object]:
     return data
 
 
-def media_blockers(root: Path) -> List[str]:
+def media_blockers(root: Path, dossier: Optional[Path] = None) -> List[str]:
     """Assets that still need a review before a new project may be published."""
     if not media_path(root).is_file():
         return []
@@ -354,6 +355,16 @@ def media_blockers(root: Path) -> List[str]:
             blockers.append(f"{key} is missing")
         elif asset.get("status") != "approved":
             blockers.append(f"{key} is {asset.get('status') or 'unreviewed'}")
+    dossier_root = Path(dossier) if dossier else ROOT_DIR / "projects" / "AegeanWorks"
+    repo = repository_name(str(data.get("name") or root.name))
+    manifest_path = dossier_root / "docs" / "media" / f"{repo}.json"
+    if manifest_path.is_file():
+        try:
+            d_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(d_manifest, dict) and (d_manifest.get("logo") or {}).get("generated"):
+                blockers.append("dossier logo is a fallback placeholder card")
+        except (OSError, ValueError):  # hygiene: allow unreadable dossier manifest is ignored
+            pass
     return blockers
 
 
@@ -403,6 +414,12 @@ def seed_media_assets(project_root: Path, name: str, force: bool = False,
         try:
             capture_html(root / social, social_png, 1280, 640)
             assets["social_preview_png"] = _asset(SOCIAL_PNG_REL, commit)
+        except ProjectError:  # hygiene: allow PNG rendering is optional; the SVG candidate remains
+            pass
+        logo_png = root / LOGO_PNG_REL
+        try:
+            capture_html(root / logo, logo_png, 512, 512)
+            assets["logo_png"] = _asset(LOGO_PNG_REL, commit)
         except ProjectError:  # hygiene: allow PNG rendering is optional; the SVG candidate remains
             pass
     data = {
@@ -569,6 +586,12 @@ def review_media(project_root: Path, kind: str, decision: str, reviewer: str, me
             problems = [f"{path}: not a PNG"]
         elif size != (1280, 640):
             problems = [f"{path}: expected 1280x640, got {size[0]}x{size[1]}"]
+    elif kind == "logo_png":
+        size = png_size(path)
+        if size is None:
+            problems = [f"{path}: not a PNG"]
+        elif size != (512, 512):
+            problems = [f"{path}: expected 512x512, got {size[0]}x{size[1]}"]
     else:
         size = png_size(path)
         if size is None:
@@ -668,12 +691,19 @@ def apply_media(project_root: Path, name: str, dossier: Optional[Path] = None) -
     dossier.update(existing_manifest)
     assets = data.get("assets") or {}
     logo = assets.get("logo")
+    logo_png = assets.get("logo_png")
     if _approved(logo):
         source = root / str(logo["path"])
         target = media_dir / f"logo{source.suffix.lower()}"
         _copy_media(source, target)
         dossier["logo"] = {"src": f"media/{repo}/{target.name}", "alt": f"{repo} logo"}
         applied.append(str(target))
+        if _approved(logo_png):
+            png_source = root / str(logo_png["path"])
+            if png_source.is_file():
+                png_target = media_dir / "logo.png"
+                _copy_media(png_source, png_target)
+                applied.append(str(png_target))
     approved_shots = []
     for shot in data.get("screenshots") or []:
         if not _approved(shot):
@@ -836,6 +866,10 @@ def audit_media(project_root: Path, dossier: Optional[Path] = None) -> Dict[str,
             dossier_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             problems.append(f"{manifest_path}: dossier manifest is not valid JSON")
+        if isinstance(dossier_manifest, dict):
+            logo_entry = dossier_manifest.get("logo") or {}
+            if logo_entry.get("generated"):
+                problems.append(f"{manifest_path}: dossier logo is a fallback placeholder card (authentic artwork required)")
     readme = root / "README.md"
     readme_text = readme.read_text(encoding="utf-8") if readme.is_file() else ""
     social_path = str((assets.get("social_preview") or {}).get("path") or "")
