@@ -14,9 +14,14 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
+from contextlib import contextmanager
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
+from urllib.parse import quote
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape as xml_escape
 
@@ -136,6 +141,41 @@ def _browser() -> Optional[Path]:
     return next((path for path in candidates if path.is_file()), None)
 
 
+class _QuietHandler(SimpleHTTPRequestHandler):
+    """Serve one capture directory without writing request logs."""
+
+    def log_message(self, fmt, *args):
+        return
+
+
+@contextmanager
+def served_html(source: Path):
+    """Yield an HTTP URL for an HTML page, or its file URL for any other asset.
+
+    Headless Chromium batches requestAnimationFrame differently on file:// pages,
+    so an app that paints after load can be captured before its first frame. HTML
+    is served from a loopback port for the duration of the capture; SVG and other
+    static assets keep the direct file URL.
+    """
+    page = Path(source)
+    if page.suffix.lower() not in {".html", ".htm"}:
+        yield page.resolve().as_uri()
+        return
+    handler = partial(_QuietHandler, directory=str(page.parent))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
+    thread.start()
+    try:
+        port = server.server_address[1]
+        yield f"http://127.0.0.1:{port}/{quote(page.name)}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def capture_html(source: Path, output: Path, width: int, height: int) -> Dict[str, object]:
     """Render a local SVG/HTML file with the installed browser, bounded by a timeout."""
     browser = _browser()
@@ -148,22 +188,24 @@ def capture_html(source: Path, output: Path, width: int, height: int) -> Dict[st
     output.parent.mkdir(parents=True, exist_ok=True)
     profile = Path(tempfile.mkdtemp(prefix="aegean_media_"))
     try:
-        argv = [
-            str(browser), "--headless=new", "--disable-gpu", "--hide-scrollbars",
-            "--no-sandbox", "--allow-file-access-from-files", "--force-device-scale-factor=1",
-            f"--user-data-dir={profile}",
-            f"--window-size={width},{height}", f"--screenshot={output.resolve()}",
-            source.resolve().as_uri(),
-        ]
-        try:
-            done = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", timeout=PROCESS_TIMEOUT)
-        except (OSError, subprocess.SubprocessError) as exc:
-            raise ProjectError(
-                "The headless browser could not render the asset.",
-                str(exc),
-                "check that the browser starts outside AIKit, then retry the capture.",
-            ) from exc
+        with served_html(source) as target:
+            argv = [
+                str(browser), "--headless=new", "--disable-gpu", "--hide-scrollbars",
+                "--no-sandbox", "--allow-file-access-from-files", "--force-device-scale-factor=1",
+                "--run-all-compositor-stages-before-draw", "--virtual-time-budget=1500",
+                f"--user-data-dir={profile}",
+                f"--window-size={width},{height}", f"--screenshot={output.resolve()}",
+                target,
+            ]
+            try:
+                done = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                      encoding="utf-8", errors="replace", timeout=PROCESS_TIMEOUT)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise ProjectError(
+                    "The headless browser could not render the asset.",
+                    str(exc),
+                    "check that the browser starts outside AIKit, then retry the capture.",
+                ) from exc
     finally:
         shutil.rmtree(profile, ignore_errors=True)
     if not output.is_file():

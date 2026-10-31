@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `61`
-- **Total Classes**: `133`
-- **Total Top-Level Functions**: `819`
-- **Total Class Methods**: `931`
-- **Total Source Lines**: `35754`
+- **Total Classes**: `134`
+- **Total Top-Level Functions**: `820`
+- **Total Class Methods**: `937`
+- **Total Source Lines**: `35887`
 
 ---
 
@@ -791,7 +791,7 @@
 ### [`scripts/check_test_budgets.py`](scripts/check_test_budgets.py)
 > *Test Tier Budget Gate (PRINCIPLE-010 Rule 6, PRINCIPLE-014 Rule 3)*
 
-**Size**: `225` lines (`9087` bytes)
+**Size**: `251` lines (`10602` bytes)
 
 **Classes:**
 - `class TierResult` - *One tier's measured outcome; frozen so a report cannot edit what was measured.*
@@ -1021,7 +1021,11 @@
 ### [`scripts/project_media.py`](scripts/project_media.py)
 > *Project brand and screenshot media pipeline (ADR-235).*
 
-**Size**: `835` lines (`37191` bytes)
+**Size**: `877` lines (`38756` bytes)
+
+**Classes:**
+- `class _QuietHandler` - *Serve one capture directory without writing request logs.*
+  - Method `.log_message(fmt, *args)`
 
 **Functions:**
 - `def media_path(root)`
@@ -1033,6 +1037,7 @@
 - `def _logo_svg(name, kind)`
 - `def _social_svg(name, kind, description, repo_url, tags)`
 - `def _browser()`
+- `def served_html(source)` - *Yield an HTTP URL for an HTML page, or its file URL for any other asset.*
 - `def capture_html(source, output, width, height)` - *Render a local SVG/HTML file with the installed browser, bounded by a timeout.*
 - `def jpeg_size(path)`
 - `def image_size(path)`
@@ -1402,11 +1407,11 @@
 ### [`scripts/verify_commit.py`](scripts/verify_commit.py)
 > *Post-Commit Verification (PRINCIPLE-018 Rule 7)*
 
-**Size**: `377` lines (`17906` bytes)
+**Size**: `388` lines (`18754` bytes)
 
 **Functions:**
-- `def run_command(argv, cwd)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
-- `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the*
+- `def run_command(argv, cwd, timeout)` - *A command's exit code and combined output; -1 when it could not start or timed out.*
+- `def gate_commands(secret_range)` - *The gates PRINCIPLE-018 R3 names, as they run inside the worktree, each with its own bound.*
 - `def _string_list(value, field, *, required)` - *Validate one declaration list; return stripped strings.*
 - `def proof_command_from_declaration(declaration, *, worktree, parent, script)` - *Build the proof-gate command from a parsed `.aikit/proof.json` object.*
 - `def proof_gate_command(worktree, ref, run)` - *The declared proof command for a commit, or None when no declaration exists.*
@@ -1602,7 +1607,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10604` lines (`590254` bytes)
+**Size**: `10658` lines (`593243` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2272,6 +2277,8 @@
   - Method `.test_unparseable_tier_output_fails_instead_of_reporting_zero()`
   - Method `.test_every_test_module_in_the_repository_has_a_budget()`
   - Method `.test_budget_errors_is_silent_when_every_tier_fits()`
+  - Method `.test_a_tier_that_overruns_its_bound_fails_cleanly_instead_of_raising()`
+  - Method `.test_the_real_runner_reports_a_timeout_as_output()`
 - `class TestChecklistWording` - *PRINCIPLE-000 R7 bans hedge words in "every rule added or changed", but the slices the*
   - Method `.setUpClass()`
   - Method `.test_checklists_contain_no_hedge_words()`
@@ -2281,6 +2288,8 @@
   - Method `.ran(fragment)`
   - Method `.test_a_file_cut_below_half_its_size_is_flagged_and_small_or_growing_ones_are_not()`
   - Method `.test_a_shrinking_commit_warns_without_failing_unless_the_message_says_shrink_ok()`
+  - Method `.test_a_gate_that_times_out_is_reported_instead_of_raised()`
+  - Method `.test_the_tiers_gate_gets_room_for_all_three_tiers()`
   - Method `.test_a_green_commit_passes_and_every_gate_runs_in_the_worktree()`
   - Method `.test_a_proof_declaration_builds_the_bounded_gate_command()`
   - Method `.test_proof_gate_command_reads_the_declaration_and_parent()`
@@ -2328,6 +2337,7 @@
   - Method `.test_ai_art_prompts_and_monograms_are_project_specific()`
   - Method `.test_model_brand_requires_an_environment_key()`
   - Method `.test_the_asset_disclosure_is_specific_and_honest()`
+  - Method `.test_html_capture_is_served_over_http()`
   - Method `.test_media_blockers_are_empty_without_a_manifest()`
   - Method `.test_display_name_uses_the_catalog_override()`
   - Method `.test_model_key_requires_an_environment_value()`

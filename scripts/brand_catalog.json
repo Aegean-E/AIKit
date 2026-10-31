@@ -240,6 +240,12 @@
       "#2b1230",
       "#a466f5",
       "#f58ebb"
+    ],
+    [
+      "#06060b",
+      "#1a1030",
+      "#a78bfa",
+      "#f472b6"
     ]
   ],
   "projects": {
@@ -531,6 +537,13 @@
       "layout": "split",
       "category": "DEVELOPER TOOL",
       "tagline": "Progressive Git history audit with evidence-backed repairs."
+    },
+    "afterimage": {
+      "motif": "eye",
+      "palette": 40,
+      "layout": "center",
+      "category": "GAME",
+      "tagline": "A visual perception gauntlet with a daily challenge."
     }
   }
 }

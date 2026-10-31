@@ -8216,6 +8216,28 @@ class TestTestTierBudgetGate(unittest.TestCase):
     def test_budget_errors_is_silent_when_every_tier_fits(self):
         self.assertEqual(budget_errors([]), [])
 
+    def test_a_tier_that_overruns_its_bound_fails_cleanly_instead_of_raising(self):
+        # verify_commit reported `tiers` FAIL on aac4336 with a raw subprocess.TimeoutExpired
+        # traceback: a loaded host pushed the integration tier past the bound and the gate
+        # crashed instead of reporting which tier overran (ADR-293).
+        from scripts.check_test_budgets import TIMEOUT_EXIT
+
+        code, out = self.gate({self.UNIT: (TIMEOUT_EXIT, "TIER TIMEOUT: no summary\n"),
+                               self.INTEG: self.ok(45, 1.0)})
+        self.assertEqual(code, 1)
+        self.assertIn(f"[FAIL] {self.UNIT}", out)
+        self.assertIn("did not finish within", out)
+        self.assertIn("Fix:", out)
+
+    def test_the_real_runner_reports_a_timeout_as_output(self):
+        from scripts import check_test_budgets as budgets
+
+        with mock.patch.object(budgets.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired("python", 900)):
+            code, output = budgets.default_runner("tests.test_integration", 900)
+        self.assertEqual(code, budgets.TIMEOUT_EXIT)
+        self.assertIn("900", output)
+
 class TestChecklistWording(unittest.TestCase):
     """
     PRINCIPLE-000 R7 bans hedge words in "every rule added or changed", but the slices the
@@ -8308,6 +8330,27 @@ class TestPostCommitVerification(unittest.TestCase):
                 self.assertEqual(code, 0, "a shrink warns; it never fails the commit")
                 self.assertEqual("[WARN] README.md: 9,000 -> 2,000 bytes" in text, warned, text)
                 self.assertEqual("shrink-ok" in text, warned, "the warning names its escape")
+
+    def test_a_gate_that_times_out_is_reported_instead_of_raised(self):
+        from scripts import verify_commit as verify
+
+        with mock.patch.object(verify.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired("python", 5)):
+            code, output = verify.run_command(["python", "-V"], Path("/repo"), timeout=5)
+        self.assertEqual(code, -1)
+        self.assertIn("did not finish within 5s", output)
+
+    def test_the_tiers_gate_gets_room_for_all_three_tiers(self):
+        # One outer cap shared with single-script gates killed the tiers gate before its own
+        # per-tier bound could report the overrun (ADR-293).
+        from scripts import verify_commit as verify
+        from scripts.check_test_budgets import TIER_BUDGETS_MS, TIER_TIMEOUT
+
+        timeouts = {name: timeout for name, _argv, timeout in verify.gate_commands("a..b")}
+        self.assertEqual(set(timeouts), {"tiers", "rules", "knowledge", "reachability",
+                                         "secrets", "dogfood"})
+        self.assertGreaterEqual(timeouts["tiers"], len(TIER_BUDGETS_MS) * TIER_TIMEOUT)
+        self.assertEqual(timeouts["dogfood"], verify.GATE_TIMEOUT_SECONDS)
 
     def test_a_green_commit_passes_and_every_gate_runs_in_the_worktree(self):
         code, report = verify_commit(repo=Path("/repo"), runner=self.runner())
@@ -8773,7 +8816,7 @@ class TestReforgeCore(unittest.TestCase):
     def test_every_catalog_project_has_a_unique_palette_and_artwork(self):
         catalog = json.loads((ROOT_DIR / "scripts" / "brand_catalog.json").read_text(encoding="utf-8"))
         names = sorted(catalog["projects"])
-        self.assertEqual(len(names), 40)
+        self.assertEqual(len(names), 41)
         palettes = [tuple(project_brand.brand_spec(name)["palette"]) for name in names]
         self.assertEqual(len(set(palettes)), len(names), "two projects share a palette")
         logos = [project_brand.logo_svg(name) for name in names]
@@ -8816,6 +8859,17 @@ class TestReforgeCore(unittest.TestCase):
         self.assertIn("AI-generated", text)
         self.assertIn("illustrative", text)
         self.assertIn("full project scope", text)
+
+    def test_html_capture_is_served_over_http(self):
+        with tempfile.TemporaryDirectory() as temp:
+            page = Path(temp) / "index.html"
+            page.write_text("<!doctype html><p>capture me</p>", encoding="utf-8")
+            with project_media.served_html(page) as url:
+                self.assertRegex(url, r"^http://127\.0\.0\.1:\d+/index\.html$")
+            svg = Path(temp) / "logo.svg"
+            svg.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>', encoding="utf-8")
+            with project_media.served_html(svg) as url:
+                self.assertTrue(url.startswith("file://"), url)
 
     def test_media_blockers_are_empty_without_a_manifest(self):
         self.assertEqual(project_media.media_blockers(self.root()), [])
