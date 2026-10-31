@@ -44,7 +44,10 @@ PROOF_DEFAULTS = {
 }
 # A whole gate set runs inside the worktree; past this the run is hung, not slow.
 GATE_TIMEOUT_SECONDS = 600
-GIT_TIMEOUT_SECONDS = 120
+# The tiers gate bounds each tier itself (TIER_TIMEOUT in check_test_budgets), so it needs room
+# for all of them plus the retry allowance; a single outer cap shared with the one-script gates
+# killed it before it could report which tier overran (ADR-293).
+TIER_GATE_TIMEOUT_SECONDS = 3 * 900 + 120
 # Lines of a failing gate's output shown (PRINCIPLE-012 R4, PRINCIPLE-015 R7).
 FAILURE_TAIL_LINES = 12
 
@@ -58,29 +61,35 @@ SHRINK_EXEMPT = ("task_ledger.json",)
 _SHRINK_OK = re.compile(r"(?im)^shrink-ok:[ \t]*\S.{5,}$")
 
 
-def run_command(argv: List[str], cwd: Path) -> Tuple[int, str]:
+def run_command(argv: List[str], cwd: Path,
+                timeout: float = GATE_TIMEOUT_SECONDS) -> Tuple[int, str]:
     """A command's exit code and combined output; -1 when it could not start or timed out."""
     try:
         done = subprocess.run(argv, cwd=str(cwd), stdin=subprocess.DEVNULL, capture_output=True,
                               text=True, encoding="utf-8", errors="replace",
-                              timeout=GATE_TIMEOUT_SECONDS)
-    except (OSError, subprocess.TimeoutExpired) as exc:
+                              timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return -1, f"the command did not finish within {timeout:g}s"
+    except OSError as exc:
         return -1, str(exc)
     return done.returncode, (done.stdout + done.stderr).strip()
 
 
-def gate_commands(secret_range: str) -> List[Tuple[str, List[str]]]:
+def gate_commands(secret_range: str) -> List[Tuple[str, List[str], float]]:
     """
-    The gates PRINCIPLE-018 R3 names, as they run inside the worktree. The secret scan reads the
-    commit range rather than the tree, so it reports what the push would upload (ADR-145).
+    The gates PRINCIPLE-018 R3 names, as they run inside the worktree, each with its own bound.
+    The secret scan reads the commit range rather than the tree, so it reports what the push would
+    upload (ADR-145); only the tiers gate runs three bounded tiers of its own (ADR-293).
     """
     return [
-        ("tiers", [sys.executable, "scripts/check_test_budgets.py"]),
-        ("rules", [sys.executable, "scripts/sync_principles.py", "--check"]),
-        ("knowledge", [sys.executable, "scripts/update_knowledge_base.py", "--check"]),
-        ("reachability", [sys.executable, "scripts/check_reachability.py"]),
-        ("secrets", [sys.executable, "scripts/check_secrets.py", "--commits", secret_range]),
-        ("dogfood", [sys.executable, "scripts/dogfood.py"]),
+        ("tiers", [sys.executable, "scripts/check_test_budgets.py"], TIER_GATE_TIMEOUT_SECONDS),
+        ("rules", [sys.executable, "scripts/sync_principles.py", "--check"], GATE_TIMEOUT_SECONDS),
+        ("knowledge", [sys.executable, "scripts/update_knowledge_base.py", "--check"],
+         GATE_TIMEOUT_SECONDS),
+        ("reachability", [sys.executable, "scripts/check_reachability.py"], GATE_TIMEOUT_SECONDS),
+        ("secrets", [sys.executable, "scripts/check_secrets.py", "--commits", secret_range],
+         GATE_TIMEOUT_SECONDS),
+        ("dogfood", [sys.executable, "scripts/dogfood.py"], GATE_TIMEOUT_SECONDS),
     ]
 
 
@@ -273,8 +282,10 @@ def verify_commit(ref: str = "HEAD", repo: Path = ROOT_DIR,
                        "Fix: fix the git error above, then run this gate again."]
         worktree_added = True
         failures = []
-        for name, argv in gate_commands(secret_range):
-            code, output = run(argv, worktree)
+        for name, argv, timeout in gate_commands(secret_range):
+            # An injected runner declares two arguments, so only the real one receives the bound.
+            code, output = (run_command(argv, worktree, timeout) if runner is None
+                            else run(argv, worktree))
             report.append(f"[{'PASS' if code == 0 else 'FAIL'}] {name}")
             if code != 0:
                 failures.append(name)

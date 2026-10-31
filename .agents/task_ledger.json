@@ -1,100 +1,17 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "brand-palette",
-    "last_phase": "in_progress",
+    "task_id": "verify-tier-timeout-v1",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793435797.5675004,
-    "owner": "opencode:editor-live",
-    "started_by": "opencode:editor-live",
+    "updated_at": 1793440157.3165748,
+    "owner": "kilo:1",
+    "started_by": "kilo:1",
     "continuations": [],
-    "completed_at": 1793435797.8028412
+    "completed_at": 1793440177.5338802
   },
   "checkpoints": [
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 10",
-      "phase_num": 3,
-      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793394648.1327114,
-      "timestamp_str": "2026-10-31 00:10:48",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 10",
-      "phase_num": 3,
-      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793394763.0058858,
-      "timestamp_str": "2026-10-31 00:12:43",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 10",
-      "phase_num": 3,
-      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793394854.457706,
-      "timestamp_str": "2026-10-31 00:14:14",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 9",
-      "phase_num": 3,
-      "description": "Reforge stage 9: stage 9 host review reviewed; run active; coverage 477/477",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793395168.8372808,
-      "timestamp_str": "2026-10-31 00:19:28",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 9",
-      "phase_num": 3,
-      "description": "Reforge stage 9: stage 9 host review reviewed; run active; coverage 477/477",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793395270.886164,
-      "timestamp_str": "2026-10-31 00:21:10",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge:run-3",
-      "phase": "reforge stage 8",
-      "phase_num": 3,
-      "description": "Reforge stage 8: stage 8 host review reviewed; run active; coverage 349/349",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793395362.414699,
-      "timestamp_str": "2026-10-31 00:22:42",
-      "agent": "opencode"
-    },
-    {
-      "task_id": "reforge-attested-review-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] Require per-hunk attestations (verbatim quote plus unique note) for a Reforge review, cap the answer file, and record host versus analyzer provenance",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793396506.0332687,
-      "timestamp_str": "2026-10-31 00:41:46",
-      "agent": "opencode:reforge-attest",
-      "impact_assessment": {
-        "why": "A review answer that listed every hunk id but quoted nothing was accepted as fully reviewed. The coverage gate only compared ids, so an operator or agent could mark a 777-hunk packet reviewed without reading a single hunk; that is exactly what happened on Merklock.",
-        "benefits": "A review counts only when every hunk carries an exact added (or, for a deletion, removed) line and a distinct note; an id-only or bulk-generated list is recorded partial; provenance shows whether an analyzer or the host produced the review.",
-        "risks": "contract: the reviewed_hunks schema changes from a string list to objects, and old answers become partial; dependency: stdlib only; concurrency: none, the review write stays inside the existing run lock; state: review metadata gains method and attestation fields, existing run history stays readable",
-        "mitigation": "Failing-first unit and integration tests for id-only, wrong-quote, duplicate-note and valid answers; a size-capped answer reader; prompt, CLI help, skill and ADR updates; both test tiers and every read-only gate before the milestone commit"
-      }
-    },
     {
       "task_id": "reforge-attested-review-v1",
       "phase": "suspended",
@@ -246,6 +163,93 @@
       "timestamp": 1793435797.802852,
       "timestamp_str": "2026-10-31 11:36:37",
       "agent": "opencode:editor-live"
+    },
+    {
+      "task_id": "github-scan-batch4-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Research 14 new repositories for the seven targets: provenance and dependency audit, eval and browser actions, trust roots and witnesses, session and workload identity, library merge and citation rendering, checkpoint floors and transport credit, local notes and template attestation",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793436136.9944036,
+      "timestamp_str": "2026-10-31 11:42:16",
+      "agent": "opencode:idea-scan-b4",
+      "impact_assessment": {
+        "why": "The register's last batches left specific gaps: recomputable provenance, dependency waivers, eval comparability, verified browser actions, trust-root rotation, witnessed publication, session and workload identity, reversible merges, citation render profiles, checkpoint floors, transport credit and template attestation.",
+        "benefits": "28 new mechanism-backed ideas across all seven targets, each tied to a pinned commit and a real target file; 14 new review records; batch report with coverage, cross-cutting findings and a dependency-ordered sequence.",
+        "risks": "contract: dossier and routing-table schema must match the register; dependency: stdlib plus git/curl only; concurrency: the registry lock is the only shared write; state: new dossiers are git-ignored and the concurrent 1196-1201 reservations are left untouched",
+        "mitigation": "Pin every repository to a 40-character SHA, reserve exactly two ids per review, verify every cited path and line range with the independent verifier, run audit-claims, validate and render --check before closing"
+      }
+    },
+    {
+      "task_id": "github-scan-batch4-v1",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[2/2] Registered IDEA-1202..1229, closed reviews 360-373, verifier 14/14 clean, report reports/github-scan-2026-10-31-batch4.md complete",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793436140.6527364,
+      "timestamp_str": "2026-10-31 11:42:20",
+      "agent": "opencode:idea-scan-b4"
+    },
+    {
+      "task_id": "github-scan-batch4-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'github-scan-batch4-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793436143.8725965,
+      "timestamp_str": "2026-10-31 11:42:23",
+      "agent": "opencode:idea-scan-b4"
+    },
+    {
+      "task_id": "verify-tier-timeout-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] Report a test-tier timeout as a clean, actionable failure and give verify_commit per-gate timeouts so the tiers gate can finish its own bound",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793437803.0616138,
+      "timestamp_str": "2026-10-31 12:10:03",
+      "agent": "kilo:1",
+      "impact_assessment": {
+        "why": "verify_commit.py reported the tiers gate as failed on commit aac4336 with a raw subprocess.TimeoutExpired traceback: scripts/check_test_budgets.py runs each tier with subprocess.run(timeout=300) and never catches the timeout, so a tier that overruns under host load crashes the gate instead of reporting it. The same commit's 786 tests pass in a clean worktree, so the gate, not the code, was the failing surface.",
+        "benefits": "A timed-out tier becomes a named [FAIL] with its own Why and Fix, exit 1, and no traceback; the 300s bound becomes an explicit hang detector rather than an accidental load limit; verify_commit gives the three-tier gate room to reach that clean report instead of being killed by one outer 600s cap shared with single-script gates.",
+        "risks": "contract: check_test_budgets gains a timeout result state and verify_commit's gate table gains a timeout column, both internal to their modules; dependency: stdlib only; concurrency: another session is editing scripts/project_media.py and tests/test_kit.py in this tree, so only the two script files are edited until its work is committed and explicit staging excludes it; state: none beyond stdout and exit codes",
+        "mitigation": "Failing-first unit tests for a timeout runner double and for a per-gate timeout table; keep the injected 2-argument runner contract; re-read tests/test_kit.py before writing and stage only my own hunks after the other session's edits are gone; both tiers plus every read-only gate before any commit"
+      }
+    },
+    {
+      "task_id": "verify-tier-timeout-v1",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[2/3] Timeout now reported as TIMEOUT_EXIT with a named [FAIL] and Why/Fix; TierResult carries timed_out; verify_commit gate table is (name, argv, timeout) with a tiers bound of 3x900+120 and run_command reports overruns as -1; dead GIT_TIMEOUT_SECONDS removed; four failing-first tests green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793440150.5522013,
+      "timestamp_str": "2026-10-31 12:49:10",
+      "agent": "kilo:1"
+    },
+    {
+      "task_id": "verify-tier-timeout-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/3] ADR-293 records the fix-forward of published red commit 70db7e5 (it staged my four failing-first tests without their implementation; verified red at that ref) and the explicit-staging lesson; architecture updated; 713 unit + 78 integration pass, budgets 11.26ms/470.06ms, sync/knowledge/licenses/secrets/reachability/dogfood green",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793440157.3165748,
+      "timestamp_str": "2026-10-31 12:49:17",
+      "agent": "kilo:1"
+    },
+    {
+      "task_id": "verify-tier-timeout-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'verify-tier-timeout-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793440177.5338814,
+      "timestamp_str": "2026-10-31 12:49:37",
+      "agent": "kilo:1"
     }
   ]
 }

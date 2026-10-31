@@ -26,6 +26,11 @@ declared test failed on the base tree and passes now, then scores bounded single
 these are both halves of IDEA-956 (ADR-288, ADR-289). A commit that carries `.aikit/proof.json`
 also runs that proof from `verify_commit.py` against its parent (ADR-291).
 
+Each post-commit gate carries its own bound: the tiers gate gets room for all three tiers plus the
+retry allowance, and every single-script gate keeps `GATE_TIMEOUT_SECONDS`. A tier that overruns the
+`check_test_budgets.py` hang detector is reported as `[FAIL] <tier>: did not finish within Ns` with
+its own Why/Fix and exit 1, never as a raised `TimeoutExpired` (ADR-293).
+
 ## 🧭 Projects: AIKit as the Workspace
 AIKit is the folder a person opens in an AI host; the software it builds lives in `projects/<name>/`, each its own git repository with its memory in `.aikit/`. See [ADR-119](decisions.md).
 

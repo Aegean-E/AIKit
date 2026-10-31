@@ -43,8 +43,12 @@ TIER_BUDGETS_MS: Dict[str, float] = {
     "tests.test_integration": 500.0,
 }
 
-# A tier that hangs must fail the gate rather than block delivery for ever.
-TIER_TIMEOUT = 300
+# A tier that hangs must fail the gate rather than block delivery for ever. This is a hang
+# detector, not a second speed limit: the ceilings above are the speed limit, and a loaded host
+# can push a green integration tier well past a few minutes. A tier that overruns is reported with
+# its own Why/Fix, never raised as a traceback (ADR-293).
+TIER_TIMEOUT = 900
+TIMEOUT_EXIT = -1
 # Host load is additive and arrives in bursts. A tier over its ceiling is measured once more, and
 # the faster complete run is used: a real regression is slow in both runs, a load spike is not.
 # This does not weaken the ceiling or the test set (ADR-222).
@@ -64,6 +68,7 @@ class TierResult:
     passed: bool
     attempts: int = 1
     measurements: Tuple[float, ...] = ()
+    timed_out: bool = False
 
     @property
     def per_test_ms(self) -> float:
@@ -87,12 +92,22 @@ def parse_tier_output(output: str) -> Optional[Tuple[int, float]]:
 
 
 def default_runner(module: str, timeout: int) -> Tuple[int, str]:
-    """Run one tier the way the runbook documents it, so the gate measures the real command."""
-    proc = subprocess.run(
-        [sys.executable, "-m", "unittest", module],
-        cwd=str(ROOT_DIR), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=timeout,
-    )
+    """Run one tier the way the runbook documents it, so the gate measures the real command.
+
+    An overrun comes back as TIMEOUT_EXIT with a sentence, not as a raised TimeoutExpired: a gate
+    that reports which tier stopped making progress is worth more than one that crashes (ADR-293).
+    """
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "unittest", module],
+            cwd=str(ROOT_DIR), capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        partial = (exc.stdout or "") + (exc.stderr or "")
+        if isinstance(partial, bytes):
+            partial = partial.decode("utf-8", "replace")
+        return TIMEOUT_EXIT, f"{partial}did not finish within {timeout}s\n"
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -108,6 +123,9 @@ def run_tier(module: str, runner: Optional[Callable[[str, int], Tuple[int, str]]
     measurements: List[float] = []
     for attempt in range(max(1, attempts)):
         code, output = run(module, TIER_TIMEOUT)
+        if code == TIMEOUT_EXIT:
+            return TierResult(module=module, tests=0, seconds=float(TIER_TIMEOUT),
+                              passed=False, attempts=len(measurements) + 1, timed_out=True)
         summary = parse_tier_output(output)
         if summary is None:
             return None
@@ -158,6 +176,10 @@ def run_check(runner: Optional[Callable[[str, int], Tuple[int, str]]] = None,
             print(f"[FAIL] {module}: no 'Ran N tests in Xs' summary; the tier did not run")
             continue
         results.append(result)
+        if result.timed_out:
+            failures.append(f"{module}: did not finish within {TIER_TIMEOUT}s")
+            print(f"[FAIL] {module}: did not finish within {TIER_TIMEOUT}s")
+            continue
         if not result.passed:
             failures.append(f"{module}: the tier failed")
         verdict = "FAIL" if not result.passed else ("OVER" if not result.inside_budget else "PASS")
@@ -176,6 +198,10 @@ def run_check(runner: Optional[Callable[[str, int], Tuple[int, str]]] = None,
         for line in failures:
             print(f"Why: {line}")
         print("Fix: run the tier directly to see which test failed, then repair it before delivery.")
+    if any(result.timed_out for result in results):
+        print(f"Fix: a tier that is still running after {TIER_TIMEOUT}s has hung or is load-bound; "
+              "re-run with a quiet host, or find the test that stopped making progress "
+              "(PRINCIPLE-010 R3).")
 
     if verbose:
         for r in results:
