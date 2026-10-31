@@ -9376,6 +9376,28 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(run["status"], "active")
         self.assertEqual(state["active_run"], run["id"])
 
+    def test_an_unlimited_run_completes_when_prior_windows_cover_history(self):
+        from reforge.state import create_run, new_state, record_stage
+
+        root = self.root()
+        state = new_state()
+        run = create_run(state, start=3, step=3)
+        run["audited_commits"] = ["old-1", "old-2", "old-3", "new-1"]
+        entry = {
+            "run": run["id"], "stage": 2, "window": 3,
+            "new_commits": [], "prior_commits": [],
+            "commits": [], "findings": [], "repairs": [],
+            "counts": {}, "reviewed": 1,
+            "review": {"status": "reviewed", "packet": "stage-2.md"},
+            "skipped": [], "tests": {}, "gates": {},
+            "timestamp": "2026-01-01T00:00:00",
+        }
+
+        record_stage(root, state, run, entry, total_commits=4)
+
+        self.assertEqual(run["status"], "completed")
+        self.assertIsNone(state["active_run"])
+
     def test_a_historical_unreviewed_stage_blocks_a_completed_run(self):
         from reforge.audit import plan_next_stage
         from reforge.state import create_run, new_state, record_stage

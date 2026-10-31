@@ -308,7 +308,11 @@ def run_complete(run: Dict[str, object], window: int,
     stop = run.get("stop")
     if isinstance(stop, int):
         return window >= stop
-    return total_commits is not None and window >= total_commits
+    if total_commits is None:
+        return False
+    audited = run.get("audited_commits")
+    audited_count = len(audited) if isinstance(audited, list) else 0
+    return window >= total_commits or audited_count >= total_commits
 
 
 def pending_reviews(run: Dict[str, object]) -> List[Dict[str, object]]:
@@ -512,11 +516,16 @@ def update_settings(root: Path, state: Dict[str, object], run: Dict[str, object]
     run["stop"] = new_stop
     run["updated"] = _now()
     reached_stop = isinstance(new_stop, int) and int(run.get("window") or 0) >= new_stop
-    if run.get("status") == "active" and reached_stop and review_is_ready(run):
+    reached_end = run_complete(
+        run,
+        int(run.get("window") or 0),
+        int(run["total_commits"]) if isinstance(run.get("total_commits"), int) else None,
+    )
+    if run.get("status") == "active" and (reached_stop or reached_end) and review_is_ready(run):
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
-    elif run.get("status") == "completed" and (not reached_stop or not review_is_ready(run)):
+    elif run.get("status") == "completed" and not (reached_stop or reached_end and review_is_ready(run)):
         # Raising the stop reopens the run: that is the recovery `plan_next_stage` recommends.
         # A completed run that still holds an unreviewed stage is reopened for the same reason.
         run["status"] = "active"
