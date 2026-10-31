@@ -40,6 +40,9 @@ PACKET_DIR = Path(".aikit") / "reforge.reviews"
 MAX_FINDINGS = 200
 MAX_MESSAGE_CHARS = 400
 MAX_PATCH_CHARS = 4_000
+MAX_ANSWER_BYTES = 4 * 1024 * 1024
+ATTESTATION_MIN_NOTE = 12
+ATTESTATION_MIN_QUOTE = 4
 SEVERITIES = ("low", "medium", "high")
 CODE_RE = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 FENCE_RE = re.compile(r"^```[a-zA-Z0-9_-]*\s*$")
@@ -68,14 +71,19 @@ Return one JSON object:
   "code": "short-kebab-case", "message": "what is wrong or missing, and why it matters",
   "evidence": "the exact changed line or a short quote",
   "fix": {"old": "exact text that appears once in the file", "new": "replacement text"}}],
- "reviewed_hunks": ["hunk id", "..."]}
+ "reviewed_hunks": [{"id": "hunk id", "quote": "an exact added line from that hunk",
+                     "note": "what you checked in this hunk"}]}
 
-`reviewed_hunks` is required and must name every hunk shown in this packet. An answer that omits
-them, or covers only some of them, is recorded as an incomplete review and blocks the run.
-`commit` and `hunk` are optional; when present they must name a commit and hunk shown in this
-packet. They keep a finding attributed to the change that introduced it. `fix` is optional. Include it only when the replacement is exact, minimal and safe. Use the file's
-real line endings and whitespace in `old`. An empty findings list is valid only after naming every
-packet hunk.
+`reviewed_hunks` is required and must cover every hunk shown in this packet exactly once. `quote`
+must be a verbatim non-empty line this hunk adds, without the leading `+`; a deletion-only hunk may
+quote a removed line without the leading `-`. `note` must be specific to that hunk, at least 12
+characters, and not repeated anywhere in the answer. A list of ids alone, a repeated note, or a
+quote from another hunk is recorded as an incomplete review and blocks the run. An empty findings
+list is valid only after every packet hunk is attested this way. `commit` and `hunk` are optional
+on a finding; when present they must name a commit and hunk shown in this packet. They keep a
+finding attributed to the change that introduced it. `fix` is optional. Include it only when the
+replacement is exact, minimal and safe. Use the file's
+real line endings and whitespace in `old`.
 
 Read the unified diff as it is: a line starting with `+` exists after the commit, a line starting
 with `-` was removed by it and is NOT in the file, and a leading space marks unchanged context.
@@ -327,8 +335,15 @@ def _json_payload(text: str) -> Optional[object]:
 
 
 def read_findings_file(path: Path) -> object:
-    """Read a findings file, raising ValueError with a clear message when it holds no JSON."""
-    text = Path(path).read_text(encoding="utf-8")
+    """Read a findings file, refusing one larger than the answer cap or holding no JSON."""
+    path = Path(path)
+    with open(path, "rb") as handle:
+        raw = handle.read(MAX_ANSWER_BYTES + 1)
+    if len(raw) > MAX_ANSWER_BYTES:
+        raise ValueError(
+            f"{path} is larger than {MAX_ANSWER_BYTES} bytes; one review answer cannot be unbounded"
+        )
+    text = raw.decode("utf-8")
     payload = _json_payload(text)
     if payload is None:
         raise ValueError(f"{path} holds no JSON object or array")
@@ -378,21 +393,92 @@ def _line_set(text: str) -> set:
     return {line.strip() for line in text.splitlines() if line.strip()}
 
 
+def _hunk_lines(hunk: Dict[str, object]) -> Tuple[List[str], List[str]]:
+    """The added and removed line bodies of one hunk, without the diff prefixes."""
+    added: List[str] = []
+    removed: List[str] = []
+    for line in str(hunk.get("text") or "").splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])
+        elif line.startswith("-") and not line.startswith("---"):
+            removed.append(line[1:])
+    return added, removed
+
+
+def _attestation_problem(item: object, hunk: Dict[str, object],
+                         notes: set) -> str:
+    """Why one `reviewed_hunks` entry does not attest this hunk, or an empty string."""
+    if not isinstance(item, dict):
+        return "the entry is not an object with id, quote and note"
+    hunk_id = str(item.get("id", "")).strip()
+    if hunk_id != str(hunk["id"]):
+        return f"the entry names {hunk_id or '(no id)'}, not {hunk['id']}"
+    quote = item.get("quote")
+    if not isinstance(quote, str) or len(quote.strip()) < ATTESTATION_MIN_QUOTE:
+        return "the quote is missing or shorter than a real line"
+    note = item.get("note")
+    if not isinstance(note, str) or len(note.strip()) < ATTESTATION_MIN_NOTE:
+        return "the note is missing or too short to say what was checked"
+    normalized = " ".join(note.split()).casefold()
+    if normalized in notes:
+        return "the note repeats another hunk's note"
+    added, removed = _hunk_lines(hunk)
+    candidates = added or removed
+    if not candidates:
+        return "the hunk has no added or removed line to quote"
+    quoted = quote.rstrip("\r\n")
+    if quoted not in candidates:
+        return "the quote is not a line this hunk adds" + ("" if added else " or removes")
+    notes.add(normalized)
+    return ""
+
+
 def coverage_for_payload(repo: Path, plan: StagePlan, payload: object) -> Dict[str, object]:
-    """Compare a reviewer's `reviewed_hunks` list with the packet's hunk IDs, when supplied."""
+    """Check that every packet hunk carries a verbatim quote and a distinct note.
+
+    Counts only attested hunks, so a list of ids, a quote from another hunk, or one note copied
+    across many entries leaves the answer partial.
+    """
     if not isinstance(payload, dict):
         return {}
     reported = payload.get("reviewed_hunks")
     if not isinstance(reported, list):
         return {}
-    hunks = _stage_hunks(repo, plan, scrub=False)[0]
-    known = {str(hunk["id"]) for hunk in hunks}
-    seen = {str(item) for item in reported}
+    hunks = _stage_hunks(repo, plan, scrub=True)[0]
+    by_id = {str(hunk["id"]): hunk for hunk in hunks}
+    known = set(by_id)
+    seen: set = set()
+    notes: set = set()
+    unknown: List[str] = []
+    invalid: List[Dict[str, str]] = []
+    for item in reported:
+        if isinstance(item, dict):
+            hunk_id = str(item.get("id", "")).strip()
+        elif isinstance(item, str):
+            hunk_id = item.strip()
+        else:
+            hunk_id = ""
+        if hunk_id not in known:
+            unknown.append(hunk_id or "(no id)")
+            continue
+        if hunk_id in seen:
+            invalid.append({"id": hunk_id, "reason": "the hunk is attested more than once"})
+            continue
+        seen.add(hunk_id)
+        if not isinstance(item, dict):
+            invalid.append({"id": hunk_id,
+                            "reason": "the entry is not an object with id, quote and note"})
+            continue
+        problem = _attestation_problem(item, by_id[hunk_id], notes)
+        if problem:
+            invalid.append({"id": hunk_id, "reason": problem})
+    attested = seen - {item["id"] for item in invalid}
     return {
-        "reported": len(seen & known),
+        "reported": len(attested),
         "total": len(known),
-        "missing": sorted(known - seen),
-        "unknown": sorted(seen - known),
+        "missing": sorted(known - attested),
+        "unknown": sorted(set(unknown)),
+        "invalid": invalid,
     }
 
 

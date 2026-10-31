@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 from reforge.errors import ReforgeError
+from reforge.review import MAX_ANSWER_BYTES
 
 
 def _parts(command: str) -> list[str]:
@@ -85,11 +86,25 @@ def run_analyzer(root: Path, packet: Path, command: str, timeout: float = 300.0
                 "run the analyzer directly on the packet to see its output, fix it, and retry.",
             )
         try:
-            text = answer.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
+            raw = answer.read_bytes()
+        except OSError as exc:
             raise ReforgeError(
                 f"the analyzer answer cannot be read: {exc}",
-                "the command did not create a readable UTF-8 answer file.",
+                "the command did not create a readable answer file.",
+                "write one JSON object to the path passed as the second argument.",
+            ) from exc
+        if len(raw) > MAX_ANSWER_BYTES:
+            raise ReforgeError(
+                f"the analyzer answer is larger than {MAX_ANSWER_BYTES} bytes.",
+                "an unbounded answer would be parsed and kept as review state.",
+                "write a bounded JSON object with only the findings and hunk attestations.",
+            )
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ReforgeError(
+                f"the analyzer answer is not UTF-8: {exc}",
+                "the review gate reads a UTF-8 JSON answer.",
                 "write one JSON object to the path passed as the second argument.",
             ) from exc
         if not text.strip():

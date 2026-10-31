@@ -1,242 +1,17 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "idea-register-4digit-v1",
-    "last_phase": "resumed",
+    "task_id": "reforge-attested-review-v1",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1793393888.763203,
-    "owner": "opencode:continue",
-    "started_by": "opencode:continue",
+    "updated_at": 1793427965.2731204,
+    "owner": "kilo:1",
+    "started_by": "kilo:1",
     "continuations": [],
-    "completed_at": 1793393893.096602
+    "completed_at": 1793430962.2925766
   },
   "checkpoints": [
-    {
-      "task_id": "idea-register-4digit-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Lift the three-digit IDEA-NNN ceiling so the register can grow past 999",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793316501.1788216,
-      "timestamp_str": "2026-10-30 02:28:21",
-      "agent": "opencode:idea-register-4digit",
-      "impact_assessment": {
-        "why": "The idea register is full at IDEA-999 with no gaps, and four regexes accept exactly three digits, so the active review's 1000-1004 reservations cannot be written and the new portfolio ideas cannot be registered.",
-        "benefits": "Dossier headings, MATRIX rows, commit references and registry validation accept three or more digit ids; existing ids stay valid; the 1000-1004 reservations become usable and the register can grow.",
-        "risks": "contract: IDEA parsing widens from exactly 3 to 3+ digits; dependency: none; concurrency: the registry lock is unchanged; state: existing 1-999 rows are untouched and 1000-1004 stay reserved to their review",
-        "mitigation": "Failing-first tests for four-digit commit parsing, dossier headings, matrix rows and id validation; full kit suite; idea-catcher validate and render --check"
-      }
-    },
-    {
-      "task_id": "idea-register-4digit-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] Registered IDEA-1005..1014 (10 cross-project mechanisms); 1009 ideas, MATRIX valid; 13 targeted tests pass, knowledge fresh; full suite 746 with 3 dirty-tree-only failures reproduced green in a clean HEAD worktree; uncommitted",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793316973.047046,
-      "timestamp_str": "2026-10-30 02:36:13",
-      "agent": "opencode:idea-register-4digit"
-    },
-    {
-      "task_id": "idea-register-4digit-v1",
-      "phase": "suspended",
-      "phase_num": 4,
-      "description": "Task 'idea-register-4digit-v1' suspended: Superseded by the user objective: re-review every AIKit idea and add the two-deferral Blocked policy; interrupted work is preserved uncommitted",
-      "status": "suspended",
-      "timestamp": 1793382860.8489041,
-      "timestamp_str": "2026-10-30 20:54:20",
-      "agent": "opencode:idea-rereview",
-      "continued_from": "opencode:idea-register-4digit"
-    },
-    {
-      "task_id": "aikit-idea-rereview-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/4] Blocked status and review-idea implemented; 14 focused tests pass; all 329 AIKit ideas re-reviewed (227 Blocked, 5 Integrated, 2 Approved, 72 Rejected, 23 Superseded); register valid and MATRIX current",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793384280.8584776,
-      "timestamp_str": "2026-10-30 21:18:00",
-      "agent": "opencode:idea-rereview"
-    },
-    {
-      "task_id": "aikit-idea-rereview-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/4] Docs and ADR-286 updated; README, architecture and projects.md carry review-idea/Blocked; knowledge base fresh; 329-row private review report written",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793384672.4315403,
-      "timestamp_str": "2026-10-30 21:24:32",
-      "agent": "opencode:idea-rereview"
-    },
-    {
-      "task_id": "aikit-idea-rereview-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[4/4] Phase 4 green: 680 unit + 75 integration, test-budget gate pass, dogfood 5/5, sync/knowledge/licenses/reachability/secrets pass, registry valid and MATRIX current; 329 AIKit ideas reviewed; uncommitted because commit delivery is not authorized",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793385138.2671456,
-      "timestamp_str": "2026-10-30 21:32:18",
-      "agent": "opencode:idea-rereview"
-    },
-    {
-      "task_id": "aikit-idea-rereview-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'aikit-idea-rereview-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793385141.8010721,
-      "timestamp_str": "2026-10-30 21:32:21",
-      "agent": "opencode:idea-rereview"
-    },
-    {
-      "task_id": "idea-909-packet-fence-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Fence reforge review packets as untrusted repository data with a random-id block and an explicit instruction/data boundary",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793385365.6795502,
-      "timestamp_str": "2026-10-30 21:36:05",
-      "agent": "opencode:idea-909",
-      "impact_assessment": {
-        "why": "IDEA-909 is approved: reforge packets embed commit subjects and raw hunks from any audited repository, so a hostile commit can address the reviewing agent as if it were the operator",
-        "benefits": "The reviewer sees one unambiguous data block; a commit cannot close the random-id fence or smuggle instructions into the instruction channel; the existing packet content and redaction stay unchanged",
-        "risks": "contract: packet format changes, existing tests and consumers read it as text; dependency: stdlib secrets only; concurrency: packet generation is local and per-run; state: none beyond the packet file",
-        "mitigation": "Failing-first tests for matching fence ids, random ids per packet, a hostile commit subject inside the fence, and credential redaction; keep the prompt prefix outside the fence and the diff verbatim inside"
-      }
-    },
-    {
-      "task_id": "idea-909-packet-fence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/3] Reforge packets now wrap repository data in a per-packet random-id <untrusted_repo_data_...> fence with an explicit data-only declaration; 4 failing-first tests and 84 reforge-core tests pass; IDEA-909 marked Integrated; ADR-287 and docs updated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793385769.6904566,
-      "timestamp_str": "2026-10-30 21:42:49",
-      "agent": "opencode:idea-909"
-    },
-    {
-      "task_id": "idea-909-packet-fence-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Phase 4 green: 685 unit + 75 integration, test-budget gate pass (13.11ms/394.69ms), dogfood 5/5, sync/knowledge/licenses/reachability/secrets pass, registry valid and MATRIX current; uncommitted because commit delivery is not authorized",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793385772.9618852,
-      "timestamp_str": "2026-10-30 21:42:52",
-      "agent": "opencode:idea-909"
-    },
-    {
-      "task_id": "idea-909-packet-fence-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'idea-909-packet-fence-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793385775.9351778,
-      "timestamp_str": "2026-10-30 21:42:55",
-      "agent": "opencode:idea-909"
-    },
-    {
-      "task_id": "idea-956-proof-gate-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/3] Add a fail-to-pass proof gate: run declared tests against the base tree, require an assertion failure there and a pass on the current tree",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793385877.839282,
-      "timestamp_str": "2026-10-30 21:44:37",
-      "agent": "opencode:idea-956",
-      "impact_assessment": {
-        "why": "IDEA-956 is the remaining approved AIKit idea: PRINCIPLE-014 requires a failing-first test, but no mechanical gate proves that a new test actually failed before the change",
-        "benefits": "A vacuous, already-passing or import-error test can no longer count as proof; the gate records base/current results and gives a deterministic exit code",
-        "risks": "contract: new CLI and JSON record; dependency: stdlib plus git; concurrency: a throwaway worktree per run; state: none written outside the temp tree",
-        "mitigation": "Pure classifier unit tests plus an end-to-end temp-repo integration test; bounded subprocess timeouts; remove the worktree in finally; keep mutation scoring out of this milestone"
-      }
-    },
-    {
-      "task_id": "idea-956-proof-gate-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/3] scripts/proof_gate.py added with fail-to-pass worktree proof, 4 helper unit tests and 2 end-to-end integration tests; ADR-288 and docs updated; IDEA-956 moved to Integrating because mutation scoring remains",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793386712.1493952,
-      "timestamp_str": "2026-10-30 21:58:32",
-      "agent": "opencode:idea-956"
-    },
-    {
-      "task_id": "idea-956-proof-gate-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[3/3] Phase 4 green: 689 unit + 77 integration, test-budget gate pass (13.36ms/463.29ms), dogfood 5/5, sync/knowledge/licenses/reachability/secrets pass, registry valid and MATRIX current; uncommitted because commit delivery is not authorized",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793386718.7169673,
-      "timestamp_str": "2026-10-30 21:58:38",
-      "agent": "opencode:idea-956"
-    },
-    {
-      "task_id": "idea-956-proof-gate-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'idea-956-proof-gate-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793386722.8706813,
-      "timestamp_str": "2026-10-30 21:58:42",
-      "agent": "opencode:idea-956"
-    },
-    {
-      "task_id": "reforge-analyzer-command-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Add a Reforge analyzer adapter and analyze command that runs a reviewer command on a stage packet and records its findings",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793387035.4351337,
-      "timestamp_str": "2026-10-30 22:03:55",
-      "agent": "opencode:reforge-analyze",
-      "impact_assessment": {
-        "why": "Reforge only writes review packets; an empty reviewed_hunks list can pass a stage without any code analysis, so the tool does not do its core job.",
-        "benefits": "One command runs a real analyzer over the packet, validates its JSON through the existing review gate, and records findings; the analyzer is a pluggable command so any model or static tool can be used.",
-        "risks": "contract: new analyze subcommand and reviewer command contract; dependency: stdlib subprocess/shlex only; concurrency: analyzer runs outside the state lock, review writes inside it; state: temp findings file plus existing reforge.json/ledger writes",
-        "mitigation": "Failing-first tests with a fake analyzer and failure/timeout cases; no shell; timeout; typed errors; packet is already fenced as untrusted data; run Phase 4 gates"
-      }
-    },
-    {
-      "task_id": "reforge-analyzer-command-v1",
-      "phase": "phase 4 verification",
-      "phase_num": 4,
-      "description": "[2/2] Phase 4 green: 791 tests, 1 skipped, exit 0; analyze command, analyzer adapter, 6 unit + 1 integration tests, ADR-290 and docs; uncommitted because commit delivery is not authorized.",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1793387635.572631,
-      "timestamp_str": "2026-10-30 22:13:55",
-      "agent": "opencode:reforge-analyze",
-      "handoff": {
-        "state": "full suite 791 OK, analyze command and tests in the working tree",
-        "next": "commit authorization, then commit and complete",
-        "failed": "none",
-        "open": "commit authorization",
-        "evidence": "unittest discover OK skipped 1 exit 0"
-      }
-    },
-    {
-      "task_id": "reforge-analyzer-command-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'reforge-analyzer-command-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1793388619.266223,
-      "timestamp_str": "2026-10-30 22:30:19",
-      "agent": "opencode:reforge-analyze"
-    },
     {
       "task_id": "idea-register-4digit-v1",
       "phase": "resumed",
@@ -257,6 +32,214 @@
       "timestamp": 1793393893.0966063,
       "timestamp_str": "2026-10-30 23:58:13",
       "agent": "opencode:continue"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 11",
+      "phase_num": 3,
+      "description": "Reforge stage 11: stage 11 host review reviewed; run active; coverage 500/500",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793394584.5091443,
+      "timestamp_str": "2026-10-31 00:09:44",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 10",
+      "phase_num": 3,
+      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793394648.1327114,
+      "timestamp_str": "2026-10-31 00:10:48",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 10",
+      "phase_num": 3,
+      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793394763.0058858,
+      "timestamp_str": "2026-10-31 00:12:43",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 10",
+      "phase_num": 3,
+      "description": "Reforge stage 10: stage 10 host review reviewed; run active; coverage 634/634",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793394854.457706,
+      "timestamp_str": "2026-10-31 00:14:14",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 9",
+      "phase_num": 3,
+      "description": "Reforge stage 9: stage 9 host review reviewed; run active; coverage 477/477",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793395168.8372808,
+      "timestamp_str": "2026-10-31 00:19:28",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 9",
+      "phase_num": 3,
+      "description": "Reforge stage 9: stage 9 host review reviewed; run active; coverage 477/477",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793395270.886164,
+      "timestamp_str": "2026-10-31 00:21:10",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge:run-3",
+      "phase": "reforge stage 8",
+      "phase_num": 3,
+      "description": "Reforge stage 8: stage 8 host review reviewed; run active; coverage 349/349",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793395362.414699,
+      "timestamp_str": "2026-10-31 00:22:42",
+      "agent": "opencode"
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] Require per-hunk attestations (verbatim quote plus unique note) for a Reforge review, cap the answer file, and record host versus analyzer provenance",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793396506.0332687,
+      "timestamp_str": "2026-10-31 00:41:46",
+      "agent": "opencode:reforge-attest",
+      "impact_assessment": {
+        "why": "A review answer that listed every hunk id but quoted nothing was accepted as fully reviewed. The coverage gate only compared ids, so an operator or agent could mark a 777-hunk packet reviewed without reading a single hunk; that is exactly what happened on Merklock.",
+        "benefits": "A review counts only when every hunk carries an exact added (or, for a deletion, removed) line and a distinct note; an id-only or bulk-generated list is recorded partial; provenance shows whether an analyzer or the host produced the review.",
+        "risks": "contract: the reviewed_hunks schema changes from a string list to objects, and old answers become partial; dependency: stdlib only; concurrency: none, the review write stays inside the existing run lock; state: review metadata gains method and attestation fields, existing run history stays readable",
+        "mitigation": "Failing-first unit and integration tests for id-only, wrong-quote, duplicate-note and valid answers; a size-capped answer reader; prompt, CLI help, skill and ADR updates; both test tiers and every read-only gate before the milestone commit"
+      }
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "suspended",
+      "phase_num": 2,
+      "description": "Task 'reforge-attested-review-v1' suspended: Superseded by the user objective: continue repository research for the seven targets",
+      "status": "suspended",
+      "timestamp": 1793397033.8200464,
+      "timestamp_str": "2026-10-31 00:50:33",
+      "agent": "opencode:idea-scan-b2",
+      "continued_from": "opencode:reforge-attest"
+    },
+    {
+      "task_id": "github-scan-batch2-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] Pin and download 13 new repository snapshots across AIKit, licensing, licensing-ops, Merklock, Research Engine and NeuroCore",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793397040.977843,
+      "timestamp_str": "2026-10-31 00:50:40",
+      "agent": "opencode:idea-scan-b2",
+      "impact_assessment": {
+        "why": "The first scan covered 34 local-LLM and governance repositories; the licensing, licensing-ops, Merklock, Research Engine and NeuroCore targets received little of that round, and 33 of its dossiers failed the claim audit. The user asked to continue repository research for the targets.",
+        "benefits": "Two or more mechanism-backed ideas per under-served target, each tied to a real file and line in a pinned snapshot; a repeatable second-batch manifest and report; dossiers that pass audit-claims rather than only registering titles.",
+        "risks": "contract: idea ids and dossier schema must stay compatible with the register; dependency: stdlib plus git/curl only; concurrency: the registry lock is the only shared write and each review claims its ids once; state: new dossiers under .idea-catcher are git-ignored and the tracked report must not overwrite the batch-1 evidence",
+        "mitigation": "Pin every repository to a 40-character SHA, read at least four source files per dossier, verify every cited path and line with audit-claims, reserve exactly two ids per review, run validate and render --check before closing"
+      }
+    },
+    {
+      "task_id": "github-scan-batch2-v1",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[2/4] 13 snapshots pinned and extracted; reviews 328-340 reserve IDEA-1132..1157; six analysts dispatched across AIKit, both licensing targets, Merklock, Research Engine and NeuroCore",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793398504.993088,
+      "timestamp_str": "2026-10-31 01:15:04",
+      "agent": "opencode:idea-scan-b2"
+    },
+    {
+      "task_id": "github-scan-batch2-v1",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[3/4] Registered 32 ideas (IDEA-1132..1163) and closed all 16 reviews 328-343; registry validates and MATRIX/CONCEPTS are current",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793400531.5363126,
+      "timestamp_str": "2026-10-31 01:48:51",
+      "agent": "opencode:idea-scan-b2"
+    },
+    {
+      "task_id": "github-scan-batch2-v1",
+      "phase": "delivery",
+      "phase_num": 4,
+      "description": "[4/4] Report reports/github-scan-2026-10-31-batch2.md complete; independent dossier verifier 16/16 clean, 0 errors; ModelDuck group added with 6 ideas",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793400534.2561133,
+      "timestamp_str": "2026-10-31 01:48:54",
+      "agent": "opencode:idea-scan-b2"
+    },
+    {
+      "task_id": "github-scan-batch2-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'github-scan-batch2-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793400536.727652,
+      "timestamp_str": "2026-10-31 01:48:56",
+      "agent": "opencode:idea-scan-b2"
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "resumed",
+      "phase_num": 2,
+      "description": "Resumed 'reforge-attested-review-v1' after a pause",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793427779.7153633,
+      "timestamp_str": "2026-10-31 09:22:59",
+      "agent": "kilo:1"
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "implementation",
+      "phase_num": 4,
+      "description": "[2/3] Per-hunk quote+note attestations, 4 MiB answer cap and host/analyzer provenance implemented; focused unit and Reforge integration tests pass",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793427962.1122825,
+      "timestamp_str": "2026-10-31 09:26:02",
+      "agent": "kilo:1"
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/3] ADR-292 plus README, architecture, skill and codebase-map updates landed; 708 unit + 78 integration tests, budgets (14.14ms/488.91ms), dogfood 5/5 run alone and every read-only gate pass; uncommitted pending delivery authorization",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1793427965.2731204,
+      "timestamp_str": "2026-10-31 09:26:05",
+      "agent": "kilo:1"
+    },
+    {
+      "task_id": "reforge-attested-review-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'reforge-attested-review-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1793430962.2925777,
+      "timestamp_str": "2026-10-31 10:16:02",
+      "agent": "kilo:1"
     }
   ]
 }

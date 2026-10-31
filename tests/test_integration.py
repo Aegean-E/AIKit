@@ -58,6 +58,34 @@ from scripts.disruption_recovery import (  # noqa: E402
     UNMERGED_CODES,
 )
 
+
+def review_attestations(packet: str) -> list:
+    """One valid quote and note per packet hunk, for tests that need a complete answer."""
+    added: dict = {}
+    removed: dict = {}
+    current = None
+    for line in packet.splitlines():
+        match = re.match(r"^hunk (\S+:\S+#\d+) ", line)
+        if match:
+            current = match.group(1)
+            added.setdefault(current, "")
+            removed.setdefault(current, "")
+        elif current and line.startswith("+") and not line.startswith("+++"):
+            body = line[1:]
+            if body.strip() and not added[current]:
+                added[current] = body
+        elif current and line.startswith("-") and not line.startswith("---"):
+            body = line[1:]
+            if body.strip() and not removed[current]:
+                removed[current] = body
+    attestations = []
+    for hunk_id in added:
+        quote = added[hunk_id] or removed[hunk_id]
+        if quote:
+            attestations.append({"id": hunk_id, "quote": quote,
+                                 "note": f"checked the hunk {hunk_id}"})
+    return attestations
+
 # Hard ceiling for any single spawned process in this tier (PRINCIPLE-015 R1).
 PROC_TIMEOUT = 10
 
@@ -1482,7 +1510,7 @@ class TestReforgeHistory(unittest.TestCase):
         packet = Path(audit["review"]["packet"]).read_text(encoding="utf-8")
         answer = root / "review.json"
         answer.write_text(jsonlib.dumps({
-            "findings": [], "reviewed_hunks": re.findall(r"^hunk (\S+:\S+#\d+)", packet, re.M),
+            "findings": [], "reviewed_hunks": review_attestations(packet),
         }), encoding="utf-8")
         first = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
         self.assertTrue(first["repaired"] >= 1)
@@ -1536,7 +1564,7 @@ class TestReforgeHistory(unittest.TestCase):
         packet = Path(report["review"]["packet"]).read_text(encoding="utf-8")
         answer = root / "review.json"
         answer.write_text(jsonlib.dumps({
-            "findings": [], "reviewed_hunks": re.findall(r"^hunk (\S+:\S+#\d+)", packet, re.M),
+            "findings": [], "reviewed_hunks": review_attestations(packet),
         }), encoding="utf-8")
         reviewed = run_pipeline(root, "fix", run_tests=False, findings_file=str(answer))
         self.assertEqual(reviewed["run_status"], "completed")
@@ -1633,7 +1661,7 @@ class TestReforgeHistory(unittest.TestCase):
 
         from reforge.audit import audit_window, plan_next_stage
         from reforge.pipeline import run_pipeline, start_audit
-        from reforge.review import _stage_hunks
+        from reforge.review import packet_text
         from reforge.state import current_run, load_state
 
         root = self.one_commit_repository(
@@ -1650,7 +1678,7 @@ class TestReforgeHistory(unittest.TestCase):
         plan = plan_next_stage(root, run)
         rules = audit_window(root, plan, run.get("history") or [], [], [], True)
         self.assertTrue(any(item.code == "bare-except" for item in rules))
-        hunks = [hunk["id"] for hunk in _stage_hunks(root, plan, scrub=False)[0]]
+        attestations = review_attestations(packet_text(root, plan)[0])
         answer_folder = Path(tempfile.mkdtemp(prefix="reforge_answer_"))
         self.addCleanup(remove_tree, answer_folder)
         answer = answer_folder / "findings.json"
@@ -1662,7 +1690,7 @@ class TestReforgeHistory(unittest.TestCase):
             {"path": "app.py", "line": 7, "severity": "medium", "kind": "improvement",
              "code": "narrow-the-except", "message": "the handler hides every error type",
              "evidence": "    except:"},
-        ], "reviewed_hunks": hunks}), encoding="utf-8")
+        ], "reviewed_hunks": attestations}), encoding="utf-8")
 
         audit = run_pipeline(root, "audit", findings_file=str(answer), rules=False,
                              run_tests=False)

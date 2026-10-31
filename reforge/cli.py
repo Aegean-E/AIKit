@@ -237,6 +237,8 @@ def _print_review(report: Dict[str, object]) -> None:
     rejected = len(report.get("rejected") or [])
     redacted = int(report.get("redacted") or 0)
     detail = f", {accepted} accepted" + (f", {rejected} dropped" if rejected else "")
+    if report.get("method"):
+        detail += f", via {report['method']}"
     if redacted:
         detail += f", {redacted} secret span(s) redacted"
     if status == "reviewed":

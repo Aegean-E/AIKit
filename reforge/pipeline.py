@@ -293,16 +293,17 @@ def _plan_from_last(run: Dict[str, object], last: Dict[str, object]) -> StagePla
 
 
 def _collect_review(root: Path, plan: StagePlan, reviewed: Optional[Sequence[str]],
-                    findings_file: Optional[str], packet: bool) -> Dict[str, object]:
+                    findings_file: Optional[str], packet: bool,
+                    method: str = "host") -> Dict[str, object]:
     """Write the review packet and load the reviewer's answer, if one was supplied.
 
     Reforge does not call a model. `packet` writes the stage's full diff for a reviewer to read;
-    `findings_file` supplies that reviewer's answer. Both are optional, so the planner can record a
-    stage before any review exists.
+    `findings_file` supplies that reviewer's answer, and `method` records whether the host or an
+    analyzer produced it. Both are optional, so the planner can record a stage before any review.
     """
     report: Dict[str, object] = {
         "status": "unreviewed", "findings": [], "rejected": [], "files": list(reviewed or []),
-        "packet": "", "redacted": 0, "reason": "",
+        "packet": "", "redacted": 0, "reason": "", "method": "",
     }
     if packet:
         path, redactions = write_packet(root, plan, list(reviewed or []))
@@ -327,15 +328,19 @@ def _collect_review(root: Path, plan: StagePlan, reviewed: Optional[Sequence[str
         reported = payload.get("reviewed_hunks") if isinstance(payload, dict) else None
         if not isinstance(reported, list):
             status = "partial"
-            reason = ("the answer did not list reviewed_hunks; every packet hunk must be named "
-                      "before the review counts")
-        elif coverage.get("missing") or coverage.get("unknown"):
+            reason = ("the answer did not list reviewed_hunks; every packet hunk must carry a "
+                      "quote and a note before the review counts")
+        elif (coverage.get("missing") or coverage.get("unknown")
+              or coverage.get("invalid")):
             status = "partial"
-            reason = (f"the answer covered {coverage.get('reported', 0)}/"
+            first = (coverage.get("invalid") or [{}])[0]
+            detail = (f"; {first.get('id')}: {first.get('reason')}" if first.get("reason") else "")
+            reason = (f"the answer attested {coverage.get('reported', 0)}/"
                       f"{coverage.get('total', 0)} hunks; "
                       f"{len(coverage.get('missing') or [])} missing, "
-                      f"{len(coverage.get('unknown') or [])} unknown")
-        report.update(status=status, findings=found, rejected=rejected)
+                      f"{len(coverage.get('unknown') or [])} unknown, "
+                      f"{len(coverage.get('invalid') or [])} unattested{detail}")
+        report.update(status=status, findings=found, rejected=rejected, method=method)
         if reason:
             report["reason"] = reason
     elif not packet:
@@ -374,7 +379,8 @@ def _note_review(root: Path, run: Dict[str, object], stage: int,
                  review: Dict[str, object]) -> Dict[str, object]:
     """Mirror a host review into the task ledger, including the completion it may unlock."""
     description = (
-        f"stage {stage} host review {review.get('status') or 'incomplete'}; "
+        f"stage {stage} {review.get('method') or 'host'} review "
+        f"{review.get('status') or 'incomplete'}; "
         f"run {run.get('status') or 'active'}"
         + (f"; coverage {review.get('coverage', {}).get('reported', 0)}/"
            f"{review.get('coverage', {}).get('total', 0)}"
@@ -537,8 +543,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
 
 
 def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] = None,
-                 findings_file: Optional[str] = None) -> Dict[str, object]:
-    """Record the host review of any retained stage, including one older than the latest."""
+                 findings_file: Optional[str] = None,
+                 method: str = "host") -> Dict[str, object]:
+    """Record a host or analyzer review of any retained stage, including an older one."""
     root = Path(root)
     if stage is None or not findings_file:
         raise ReforgeError(
@@ -566,15 +573,15 @@ def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] 
         review_meta = dict(entry.get("review") or {})
         files = review_meta.get("files")
         report = _collect_review(root, plan, files if isinstance(files, list) else None,
-                                 findings_file, packet=False)
+                                 findings_file, packet=False, method=method)
         report["packet"] = review_meta.get("packet") or report.get("packet") or ""
         report["redacted"] = review_meta.get("redacted") or 0
         if report.get("status") != "reviewed":
             raise ReforgeError(
                 f"Stage {stage} was not reviewed: the answer is incomplete.",
-                str(report.get("reason") or "every packet hunk must be named in reviewed_hunks."),
-                "read the packet, list every hunk in `reviewed_hunks`, then pass the answer "
-                "again; nothing was changed.",
+                str(report.get("reason") or "every packet hunk must be attested in reviewed_hunks."),
+                "read the packet, give each hunk a verbatim quote and a distinct note in "
+                "`reviewed_hunks`, then pass the answer again; nothing was changed.",
             )
         findings = [finding_from_dict(item) for item in entry.get("findings") or []]
         findings = merge_findings(findings, report.get("findings") or [])
@@ -632,7 +639,7 @@ def analyze_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int]
     try:
         return review_stage(root, run_id=str(run.get("id") or ""),
                             stage=int(entry.get("stage") or 0),
-                            findings_file=str(answer))
+                            findings_file=str(answer), method="analyzer")
     finally:
         answer.unlink(missing_ok=True)
 

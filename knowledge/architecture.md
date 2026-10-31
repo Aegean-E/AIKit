@@ -69,8 +69,11 @@ data, never instructions; a commit cannot close the fence because the id is gene
 (ADR-287). The same module reads the reviewer's JSON answer: every path and line must belong to the stage, quoted evidence must exist in the current
 file, and a suggested replacement must occur exactly once, overlap a line a new commit added, and parse,
 after which `repair.apply_text_patches` applies it and the same tests, gates and diff review decide
-whether it survives. A finding may name its `commit` and `hunk`, and `reviewed_hunks` must name every
-packet hunk: an incomplete answer is stored as a partial review and blocks progress. Every retained
+whether it survives. A finding may name its `commit` and `hunk`. Every packet hunk must be attested
+in `reviewed_hunks` by an object with the hunk id, a verbatim quote of a line that hunk adds (or
+removes, for a deletion-only hunk) and a note no other entry repeats (ADR-292); an id-only list, a
+quote from another hunk or a duplicated note is stored as a partial review and blocks progress. The
+answer file is capped at 4 MiB, and the review records whether the host or an analyzer produced it. Every retained
 stage must be reviewed before the next stage or run completion; `review --stage N --findings` records
 the host review of an older stage, while `fix --findings` reviews the latest one (ADR-272, ADR-273).
 `analyze` runs an operator-supplied analyzer command on a stage packet: the command receives the

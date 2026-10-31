@@ -9319,6 +9319,7 @@ class TestReforgeCore(unittest.TestCase):
                           {"reported": 2, "total": 2, "missing": [], "unknown": []})
         self.assertEqual(complete["status"], "reviewed")
         self.assertEqual(complete["coverage"]["reported"], 2)
+        self.assertEqual(complete["method"], "host")
 
     def test_a_fix_persists_the_review_status_in_the_run_history(self):
         # A later stage used to move the reviewed entry into history while it still said
@@ -9680,21 +9681,72 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(findings, [])
         self.assertIn("not in this packet", rejected[0])
 
-    def test_review_coverage_reports_missing_and_unknown_hunks(self):
+    def test_review_coverage_requires_a_quote_and_a_distinct_note(self):
         from reforge import review
 
         plan = self.stage_plan()
-        hunks = [{"id": "a", "commit": "newest", "path": "app.py", "start": 1,
-                  "count": 1, "text": "@@"},
-                 {"id": "b", "commit": "older", "path": "app.py", "start": 2,
-                  "count": 1, "text": "@@"}]
+        hunks = [{"id": "a", "commit": "newest", "path": "app.py", "start": 1, "count": 1,
+                  "text": "@@ -1 +1 @@\n+VALUE = 1\n"},
+                 {"id": "b", "commit": "older", "path": "app.py", "start": 2, "count": 1,
+                  "text": "@@ -2 +2 @@\n+OTHER = 2\n"}]
+
+        def coverage(payload):
+            with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
+                return review.coverage_for_payload(self.root(), plan, payload)
+
+        ids_only = coverage({"reviewed_hunks": ["a", "x"]})
+        self.assertEqual(ids_only["reported"], 0)
+        self.assertEqual(ids_only["missing"], ["a", "b"])
+        self.assertEqual(ids_only["unknown"], ["x"])
+
+        wrong_quote = coverage({"reviewed_hunks": [
+            {"id": "a", "quote": "OTHER = 2", "note": "checked the first value"},
+            {"id": "b", "quote": "OTHER = 2", "note": "checked the second value"},
+        ]})
+        self.assertEqual(wrong_quote["reported"], 1)
+        self.assertEqual(wrong_quote["missing"], ["a"])
+        self.assertIn("not a line this hunk adds", wrong_quote["invalid"][0]["reason"])
+
+        repeated = coverage({"reviewed_hunks": [
+            {"id": "a", "quote": "VALUE = 1", "note": "checked the first value"},
+            {"id": "b", "quote": "OTHER = 2", "note": "checked the first value"},
+        ]})
+        self.assertEqual(repeated["reported"], 1)
+        self.assertIn("repeats", repeated["invalid"][0]["reason"])
+
+        complete = coverage({"reviewed_hunks": [
+            {"id": "a", "quote": "VALUE = 1", "note": "checked the first value"},
+            {"id": "b", "quote": "OTHER = 2", "note": "checked the second value"},
+        ]})
+        self.assertEqual(complete["reported"], 2)
+        self.assertEqual(complete["missing"], [])
+        self.assertEqual(complete["invalid"], [])
+
+    def test_a_deletion_only_hunk_is_attested_by_a_removed_line(self):
+        from reforge import review
+
+        hunks = [{"id": "a", "commit": "newest", "path": "app.py", "start": 1, "count": 0,
+                  "text": "@@ -1 +0,0 @@\n-GONE = 1\n"}]
         with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
-            coverage = review.coverage_for_payload(
-                self.root(), plan, {"reviewed_hunks": ["a", "x"]})
+            coverage = review.coverage_for_payload(self.root(), self.stage_plan(), {
+                "reviewed_hunks": [{"id": "a", "quote": "GONE = 1",
+                                    "note": "the removed value is gone"}],
+            })
         self.assertEqual(coverage["reported"], 1)
-        self.assertEqual(coverage["total"], 2)
-        self.assertEqual(coverage["missing"], ["b"])
-        self.assertEqual(coverage["unknown"], ["x"])
+
+    def test_an_oversized_findings_answer_is_refused(self):
+        from reforge import review
+        from reforge.errors import ReforgeError
+        from reforge.pipeline import _collect_review
+
+        root = self.root()
+        answer = root / "answer.json"
+        answer.write_bytes(b" " * (review.MAX_ANSWER_BYTES + 1))
+        with self.assertRaises(ValueError) as raised:
+            review.read_findings_file(answer)
+        self.assertIn("larger than", str(raised.exception))
+        with self.assertRaises(ReforgeError):
+            _collect_review(root, self.stage_plan(), [], str(answer), packet=False)
 
     def test_a_pure_deletion_hunk_has_no_new_lines(self):
         from reforge import review
@@ -10426,17 +10478,33 @@ class TestReforgeAnalyzer(unittest.TestCase):
             seen["args"] = args
             seen["kwargs"] = kwargs
             Path(args[-1]).write_text(
-                json.dumps({"findings": [], "reviewed_hunks": ["example"]}), encoding="utf-8")
+                json.dumps({"findings": [], "reviewed_hunks": [
+                    {"id": "example", "quote": "VALUE = 1", "note": "checked the value"}]}),
+                encoding="utf-8")
             return subprocess.CompletedProcess(args, 0, "", "")
 
         with mock.patch("reforge.analyzer.subprocess.run", side_effect=fake_run):
             payload, answer = run_analyzer(self.root, self.packet, "reviewer --flag", 5)
-        self.assertEqual(payload["reviewed_hunks"], ["example"])
+        self.assertEqual(payload["reviewed_hunks"][0]["id"], "example")
         self.assertEqual(seen["args"][:3], ["reviewer", "--flag", str(self.packet)])
         self.assertEqual(Path(seen["args"][-1]), answer)
         self.assertFalse(seen["kwargs"].get("shell", False))
         self.assertEqual(seen["kwargs"]["timeout"], 5)
         answer.unlink()
+
+    def test_an_oversized_analyzer_answer_is_a_typed_error(self):
+        from reforge import review
+        from reforge.analyzer import run_analyzer
+        from reforge.errors import ReforgeError
+
+        def fake_run(args, **kwargs):
+            Path(args[-1]).write_bytes(b" " * (review.MAX_ANSWER_BYTES + 1))
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        with mock.patch("reforge.analyzer.subprocess.run", side_effect=fake_run):
+            with self.assertRaises(ReforgeError) as caught:
+                run_analyzer(self.root, self.packet, "reviewer", 5)
+        self.assertIn("larger than", caught.exception.message)
 
     def test_a_timeout_is_a_typed_error(self):
         from reforge.analyzer import run_analyzer
@@ -10516,8 +10584,9 @@ class TestReforgeAnalyzer(unittest.TestCase):
             calls["timeout"] = timeout
             return {}, answer
 
-        def fake_review_stage(root, run_id=None, stage=None, findings_file=None):
-            calls["review"] = (run_id, stage, findings_file)
+        def fake_review_stage(root, run_id=None, stage=None, findings_file=None,
+                              method="host"):
+            calls["review"] = (run_id, stage, findings_file, method)
             return {"ok": True}
 
         with mock.patch("reforge.pipeline.run_analyzer", side_effect=fake_run_analyzer), \
@@ -10527,7 +10596,7 @@ class TestReforgeAnalyzer(unittest.TestCase):
         self.assertEqual(calls["packet"], self.packet)
         self.assertEqual(calls["command"], "reviewer")
         self.assertEqual(calls["timeout"], 7)
-        self.assertEqual(calls["review"], ("run-1", 1, str(answer)))
+        self.assertEqual(calls["review"], ("run-1", 1, str(answer), "analyzer"))
         self.assertFalse(answer.exists())
 
 

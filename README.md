@@ -225,7 +225,7 @@ touched appear; earlier-stage files are not repeated. Binary files are named at 
 redacted; the diff sits inside a random-id `<untrusted_repo_data_...>` fence marked data, never
 instructions. Reforge makes no model call; `analyze` runs an operator-supplied analyzer and
 validates its answer through the review gate (ADR-290). Each finding names a changed path, line,
-severity and `kind`; `reviewed_hunks` must name every hunk.
+severity and `kind`; `reviewed_hunks` must quote each hunk and add a distinct note (ADR-292).
 Reforge accepts a fix only when
 the quoted text occurs exactly once, overlaps a line the stage added, and leaves a Python file
 parsable; everything else is reported as rejected. Use `fix --findings` for the latest stage and
@@ -234,8 +234,7 @@ restores the exact bytes. A repair may run beside unrelated uncommitted work: it
 snapshotted and never staged, and a commit is refused only when a finding's own target file already
 held work Reforge did not make (pass `--allow-dirty` to accept that risk deliberately).
 
-Every retained stage must be reviewed: an incomplete packet blocks later stages and completion;
-`review --stage N` closes an older one.
+Every retained stage must be reviewed; an incomplete packet blocks progress.
 
 Runs are independent (`settings`, `stop`, `resume`, `runs`, `report`) and state is crash-safe. Each
 project has its own lock, state and history, so several projects audit at the same time while a

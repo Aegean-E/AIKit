@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `61`
 - **Total Classes**: `133`
-- **Total Top-Level Functions**: `816`
-- **Total Class Methods**: `928`
-- **Total Source Lines**: `35547`
+- **Total Top-Level Functions**: `819`
+- **Total Class Methods**: `931`
+- **Total Source Lines**: `35754`
 
 ---
 
@@ -239,7 +239,7 @@
 ### [`reforge/analyzer.py`](reforge/analyzer.py)
 > *Run an external analyzer over one Reforge review packet.*
 
-**Size**: `118` lines (`4947` bytes)
+**Size**: `133` lines (`5643` bytes)
 
 **Functions:**
 - `def _parts(command)`
@@ -268,7 +268,7 @@
 ### [`reforge/cli.py`](reforge/cli.py)
 > *The Reforge command grammar, shared by `python -m reforge` and `aikit.py reforge`.*
 
-**Size**: `456` lines (`22591` bytes)
+**Size**: `458` lines (`22666` bytes)
 
 **Classes:**
 - `class ReforgeArgumentParser` - *argparse whose usage errors carry the AIKit What/Why/Fix triad (PRINCIPLE-011).*
@@ -442,7 +442,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `755` lines (`36778` bytes)
+**Size**: `762` lines (`37357` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -460,12 +460,12 @@
 - `def _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped, ledger, reviewed, review)`
 - `def _review_error(run, pending)`
 - `def _plan_from_last(run, last)` - *Rebuild the stage a `fix` must apply, from the run and its last audit entry.*
-- `def _collect_review(root, plan, reviewed, findings_file, packet)` - *Write the review packet and load the reviewer's answer, if one was supplied.*
+- `def _collect_review(root, plan, reviewed, findings_file, packet, method)` - *Write the review packet and load the reviewer's answer, if one was supplied.*
 - `def _serialize_review(report)` - *The small JSON-safe form of a review kept in state and printed by the CLI.*
 - `def _note_stage(root, run, plan, entry, findings, skipped)` - *Mirror one stage into the repository's task ledger so cold start can see the audit.*
 - `def _note_review(root, run, stage, review)` - *Mirror a host review into the task ledger, including the completion it may unlock.*
 - `def run_pipeline(root, mode, add_tests, run_tests, test_command, gate_runner, allow_dirty, run_id, start, step, stop, rules, findings_file, packet, deliver)` - *Audit the next stage (`audit`), repair the last one (`fix`), or do both (`run`).*
-- `def review_stage(root, run_id, stage, findings_file)` - *Record the host review of any retained stage, including one older than the latest.*
+- `def review_stage(root, run_id, stage, findings_file, method)` - *Record a host or analyzer review of any retained stage, including an older one.*
 - `def analyze_stage(root, run_id, stage, command, timeout)` - *Run the configured analyzer over one stage packet, then record its answer as the review.*
 - `def start_audit(root, start, step, stop)` - *Create a new independent run, refusing while another run is still active.*
 - `def stop_audit(root, run_id)`
@@ -515,7 +515,7 @@
 ### [`reforge/review.py`](reforge/review.py)
 > *The review packet: the change a stage makes, and the findings a reviewer returns.*
 
-**Size**: `527` lines (`22761` bytes)
+**Size**: `613` lines (`26494` bytes)
 
 **Functions:**
 - `def _stage_base(repo, plan)` - *The commit just before the stage, so one diff shows the whole stage as it now stands.*
@@ -533,10 +533,12 @@
 - `def _write_text(path, text)` - *Write a generated packet through a temp file and an atomic replace.*
 - `def write_packet(root, plan, files)` - *Write the packet and return (path, redacted span count).*
 - `def _json_payload(text)` - *The first JSON value in the answer, tolerating a code fence or a short explanation.*
-- `def read_findings_file(path)` - *Read a findings file, raising ValueError with a clear message when it holds no JSON.*
+- `def read_findings_file(path)` - *Read a findings file, refusing one larger than the answer cap or holding no JSON.*
 - `def _patch_problem(repo, relative, old, new, touched)` - *Why a proposed replacement cannot be applied, or an empty string when it can.*
 - `def _line_set(text)` - *Every non-blank line of a file, stripped, for verifying a quoted evidence line.*
-- `def coverage_for_payload(repo, plan, payload)` - *Compare a reviewer's `reviewed_hunks` list with the packet's hunk IDs, when supplied.*
+- `def _hunk_lines(hunk)` - *The added and removed line bodies of one hunk, without the diff prefixes.*
+- `def _attestation_problem(item, hunk, notes)` - *Why one `reviewed_hunks` entry does not attest this hunk, or an empty string.*
+- `def coverage_for_payload(repo, plan, payload)` - *Check that every packet hunk carries a verbatim quote and a distinct note.*
 - `def findings_from_payload(repo, payload, plan, files)` - *Validate a findings answer against the stage; returns (findings, rejected reasons).*
 - `def merge_findings(proven, reviewed)` - *Rule findings first, then review findings the rules did not already name.*
 
@@ -1448,7 +1450,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1936` lines (`99953` bytes)
+**Size**: `1964` lines (`101016` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1588,6 +1590,7 @@
   - Method `.test_no_fstring_in_aikit_needs_python_312()`
 
 **Functions:**
+- `def review_attestations(packet)` - *One valid quote and note per packet hunk, for tests that need a complete answer.*
 - `def complete_readme(project_root)` - *Fill a seed README's `<FILL:` marker the way a project's first commit must (ADR-138).*
 - `def remove_tree(path)` - *Remove a test tree even when copied `.git` objects kept their read-only bit (Windows).*
 - `def setUpModule()` - *Create one committed project template; repo copies are cheaper than git init+commit.*
@@ -1599,7 +1602,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10535` lines (`586920` bytes)
+**Size**: `10604` lines (`590254` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2375,7 +2378,9 @@
   - Method `.test_the_packet_redacts_a_credential_before_an_agent_reads_it()`
   - Method `.test_a_review_answer_is_validated_against_the_stage()`
   - Method `.test_a_finding_can_name_the_commit_and_hunk_it_reviewed()`
-  - Method `.test_review_coverage_reports_missing_and_unknown_hunks()`
+  - Method `.test_review_coverage_requires_a_quote_and_a_distinct_note()`
+  - Method `.test_a_deletion_only_hunk_is_attested_by_a_removed_line()`
+  - Method `.test_an_oversized_findings_answer_is_refused()`
   - Method `.test_a_pure_deletion_hunk_has_no_new_lines()`
   - Method `.test_independent_runs_write_different_packet_paths()`
   - Method `.test_a_review_improvement_is_its_own_category()`
@@ -2439,6 +2444,7 @@
 - `class TestReforgeAnalyzer` - *The external analyzer adapter: packet/answer paths, failures and CLI wiring.*
   - Method `.setUp()`
   - Method `.test_command_receives_packet_and_answer_paths()`
+  - Method `.test_an_oversized_analyzer_answer_is_a_typed_error()`
   - Method `.test_a_timeout_is_a_typed_error()`
   - Method `.test_a_nonzero_exit_is_a_typed_error()`
   - Method `.test_invalid_json_is_a_typed_error()`
