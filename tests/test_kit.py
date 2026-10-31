@@ -9888,6 +9888,19 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(coverage["reported"], 1)
         self.assertEqual(coverage["invalid"], [])
 
+    def test_a_blank_addition_hunk_accepts_blank_line_marker(self):
+        from reforge import review
+
+        hunks = [{"id": "a", "commit": "newest", "path": "notes.md", "start": 2, "count": 1,
+                  "text": "@@ -2,0 +2 @@\n+\n"}]
+        with mock.patch.object(review, "_stage_hunks", return_value=(hunks, 0)):
+            coverage = review.coverage_for_payload(self.root(), self.stage_plan(), {
+                "reviewed_hunks": [{"id": "a", "quote": "<blank line>",
+                                    "note": "the added blank line was checked"}],
+            })
+        self.assertEqual(coverage["reported"], 1)
+        self.assertEqual(coverage["invalid"], [])
+
     def test_an_oversized_findings_answer_is_refused(self):
         from reforge import review
         from reforge.errors import ReforgeError
