@@ -24,7 +24,9 @@ Phase 4 gates: both test tiers, sync_principles.py --check, update_knowledge_bas
 `scripts/proof_gate.py --base <commit> --tests <path> [--sources <path> --mutants N]` proves a
 declared test failed on the base tree and passes now, then scores bounded single-line mutants;
 these are both halves of IDEA-956 (ADR-288, ADR-289). A commit that carries `.aikit/proof.json`
-also runs that proof from `verify_commit.py` against its parent (ADR-291).
+also runs that proof from `verify_commit.py` against its parent (ADR-291). Mutation sources are
+resolved against the repository and must stay inside it; the scoring copy skips VCS internals,
+project/reference checkouts, dependency folders and generated caches (ADR-296).
 
 Each post-commit gate carries its own bound: the tiers gate gets room for all three tiers plus the
 retry allowance, and every single-script gate keeps `GATE_TIMEOUT_SECONDS`. A tier that overruns the
@@ -34,7 +36,7 @@ its own Why/Fix and exit 1, never as a raised `TimeoutExpired` (ADR-293).
 ## 🧭 Projects: AIKit as the Workspace
 AIKit is the folder a person opens in an AI host; the software it builds lives in `projects/<name>/`, each its own git repository with its memory in `.aikit/`. See [ADR-119](decisions.md).
 
-- **Isolation**: `projects/` is in `.gitignore`, in `IGNORE_DIRS` (codebase map, structure audits) and in `SWEEP_PRUNED_DIRS` (temp-file and quarantine sweeps), so no project file reaches AIKit's gates, map or ledger, and `--track` never sees one.
+- **Isolation**: `projects/` is in `.gitignore`, in `IGNORE_DIRS` (codebase map, structure audits) and in `SWEEP_PRUNED_DIRS` (temp-file and quarantine sweeps), so no project file reaches AIKit's gates, map or ledger, and `--track` never sees one. The sweep also prunes `references/`, `scratch/`, dependency folders and generated caches, so an audit costs a walk of AIKit rather than of every checkout kept beside it (ADR-295).
 - **Discovery**: a folder under `projects/` is a project when it holds `.aikit/project.json`; only folders elsewhere are listed in `projects/attached.json`. `attach` refuses a folder that contains or sits inside AIKit outside `projects/`.
 - **Project guidelines**: `.aikit/guidelines.md` holds the project's own rules (PRINCIPLE-001 R4 project tier). They cannot enter Tier 1, which every project shares, so `aikit status` and `aikit resume`, the project cold start, print them with their rank; `guideline_errors` keeps them well-formed and unable to override a principle (ADR-129).
 - **Self-check**: the built-in `guidelines` gate runs `update_knowledge_base.py --workspace <project> --check`, whose `check_workspace` is the same code path as AIKit's own `--check`: map freshness (once `fix` wrote a map), the full PRINCIPLE-005 README audit, unfinished code, code structure and the ADR register (ADR-124, ADR-128).

@@ -9,8 +9,8 @@
 - **Total Python Modules**: `61`
 - **Total Classes**: `134`
 - **Total Top-Level Functions**: `820`
-- **Total Class Methods**: `943`
-- **Total Source Lines**: `36086`
+- **Total Class Methods**: `946`
+- **Total Source Lines**: `36176`
 
 ---
 
@@ -442,7 +442,7 @@
 ### [`reforge/pipeline.py`](reforge/pipeline.py)
 > *Orchestrates one independent audit run, its safe repairs and their verification.*
 
-**Size**: `762` lines (`37439` bytes)
+**Size**: `771` lines (`38046` bytes)
 
 **Functions:**
 - `def finding_from_dict(item)`
@@ -547,7 +547,7 @@
 ### [`reforge/state.py`](reforge/state.py)
 > *Persistent audit runs, written atomically and isolated per project.*
 
-**Size**: `566` lines (`22681` bytes)
+**Size**: `568` lines (`22753` bytes)
 
 **Functions:**
 - `def state_path(root)`
@@ -818,7 +818,7 @@
 ### [`scripts/disruption_recovery.py`](scripts/disruption_recovery.py)
 > *Disruption Recovery & Task Progress Ledger (PRINCIPLE-006, PRINCIPLE-013)*
 
-**Size**: `2092` lines (`99225` bytes)
+**Size**: `2101` lines (`99729` bytes)
 
 **Classes:**
 - `class UnsupportedLedgerVersion` - *A ledger declares a schema this build cannot read (PRINCIPLE-013 R4, PRINCIPLE-016 R5).*
@@ -1200,7 +1200,7 @@
 ### [`scripts/proof_gate.py`](scripts/proof_gate.py)
 > *Prove that a declared test fails on the base tree and passes on the current tree.*
 
-**Size**: `500` lines (`20262` bytes)
+**Size**: `514` lines (`21037` bytes)
 
 **Classes:**
 - `class ProofError` - *The proof could not be set up; the exit code is 2.*
@@ -1215,7 +1215,7 @@
 - `def mutations_for_source(text, file_label, limit)` - *Deterministic, bounded mutants for single-line operators in one source file.*
 - `def mutant_key(mutant)` - *The stable waiver key for one mutant.*
 - `def apply_mutation(text, mutant)` - *Apply one mutant to its source text.*
-- `def _copy_repo(repo, destination)` - *Copy the working tree without Git metadata or unrelated project checkouts.*
+- `def _copy_repo(repo, destination)` - *Copy the working tree without Git metadata, project checkouts, or generated bulk.*
 - `def _run_declared_tests(tree, tests, timeout, runner)`
 - `def mutation_suite(repo, tree, *, tests, sources, limit, min_killed, waive, timeout, runner)` - *Generate bounded mutants in a copy of the tree and score them with the declared tests.*
 - `def _git(repo, *args, timeout)`
@@ -1455,7 +1455,7 @@
 ### [`tests/test_integration.py`](tests/test_integration.py)
 > *Integration & Operational Dogfooding Tier (PRINCIPLE-014, PRINCIPLE-015).*
 
-**Size**: `1964` lines (`101016` bytes)
+**Size**: `1963` lines (`101176` bytes)
 
 **Classes:**
 - `class TestParallelAgentSafety` - *Multi-process reproduction of the lost-update race (PRINCIPLE-013 R3).*
@@ -1607,7 +1607,7 @@
 ### [`tests/test_kit.py`](tests/test_kit.py)
 > *Automated Test Suite for Portable Agent Kit (PRINCIPLE-011, PRINCIPLE-016)*
 
-**Size**: `10793` lines (`599521` bytes)
+**Size**: `10850` lines (`602515` bytes)
 
 **Classes:**
 - `class TestPrincipleSync` - *Verifies that all 20 principles are maintained and synchronized (PRINCIPLE-001, PRINCIPLE-017).*
@@ -2189,7 +2189,7 @@
   - Method `.test_style_findings_skip_font_properties_whose_value_is_a_token()`
   - Method `.test_style_findings_are_off_without_declared_theme_paths()`
 - `class TestProjectsStayOutOfKitState` - *AIKit's map, gates and sweeps never read a project's files (ADR-119).*
-  - Method `.test_codebase_scan_and_sweeps_prune_projects()`
+  - Method `.test_codebase_scan_and_sweeps_prune_projects_and_bulk_trees()`
   - Method `.test_git_ignores_projects()`
 - `class TestSubagentDelegation` - *`aikit delegate`: bounded OpenCode sub-agent runs (ADR-126, ADR-128).*
   - Method `.setUp()`
@@ -2363,6 +2363,7 @@
   - Method `.test_window_settings_are_configurable_and_capped_by_stop()`
   - Method `.test_runs_stop_resume_and_create_independent_histories()`
   - Method `.test_raising_the_stop_reopens_a_completed_run()`
+  - Method `.test_update_settings_reopens_a_completed_run_with_a_pending_review()`
   - Method `.test_a_later_fix_refreshes_the_history_entry_too()`
   - Method `.test_schema_one_migrates_to_an_independent_first_run()`
   - Method `.test_only_fixable_unrepaired_findings_block_the_next_stage()`
@@ -2449,6 +2450,8 @@
   - Method `.test_apply_mutation_uses_the_exact_operator_span()`
   - Method `.test_mutations_skip_multiline_and_chained_expressions()`
   - Method `.test_copy_tests_refuses_missing_and_outside_paths()`
+  - Method `.test_mutation_sources_cannot_escape_the_repository()`
+  - Method `.test_mutation_copy_prunes_dependency_and_generated_trees()`
 - `class ReuseMetadataTest` - *A same-license refresh must not erase project-specific annotations.*
   - Method `.setUpClass()`
   - Method `.tearDownClass()`

@@ -203,9 +203,12 @@ def apply_mutation(text: str, mutant: Dict[str, object]) -> str:
 
 
 def _copy_repo(repo: Path, destination: Path) -> None:
-    """Copy the working tree without Git metadata or unrelated project checkouts."""
+    """Copy the working tree without Git metadata, project checkouts, or generated bulk."""
     ignore = shutil.ignore_patterns(
-        ".git", "projects", ".idea-catcher", "__pycache__", "*.pyc",
+        ".git", ".hg", ".svn", "projects", "references", "scratch", ".idea-catcher",
+        "node_modules", "__pycache__", "*.pyc", "*.pyo",
+        ".pytest_cache", ".ruff_cache", ".mypy_cache", ".tox", ".nox",
+        ".venv", "venv", "env", "build", "dist", "target", ".next", ".nuxt", ".cache", ".vite",
     )
     try:
         shutil.copytree(repo, destination, ignore=ignore)
@@ -237,16 +240,27 @@ def mutation_suite(
     """Generate bounded mutants in a copy of the tree and score them with the declared tests."""
     current = tree / "current"
     _copy_repo(repo, current)
+    repo_root = repo.resolve()
     mutants: List[Tuple[Path, Dict[str, object]]] = []
     for source in sources:
-        path = current / source
+        candidate = source if source.is_absolute() else repo / source
+        try:
+            relative = candidate.resolve().relative_to(repo_root)
+        except ValueError as exc:
+            raise ProofError(
+                f"declared source {str(source)!r} is outside the repository {repo}"
+            ) from exc
+        path = current / relative
         if not path.is_file():
             raise ProofError(f"declared source {str(source)!r} does not exist")
-        text = path.read_text(encoding="utf-8")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ProofError(f"declared source {str(source)!r} is not readable UTF-8: {exc}") from exc
         remaining = limit - len(mutants)
         if remaining <= 0:
             break
-        for mutant in mutations_for_source(text, source.as_posix(), remaining):
+        for mutant in mutations_for_source(text, relative.as_posix(), remaining):
             mutants.append((path, mutant))
 
     waived_keys = set(waive)

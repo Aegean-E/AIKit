@@ -405,6 +405,8 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         state = load_state(root)
         if mode == "fix":
             run = current_run(state, run_id)
+            total_commits = (None if isinstance(run.get("stop"), int)
+                             else (commit_count(root) or None))
             last = run.get("last_audit")
             if not isinstance(last, dict):
                 raise ReforgeError(
@@ -443,7 +445,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                 if findings_file:
                     sync_last_audit(run)
                     save_state(root, state)
-                    finalize_review(root, state, run)
+                    finalize_review(root, state, run, total_commits=total_commits)
                     ledger = _note_review(root, run, int(last.get("stage") or 0), review_meta)
                     return _payload(root, mode, plan, run, all_findings,
                                     [repair_from_dict(item) for item in (last.get("repairs") or [])],
@@ -480,7 +482,7 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
             sync_last_audit(run)
             save_state(root, state)
             mark_repairs(root, state, run, repairs)
-            finalize_review(root, state, run)
+            finalize_review(root, state, run, total_commits=total_commits)
             ledger = _note_review(root, run, int(last.get("stage") or 0), review_meta) \
                 if findings_file else None
             return _payload(root, mode, plan, run, all_findings, repairs, tests, gates,
@@ -520,7 +522,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
         if mode == "audit":
             entry = entry_from_stage(plan, findings, [], skipped=skipped,
                                      reviewed=len(reviewed), review=review_meta)
-            record_stage(root, state, run, entry, total_commits=commit_count(root))
+            record_stage(root, state, run, entry,
+                         total_commits=(None if isinstance(run.get("stop"), int)
+                                        else (commit_count(root) or None)))
             return _payload(root, mode, plan, run, findings, [], {}, {}, skipped,
                             _note_stage(root, run, plan, entry, findings, skipped),
                             reviewed=len(reviewed), review=review_meta)
@@ -535,7 +539,9 @@ def run_pipeline(root: Path, mode: str = "run", add_tests: bool = True,
                                  reviewed=len(reviewed), review=review_meta)
         entry["dirty_targets"] = sorted(
             {item.path for item in findings if item.fixable} & preexisting)
-        record_stage(root, state, run, entry, total_commits=commit_count(root))
+        record_stage(root, state, run, entry,
+                     total_commits=(None if isinstance(run.get("stop"), int)
+                                    else (commit_count(root) or None)))
         mark_repairs(root, state, run, repairs)
         return _payload(root, mode, plan, run, findings, repairs, tests, gates, skipped,
                         _note_stage(root, run, plan, entry, findings, skipped),
@@ -557,6 +563,8 @@ def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] 
     with run_lock(root):
         state = load_state(root)
         run = current_run(state, run_id)
+        total_commits = (None if isinstance(run.get("stop"), int)
+                         else (commit_count(root) or None))
         entry = next((item for item in (run.get("history") or [])
                       if isinstance(item, dict) and item.get("stage") == stage), None)
         last = run.get("last_audit")
@@ -589,7 +597,8 @@ def review_stage(root: Path, run_id: Optional[str] = None, stage: Optional[int] 
         entry["counts"] = summarize(findings)
         review_meta = _serialize_review(report)
         entry["review"] = review_meta
-        record_review(root, state, run, int(stage), review_meta)
+        record_review(root, state, run, int(stage), review_meta,
+                      total_commits=total_commits)
         return _payload(root, "review", plan, run, findings, [], entry.get("tests") or {},
                         entry.get("gates") or {}, entry.get("skipped") or [],
                         _note_review(root, run, int(stage), review_meta),

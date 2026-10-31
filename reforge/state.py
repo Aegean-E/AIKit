@@ -525,9 +525,11 @@ def update_settings(root: Path, state: Dict[str, object], run: Dict[str, object]
         run["status"] = "completed"
         if state.get("active_run") == run["id"]:
             state["active_run"] = None
-    elif run.get("status") == "completed" and not (reached_stop or reached_end and review_is_ready(run)):
+    elif run.get("status") == "completed" and not (
+            review_is_ready(run) and (reached_stop or reached_end)):
         # Raising the stop reopens the run: that is the recovery `plan_next_stage` recommends.
-        # A completed run that still holds an unreviewed stage is reopened for the same reason.
+        # A completed run that still holds an unreviewed stage is reopened for the same reason,
+        # even when the window already reached its stop.
         run["status"] = "active"
         state["active_run"] = run["id"]
     _mirror(state, run)

@@ -231,13 +231,12 @@ class TestGitStatusGrounding(unittest.TestCase):
 
     def test_conflict_audit_reports_block_rather_than_clean(self):
         # The contract an agent actually reads: a conflicted tree must never render "Clean state"
-        # and must carry a remediation command (PRINCIPLE-011 R6).
-        audit = run_disruption_audit(ROOT_DIR)
-        audit.update({
-            "has_conflicts": True,
-            "has_uncommitted_changes": True,
-            "conflicted_files": ["UU merged.txt"],
-        })
+        # and must carry a remediation command (PRINCIPLE-011 R6). A throwaway workspace keeps
+        # this report test from walking the repository's ignored bulk trees.
+        workspace = Path(tempfile.mkdtemp(prefix="test_audit_conflict_"))
+        self.addCleanup(remove_tree, workspace)
+        audit = run_disruption_audit(workspace, git_status=lambda _: (0, "UU merged.txt\0", ""))
+        self.assertTrue(audit["has_conflicts"])
         report = format_audit_report(audit)
         self.assertNotIn("Clean state", report)
         self.assertIn("UNRESOLVED MERGE CONFLICTS", report)

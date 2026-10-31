@@ -7260,12 +7260,15 @@ class TestUiProof(unittest.TestCase):
 class TestProjectsStayOutOfKitState(unittest.TestCase):
     """AIKit's map, gates and sweeps never read a project's files (ADR-119)."""
 
-    def test_codebase_scan_and_sweeps_prune_projects(self):
+    def test_codebase_scan_and_sweeps_prune_projects_and_bulk_trees(self):
         kit = Path(tempfile.mkdtemp(prefix="test_projects_prune_"))
         self.addCleanup(shutil.rmtree, kit, ignore_errors=True)
         (kit / "projects" / "app").mkdir(parents=True)
         (kit / "projects" / "app" / "main.py").write_text("x = 1\n", encoding="utf-8")
         (kit / "projects" / "app" / "state.json.tmp_1_2").write_text("", encoding="utf-8")
+        for bulk in ("scratch", "references", "node_modules", ".venv", "build"):
+            (kit / bulk).mkdir()
+            (kit / bulk / f"{bulk}.json.tmp_1_2").write_text("", encoding="utf-8")
         (kit / "tool.py").write_text("y = 2\n", encoding="utf-8")
         (kit / "s.json.tmp_1_2").write_text("", encoding="utf-8")
         self.assertEqual([p.name for p in find_python_files(kit)], ["tool.py"])
@@ -9262,6 +9265,21 @@ class TestReforgeCore(unittest.TestCase):
         self.assertEqual(reopened["status"], "active")
         self.assertEqual(load_state(root)["active_run"], "run-1")
 
+    def test_update_settings_reopens_a_completed_run_with_a_pending_review(self):
+        root = self.root()
+        state = new_state()
+        run = create_run(state, 2, 1, 3)
+        entry = {"run": "run-1", "stage": 1, "window": 3, "commits": [], "new_commits": ["a"],
+                 "prior_commits": [], "findings": [], "repairs": [], "counts": {}, "tests": {},
+                 "review": {"status": "unreviewed", "packet": "stage-1.md"},
+                 "gates": {}, "timestamp": "2026-10-28T00:00:00"}
+        record_stage(root, state, run, entry)
+        run["status"] = "completed"
+        state["active_run"] = None
+        reopened = update_settings(root, state, run, stop=3)
+        self.assertEqual(reopened["status"], "active")
+        self.assertEqual(load_state(root)["active_run"], "run-1")
+
     def test_a_later_fix_refreshes_the_history_entry_too(self):
         # `last_audit` and its history entry are separate objects after a reload, so a fix that
         # updated one left `report` showing the pre-repair stage.
@@ -10593,6 +10611,45 @@ class TestProofGateHelpers(unittest.TestCase):
         self.addCleanup(outside.unlink)
         with self.assertRaises(proof_gate.ProofError):
             proof_gate._copy_tests(root, worktree, [outside])
+
+    def test_mutation_sources_cannot_escape_the_repository(self) -> None:
+        from scripts import proof_gate
+
+        root = Path(tempfile.mkdtemp(prefix="proof_source_"))
+        self.addCleanup(shutil.rmtree, str(root), True)
+        repo = root / "repo"
+        repo.mkdir()
+        (repo / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (repo / "tests").mkdir()
+        (repo / "tests" / "test_x.py").write_text("x = 1\n", encoding="utf-8")
+        outside = root / "outside.py"
+        outside.write_text("SECRET = 1\n", encoding="utf-8")
+        before = outside.read_text(encoding="utf-8")
+        for index, source in enumerate((outside, Path("../outside.py"))):
+            with self.subTest(source=source), self.assertRaises(proof_gate.ProofError):
+                proof_gate.mutation_suite(
+                    repo, root / f"tree-{index}", tests=[Path("tests/test_x.py")],
+                    sources=[source], limit=1, min_killed=1, timeout=1.0,
+                    runner=lambda *_: (0, "must not run"),
+                )
+            self.assertEqual(outside.read_text(encoding="utf-8"), before)
+
+    def test_mutation_copy_prunes_dependency_and_generated_trees(self) -> None:
+        from scripts import proof_gate
+
+        root = Path(tempfile.mkdtemp(prefix="proof_copy_repo_"))
+        self.addCleanup(shutil.rmtree, str(root), True)
+        repo = root / "repo"
+        repo.mkdir()
+        (repo / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+        for bulk in ("node_modules", "scratch", ".venv", "build"):
+            (repo / bulk).mkdir()
+            (repo / bulk / "heavy.bin").write_bytes(b"x")
+        copy = root / "copy"
+        proof_gate._copy_repo(repo, copy)
+        self.assertEqual((copy / "app.py").read_text(encoding="utf-8"), "VALUE = 1\n")
+        for bulk in ("node_modules", "scratch", ".venv", "build"):
+            self.assertFalse((copy / bulk).exists(), f"{bulk} copied into the mutation tree")
 
 
 class ReuseMetadataTest(unittest.TestCase):
